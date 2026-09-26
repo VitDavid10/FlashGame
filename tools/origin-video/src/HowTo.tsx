@@ -29,11 +29,17 @@ const union = (a: Rect, b: Rect): Rect => {
   return [x, y, Math.max(a[0] + a[2], b[0] + b[2]) - x, Math.max(a[1] + a[3], b[1] + b[3]) - y];
 };
 
-type Mark = { from: number; to?: number; r: Rect; label?: string; color?: string; below?: boolean };
+type Mark = { from: number; to?: number; r: Rect; label?: string; color?: string; below?: boolean; inside?: boolean };
 type Focus = { t: number; r?: Rect; z: number };
-type Scene = { id: string; clip: string; clipFrom?: number; step?: string; marks?: Mark[]; focus?: Focus[]; extra?: React.FC };
+type Scene = { id: string; clip: string; clipFrom?: number; len?: number; step?: string; marks?: Mark[]; focus?: Focus[]; extra?: React.FC };
 
 const GREEN = "#00ff88", GOLD = "#ffce3d";
+const baseLen = (id: string) => LEAD + voiceLen(id) + TAIL;
+// The card clip goes on into SHARE CARD; the arena clip into the shared run.
+const CARD_LEN = baseLen("card");
+const t = (scene: string, name: string) => R[scene][name].t;
+const ARENA_LEN = Math.max(baseLen("arena"), t("arena", "over") + 0.4);
+const RUN_LEN = Math.max(baseLen("run"), t("arena", "runcard") + 2.6 - ARENA_LEN);
 
 const SCENES: Scene[] = [
   { id: "intro", clip: "intro" },
@@ -57,6 +63,14 @@ const SCENES: Scene[] = [
     marks: [{ from: at("card", "history"), to: at("card", "card", 0) - 0.2, r: rect("card", "cw"), color: GOLD }, { from: at("card", "card"), r: rect("card", "card"), label: "TOTAL + RANK", below: true }],
   },
   {
+    id: "share", clip: "card", clipFrom: CARD_LEN, step: "SHARE = YOUR REFERRAL LINK",
+    focus: [{ t: 0, r: rect("card", "sharebtn"), z: 1.3 }, { t: t("card", "sharecard") - CARD_LEN, r: rect("card", "sharecard"), z: 1.12 }],
+    marks: [
+      { from: 0, to: t("card", "sharecard") - CARD_LEN - 0.6, r: rect("card", "sharebtn"), label: "SHARE CARD" },
+      { from: at("share", "referral"), r: rect("card", "sharecard"), label: "YOUR REFERRAL LINK", color: GOLD, inside: true },
+    ],
+  },
+  {
     id: "boost", clip: "boost", step: "BOOST QUESTS = ×1.5",
     focus: [{ t: 0, r: rect("boost", "banner"), z: 1.45 }, { t: 3.4, r: rect("boost", "once"), z: 1.55 }],
     marks: [
@@ -66,9 +80,17 @@ const SCENES: Scene[] = [
     extra: () => <Stamp from={sec(at("boost", "multiplied"))} text="×1.5" sub="ALL YOUR POINTS" />,
   },
   {
-    id: "arena", clip: "arena", step: "DAILY ARENA",
-    focus: [{ t: 0, z: 1 }, { t: 2.2, r: rect("arena", "game"), z: 1.08 }],
-    marks: [{ from: 2.3, to: at("arena", "clear"), r: rect("arena", "title") }, { from: at("arena", "clear"), r: rect("arena", "game"), label: "PLAY HERE" }],
+    id: "arena", clip: "arena", len: ARENA_LEN, step: "DAILY ARENA",
+    marks: [
+      { from: t("arena", "press") - 1.2, to: t("arena", "press") + 0.3, r: rect("arena", "press") },
+    ],
+  },
+  {
+    id: "run", clip: "arena", clipFrom: ARENA_LEN, len: RUN_LEN, step: "SHARE YOUR RUN",
+    marks: [
+      { from: t("arena", "sharerun") - ARENA_LEN - 1.2, to: t("arena", "sharerun") - ARENA_LEN, r: rect("arena", "sharerun"), label: "SHARE ON X" },
+      { from: t("arena", "runcard") - ARENA_LEN, r: rect("arena", "runcard"), color: GOLD },
+    ],
   },
   {
     id: "game", clip: "game", step: "WANT MORE INFO?",
@@ -77,11 +99,11 @@ const SCENES: Scene[] = [
   },
   { id: "outro", clip: "intro", clipFrom: 5.5, extra: () => <Outro /> },
 ];
-const lenOf = (s: Scene) => sec(LEAD + voiceLen(s.id) + (s.id === "outro" ? 1.6 : TAIL));
+const lenOf = (s: Scene) => sec(s.len ?? (LEAD + voiceLen(s.id) + (s.id === "outro" ? 1.6 : TAIL)));
 export const HOWTO_FRAMES = SCENES.reduce((a, s) => a + lenOf(s), 0);
 
 /** Pops in on its word: a pulsing frame with an optional tag above. */
-const Box: React.FC<Mark & { f: number }> = ({ from, to, r, label, color = GREEN, below, f }) => {
+const Box: React.FC<Mark & { f: number }> = ({ from, to, r, label, color = GREEN, below, inside, f }) => {
   const { fps } = useVideoConfig();
   const a = f - sec(from);
   if (a < 0 || (to !== undefined && f > sec(to) + 6)) return null;
@@ -94,7 +116,7 @@ const Box: React.FC<Mark & { f: number }> = ({ from, to, r, label, color = GREEN
       transform: `scale(${interpolate(inS, [0, 1], [1.25, 1])})`, transformOrigin: "center" }}>
       <div style={{ position: "absolute", inset: 0, border: `6px solid ${color}`, boxShadow: `0 0 ${18 + 16 * pulse}px ${color}, inset 0 0 ${10 + 8 * pulse}px ${color}66` }} />
       {label && (
-        <div style={{ position: "absolute", left: -6, ...(below ? { bottom: -58 } : { top: -58 }), padding: "10px 14px", background: color, color: "#03140a",
+        <div style={{ position: "absolute", ...(inside ? { right: 16, top: 16 } : below ? { left: -6, bottom: -58 } : { left: -6, top: -58 }), padding: "10px 14px", background: color, color: "#03140a",
           fontFamily: PX, fontSize: 22, whiteSpace: "nowrap", boxShadow: "4px 4px 0 #000" }}>{label}</div>
       )}
     </div>
@@ -199,8 +221,11 @@ const SceneView: React.FC<{ sc: Scene }> = ({ sc }) => {
   const Extra = sc.extra;
   return (
     <AbsoluteFill style={{ background: "#050505" }}>
+      {/* The clips are 2880x1620: the video is laid out at its zoomed size, so the
+          zoom shows real pixels instead of blowing up a 1080p frame. */}
+      <Video src={staticFile(`howto/${sc.clip}.mp4`)} trimBefore={sec(sc.clipFrom ?? 0)} muted
+        style={{ position: "absolute", left: 960 - 960 * cam.s + cam.x, top: 540 - 540 * cam.s + cam.y, width: 1920 * cam.s, height: 1080 * cam.s }} />
       <AbsoluteFill style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.s})`, transformOrigin: "center" }}>
-        <Video src={staticFile(`howto/${sc.clip}.mp4`)} trimBefore={sec(sc.clipFrom ?? 0)} muted style={{ width: "100%", height: "100%" }} />
         {(sc.marks ?? []).map((m, i) => <Box key={i} {...m} f={f} />)}
       </AbsoluteFill>
       {Extra && <Extra />}

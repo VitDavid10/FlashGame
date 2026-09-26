@@ -14,7 +14,10 @@ const BASE = process.argv[2] || 'http://localhost:8095';
 const TMP = process.argv[3] || path.join(require('os').tmpdir(), 'howto-capture');
 const OUT = path.join(__dirname, '..', 'public', 'howto');
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-const VW = 1280, VH = 720, DPR = 1.5, FPS = 30;
+// Scenes that get zoomed are recorded at 2.25x (2880x1620) so the zoom has real
+// pixels to show; the gameplay stays at 1.5x, where the screencast keeps up.
+const VW = 1280, VH = 720, SHARP = 2.25, FAST = 1.5, FPS = 30, OUT_W = 2880, OUT_H = 1620;
+const TO_1920 = 1920 / VW;   // rects are stored in 1920x1080 coordinates
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -36,8 +39,25 @@ const FAKE_ME = {
 // Runs before the page's own scripts on every load.
 const FAKE_FETCH = `(() => {
   if (!sessionStorage.getItem('howtoFake')) return;
-  const real = window.fetch, body = ${JSON.stringify(JSON.stringify(FAKE_ME))};
-  window.fetch = (u, o) => String(u).includes('/api/airdrop/me') ? Promise.resolve(new Response(body, { headers: { 'Content-Type': 'application/json' } })) : real(u, o);
+  const real = window.fetch, me = ${JSON.stringify(FAKE_ME)};
+  const reply = j => Promise.resolve(new Response(JSON.stringify(j), { headers: { 'Content-Type': 'application/json' } }));
+  // The Daily Arena answered like the real server: today's MEDIUM mission is
+  // KILL 3 (+60), credited on the third kill.
+  window.fetch = (u, o) => {
+    u = String(u);
+    if (u.includes('/api/airdrop/me')) return reply(me);
+    if (u.includes('/api/airdrop/arena/') || u.includes('/api/airdrop/quest/complete')) {
+      const b = JSON.parse((o && o.body) || '{}'), sc = me.score;
+      if (u.endsWith('/begin')) sc.tasks.play = true;
+      if (u.endsWith('/event') && b.type === 'botKilled') {
+        sc.daily.kills++;
+        if (sc.daily.kills >= 3 && !sc.daily.done['m-kill3']) { sc.daily.done['m-kill3'] = true; sc.gamePts += 60; }
+      }
+      if (u.endsWith('/end')) sc.daily.matches++;
+      return reply({ score: sc });
+    }
+    return real(u, o);
+  };
 })();`;
 
 (async () => {
@@ -50,10 +70,12 @@ const FAKE_FETCH = `(() => {
     ws.on('message', m => { const j = JSON.parse(m); if (j.id && pend[j.id]) { pend[j.id](j.result || j.error); delete pend[j.id]; } else if (j.method) handlers.forEach(h => h(j)); });
     const cmd = (method, params) => new Promise(r => { const i = ++id; pend[i] = r; ws.send(JSON.stringify({ id: i, method, params })); });
     const js = async expr => { const r = await cmd('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); return r && r.result ? r.result.value : undefined; };
-    const rect = async sel => js(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return null; const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(v => Math.round(v * ${DPR})); })()`);
+    const rect = async sel => js(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return null; const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(v => Math.round(v * ${TO_1920})); })()`);
+    let dpr = SHARP;
+    const setDpr = d => { dpr = d; return cmd('Emulation.setDeviceMetricsOverride', { width: VW, height: VH, deviceScaleFactor: d, mobile: false }); };
 
     await cmd('Page.enable'); await cmd('Runtime.enable');
-    await cmd('Emulation.setDeviceMetricsOverride', { width: VW, height: VH, deviceScaleFactor: DPR, mobile: false });
+    await setDpr(SHARP);
     await cmd('Page.addScriptToEvaluateOnNewDocument', { source: FAKE_FETCH });
 
     // Screencast frames of the current page, with their timestamps.
@@ -71,8 +93,10 @@ const FAKE_FETCH = `(() => {
         const dir = path.join(TMP, scene); fs.mkdirSync(dir, { recursive: true });
         rec = { dir, frames: [], start: Date.now() / 1000 };
         rects[scene] = {};
-        await cmd('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: VW * DPR, maxHeight: VH * DPR, everyNthFrame: 1 });
-        if (during) await during(async (name, sel, t) => { rects[scene][name] = { t: t == null ? (Date.now() / 1000 - rec.start) : t, r: await rect(sel) }; });
+        await cmd('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: Math.round(VW * dpr), maxHeight: Math.round(VH * dpr), everyNthFrame: 1 });
+        // `during` returning true ends the clip right there (ms is then just a cap).
+        const early = during ? await during(async (name, sel, t) => { rects[scene][name] = { t: t == null ? (Date.now() / 1000 - rec.start) : t, r: await rect(sel) }; }) : false;
+        if (early) ms = (Date.now() / 1000 - rec.start) * 1000;
         const left = rec.start + ms / 1000 - Date.now() / 1000; if (left > 0) await wait(left * 1000);
         await cmd('Page.stopScreencast');
         const { frames } = rec, start = rec.start, end = rec.start + ms / 1000; rec = null;
@@ -82,7 +106,7 @@ const FAKE_FETCH = `(() => {
         // Constant 30 fps: each frame lasts until the next one arrived.
         const list = frames.map((fr, i) => `file '${fr.f.replace(/\\/g, '/')}'\nduration ${Math.max(0.001, ((frames[i + 1] ? frames[i + 1].t : end) - fr.t)).toFixed(4)}`).join('\n') + `\nfile '${frames[frames.length - 1].f.replace(/\\/g, '/')}'`;
         const lf = path.join(dir, 'list.txt'); fs.writeFileSync(lf, list);
-        execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lf, '-vf', `fps=${FPS},scale=1920:1080:flags=lanczos,format=yuv420p`, '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', path.join(OUT, scene + '.mp4')]);
+        execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lf, '-vf', `fps=${FPS},scale=${OUT_W}:${OUT_H}:flags=lanczos,format=yuv420p`, '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', path.join(OUT, scene + '.mp4')]);
         console.log(scene, frames.length, 'frames');
     }
     const click = sel => js(`document.querySelector(${JSON.stringify(sel)}).click()`);
@@ -116,7 +140,13 @@ const FAKE_FETCH = `(() => {
     await cmd('Page.reload'); await wait(7000);
     await click('#introEnter'); await wait(3000);
     await js('scrollTo(0, 0)'); await wait(600);
-    await record('card', 9000, async mark => { await mark('cw', '#cW'); await mark('card', '#card'); });
+    await record('card', 17500, async mark => {
+        await mark('cw', '#cW'); await mark('card', '#card'); await mark('sharebtn', '#shareCard');
+        await wait(9200);
+        await click('#shareCard'); await wait(900);
+        await mark('sharecard', '#mShare .panel');
+    });
+    await js(`document.getElementById('mShare').hidden = true`);
 
     // 5. Boost quests.
     await scrollTo('.qpanel', 70); await wait(1500);
@@ -128,12 +158,64 @@ const FAKE_FETCH = `(() => {
         await mark('once', '#qSocial');
     });
 
-    // 6. Daily Arena, further down.
-    await record('arena', 7300, async mark => {
+    // 6. Daily Arena: scroll down, PRESS TO START, eat 3 small pills (today's
+    // KILL 3 mission), get eaten by a big one, share the run. The match is
+    // staged through the game's lab handle (__pwLab.sim): feeding real bots to
+    // the player and putting a big one on top of it, so the game itself plays
+    // the kills, the death and the results screen.
+    await setDpr(FAST); await wait(800);
+    await record('arena', 30000, async mark => {
         await wait(600);
         await scrollTo('#arenaBlock', 40); await wait(1400);
         await mark('title', '#arenaBlock h2'); await mark('game', '#game');
+        await wait(1500);
+        await mark('press', '#veil');
+        // The game rewrites its own URL on boot: the new match is told apart by its new document.
+        await js(`window.__oldDoc = document.getElementById('game').contentDocument`);
+        await click('#veil');
+        const G = `document.getElementById('game').contentWindow`;
+        // The real match (a new document, not the ambient demo behind PRESS TO START).
+        // It is shielded (the sim's godMode) until we let it die: a bot must not
+        // eat it on its own while the skill card is still on screen.
+        const alive = `(() => { try { const w = ${G}; const p = w.document !== window.__oldDoc && w.me && w.me(); if (!(p && p.alive && p.cells.length && w.__pwLab && w.__pwLab.sim)) return false; p.godMode = true; return true; } catch (e) { return false; } })()`;
+        for (let i = 0; i < 150 && !(await js(alive)); i++) await wait(100);
+        await mark('started', 'body');
+        // Arcade opens with a skill pick: pick the first card, like a player would.
+        const picking = `(() => { try { const o = ${G}.document.getElementById('skillChoiceOverlay'); return !!o && getComputedStyle(o).display !== 'none'; } catch (e) { return false; } })()`;
+        const pick = async () => {
+            if (!(await js(picking))) return;
+            await wait(1200);
+            await js(`(() => { const b = ${G}.document.querySelector('#skillOptionsContainer .skill-opt-btn'); if (b) b.click(); })()`);
+            for (let i = 0; i < 20 && (await js(picking)); i++) await wait(100);
+        };
+        for (let i = 0; i < 25 && !(await js(picking)); i++) await wait(120);
+        await pick();
+        await wait(1200);
+        for (let k = 0; k < 3; k++) {
+            await js(`(() => { const w = ${G}, sim = w.__pwLab.sim, c = w.me().cells[0];
+              const n = {}; for (const e of sim.enemies) n[e.id] = (n[e.id] || 0) + 1;
+              const b = sim.enemies.filter(e => n[e.id] === 1).sort((a, z) => a.r - z.r)[0]; if (!b) return;
+              const a = Math.random() * 6.28; b.r = c.r * 0.45; b.x = c.x + Math.cos(a) * c.r * 0.3; b.y = c.y + Math.sin(a) * c.r * 0.3; })()`);
+            await wait(1100);
+        }
+        await wait(1800);   // the +60 quest pop
+        await mark('kills', 'body');
+        await pick();
+        await js(`(() => { const w = ${G}, sim = w.__pwLab.sim, me = w.me(); me.godMode = false;
+          const big = sim.enemies.slice().sort((a, z) => z.r - a.r)[0], c = me.cells.slice().sort((a, z) => z.r - a.r)[0];
+          big.r = Math.max(big.r, c.r * 2.4); big.x = c.x + c.r * 0.4; big.y = c.y; for (const o of me.cells) { o.x = big.x - c.r * 0.3; o.y = big.y; } })()`);
+        for (let i = 0; i < 60; i++) { if (await js(`!document.getElementById('over').hidden`)) break; await wait(150); }
+        await mark('over', '#over');
+        await wait(1800);
+        await mark('sharerun', '#shareRun');
+        await click('#shareRun'); await wait(1200);
+        await mark('runcard', '#mShare .panel');
+        await wait(3500);
+        return true;
     });
+    await js(`document.getElementById('mShare').hidden = true`);
+    await click('#quit'); await wait(1500);
+    await setDpr(SHARP); await wait(800);
 
     // 7. THE GAME tab.
     await js('scrollTo({ top: 0, behavior: "smooth" })'); await wait(1500);

@@ -9,8 +9,10 @@ SCENES = [
     ('x', "Step one: connect your X account. Your followers and account age turn into points."),
     ('wallet', "Step two: add your Solana wallet. Connecting only asks for a signature, so nothing ever leaves your wallet. Or skip that, and just paste your address."),
     ('card', "Your wallet's history, its age, activity and past airdrops, earns you even more points. Your card shows your total, and your rank."),
+    ('share', "Hit Share Card to post it on X. Your card link is also your referral link, so friends who join from it count as your invites."),
     ('boost', "Now, the most important part: the four boost quests. Follow us on X, join the Telegram, play your first match, and claim the Genesis Hunter role on Discord. Complete all four, and every point you have is multiplied by one point five. Don't skip them."),
-    ('arena', "Scroll down to the Daily Arena. Play the game and clear the daily missions to bank extra points, every single day."),
+    ('arena', "Scroll down to the Daily Arena. Press start, play, and clear the daily missions to bank extra points, every single day."),
+    ('run', "And when your match is over, you can share your run on X too."),
     ('game', "Want to know more about the game itself? Open The Game tab, it's full of useful info. Or, if you'd rather not read, stay tuned for more videos like this one."),
     ('outro', "pillwars dot fun. See you in the arena."),
 ]
