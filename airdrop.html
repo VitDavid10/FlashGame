@@ -2228,9 +2228,13 @@ function noGrace(w) {
 // editing S by hand in devtools has no lasting effect.
 function applyScore(sc) {
   if (!sc) return;
+  // Missions pay only when the server marks them done: pop those, once.
+  const before = S.daily.done || {};
+  if (match && sc.daily.date === S.daily.date) for (const m of MISSIONS) if (sc.daily.done[m.id] && !before[m.id]) popPoints(arenaWin, m);
   S.gamePts = sc.gamePts; S.socialPts = sc.socialPts; S.shareAt = sc.shareAt; S.tasks = sc.tasks;
   S.daily = Object.assign({}, S.daily, { date: sc.daily.date, done: sc.daily.done, matches: sc.daily.matches, kills: sc.daily.kills, social: sc.daily.social, c: sc.daily.c });
   save();
+  renderDaily(); renderCard();
 }
 const arena = (path, body) => api('arena/' + path, body || {}).then(j => applyScore(j.score)).catch(() => {});
 
@@ -2288,7 +2292,9 @@ function beginMatch(w) {
   over.hidden = true;
   hudq.hidden = false;
   // The game's KILLS counter is not reset by TRY AGAIN offline: count from here.
-  match = { kills: 0, alive: 0, earned: 0, maxMass: 0, finished: false, place: null, start: Date.now(), killBase: gameKills(w) };
+  // `base`: the server's gamePts before the match; what it earned is the server's difference at the end.
+  match = { kills: 0, alive: 0, earned: 0, base: S.gamePts, maxMass: 0, finished: false, place: null, start: Date.now(), killBase: gameKills(w) };
+  arenaWin = w;
   S.daily.matches++; save();
   completeTask('play', 0);
   arena('begin');
@@ -2316,14 +2322,9 @@ function beginMatch(w) {
 
 function checkMissions(w) {
   if (!match) return;
-  for (const m of MISSIONS) {
-    if (m.match) S.daily.best[m.id] = Math.max(S.daily.best[m.id] || 0, m.match(match));
-    if (S.daily.done[m.id] || !m.test(match)) continue;
-    S.daily.done[m.id] = true;
-    S.gamePts += m.pts; match.earned += m.pts;
-    popPoints(w, m);
-    renderDaily(); renderCard();
-  }
+  // Progress only: crediting a mission here and then having the server's
+  // answer undo it made the same mission pay again and again on screen.
+  for (const m of MISSIONS) if (m.match) S.daily.best[m.id] = Math.max(S.daily.best[m.id] || 0, m.match(match));
   save();
   renderHud();
 }
@@ -2367,7 +2368,8 @@ function resetArena() {
   loadGame('/game/?hero=1');
 }
 
-function endMatch(w, tipo) {
+let arenaWin = null;
+async function endMatch(w, tipo) {
   // When the clock runs out the game reports the end on EVERY frame: only the
   // first call counts (later ones would redraw the panel with 0 points and eat clicks).
   if (!match) return;
@@ -2377,7 +2379,7 @@ function endMatch(w, tipo) {
   // Clock ran out with you alive: the end-of-match missions are checked before closing it.
   if (finished) { match.finished = true; match.place = matchPlace(w); }
   checkMissions(w);
-  arena('end', { finished: match.finished, place: match.place });
+  const ended = arena('end', { finished: match.finished, place: match.place });
   const m = stopMatch();
   dropGameSave();
   try { w.hideGameHUD(); } catch (e) {}
@@ -2389,6 +2391,9 @@ function endMatch(w, tipo) {
     shot = document.createElement('canvas'); shot.width = src.width; shot.height = src.height;
     shot.getContext('2d').drawImage(src, 0, 0);
   } catch (e) { shot = null; }
+  // The points are what the server credited in this match, not a local tally.
+  await ended;
+  m.earned = Math.max(0, S.gamePts - m.base);
   const title = finished
     ? '<div class="go fin">MATCH FINISHED</div>'
     : '<div class="go">GAME OVER</div>';
