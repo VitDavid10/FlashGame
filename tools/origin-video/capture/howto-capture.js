@@ -16,7 +16,7 @@ const OUT = path.join(__dirname, '..', 'public', 'howto');
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 // Scenes that get zoomed are recorded at 2.25x (2880x1620) so the zoom has real
 // pixels to show; the gameplay stays at 1.5x, where the screencast keeps up.
-const VW = 1280, VH = 720, SHARP = 2.25, FAST = 1.5, FPS = 30, OUT_W = 2880, OUT_H = 1620;
+const VW = 1280, VH = 720, SHARP = 2.25, FAST = 1.5, FPS = 30, OUT_W = 2880, OUT_H = 1620, SLOW = 0.5;
 const TO_1920 = 1920 / VW;   // rects are stored in 1920x1080 coordinates
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -74,7 +74,7 @@ const FAKE_FETCH = `(() => {
     let dpr = SHARP;
     const setDpr = d => { dpr = d; return cmd('Emulation.setDeviceMetricsOverride', { width: VW, height: VH, deviceScaleFactor: d, mobile: false }); };
 
-    await cmd('Page.enable'); await cmd('Runtime.enable');
+    await cmd('Page.enable'); await cmd('Runtime.enable'); await cmd('Animation.enable');
     await setDpr(SHARP);
     await cmd('Page.addScriptToEvaluateOnNewDocument', { source: FAKE_FETCH });
 
@@ -83,15 +83,23 @@ const FAKE_FETCH = `(() => {
     handlers.push(j => {
         if (j.method !== 'Page.screencastFrame') return;
         cmd('Page.screencastFrameAck', { sessionId: j.params.sessionId });
-        if (!rec) return;
+        if (!rec || rec.skip) return;
         const f = path.join(rec.dir, String(rec.frames.length).padStart(5, '0') + '.jpg');
         fs.writeFileSync(f, Buffer.from(j.params.data, 'base64'));
         rec.frames.push({ f, t: j.params.metadata.timestamp });
     });
     const rects = {};
+    // ONLY=<scene>: the other scenes still run (the page has to get there) but are not re-recorded.
+    const ONLY = process.env.ONLY || '';
     async function record(scene, ms, during) {
+        if (ONLY && scene !== ONLY) {
+            const noop = async () => {};
+            const saved = rec; rec = { slow: [], start: Date.now() / 1000, frames: [], dir: TMP, skip: true };
+            if (during) await during(noop);
+            rec = saved; return;
+        }
         const dir = path.join(TMP, scene); fs.mkdirSync(dir, { recursive: true });
-        rec = { dir, frames: [], start: Date.now() / 1000 };
+        rec = { dir, frames: [], start: Date.now() / 1000, slow: [] };
         rects[scene] = {};
         await cmd('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: Math.round(VW * dpr), maxHeight: Math.round(VH * dpr), everyNthFrame: 1 });
         // `during` returning true ends the clip right there (ms is then just a cap).
@@ -99,17 +107,34 @@ const FAKE_FETCH = `(() => {
         if (early) ms = (Date.now() / 1000 - rec.start) * 1000;
         const left = rec.start + ms / 1000 - Date.now() / 1000; if (left > 0) await wait(left * 1000);
         await cmd('Page.stopScreencast');
-        const { frames } = rec, start = rec.start, end = rec.start + ms / 1000; rec = null;
+        const { frames, slow } = rec, start = rec.start, end = rec.start + ms / 1000; rec = null;
         // The first frame can carry the time the page last painted, long before
         // the recording started: nothing counts from before the start.
         for (const fr of frames) fr.t = Math.min(end, Math.max(start, fr.t));
+        // Slow-motion stretches (see slowMo) play back at normal speed: their time shrinks by SLOW.
+        const remap = tAbs => { let r = tAbs - start; for (const [a, b] of slow) r -= Math.max(0, Math.min(tAbs - start, b) - a) * (1 - SLOW); return r; };
+        for (const m of Object.values(rects[scene])) m.t = remap(start + m.t);
         // Constant 30 fps: each frame lasts until the next one arrived.
-        const list = frames.map((fr, i) => `file '${fr.f.replace(/\\/g, '/')}'\nduration ${Math.max(0.001, ((frames[i + 1] ? frames[i + 1].t : end) - fr.t)).toFixed(4)}`).join('\n') + `\nfile '${frames[frames.length - 1].f.replace(/\\/g, '/')}'`;
+        const list = frames.map((fr, i) => `file '${fr.f.replace(/\\/g, '/')}'\nduration ${Math.max(0.001, remap(frames[i + 1] ? frames[i + 1].t : end) - remap(fr.t)).toFixed(4)}`).join('\n') + `\nfile '${frames[frames.length - 1].f.replace(/\\/g, '/')}'`;
         const lf = path.join(dir, 'list.txt'); fs.writeFileSync(lf, list);
         execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lf, '-vf', `fps=${FPS},scale=${OUT_W}:${OUT_H}:flags=lanczos,format=yuv420p`, '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', path.join(OUT, scene + '.mp4')]);
         console.log(scene, frames.length, 'frames');
     }
     const click = sel => js(`document.querySelector(${JSON.stringify(sel)}).click()`);
+    // Slow motion for the gameplay: this PC cannot screencast the game at a smooth
+    // frame rate, so the game's clock (performance.now, which drives its update
+    // loop) and the CSS animations run at SLOW, and that stretch is sped back up
+    // when the clip is built: twice the frames per second of game time.
+    const GAME = `document.getElementById('game').contentWindow`;
+    async function slowMo(on) {
+        await js(`(() => { const w = ${GAME};
+          if (!w.__clk) { const real = w.performance.now.bind(w.performance); const c = w.__clk = { real, rate: 1, bR: real(), bV: real() };
+            w.performance.now = () => c.bV + (c.real() - c.bR) * c.rate; }
+          const c = w.__clk, v = w.performance.now(); c.bR = c.real(); c.bV = v; c.rate = ${on ? SLOW : 1}; })()`);
+        await cmd('Animation.setPlaybackRate', { playbackRate: on ? SLOW : 1 });
+        const r = Date.now() / 1000 - rec.start;
+        if (on) rec.slow.push([r, Infinity]); else if (rec.slow.length) rec.slow[rec.slow.length - 1][1] = r;
+    }
     const scrollTo = (sel, off) => js(`window.scrollTo({ top: document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top + scrollY - ${off || 90}, behavior: 'smooth' })`);
 
     // 1. The start screen, already loaded and moving (the game behind it takes a while).
@@ -180,6 +205,7 @@ const FAKE_FETCH = `(() => {
         const alive = `(() => { try { const w = ${G}; const p = w.document !== window.__oldDoc && w.me && w.me(); if (!(p && p.alive && p.cells.length && w.__pwLab && w.__pwLab.sim)) return false; p.godMode = true; return true; } catch (e) { return false; } })()`;
         for (let i = 0; i < 150 && !(await js(alive)); i++) await wait(100);
         await mark('started', 'body');
+        await slowMo(true);
         // Arcade opens with a skill pick: pick the first card, like a player would.
         const picking = `(() => { try { const o = ${G}.document.getElementById('skillChoiceOverlay'); return !!o && getComputedStyle(o).display !== 'none'; } catch (e) { return false; } })()`;
         const pick = async () => {
@@ -188,24 +214,53 @@ const FAKE_FETCH = `(() => {
             await js(`(() => { const b = ${G}.document.querySelector('#skillOptionsContainer .skill-opt-btn'); if (b) b.click(); })()`);
             for (let i = 0; i < 20 && (await js(picking)); i++) await wait(100);
         };
-        for (let i = 0; i < 25 && !(await js(picking)); i++) await wait(120);
+        for (let i = 0; i < 70 && !(await js(picking)); i++) await wait(120);   // it opens a few s in (twice that in slow motion)
         await pick();
         await wait(1200);
-        for (let k = 0; k < 3; k++) {
-            await js(`(() => { const w = ${G}, sim = w.__pwLab.sim, c = w.me().cells[0];
-              const n = {}; for (const e of sim.enemies) n[e.id] = (n[e.id] || 0) + 1;
-              const b = sim.enemies.filter(e => n[e.id] === 1).sort((a, z) => a.r - z.r)[0]; if (!b) return;
-              const a = Math.random() * 6.28; b.r = c.r * 0.45; b.x = c.x + Math.cos(a) * c.r * 0.3; b.y = c.y + Math.sin(a) * c.r * 0.3; })()`);
-            await wait(1100);
+        // Three visible kills: a smaller pill shows up a few radii away and slides
+        // into the player (game time, so it follows the slow motion), which eats it.
+        // The game re-creates its bot objects, so a bot is followed by its id.
+        const DIRS = [[1, 0.15], [-0.6, 0.8], [-0.5, -0.85]];
+        for (const [dx, dy] of DIRS) {
+            const ok = await js(`(() => { const w = ${G}, me = w.me(), c = me.cells[0], S = () => w.__pwLab.sim;
+              const n = {}; for (const e of S().enemies) n[e.id] = (n[e.id] || 0) + 1;
+              const b0 = S().enemies.filter(e => n[e.id] === 1 && e.r < c.r * 2).sort((a, z) => a.r - z.r)[0]; if (!b0) return false;
+              const id = b0.id, l = Math.hypot(${dx}, ${dy}), sx = c.x + ${dx} / l * c.r * 5, sy = c.y + ${dy} / l * c.r * 5, t0 = w.performance.now();
+              w.__feed = id;
+              clearInterval(w.__feedT); w.__feedT = setInterval(() => {
+                const p = w.me().cells[0], b = S().enemies.find(e => e.id === id); if (!p || !b) { clearInterval(w.__feedT); return; }
+                const k = Math.min(1, (w.performance.now() - t0) / 1300), e = k * k;
+                // Its own update must not undo this: size, shield and push are held too.
+                b.r = p.r * 0.62; b.immuneTime = 0; b.tpPhase = 0; b.boostX = 0; b.boostY = 0; b.vx = 0; b.vy = 0;
+                b.x = sx + (p.x - sx) * e; b.y = sy + (p.y - sy) * e;
+              }, 10);
+              return true; })()`);
+            if (!ok) continue;
+            // Until no enemy has that id any more (eaten), at most 7 s of real time.
+            for (let i = 0; i < 70; i++) { if (await js(`(() => { const w = ${G}; return !w.__pwLab.sim.enemies.some(e => e.id === w.__feed); })()`)) break; await wait(100); }
+            console.log('kill', dx, dy, await js(`(() => { const w = ${G}; return w.__pwLab.sim.enemies.some(e => e.id === w.__feed) ? 'NOT EATEN' : 'eaten'; })()`));
+            await js(`(() => { const w = ${G}; clearInterval(w.__feedT); w.__feed = null; })()`);
+            await wait(1000);
         }
-        await wait(1800);   // the +60 quest pop
+        await wait(3600);   // the +60 quest pop (slow motion: 1.8 s on screen)
         await mark('kills', 'body');
         await pick();
+        // The death, on screen: a big pill shows up a few radii away and closes in
+        // on the player, who is steered into it.
         await js(`(() => { const w = ${G}, sim = w.__pwLab.sim, me = w.me(); me.godMode = false;
-          const big = sim.enemies.slice().sort((a, z) => z.r - a.r)[0], c = me.cells.slice().sort((a, z) => z.r - a.r)[0];
-          big.r = Math.max(big.r, c.r * 2.4); big.x = c.x + c.r * 0.4; big.y = c.y; for (const o of me.cells) { o.x = big.x - c.r * 0.3; o.y = big.y; } })()`);
-        for (let i = 0; i < 60; i++) { if (await js(`!document.getElementById('over').hidden`)) break; await wait(150); }
+          const c = me.cells.slice().sort((a, z) => z.r - a.r)[0];
+          const bigId = sim.enemies.slice().sort((a, z) => z.r - a.r)[0].id, R = Math.max(sim.enemies.find(e => e.id === bigId).r, c.r * 2.6);
+          const B = () => w.__pwLab.sim.enemies.filter(e => e.id === bigId).sort((a, z) => z.r - a.r)[0];
+          const sx = c.x - c.r * 6, sy = c.y + c.r * 1.2, t0 = w.performance.now();
+          clearInterval(w.__feedT); w.__feedT = setInterval(() => {
+            const k = Math.min(1, (w.performance.now() - t0) / 1600), p = w.me().cells[0], big = B(); if (!p || !big) { clearInterval(w.__feedT); return; }
+            big.r = R; big.immuneTime = 0; big.tpPhase = 0; big.boostX = 0; big.boostY = 0; big.vx = 0; big.vy = 0;
+            big.x = sx + (p.x - sx) * k; big.y = sy + (p.y - sy) * k;
+          }, 10); })()`);
+        for (let i = 0; i < 120; i++) { if (await js(`!document.getElementById('over').hidden`)) break; await wait(150); }
+        await slowMo(false);
         await mark('over', '#over');
+        await js(`(() => { try { clearInterval(${G}.__feedT); } catch (e) {} })()`);
         await wait(1800);
         await mark('sharerun', '#shareRun');
         await click('#shareRun'); await wait(1200);
@@ -228,7 +283,8 @@ const FAKE_FETCH = `(() => {
         await js('scrollBy({ top: 420, behavior: "smooth" })');
     });
 
-    fs.writeFileSync(path.join(OUT, 'rects.json'), JSON.stringify(rects, null, 1));
+    if (ONLY) { const old = JSON.parse(fs.readFileSync(path.join(OUT, 'rects.json'), 'utf8')); old[ONLY] = rects[ONLY]; fs.writeFileSync(path.join(OUT, 'rects.json'), JSON.stringify(old, null, 1)); }
+    else fs.writeFileSync(path.join(OUT, 'rects.json'), JSON.stringify(rects, null, 1));
     ws.close(); edge.kill();
     process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

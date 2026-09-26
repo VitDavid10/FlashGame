@@ -81,6 +81,8 @@ const SCENES: Scene[] = [
   },
   {
     id: "arena", clip: "arena", len: ARENA_LEN, step: "DAILY ARENA",
+    // Closer on the match (the player is small on screen), back out for GAME OVER.
+    focus: [{ t: 0, z: 1 }, { t: t("arena", "started") + 0.3, r: rect("arena", "game"), z: 1.35 }, { t: t("arena", "over") - 1.1, z: 1 }],
     marks: [
       { from: t("arena", "press") - 1.2, to: t("arena", "press") + 0.3, r: rect("arena", "press") },
     ],
