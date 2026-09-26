@@ -82,7 +82,8 @@ const SCENES: Scene[] = [
   {
     id: "arena", clip: "arena", len: ARENA_LEN, step: "DAILY ARENA",
     // Closer on the match (the player is small on screen), back out for GAME OVER.
-    focus: [{ t: 0, z: 1 }, { t: t("arena", "started") + 0.3, r: rect("arena", "game"), z: 1.35 }, { t: t("arena", "over") - 1.1, z: 1 }],
+    focus: [{ t: 0, z: 1 }, { t: t("arena", "started") + 0.2, r: rect("arena", "game"), z: 1.1 }, { t: t("arena", "over") - 0.9, z: 1 }],
+    extra: () => <FastForward />,
     marks: [
       { from: t("arena", "press") - 1.2, to: t("arena", "press") + 0.3, r: rect("arena", "press") },
     ],
@@ -126,6 +127,30 @@ const Box: React.FC<Mark & { f: number }> = ({ from, to, r, label, color = GREEN
 };
 
 /** The big "×1.5" stamp when the voice says it. */
+/** The match plays fast-forwarded x2: a badge, the game's music and its sounds on the kills. */
+const has = (scene: string, name: string) => !!(R[scene] && R[scene][name]);
+const FastForward: React.FC = () => {
+  const f = useCurrentFrame();
+  const a = sec(t("arena", "started")), b = sec(has("arena", "death") ? t("arena", "death") : t("arena", "over"));
+  const on = f >= a && f < b;
+  const blink = Math.floor((f - a) / 8) % 2 === 0;
+  const kills = [1, 2, 3].filter((k) => has("arena", "kill" + k)).map((k) => t("arena", "kill" + k));
+  return (
+    <>
+      {on && (
+        <div style={{ position: "absolute", right: 70, top: 50, padding: "14px 22px", background: "#000", border: `5px solid ${GOLD}`,
+          fontFamily: PX, fontSize: 40, color: GOLD, boxShadow: "6px 6px 0 #000", opacity: blink ? 1 : 0.75 }}>▶▶ ×2</div>
+      )}
+      <Sequence from={a} durationInFrames={Math.max(1, b - a + 20)} layout="none">
+        <Audio src={staticFile("snd/action-music.wav")} volume={(v) => interpolate(v, [0, 8, b - a, b - a + 20], [0, 0.35, 0.35, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+      </Sequence>
+      {kills.map((k, i) => <Sequence key={i} from={sec(k)} layout="none"><Audio src={staticFile("snd/kill1.mp3")} volume={0.55} /></Sequence>)}
+      {kills.length === 3 && <Sequence from={sec(kills[2] + 0.2)} layout="none"><Audio src={staticFile("snd/money.mp3")} volume={0.6} /></Sequence>}
+      {has("arena", "death") && <Sequence from={sec(t("arena", "death"))} layout="none"><Audio src={staticFile("snd/death.mp3")} volume={0.6} /></Sequence>}
+    </>
+  );
+};
+
 const Stamp: React.FC<{ from: number; text: string; sub: string }> = ({ from, text, sub }) => {
   const f = useCurrentFrame(), { fps } = useVideoConfig();
   const a = f - from; if (a < 0) return null;

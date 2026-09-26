@@ -112,7 +112,7 @@ const FAKE_FETCH = `(() => {
         // the recording started: nothing counts from before the start.
         for (const fr of frames) fr.t = Math.min(end, Math.max(start, fr.t));
         // Slow-motion stretches (see slowMo) play back at normal speed: their time shrinks by SLOW.
-        const remap = tAbs => { let r = tAbs - start; for (const [a, b] of slow) r -= Math.max(0, Math.min(tAbs - start, b) - a) * (1 - SLOW); return r; };
+        const remap = tAbs => { let r = tAbs - start; for (const [a, b, f] of slow) r -= Math.max(0, Math.min(tAbs - start, b) - a) * (1 - f); return r; };
         for (const m of Object.values(rects[scene])) m.t = remap(start + m.t);
         // Constant 30 fps: each frame lasts until the next one arrived.
         const list = frames.map((fr, i) => `file '${fr.f.replace(/\\/g, '/')}'\nduration ${Math.max(0.001, remap(frames[i + 1] ? frames[i + 1].t : end) - remap(fr.t)).toFixed(4)}`).join('\n') + `\nfile '${frames[frames.length - 1].f.replace(/\\/g, '/')}'`;
@@ -125,22 +125,35 @@ const FAKE_FETCH = `(() => {
     // frame rate, so the game's clock (performance.now, which drives its update
     // loop) and the CSS animations run at SLOW, and that stretch is sped back up
     // when the clip is built: twice the frames per second of game time.
-    const GAME = `document.getElementById('game').contentWindow`;
-    async function slowMo(on) {
-        await js(`(() => { const w = ${GAME};
+    // `frame`: which game iframe; `keep`: how much of the stretch stays in the clip
+    // (SLOW = back to real speed, SLOW / 2 = the fast-forwarded match).
+    async function slowMo(on, frame = '#game', keep = SLOW) {
+        await js(`(() => { const w = document.querySelector('${frame}').contentWindow;
           if (!w.__clk) { const real = w.performance.now.bind(w.performance); const c = w.__clk = { real, rate: 1, bR: real(), bV: real() };
             w.performance.now = () => c.bV + (c.real() - c.bR) * c.rate; }
           const c = w.__clk, v = w.performance.now(); c.bR = c.real(); c.bV = v; c.rate = ${on ? SLOW : 1}; })()`);
         await cmd('Animation.setPlaybackRate', { playbackRate: on ? SLOW : 1 });
         const r = Date.now() / 1000 - rec.start;
-        if (on) rec.slow.push([r, Infinity]); else if (rec.slow.length) rec.slow[rec.slow.length - 1][1] = r;
+        if (on) rec.slow.push([r, Infinity, keep]); else if (rec.slow.length) rec.slow[rec.slow.length - 1][1] = r;
+    }
+    // Page-only slow stretch (e.g. a scroll animated twice as slow): nothing to slow down, just time to squeeze.
+    function squeeze(on, keep = 0.5) {
+        const r = Date.now() / 1000 - rec.start;
+        if (on) rec.slow.push([r, Infinity, keep]); else if (rec.slow.length) rec.slow[rec.slow.length - 1][1] = r;
     }
     const scrollTo = (sel, off) => js(`window.scrollTo({ top: document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top + scrollY - ${off || 90}, behavior: 'smooth' })`);
 
     // 1. The start screen, already loaded and moving (the game behind it takes a while).
+    await setDpr(FAST);
     await cmd('Page.navigate', { url: BASE + '/' });
     await wait(12000);
-    await record('intro', 11000);
+    await record('intro', 40000, async () => {
+        await slowMo(true, '#intro iframe');
+        await wait(22500);   // 11.25 s of clip
+        await slowMo(false, '#intro iframe');
+        return true;
+    });
+    await setDpr(SHARP); await wait(1500);
 
     // 2. Connect X.
     await click('#introEnter'); await wait(2500);
@@ -192,20 +205,25 @@ const FAKE_FETCH = `(() => {
     await record('arena', 30000, async mark => {
         await wait(600);
         await scrollTo('#arenaBlock', 40); await wait(1400);
-        await mark('title', '#arenaBlock h2'); await mark('game', '#game');
-        await wait(1500);
+        await mark('title', '#arenaBlock h2');
+        await wait(900);
+        // The whole game frame on screen, skill bar at the bottom included.
+        await scrollTo('#screen', 4); await wait(1100);
+        await mark('game', '#game');
         await mark('press', '#veil');
         // The game rewrites its own URL on boot: the new match is told apart by its new document.
         await js(`window.__oldDoc = document.getElementById('game').contentDocument`);
         await click('#veil');
+        squeeze(true, 0.08);   // the game's loading screen: squeezed to a blink
         const G = `document.getElementById('game').contentWindow`;
         // The real match (a new document, not the ambient demo behind PRESS TO START).
         // It is shielded (the sim's godMode) until we let it die: a bot must not
         // eat it on its own while the skill card is still on screen.
         const alive = `(() => { try { const w = ${G}; const p = w.document !== window.__oldDoc && w.me && w.me(); if (!(p && p.alive && p.cells.length && w.__pwLab && w.__pwLab.sim)) return false; p.godMode = true; return true; } catch (e) { return false; } })()`;
         for (let i = 0; i < 150 && !(await js(alive)); i++) await wait(100);
+        squeeze(false);
         await mark('started', 'body');
-        await slowMo(true);
+        await slowMo(true, '#game', SLOW / 2);   // fast-forwarded x2 in the clip
         // Arcade opens with a skill pick: pick the first card, like a player would.
         const picking = `(() => { try { const o = ${G}.document.getElementById('skillChoiceOverlay'); return !!o && getComputedStyle(o).display !== 'none'; } catch (e) { return false; } })()`;
         const pick = async () => {
@@ -214,33 +232,43 @@ const FAKE_FETCH = `(() => {
             await js(`(() => { const b = ${G}.document.querySelector('#skillOptionsContainer .skill-opt-btn'); if (b) b.click(); })()`);
             for (let i = 0; i < 20 && (await js(picking)); i++) await wait(100);
         };
-        for (let i = 0; i < 70 && !(await js(picking)); i++) await wait(120);   // it opens a few s in (twice that in slow motion)
+        await js(`${G}.__pwLab.nextSkillPickTime = 0`);   // the first skill card right now: the bar gets a skill
+        for (let i = 0; i < 70 && !(await js(picking)); i++) await wait(120);
         await pick();
         await wait(1200);
         // Three visible kills: a smaller pill shows up a few radii away and slides
         // into the player (game time, so it follows the slow motion), which eats it.
+        // Kills are counted from the game's own events (a bot eaten by another bot
+        // does not count), and feeding goes on until there are 3.
+        await js(`(() => { const w = ${G}; w.__kills = 0; const orig = w.processSimEvents;
+          w.processSimEvents = function (evs) { try { for (const e of evs) if (e.type === 'botKilled' && e.playerId === 'me') w.__kills++; } catch (x) {} return orig.apply(this, arguments); }; })()`);
         // The game re-creates its bot objects, so a bot is followed by its id.
-        const DIRS = [[1, 0.15], [-0.6, 0.8], [-0.5, -0.85]];
+        const DIRS = [[1, 0.15], [-0.6, 0.8], [-0.5, -0.85], [0.7, -0.7], [-1, 0.1], [0.3, 1]];
+        let killN = 0;
         for (const [dx, dy] of DIRS) {
+            if (killN >= 3) break;
+            await pick();   // a skill card opened by the mass milestone: take it
             const ok = await js(`(() => { const w = ${G}, me = w.me(), c = me.cells[0], S = () => w.__pwLab.sim;
               const n = {}; for (const e of S().enemies) n[e.id] = (n[e.id] || 0) + 1;
               const b0 = S().enemies.filter(e => n[e.id] === 1 && e.r < c.r * 2).sort((a, z) => a.r - z.r)[0]; if (!b0) return false;
-              const id = b0.id, l = Math.hypot(${dx}, ${dy}), sx = c.x + ${dx} / l * c.r * 5, sy = c.y + ${dy} / l * c.r * 5, t0 = w.performance.now();
+              const id = b0.id, l = Math.hypot(${dx}, ${dy}), sx = c.x + ${dx} / l * c.r * 4, sy = c.y + ${dy} / l * c.r * 4, t0 = w.performance.now();
               w.__feed = id;
               clearInterval(w.__feedT); w.__feedT = setInterval(() => {
                 const p = w.me().cells[0], b = S().enemies.find(e => e.id === id); if (!p || !b) { clearInterval(w.__feedT); return; }
-                const k = Math.min(1, (w.performance.now() - t0) / 1300), e = k * k;
+                const k = Math.min(1, (w.performance.now() - t0) / 1100), e = k * k;
                 // Its own update must not undo this: size, shield and push are held too.
                 b.r = p.r * 0.62; b.immuneTime = 0; b.tpPhase = 0; b.boostX = 0; b.boostY = 0; b.vx = 0; b.vy = 0;
                 b.x = sx + (p.x - sx) * e; b.y = sy + (p.y - sy) * e;
               }, 10);
               return true; })()`);
             if (!ok) continue;
-            // Until no enemy has that id any more (eaten), at most 7 s of real time.
+            // Until the bot is gone (eaten by us or by someone else), at most 7 s of real time.
             for (let i = 0; i < 70; i++) { if (await js(`(() => { const w = ${G}; return !w.__pwLab.sim.enemies.some(e => e.id === w.__feed); })()`)) break; await wait(100); }
-            console.log('kill', dx, dy, await js(`(() => { const w = ${G}; return w.__pwLab.sim.enemies.some(e => e.id === w.__feed) ? 'NOT EATEN' : 'eaten'; })()`));
+            const kills = await js(`${G}.__kills`);
+            while (killN < kills) await mark('kill' + (++killN), 'body');
+            console.log('feed', dx, dy, 'kills', kills);
             await js(`(() => { const w = ${G}; clearInterval(w.__feedT); w.__feed = null; })()`);
-            await wait(1000);
+            await wait(900);
         }
         await wait(3600);   // the +60 quest pop (slow motion: 1.8 s on screen)
         await mark('kills', 'body');
@@ -257,8 +285,10 @@ const FAKE_FETCH = `(() => {
             big.r = R; big.immuneTime = 0; big.tpPhase = 0; big.boostX = 0; big.boostY = 0; big.vx = 0; big.vy = 0;
             big.x = sx + (p.x - sx) * k; big.y = sy + (p.y - sy) * k;
           }, 10); })()`);
+        for (let i = 0; i < 120; i++) { if (await js(`(() => { const p = ${G}.me(); return !p || !p.alive || !p.cells.length; })()`)) break; await wait(50); }
+        await mark('death', 'body');
         for (let i = 0; i < 120; i++) { if (await js(`!document.getElementById('over').hidden`)) break; await wait(150); }
-        await slowMo(false);
+        await slowMo(false, '#game', SLOW / 2);
         await mark('over', '#over');
         await js(`(() => { try { clearInterval(${G}.__feedT); } catch (e) {} })()`);
         await wait(1800);
@@ -274,13 +304,18 @@ const FAKE_FETCH = `(() => {
 
     // 7. THE GAME tab.
     await js('scrollTo({ top: 0, behavior: "smooth" })'); await wait(1500);
-    await record('game', 9300, async mark => {
+    await record('game', 30000, async mark => {
         await mark('tab', '[data-view="game"]');
         await wait(2600);
         await click('[data-view="game"]'); await wait(700);
         await mark('view', '#view-game');
-        await wait(1500);
-        await js('scrollBy({ top: 420, behavior: "smooth" })');
+        // Down to the very end of THE GAME, eased, animated twice as slow and squeezed back to 5 s.
+        squeeze(true);
+        await js(`new Promise(res => { const y0 = scrollY, y1 = document.documentElement.scrollHeight - innerHeight, t0 = performance.now(), D = 10000;
+          const f = () => { const k = Math.min(1, (performance.now() - t0) / D), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; scrollTo(0, y0 + (y1 - y0) * e); if (k < 1) requestAnimationFrame(f); else res(); }; f(); })`);
+        squeeze(false);
+        await wait(1200);
+        return true;
     });
 
     if (ONLY) { const old = JSON.parse(fs.readFileSync(path.join(OUT, 'rects.json'), 'utf8')); old[ONLY] = rects[ONLY]; fs.writeFileSync(path.join(OUT, 'rects.json'), JSON.stringify(old, null, 1)); }
