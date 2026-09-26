@@ -44,7 +44,7 @@ a{color:var(--green)}
 }
 .pbtn:hover{filter:drop-shadow(3px 3px 0 rgba(0,0,0,.55)) brightness(1.15)}
 .pbtn:active{transform:translate(2px,2px)}
-.pbtn.green{--plate:var(--placa-green)} .pbtn.blue{--plate:var(--placa-blue)} .pbtn.grey{--plate:var(--placa-grey)}
+.pbtn.green{--plate:var(--placa-green)} .pbtn.blue{--plate:var(--placa-blue)} .pbtn.grey{--plate:var(--placa-grey)} .pbtn.gold{--plate:var(--placa-gold)}
 .pbtn.big{font-size:16px;min-height:58px;padding:6px 26px}
 .pbtn.sm{font-size:9px;min-height:36px;padding:2px 8px}
 .pbtn img{width:18px;height:18px;image-rendering:pixelated}
@@ -494,6 +494,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
   s.setProperty('--placa-green', placa([28, 196, 72]));
   s.setProperty('--placa-blue', placa([29, 120, 220]));
   s.setProperty('--placa-grey', placa([88, 100, 104]));
+  s.setProperty('--placa-gold', placa([222, 150, 16]));
 })();
 </script>
 </head>
@@ -2525,7 +2526,7 @@ async function endMatch(w, tipo) {
     '<div class="btns"><button class="pbtn green big" id="again">TRY AGAIN</button>' +
     '<button class="pbtn blue big" id="shareRun"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE ON X</button>' +
     '<button class="pbtn grey big" id="quit">EXIT</button></div>' +
-    '<div class="btns"><button class="pbtn big" id="statsBtn">STATS</button></div>';
+    '<div class="btns"><button class="pbtn big gold" id="statsBtn">STATS</button></div>';
   over.hidden = false;
   deathsInWorld++;
   $('#again').onclick = () => { over.hidden = true; if (deathsInWorld >= FRESH_EVERY) playFresh(); else w.tryAgainOnline(); };
