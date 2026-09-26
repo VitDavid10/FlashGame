@@ -231,7 +231,8 @@ function createAirdrop(opts) {
         if (urlPath === '/api/airdrop/leaderboard') {
             if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
             const u = store.sessionUser(sessionToken(req));
-            return json(res, 200, admin.leaderboard(u && u.uid));
+            const by = new URLSearchParams(String(req.url || '').split('?')[1] || '').get('by') || 'pts';
+            return json(res, 200, admin.leaderboard(u && u.uid, by));
         }
         if (urlPath === '/api/airdrop/me') {
             const u = store.sessionUser(sessionToken(req));

@@ -290,4 +290,8 @@ test('STATS: a finished match is ranked against every player\'s best, from serve
     assert.strictEqual(r.status, 200);
     assert.deepStrictEqual([r.json.kills.value, r.json.kills.rank, r.json.mass.value, r.json.players], [1, 1, 4321, 1]);
     assert.strictEqual(r.json.best.kills, 1);
+    // KILLS / MASS leaderboards rank each player's best match.
+    const lb = by => fetch(base + '/api/airdrop/leaderboard?by=' + by, { headers: { Referer: base + '/' } }).then(x => x.json());
+    assert.strictEqual((await lb('kills')).top[0].pts, 1);
+    assert.strictEqual((await lb('mass')).top[0].pts, 4321);
 });

@@ -604,6 +604,11 @@ else {
   <section id="view-board" hidden>
     <div class="panel">
       <h3 class="ptitle">LEADERBOARD <small>TOP 50 - SEASON 0</small></h3>
+      <div class="qtabs" id="lbTabs" style="margin-bottom:10px">
+        <button class="qtab on" data-by="pts">POINTS</button>
+        <button class="qtab" data-by="kills">KILLS</button>
+        <button class="qtab" data-by="mass">MASS</button>
+      </div>
       <div class="lb-scroll"><table class="lb" id="lb"></table></div>
     </div>
   </section>
@@ -825,10 +830,19 @@ else {
 <!-- share modal: preview the image before posting -->
 <!-- STATS after a match: this match against every player's best -->
 <div class="modal" id="mStats" hidden style="z-index:110">
-  <div class="panel">
+  <div class="panel" style="max-width:640px">
     <h3 class="ptitle">YOUR MATCH STATS</h3>
     <div id="statsBody" style="text-align:center;color:var(--dim)">Loading...</div>
-    <button class="pbtn grey" data-close style="width:100%;margin-top:14px">CLOSE</button>
+    <canvas id="statsCv" width="1200" height="630" hidden style="display:block;width:100%;height:auto;box-shadow:0 0 0 3px var(--line)"></canvas>
+    <div id="statsBoard" hidden style="margin-top:12px">
+      <div class="qtabs" id="statsTabs" style="margin-bottom:6px">
+        <button class="qtab on" data-by="kills">TOP KILLS</button>
+        <button class="qtab" data-by="mass">TOP MASS</button>
+      </div>
+      <table class="lb" id="statsLb"></table>
+    </div>
+    <button class="pbtn blue" id="statsShare" hidden style="width:100%;margin-top:14px"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE MY STATS</button>
+    <button class="pbtn grey" data-close style="width:100%;margin-top:10px">CLOSE</button>
   </div>
 </div>
 
@@ -1118,7 +1132,28 @@ const displayName = () => S.x ? S.x.username : S.w ? short(S.w) : '';
 
 /* ---------------- leaderboard (real, from /api/airdrop/leaderboard) ---------------- */
 let LB = { total: 0, top: [], me: null };
+// KILLS / MASS rank each player's best Daily Arena match; POINTS is the airdrop ranking.
+let lbBy = 'pts';
+const LB_ARENA = { kills: null, mass: null };
 const loadBoard = () => api('leaderboard').then(j => { LB = j; renderBoard(); renderCard(); }).catch(() => {});
+const loadArenaBoard = by => api('leaderboard?by=' + by).then(j => { LB_ARENA[by] = j; if (lbBy === by) renderArenaBoard(by); }).catch(() => {});
+function boardRows(d, unit, empty) {
+  let html = '<tr><th>#</th><th>PLAYER</th><th class="n">' + unit + '</th></tr>';
+  if (!d || !d.top.length) return html + '<tr><td colspan="3" style="color:var(--dim)">' + empty + '</td></tr>';
+  d.top.forEach((e, k) => {
+    html += '<tr class="' + (k < 3 ? 'top' + (k + 1) : '') + (e.me ? ' me' : '') + '"><td class="r">' + (k + 1) + '</td><td>' + esc(e.name) + (e.me ? ' (YOU)' : '') + '</td><td class="n">' + fmt(e.pts) + '</td></tr>';
+  });
+  if (d.me && d.me.rank > d.top.length) html += '<tr class="sep"><td colspan="3">...</td></tr><tr class="me"><td class="r">' + fmt(d.me.rank) + '</td><td>YOU</td><td class="n">' + fmt(d.me.pts) + '</td></tr>';
+  return html;
+}
+function renderArenaBoard(by) {
+  $('#lb').innerHTML = boardRows(LB_ARENA[by], by === 'kills' ? 'KILLS' : 'MASS', 'No Daily Arena matches yet. Play one to get on the board.');
+}
+document.querySelectorAll('#lbTabs .qtab').forEach(b => b.onclick = () => {
+  lbBy = b.dataset.by;
+  document.querySelectorAll('#lbTabs .qtab').forEach(x => x.classList.toggle('on', x === b));
+  if (lbBy === 'pts') { renderBoard(); loadBoard(); } else { renderArenaBoard(lbBy); loadArenaBoard(lbBy); }
+});
 // The server ranks every 30 s; your own row always shows your live total.
 function renderBoard() {
   const mine = S.x || S.w ? Math.round(score().total) : null;
@@ -1133,7 +1168,7 @@ function renderBoard() {
   if (mine !== null && myRank > LB.top.length) {
     html += (LB.top.length ? '<tr class="sep"><td colspan="3">...</td></tr>' : '') + '<tr class="me"><td class="r">' + fmt(myRank) + '</td><td>' + esc(meName) + ' (YOU)</td><td class="n">' + fmt(mine) + '</td></tr>';
   }
-  $('#lb').innerHTML = html;
+  if (lbBy === 'pts') $('#lb').innerHTML = html;
   return myRank;
 }
 
@@ -1253,8 +1288,8 @@ $('#view-me').addEventListener('click', e => {
   pendingTasks.delete(t.key);
   completeTask(t.key, t.pts);
 });
-document.querySelectorAll('.qtab').forEach(t => t.onclick = () => {
-  document.querySelectorAll('.qtab').forEach(k => k.classList.toggle('on', k === t));
+document.querySelectorAll('.qpanel .qtab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.qpanel .qtab').forEach(k => k.classList.toggle('on', k === t));
   $('#qSocial').hidden = t.dataset.q !== 'social';
   $('#qArena').hidden = t.dataset.q !== 'arena';
   $('#qInvites').hidden = t.dataset.q !== 'invites';
@@ -1719,6 +1754,28 @@ function cardBreakdown(g) {
   drawScreenFx(g, [X0 - 6, 356, pw + 20, ps + 18]); drawFrame(g);
 }
 
+// STATS card: where this match's kills and mass stand among every player's best match.
+function drawStats(g, st) {
+  const h = HOLE, L = CARD.L, R = h.x + h.w - 30, W2 = (R - L - 30) / 2, BY = 262, BH = 290;
+  drawFloor(g); drawScreenBg(g);
+  drawArena(g, [[L - 12, CARD.T - 20, R - L + 24, 86], [L - 12, 136, R - L + 24, 112], [L - 12, BY - 12, R - L + 24, BH + 24]],
+    seedRng(), { viruses: 0, pills: 6, food: 60, sizes: [5, 6, 7, 8], spread: true });
+  drawCardHeader(g, L, R, CARD.T);
+  text(g, 'DAILY ARENA STATS', L, 160, PX, 14, '#9fc2ad');
+  drawSlab(g, L, 176, R - L, 62, handle());
+  const place = s => s.rank === 1 ? '#1' : 'TOP ' + (s.pct < 1 ? s.pct.toFixed(2) : s.pct < 10 ? s.pct.toFixed(1) : Math.round(s.pct)) + '%';
+  [['KILLS', st.kills, '#00ff88', '#003d1f'], ['MASS', st.mass, '#ffce3d', '#5c3d00']].forEach(([label, s, col, sh], i) => {
+    const x = L + i * (W2 + 30), cx = x + W2 / 2, v = fmt(s.value);
+    box(g, x, BY, W2, BH, col);
+    text(g, label + ' THIS MATCH', cx, BY + 46, PX, 16, '#9fc2ad', 'center');
+    text(g, v, cx, BY + 132, PX, fit(g, v, PX, 64, W2 - 60), col, 'center', sh);
+    const pl = place(s);
+    text(g, pl, cx, BY + 210, PX, fit(g, pl, PX, 40, W2 - 60), '#ffffff', 'center', '#000');
+    text(g, '#' + fmt(s.rank) + ' OF ' + fmt(st.players) + ' PLAYERS', cx, BY + 256, PX, 14, '#9fc2ad', 'center');
+  });
+  drawScreenFx(g); drawFrame(g);
+}
+
 function drawRun(g, shot, m, tipo) {
   const h = HOLE;
   drawFloor(g); drawScreenBg(g);
@@ -2028,7 +2085,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   // THE GAME is about the real game: the Daily Arena stays on the other tabs.
   $('#arenaBlock').hidden = v === 'game';
   $(v === 'game' ? '#howtoGameSlot' : '#howtoArenaSlot').appendChild($('#howto'));
-  if (v === 'board') { renderBoard(); loadBoard(); }
+  if (v === 'board') { if (lbBy === 'pts') { renderBoard(); loadBoard(); } else loadArenaBoard(lbBy); }
   gameVideos(v === 'game');
 });
 
@@ -2456,20 +2513,41 @@ function stopMatch() {
   return m;
 }
 
-// STATS: the last match's kills and mass against every player's best match.
+// STATS: the last match's kills and mass against every player's best match:
+// the card itself, a small top 5 (kills / mass) and the share button.
+const STATS_TOP = 5;
 async function showStats() {
-  const body = $('#statsBody'); body.innerHTML = 'Loading...';
+  const body = $('#statsBody'), cv = $('#statsCv');
+  body.hidden = false; body.textContent = 'Loading...';
+  cv.hidden = true; $('#statsBoard').hidden = true; $('#statsShare').hidden = true;
   $('#mStats').hidden = false;
   let st = null;
   try { st = await api('arena/stats'); } catch (e) {}
-  if (!st) { body.innerHTML = 'Connect X or your wallet and play a full match to get your stats.'; return; }
+  if (!st) { body.textContent = 'Connect X or your wallet and play a full match to get your stats.'; return; }
+  await Promise.all([fontsReady(), loadAvatar(), brandReady]);
+  if (share.seed === undefined) share.seed = Math.floor(Math.random() * 1e9);
+  drawStats(cv.getContext('2d'), st);
+  body.hidden = true; cv.hidden = false;
+  const board = by => {
+    document.querySelectorAll('#statsTabs .qtab').forEach(x => x.classList.toggle('on', x.dataset.by === by));
+    const show = d => { $('#statsLb').innerHTML = boardRows(d && { top: d.top.slice(0, STATS_TOP), me: d.me }, by === 'kills' ? 'KILLS' : 'MASS', 'No matches yet.'); };
+    show(LB_ARENA[by]);
+    api('leaderboard?by=' + by).then(d => { LB_ARENA[by] = d; show(d); }).catch(() => {});
+  };
+  document.querySelectorAll('#statsTabs .qtab').forEach(b => b.onclick = () => board(b.dataset.by));
+  board('kills');
+  $('#statsBoard').hidden = false;
   const pct = p => (p < 1 ? p.toFixed(2) : p < 10 ? p.toFixed(1) : Math.round(p)) + '%';
-  const row = (label, s, col) => '<div class="box" style="margin:0 0 10px;padding:12px">' +
-    '<div style="font-family:var(--px);font-size:10px;color:var(--dim)">' + label + '</div>' +
-    '<div style="font-family:var(--px);font-size:22px;color:' + col + ';margin:8px 0">' + fmt(s.value) + '</div>' +
-    '<div style="color:#fff">TOP <b style="color:var(--gold)">' + pct(s.pct) + '</b> &middot; #' + fmt(s.rank) + ' of ' + fmt(st.players) + ' players</div></div>';
-  body.innerHTML = row('KILLS THIS MATCH', st.kills, 'var(--green)') + row('MASS THIS MATCH', st.mass, 'var(--gold)') +
-    '<div style="margin-top:4px">Your best: ' + fmt(st.best.kills) + ' kills &middot; ' + fmt(st.best.mass) + ' mass &middot; ' + fmt(st.matches) + ' matches</div>';
+  const where = s => s.rank === 1 ? '#1' : 'top ' + pct(s.pct);
+  $('#statsShare').hidden = false;
+  $('#statsShare').onclick = () => {
+    $('#mStats').hidden = true;
+    openShare({
+      title: 'SHARE YOUR STATS', kind: 'run', done: null,   // no points: the run share already pays once a day
+      variants: [g => drawStats(g, st)],
+      text: 'I\'m ' + where(st.kills) + ' in kills and ' + where(st.mass) + ' in mass in the @' + X_ACCOUNT + ' Daily Arena 💊\n\nCan you beat me?',
+    });
+  };
 }
 
 // EXIT from the game: back to the attract screen, never to the game menu.

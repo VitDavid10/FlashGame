@@ -136,14 +136,20 @@ ${error ? '<p>' + esc(error) + '</p>' : ''}
 
     // Public LEADERBOARD tab: everyone not discarded with points, ranked by the
     // same totals as this dashboard. Recomputed at most every 30 s.
-    let lbCache = null;
-    function leaderboard(uid) {
-        if (!lbCache || now() - lbCache.at > 30000) {
-            lbCache = { at: now(), list: rows().active
-                .map(r => ({ uid: r.uid, name: r.x || (r.wallet ? short(r.wallet) : ''), pts: Math.round(r.total) }))
-                .filter(e => e.name && e.pts > 0) };
+    // `by`: 'pts' (airdrop points), 'kills' / 'mass' (each player's best Daily Arena match).
+    const lbCache = {};
+    const nameOf = u => (u.x ? '@' + u.x.username : u.wallet ? short(u.wallet) : '');
+    function leaderboard(uid, by = 'pts') {
+        if (!['pts', 'kills', 'mass'].includes(by)) by = 'pts';
+        if (!lbCache[by] || now() - lbCache[by].at > 30000) {
+            const list = by === 'pts'
+                ? rows().active.map(r => ({ uid: r.uid, name: r.x || (r.wallet ? short(r.wallet) : ''), pts: Math.round(r.total) }))
+                : Object.values(store._data().users).filter(u => !u.discarded && u.score && u.score.stats)
+                    .map(u => ({ uid: u.uid, name: nameOf(u), pts: Math.round(by === 'kills' ? u.score.stats.bestKills : u.score.stats.bestMass) }))
+                    .sort((a, b) => b.pts - a.pts);
+            lbCache[by] = { at: now(), list: list.filter(e => e.name && e.pts > 0) };
         }
-        const L = lbCache.list, i = uid ? L.findIndex(e => e.uid === uid) : -1;
+        const L = lbCache[by].list, i = uid ? L.findIndex(e => e.uid === uid) : -1;
         return {
             total: L.length,
             top: L.slice(0, 50).map(e => (e.uid === uid ? { name: e.name, pts: e.pts, me: true } : { name: e.name, pts: e.pts })),
