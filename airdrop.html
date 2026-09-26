@@ -822,6 +822,16 @@ else {
 </div>
 
 <!-- share modal: preview the image before posting -->
+<!-- SAVE IMAGE where the browser cannot download (X's in-app browser): the picture, to press and hold -->
+<div class="modal" id="mSaveImg" hidden style="z-index:110">
+  <div class="panel">
+    <h3 class="ptitle">SAVE IMAGE</h3>
+    <img id="saveImg" alt="Your PillWars card" style="display:block;width:100%;height:auto;box-shadow:0 0 0 3px var(--line)">
+    <p style="margin:12px 0;color:var(--dim);text-align:center">Press and hold the image, then choose Save.</p>
+    <button class="pbtn grey" data-close style="width:100%">CLOSE</button>
+  </div>
+</div>
+
 <div class="modal share" id="mShare" hidden>
   <div class="panel">
     <h3 class="ptitle" id="shareTitle">SHARE</h3>
@@ -1843,6 +1853,19 @@ $('#sharePost').onclick = async () => {
 };
 $('#shareSave').onclick = async () => {
   const blob = await share.blob; if (!blob) return;
+  // Phones: the share sheet has "Save image". In-app browsers (X, Telegram...)
+  // ignore <a download>, so without a share sheet the picture is shown to press and hold.
+  if (matchMedia('(pointer: coarse)').matches) {
+    const file = new File([blob], 'pillwars-airdrop.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const img = $('#saveImg');
+    if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(blob);
+    $('#mSaveImg').hidden = false;
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'pillwars-airdrop.png';
   document.body.appendChild(a); a.click(); a.remove();

@@ -467,7 +467,10 @@ function createAirdrop(opts) {
         // The game page only inside the airdrop iframe.
         if (urlPath === '/game/' || urlPath === '/game/index.html') {
             const from = sameOriginReferer(req);
-            const ok = req.headers['sec-fetch-dest'] === 'iframe' && (from === '/' || (from || '').startsWith('/airdrop'));
+            // Some in-app browsers (older iOS WebViews, like X's) send no Sec-Fetch-* at all:
+            // there the same-origin Referer alone decides. A typed URL still has neither.
+            const dest = req.headers['sec-fetch-dest'];
+            const ok = (dest === 'iframe' || dest === undefined) && (from === '/' || (from || '').startsWith('/airdrop'));
             if (!ok) { notFound(req, res); return true; }
             return false;
         }
