@@ -106,7 +106,7 @@ function createAirdrop(opts) {
             const origin = originOf(req);
             const ref = String(query.get('ref') || '').toLowerCase();
             const card = /^[a-z2-9]{7}$/.test(ref) ? store.cardOfCode(ref) : null;
-            const img = card ? origin + '/c/' + card + '.png' : origin + '/img/airdrop-og.png';
+            const img = card ? origin + '/c/' + card + '.png' : origin + '/img/airdrop-og.png?v=2';   // ?v: X caches previews by URL
             const url = origin + (HOME === '/' ? '/' : HOME) + (card ? '?ref=' + ref : '');
             const desc = 'Eat, grow and outplay rival pills. Play the Daily Arena, climb the ranking and earn airdrop points.';
             const og = `<meta property="og:type" content="website"><meta property="og:site_name" content="PillWars">
