@@ -39,7 +39,7 @@ const SPLIT_GAP_MS = 300, VIRUS_GAP_MS = 500, SKILL_GAP_MS = 250, PICK_GAP_MS = 
 const MIN_MATCH_MS = 5000;        // a match must last this long (or land a kill) to count for "play N matches"
 const MAX_MATCH_AGE_MS = 10 * 60 * 1000;   // abandoned matches (no /end) expire instead of blocking the next one
 const MAX_KILLS_PER_MATCH = 60;
-const MAX_MASS = 200000;
+const MAX_MASS = 500000;
 // Just enough to stop a tight synchronous loop; MIN_MATCH_MS (or a kill) is
 // the real defense against farming "play N matches" without really playing.
 const MIN_BEGIN_GAP_MS = 500;
