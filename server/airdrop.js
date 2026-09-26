@@ -24,6 +24,7 @@ const { createStore } = require('./airdrop-store.js');
 const { createChain } = require('./airdrop-chain.js');
 const { createScore } = require('./airdrop-score.js');
 const { createAdmin } = require('./airdrop-admin.js');
+const { PublicKey } = require('@solana/web3.js');
 
 const CARD_MAX_BYTES = 1.5 * 1024 * 1024;
 const CARD_W = 1200, CARD_H = 630;
@@ -284,6 +285,19 @@ function createAirdrop(opts) {
             setSession(req, res, r.token);
             syncChain(r.user);
             return json(res, 200, { user: store.publicView(r.user), referred: r.referred });
+        }
+        if (urlPath === '/api/airdrop/wallet-paste') {
+            const body = await readJson(req);
+            const wallet = String(body && body.address || '').trim();
+            // A real wallet address (on the curve): never a program or PDA, which could not receive the airdrop.
+            let ok = false;
+            try { ok = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet) && PublicKey.isOnCurve(new PublicKey(wallet).toBytes()); } catch (e) {}
+            if (!ok) return json(res, 400, { error: 'address' });
+            const r = store.pasteWallet(sessionToken(req), wallet);
+            if (r.error) return json(res, r.error === 'need_x' ? 403 : 409, { error: r.error, user: store.publicView(r.user || null) });
+            log('[airdrop] wallet pasted (not signed) by ' + r.user.uid);
+            syncChain(r.user);
+            return json(res, 200, { user: store.publicView(r.user) });
         }
         if (urlPath === '/api/airdrop/unlink') {
             const body = await readJson(req);

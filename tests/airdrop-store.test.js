@@ -185,3 +185,38 @@ test('removeUser wipes a participant so the same X and wallet start again from z
     assert.strictEqual(s.sessionUser(again.token).x, null);
     assert.strictEqual(s.linkX(again.token, X(2)).user.uid, s.sessionUser(again.token).uid);
 });
+
+test('a pasted wallet needs X, is taken back by whoever signs it, and never counts as an invite', () => {
+    const s = createStore({});
+    const anon = s.linkX(null, X(1)).token;
+    assert.strictEqual(s.pasteWallet(null, W(9)).error, 'need_x');
+    assert.ok(s.pasteWallet(anon, W(9)).user);
+    assert.strictEqual(s.publicView(s.sessionUser(anon)).walletPasted, true);
+    // Someone else cannot paste it again.
+    const other = s.linkX(null, X(2)).token;
+    assert.strictEqual(s.pasteWallet(other, W(9)).error, 'taken');
+    // Its real owner signs it: the paster loses it.
+    const owner = s.linkWallet(null, W(9), '');
+    assert.strictEqual(s.sessionUser(owner.token).wallet, W(9));
+    assert.notStrictEqual(s.sessionUser(owner.token).uid, s.sessionUser(anon).uid);
+    assert.strictEqual(s.sessionUser(anon).wallet, null);
+    assert.strictEqual(s.sessionUser(anon).walletPasted, false);
+    // The same account signing its own pasted wallet just makes it signed.
+    s.pasteWallet(other, W(8));
+    const signed = s.linkWallet(other, W(8), '');
+    assert.strictEqual(signed.user.uid, s.sessionUser(other).uid);
+    assert.strictEqual(signed.user.walletPasted, false);
+});
+
+test('an invited friend who swaps to a pasted wallet stops counting as an invite', () => {
+    const s = createStore({});
+    const a = s.linkWallet(null, W(1), '');
+    const b = s.linkWallet(null, W(2), s.codeOf(a.token));
+    s.linkX(b.token, X(2));
+    real(s, W(2));
+    assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 1);
+    s.unlink(b.token, 'wallet');
+    s.pasteWallet(b.token, W(3));
+    real(s, W(3));
+    assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 0);
+});

@@ -124,6 +124,14 @@ function createStore(opts) {
     /** Wallet already verified by signature. Returns { token, user, referred }. */
     function linkWallet(token, wallet, refCode) {
         let cur = sessionUser(token);
+        // Signing beats pasting: a pasted copy of this wallet is dropped from
+        // whoever pasted it, or just becomes signed if it is the same account.
+        const pasted = user(byWallet.get(wallet));
+        if (pasted && pasted.walletPasted) {
+            if (cur && cur.uid === pasted.uid) { pasted.walletPasted = false; save(); return { token, user: pasted, referred: false }; }
+            pasted.wallet = null; pasted.walletPasted = false; pasted.chain = null; byWallet.delete(wallet);
+            log('[airdrop] pasted wallet ' + wallet + ' taken back by its signer');
+        }
         const ownerUid = byWallet.get(wallet);
         if (ownerUid) {
             let owner = user(ownerUid);
@@ -140,6 +148,19 @@ function createStore(opts) {
         u.walletLinkedAt = u.walletLinkedAt || now();
         save();
         return { token: pointSession(token, u.uid), user: u, referred };
+    }
+
+    /** An address typed in, not signed: it gets paid and earns the same
+     * on-chain points, but never counts as an invite, needs X linked first,
+     * and a signature for it always wins (see linkWallet). */
+    function pasteWallet(token, wallet) {
+        const cur = sessionUser(token);
+        if (!cur || !cur.x) return { error: 'need_x' };
+        if (cur.wallet) return { error: 'already_linked', user: cur };
+        if (byWallet.has(wallet)) return { error: 'taken', user: cur };
+        cur.wallet = wallet; cur.walletPasted = true; byWallet.set(wallet, cur.uid);
+        save();
+        return { user: cur };
     }
 
     /** Profile from X's users/me. Linking X never records a referral. */
@@ -166,7 +187,7 @@ function createStore(opts) {
 
     function unlink(token, what) {
         const u = sessionUser(token); if (!u) return null;
-        if (what === 'wallet' && u.wallet) { byWallet.delete(u.wallet); u.wallet = null; }
+        if (what === 'wallet' && u.wallet) { byWallet.delete(u.wallet); u.wallet = null; u.walletPasted = false; }
         if (what === 'x' && u.x) { byX.delete(u.x.id); u.x = null; }
         save();
         return u;
@@ -175,7 +196,8 @@ function createStore(opts) {
     // An invite only counts once the invited wallet is a real one: old enough and
     // with some history (checked on-chain, see airdrop-chain.js).
     const qualifies = c => !!(c && c.firstAt && c.txs >= INVITE_MIN_TXS && now() / 1000 - c.firstAt >= INVITE_MIN_AGE_DAYS * 86400);
-    const invitedValid = u => u.invited.filter(id => qualifies(chainOf(user(id))));
+    // A pasted wallet proves nothing about who the friend is: it never counts.
+    const invitedValid = u => u.invited.filter(id => { const f = user(id); return f && !f.walletPasted && qualifies(chainOf(f)); });
     const inviteCount = u => Math.min(MAX_INVITES, invitedValid(u).length);
     /** What the page is allowed to see about the signed-in user. */
     function publicView(u) {
@@ -183,7 +205,7 @@ function createStore(opts) {
         const c = chainOf(u);
         const chain = c ? { txs: c.txs, firstAt: c.firstAt, capped: c.capped, nfts: Object.keys(c.nfts || {}), airdrops: c.airdrops || [] } : null;
         const invites = inviteCount(u);
-        return { code: u.code, wallet: u.wallet, x: u.x, invites, pendingInvites: Math.max(0, Math.min(MAX_INVITES, u.invited.length) - invites), referred: !!u.referredBy, chain };
+        return { code: u.code, wallet: u.wallet, walletPasted: !!u.walletPasted, x: u.x, invites, pendingInvites: Math.max(0, Math.min(MAX_INVITES, u.invited.length) - invites), referred: !!u.referredBy, chain };
     }
     /** On-chain history of a wallet (see airdrop-chain.js), kept with its owner. */
     // Each NFT pays once per season: it counts only for the first wallet that
@@ -251,7 +273,7 @@ function createStore(opts) {
         save(); return true;
     }
 
-    return { linkWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, removeUser, save, flush, MAX_INVITES, _data: () => data };
+    return { linkWallet, pasteWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, removeUser, save, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES, INVITE_MIN_AGE_DAYS, INVITE_MIN_TXS };

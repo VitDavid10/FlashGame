@@ -117,7 +117,7 @@ ${error ? '<p>' + esc(error) + '</p>' : ''}
             // A copy: view() fills in today's daily state and must not touch the record.
             const v = score.view(JSON.parse(JSON.stringify(u)));
             return {
-                uid: u.uid, discarded: !!u.discarded, x: u.x ? '@' + u.x.username : '', wallet: u.wallet || '', invites: store.inviteCount(u),
+                uid: u.uid, discarded: !!u.discarded, x: u.x ? '@' + u.x.username : '', wallet: u.wallet || '', pasted: !!(u.wallet && u.walletPasted), invites: store.inviteCount(u),
                 quests: v.socialPts, arena: v.gamePts, verified: v.verified, boosted: v.boosted,
                 total: v.total, checked: !!store.chainOf(u),
             };
@@ -138,7 +138,9 @@ ${error ? '<p>' + esc(error) + '</p>' : ''}
     function walletCell(r, why) {
         if (!r.wallet) return '<i>no wallet</i>';
         const a = '<a href="' + esc(explorerUrl(r.wallet)) + '" target="_blank" rel="noopener noreferrer" title="' + esc(r.wallet) + (why ? ' (' + why + ')' : '') + '">' + esc(short(r.wallet)) + '</a>';
-        return why ? a + ' <i>(' + why + ')</i>' : a;
+        // Pasted = typed in, never signed: worth a look before the split if it is a rich wallet nobody plays with.
+        const tag = r.pasted ? ' <b class="pasted" title="Typed in, not signed">PASTED</b>' : '';
+        return (why ? a + ' <i>(' + why + ')</i>' : a) + tag;
     }
     function row(r, opts2) {
         const discardTab = opts2 && opts2.discardTab;
@@ -172,6 +174,7 @@ th,td{padding:7px 10px;border-bottom:1px solid #0f3a25;text-align:left;white-spa
 th{color:#8fa89a;font-weight:400;font-size:12px;text-transform:uppercase}
 td.n,th.n{text-align:right} tbody tr:hover{background:#0a1f14} i{color:#8fa89a}
 tr.unlinked{opacity:.6}
+.pasted{font-size:11px;color:#ffce3d;box-shadow:0 0 0 1px #5c4a10;padding:1px 5px;margin-left:4px}
 a{color:#00ff88} a:hover{color:#fff}
 .act{font:inherit;font-size:12px;background:none;color:#8fa89a;box-shadow:0 0 0 1px #0f3a25;border:0;padding:4px 8px;cursor:pointer}
 .act:hover{color:#fff;box-shadow:0 0 0 1px #8fa89a}
@@ -196,7 +199,7 @@ a{color:#00ff88} a:hover{color:#fff}
 <table id="tab-eligible"><thead>${head}</thead><tbody>${eligibleBody || '<tr><td colspan="11"><i>nobody eligible yet</i></td></tr>'}</tbody></table>
 <table id="tab-all" hidden><thead>${head}</thead><tbody>${allBody || '<tr><td colspan="11"><i>nobody yet</i></td></tr>'}</tbody></table>
 <table id="tab-discarded" hidden><thead>${head}</thead><tbody>${discardedBody || '<tr><td colspan="11"><i>nobody discarded</i></td></tr>'}</tbody></table>
-<p class="note">Eligible = a linked wallet with at least ${fmt(MIN_ELIGIBLE_POINTS)} points; rank/share/$PILLY are only computed among those (dimmed rows in ALL don't count). Click a wallet to open it on Solscan.</p>
+<p class="note">Eligible = a linked wallet with at least ${fmt(MIN_ELIGIBLE_POINTS)} points; rank/share/$PILLY are only computed among those (dimmed rows in ALL don't count). Click a wallet to open it on Solscan. PASTED = the address was typed in, not signed: it gets paid and earns on-chain points but never counts as an invite, and whoever signs that wallet takes it over. A rich PASTED wallet on an account that barely plays is worth a DISCARD.</p>
 <p class="note">DISCARD is a manual call, not automatic - it just takes a wallet out of the split until you RESTORE it. DELETE (only in DISCARDED) wipes the participant for good, so their X and wallet can sign up again from zero. Points and shares are what the page shows today; the real split is the one taken at the Season 0 snapshot.</p>
 <script>
 document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){

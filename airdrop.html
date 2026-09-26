@@ -355,11 +355,17 @@ html.enter #view-me .card-row>.panel:nth-child(2){animation-delay:.5s}
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;font-family:var(--px);font-size:11px;background:#000;color:var(--gold);padding:14px 16px;box-shadow:0 0 0 3px var(--line),0 0 0 6px var(--gold);max-width:calc(100% - 32px);text-align:center}
 .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:16px}
-.modal .panel{width:100%;max-width:420px}
+.modal .panel{width:100%;max-width:420px;max-height:100%;overflow-y:auto}
 .wopt{display:flex;align-items:center;gap:14px;width:100%;padding:12px;margin:0 0 10px;background:var(--inset);border:0;box-shadow:inset 0 0 0 2px var(--line);cursor:pointer;font-family:var(--px);font-size:11px;text-align:left}
 .wopt:hover{box-shadow:inset 0 0 0 2px var(--green)}
 .wopt img{width:30px;height:30px;border-radius:6px}
 .wsafe{margin:0 0 14px;padding:10px 12px;background:var(--inset);box-shadow:inset 0 0 0 2px var(--line);border-left:6px solid var(--green);color:var(--dim);font-size:20px;line-height:1.2}
+
+.wpaste{margin:4px 0 12px;padding-top:12px;border-top:2px solid var(--line)}
+.wpaste b{display:block;margin-bottom:8px;font-family:var(--px);font-size:10px;color:var(--dim)}
+.wpaste input{width:100%;box-sizing:border-box;margin-bottom:8px;padding:10px;background:var(--inset);border:0;box-shadow:inset 0 0 0 2px var(--line);color:var(--txt);font:20px var(--vt)}
+.wpaste input:focus{outline:0;box-shadow:inset 0 0 0 2px var(--green)}
+.wpaste p{margin:8px 0 0;color:var(--dim);font-size:17px;line-height:1.2}
 .wsafe b{display:block;margin-bottom:4px;font-family:var(--px);font-size:10px;color:var(--green)}
 
 footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
@@ -553,7 +559,7 @@ else {
       </div>
       <div class="panel cbox" id="cW">
         <div class="ic box"><svg viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="1" y="2" width="8" height="7" fill="#00ff88"/><rect x="1" y="2" width="8" height="1" fill="#9dffcf"/><rect x="2" y="1" width="5" height="1" fill="#00a857"/><rect x="6" y="4" width="3" height="3" fill="#0a1a12"/><rect x="7" y="5" width="1" height="1" fill="#ffce3d"/></svg></div>
-        <div class="ct"><b>2. CONNECT WALLET</b><span id="cWTxt">Wallet age, activity and past airdrops.</span></div>
+        <div class="ct"><b>2. CONNECT WALLET</b><span id="cWTxt">Connect or paste it: wallet age, activity and past airdrops.</span></div>
         <button class="pbtn" id="wBtn">CONNECT</button>
       </div>
     </div>
@@ -794,6 +800,12 @@ else {
     <button class="wopt" data-w="solflare"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPpBT5Ui3yxM00P2F0X07baqLSw3o2xeoPQ&s" alt="">SOLFLARE</button>
     <button class="wopt" data-w="backpack"><img src="https://cdn.prod.website-files.com/66e480f0e9eccea9c231ce92/6839e3bc01620952b0aff662_Backpack-logo.png" alt="">BACKPACK</button>
     <button class="wopt" data-w="demo" id="demoWallet" hidden><img src="img/web.png" alt="" style="image-rendering:pixelated">DEMO WALLET (LOCALHOST)</button>
+    <div class="wpaste">
+      <b>OR PASTE YOUR ADDRESS</b>
+      <input id="wPaste" placeholder="Your Solana wallet address" autocomplete="off" spellcheck="false">
+      <button class="pbtn green" id="wPasteBtn" style="width:100%">USE THIS ADDRESS</button>
+      <p>Your $PILLY is sent here. Needs X connected first, and it does not count as an invite.</p>
+    </div>
     <button class="pbtn grey" data-close style="width:100%;margin-top:6px">CANCEL</button>
   </div>
 </div>
@@ -954,6 +966,7 @@ async function api(path, body) {
 }
 function applyUser(u) {
   S.x = u && u.x || null; S.w = u && u.wallet || null; S.code = u && u.code || ''; S.refs = u && u.invites || 0;
+  S.wPasted = !!(u && u.walletPasted);
   S.chain = u && u.chain || null; S.pendingInv = u && u.pendingInvites || 0;
   renderAll();
   // The server reads the wallet's history in the background: ask again shortly.
@@ -1840,7 +1853,7 @@ function renderConnections() {
   $('#cX').classList.toggle('done', !!S.x); $('#cW').classList.toggle('done', !!S.w);
   $('#view-me').classList.toggle('linked', !!(S.x || S.w));
   $('#cXTxt').textContent = S.x ? '@' + S.x.username + ' connected' : 'Sign in with X: followers and account age.';
-  $('#cWTxt').textContent = S.w ? short(S.w) + ' connected' : 'Wallet age, activity and past airdrops.';
+  $('#cWTxt').textContent = S.w ? short(S.w) + (S.wPasted ? ' added (not signed)' : ' connected') : 'Connect or paste it: wallet age, activity and past airdrops.';
   $('#xBtn').textContent = S.x ? 'UNLINK' : 'CONNECT';
   $('#xBtn').className = 'pbtn ' + (S.x ? 'grey' : 'blue');
   $('#wBtn').textContent = S.w ? 'UNLINK' : 'CONNECT';
@@ -1875,6 +1888,19 @@ async function linkWallet(body) {
   toast('WALLET CONNECTED');
 }
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) $('#demoWallet').hidden = false;
+// Typed-in address: paid and scored like a connected one, but never an invite.
+const PASTE_ERR = { address: 'NOT A VALID SOLANA ADDRESS', taken: 'THAT WALLET IS ALREADY IN USE', need_x: 'CONNECT X FIRST', already_linked: 'UNLINK YOUR WALLET FIRST' };
+$('#wPasteBtn').onclick = async () => {
+  if (!S.x) { toast('CONNECT X FIRST'); return; }
+  const btn = $('#wPasteBtn'); btn.disabled = true;
+  try {
+    applyUser((await api('wallet-paste', { address: $('#wPaste').value.trim() })).user);
+    $('#mWallet').hidden = true; $('#wPaste').value = '';
+    loadMe();
+    toast('WALLET ADDED');
+  } catch (e) { toast(PASTE_ERR[e.message] || 'COULD NOT SAVE, TRY AGAIN'); }
+  btn.disabled = false;
+};
 
 let provider = null;
 const INSTALL = { phantom: 'https://phantom.app/', solflare: 'https://solflare.com/', backpack: 'https://backpack.app/' };
