@@ -248,3 +248,16 @@ test('quests and Daily Arena progress are written to disk, so a restart keeps th
     assert.strictEqual(u.score.tasks.follow, true);
     assert.strictEqual(u.score.tasks.play, true);
 });
+
+test('a game host of the split (persist: false) never writes the airdrop file', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airdrop-host-'));
+    const file = path.join(root, 'data.json');
+    fs.writeFileSync(file, JSON.stringify({ users: {}, sessions: {} }));
+    process.env.AIRDROP_DATA_FILE = file;
+    const host = createAirdrop({ root, only: false, persist: false, clientIp: () => '127.0.0.1', log: () => {} });
+    // Meanwhile the real airdrop process saves new data...
+    const fresh = JSON.stringify({ users: { u1: { uid: 'u1', code: 'abcdefg', invited: [] } }, sessions: {} });
+    fs.writeFileSync(file, fresh);
+    host.flush();   // ...and the host stops: its exit hook must not put its stale copy back
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), fresh);
+});

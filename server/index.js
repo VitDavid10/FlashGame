@@ -2447,7 +2447,7 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rpcApiHits) if 
 // SITE_CLOSED=1 apaga la web entera (el airdrop incluido): todo contesta 404
 // menos el pase privado /airdrop-unlock/<token>, que se acuña desde el propio
 // servidor (ver server/airdrop.js).
-const airdrop = createAirdrop({ root: ROOT, only: process.env.AIRDROP_ONLY === '1', closed: process.env.SITE_CLOSED === '1', adminPath: ADMIN_PATH, appPath: APP_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
+const airdrop = createAirdrop({ persist: PW_ROLE !== 'host', root: ROOT, only: process.env.AIRDROP_ONLY === '1', closed: process.env.SITE_CLOSED === '1', adminPath: ADMIN_PATH, appPath: APP_PATH, clientIp, log, verifySignature: solana.verifySignedMessage });
 // Botones verify y tickets del Discord (ver server/discord.js).
 const discord = createDiscord({ publicKey: process.env.DISCORD_PUBLIC_KEY, token: process.env.DISCORD_BOT_TOKEN, log, claimHunter: airdrop.claimDiscord });
 // Canal de Telegram: fija cada anuncio y reenvía los posts de X (ver server/telegram.js).

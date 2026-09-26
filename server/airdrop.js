@@ -63,7 +63,10 @@ function createAirdrop(opts) {
     const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET || '';
     const CARD_DIR = process.env.AIRDROP_CARD_DIR || path.join(__dirname, 'airdrop-cards');
     const verifySignature = opts.verifySignature;
-    const store = createStore({ file: process.env.AIRDROP_DATA_FILE || path.join(__dirname, 'airdrop-data.json'), log });
+    // persist: false in the split's game hosts. They are forks of the same server
+    // and would load this file at start and write that stale copy over the real
+    // one when they stop; only the process that serves the airdrop owns it.
+    const store = createStore({ file: opts.persist === false ? null : process.env.AIRDROP_DATA_FILE || path.join(__dirname, 'airdrop-data.json'), log });
     // Always mainnet: the game's SOL_RPC may point at devnet.
     const AIRDROP_RPC = process.env.AIRDROP_RPC || 'https://api.mainnet-beta.solana.com';
     const chain = createChain({ rpc: AIRDROP_RPC, log });
