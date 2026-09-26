@@ -207,6 +207,9 @@ No. Fair launch on pump.fun, 0% team mint.
 **Which wallet do I need?**
 Any Solana wallet (Phantom, Solflare, Backpack…).
 
+**Is connecting my wallet safe?**
+Yes. You only sign a message that proves the wallet is yours: no transaction, no token approval, nothing leaves your wallet and it costs nothing. PillWars will never ask you to approve a transaction or share your seed phrase to join the airdrop. If a site or a DM asks for that in our name, it is a scam: report it in ${ch('contact')}.
+
 **Someone DMed me offering help or a "verification".**
 It is a scam. The team never DMs first. Report it in ${ch('contact')}.
 
