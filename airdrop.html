@@ -874,7 +874,6 @@ const X_AUTH = '/airdrop-auth';
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const short = a => a.slice(0, 4) + '...' + a.slice(-4);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const PARTICIPANTS = 12408;
 const PILL_ROWS = ['...KKKK...','..KWWWWK..','.KWLWWWWK.','.KWLWWWWK.','.KWWWWWWK.','.KWWWWWWK.','.KWWWWWWK.','.KKKKKKKK.','.KGGGGGGK.','.KGGGGGGK.','.KGGGGGDK.','.KGGGGGDK.','.KGGGGDDK.','..KGDDDK..','...KKKK...'];
 const PILL_COL = { K: '#0a1a12', W: '#c0c8d0', L: '#ffffff', G: '#00ff44', D: '#00a82d' };
 const PILL_SVG = (() => {
@@ -1091,28 +1090,22 @@ function score() {
 }
 const displayName = () => S.x ? S.x.username : S.w ? short(S.w) : '';
 
-/* ---------------- leaderboard (sample rows) ---------------- */
-const NAMES = ['solwhale','degenpill','0xmaxi','pumpqueen','lamboSOL','ser_pill','gmfren','bonkbro','jitoJeff','raydiumrat','chad_arena','pixelape','memeLord','sniperSOL','devnetDan','moonpill','rugproof','hodlhana','basedbyte','tinycell','viruspop','splitking','massmonster','arcadeAce','classicCat','pentaPat','shieldSam','blinkBen','magnetMia','gambleGus','clonedCarl','pilljunkie','greencap','solsurfer','orcaOlly','marinade_m','tensorTom','heliusHal','phantomFox','backpackBo','flareFi','nftnina','airdropAl','farmerFred','questQueen','pointPunk','rankRex','topTim','xGrinder'];
-const BOARD = (() => {
-  const r = rng('board-s0');
-  let pts = 48210;
-  return NAMES.map(n => { const e = { name: n, pts: Math.round(pts) }; pts *= 0.9 + r() * 0.07; return e; });
-})();
+/* ---------------- leaderboard (real, from /api/airdrop/leaderboard) ---------------- */
+let LB = { total: 0, top: [], me: null };
+const loadBoard = () => api('leaderboard').then(j => { LB = j; renderBoard(); renderCard(); }).catch(() => {});
+// The server ranks every 30 s; your own row always shows your live total.
 function renderBoard() {
-  const me = S.x || S.w ? { name: displayName(), pts: Math.round(score().total), me: true } : null;
-  const rows = BOARD.slice();
-  let myRank = null;
-  if (me) {
-    const i = rows.findIndex(e => me.pts > e.pts);
-    myRank = i === -1 ? 12408 - Math.floor(me.pts / 40) : i + 1;
-    if (i !== -1) rows.splice(i, 0, me);
-  }
+  const mine = S.x || S.w ? Math.round(score().total) : null;
+  const meName = S.x ? '@' + S.x.username : S.w ? short(S.w) : '';
+  let myRank = LB.me ? LB.me.rank : null;
+  if (mine !== null && !myRank) { const i = LB.top.findIndex(e => mine > e.pts); myRank = i === -1 ? LB.total + 1 : i + 1; }
   let html = '<tr><th>#</th><th>PLAYER</th><th class="n">POINTS</th></tr>';
-  rows.slice(0, 50).forEach((e, k) => {
-    html += '<tr class="' + (k < 3 ? 'top' + (k + 1) : '') + (e.me ? ' me' : '') + '"><td class="r">' + (k + 1) + '</td><td>@' + esc(e.name) + (e.me ? ' (YOU)' : '') + '</td><td class="n">' + fmt(e.pts) + '</td></tr>';
+  if (!LB.top.length && mine === null) html += '<tr><td colspan="3" style="color:var(--dim)">No players yet. Connect X or your wallet to be the first.</td></tr>';
+  LB.top.forEach((e, k) => {
+    html += '<tr class="' + (k < 3 ? 'top' + (k + 1) : '') + (e.me ? ' me' : '') + '"><td class="r">' + (k + 1) + '</td><td>' + esc(e.name) + (e.me ? ' (YOU)' : '') + '</td><td class="n">' + fmt(e.me && mine !== null ? mine : e.pts) + '</td></tr>';
   });
-  if (me && myRank > 50) {
-    html += '<tr class="sep"><td colspan="3">...</td></tr><tr class="me"><td class="r">' + fmt(myRank) + '</td><td>@' + esc(me.name) + ' (YOU)</td><td class="n">' + fmt(me.pts) + '</td></tr>';
+  if (mine !== null && myRank > LB.top.length) {
+    html += (LB.top.length ? '<tr class="sep"><td colspan="3">...</td></tr>' : '') + '<tr class="me"><td class="r">' + fmt(myRank) + '</td><td>' + esc(meName) + ' (YOU)</td><td class="n">' + fmt(mine) + '</td></tr>';
   }
   $('#lb').innerHTML = html;
   return myRank;
@@ -1245,7 +1238,8 @@ document.querySelectorAll('.qtab').forEach(t => t.onclick = () => {
 const refCode = () => S.code || '';
 const refUrl = () => SITE + '/' + (refCode() ? '?ref=' + refCode() : '');
 const topPct = rank => {
-  const p = Math.min(100, Math.max(0.01, rank / PARTICIPANTS * 100));
+  const n = Math.max(1, LB.total, rank || 1);
+  const p = Math.min(100, Math.max(0.01, (rank || n) / n * 100));
   return (p < 1 ? p.toFixed(2) : p < 10 ? p.toFixed(1) : Math.round(p)) + '%';
 };
 function renderCard() {
@@ -1987,7 +1981,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   // THE GAME is about the real game: the Daily Arena stays on the other tabs.
   $('#arenaBlock').hidden = v === 'game';
   $(v === 'game' ? '#howtoGameSlot' : '#howtoArenaSlot').appendChild($('#howto'));
-  if (v === 'board') renderBoard();
+  if (v === 'board') { renderBoard(); loadBoard(); }
   gameVideos(v === 'game');
 });
 
@@ -2473,7 +2467,7 @@ async function endMatch(w, tipo) {
   });
 }
 
-renderAll(); tick(); loadMe();
+renderAll(); tick(); loadMe().then(loadBoard);
 })();
 </script>
 </body>

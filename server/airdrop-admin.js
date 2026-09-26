@@ -134,6 +134,23 @@ ${error ? '<p>' + esc(error) + '</p>' : ''}
         return { active, eligible, discarded, pool, sum };
     }
 
+    // Public LEADERBOARD tab: everyone not discarded with points, ranked by the
+    // same totals as this dashboard. Recomputed at most every 30 s.
+    let lbCache = null;
+    function leaderboard(uid) {
+        if (!lbCache || now() - lbCache.at > 30000) {
+            lbCache = { at: now(), list: rows().active
+                .map(r => ({ uid: r.uid, name: r.x || (r.wallet ? short(r.wallet) : ''), pts: Math.round(r.total) }))
+                .filter(e => e.name && e.pts > 0) };
+        }
+        const L = lbCache.list, i = uid ? L.findIndex(e => e.uid === uid) : -1;
+        return {
+            total: L.length,
+            top: L.slice(0, 50).map(e => (e.uid === uid ? { name: e.name, pts: e.pts, me: true } : { name: e.name, pts: e.pts })),
+            me: i >= 0 ? { rank: i + 1, pts: L[i].pts } : null,
+        };
+    }
+
     const head = '<tr><th>#</th><th>X</th><th>WALLET</th><th class=n>ON-CHAIN+X+INV</th><th class=n>QUESTS</th><th class=n>ARENA</th><th class=n>BOOST</th><th class=n>TOTAL</th><th class=n>SHARE</th><th class=n>$PILLY</th><th></th></tr>';
     function walletCell(r, why) {
         if (!r.wallet) return '<i>no wallet</i>';
@@ -221,7 +238,7 @@ document.querySelectorAll('.act:not(.del)').forEach(function(b){b.onclick=functi
 </body></html>`;
     }
 
-    return { fromServerItself, mint, valid, login, loginPage, setDiscarded, removeUser, page, ADMIN_TTL_MS };
+    return { fromServerItself, mint, valid, login, loginPage, setDiscarded, removeUser, leaderboard, page, ADMIN_TTL_MS };
 }
 
 module.exports = { createAdmin, fromServerItself, ADMIN_TTL_MS };

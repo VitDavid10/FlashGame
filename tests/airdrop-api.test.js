@@ -261,3 +261,16 @@ test('a game host of the split (persist: false) never writes the airdrop file', 
     host.flush();   // ...and the host stops: its exit hook must not put its stale copy back
     assert.strictEqual(fs.readFileSync(file, 'utf8'), fresh);
 });
+
+test('the public leaderboard ranks real participants and tells you your place', async (t) => {
+    const { server, base } = await startServer();
+    t.after(() => server.close());
+    const a = client(base), b = client(base);
+    await a.demoWallet(); await b.demoWallet();
+    await a.quest('daily:post');                 // a: 100 points, b: 0
+    const r = await fetch(base + '/api/airdrop/leaderboard', { headers: { Referer: base + '/' } }).then(x => x.json());
+    assert.strictEqual(r.total, 1);              // nobody with 0 points is listed
+    assert.strictEqual(r.top[0].pts, 100);
+    assert.strictEqual(r.me, null);              // no session on this request
+    assert.ok(!('uid' in r.top[0]));             // internal ids never leave the server
+});

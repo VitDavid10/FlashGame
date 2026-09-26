@@ -222,6 +222,11 @@ function createAirdrop(opts) {
         return list.length <= 300;
     };
     async function handleApi(req, res, urlPath) {
+        if (urlPath === '/api/airdrop/leaderboard') {
+            if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
+            const u = store.sessionUser(sessionToken(req));
+            return json(res, 200, admin.leaderboard(u && u.uid));
+        }
         if (urlPath === '/api/airdrop/me') {
             const u = store.sessionUser(sessionToken(req));
             syncChain(u);
