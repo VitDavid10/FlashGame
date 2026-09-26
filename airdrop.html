@@ -1282,6 +1282,8 @@ $('#view-me').addEventListener('click', e => {
   if (t.open) { t.open(); return; }
   if (!pendingTasks.has(t.key)) {
     window.open(t.url(), '_blank', 'noopener');
+    // The daily post carries the invite link: its preview on X is the points card, so upload a fresh one.
+    if (t.key === 'daily:post') refreshInviteCard();
     pendingTasks.add(t.key); renderTasks();
     return;
   }
