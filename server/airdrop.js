@@ -472,8 +472,9 @@ function createAirdrop(opts) {
         if (LEGAL_PAGES.includes(urlPath)) return false;
         if (urlPath === '/robots.txt') {
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-            // /c/ must stay allowed: X's card crawler obeys robots.txt.
-            res.end('User-agent: *\nAllow: /$\nAllow: /airdrop-terms\nAllow: /c/\nDisallow: /\n');
+            // X's card crawler obeys robots.txt: /c/, invite links (/?ref=...) and the
+            // generic preview image must stay allowed or posts show no card.
+            res.end('User-agent: *\nAllow: /$\nAllow: /?ref=\nAllow: /airdrop-terms\nAllow: /c/\nAllow: /img/airdrop-og.png\nDisallow: /\n');
             return true;
         }
         // The game page only inside the airdrop iframe.
