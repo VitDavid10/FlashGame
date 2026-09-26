@@ -822,6 +822,22 @@ else {
 </div>
 
 <!-- share modal: preview the image before posting -->
+<!-- POST ON X: post straight away, or copy the card's link and post it yourself -->
+<div class="modal" id="mPostChoice" hidden style="z-index:110">
+  <div class="panel">
+    <h3 class="ptitle">SHARE ON X</h3>
+    <button class="pbtn blue" id="pcX" style="width:100%"><img src="game/img/cartel-hero/icon-twitter.png" alt="">POST ON X</button>
+    <p style="margin:8px 0 16px;color:var(--dim);text-align:center">Opens X with the post ready to send.</p>
+    <div style="font-family:var(--px);font-size:10px;color:var(--dim)">OR POST IT YOURSELF</div>
+    <div class="ref-row">
+      <input id="pcLink" readonly value="Preparing your link...">
+      <button class="pbtn green sm" id="pcCopy">COPY</button>
+    </div>
+    <p style="margin:8px 0 12px;color:var(--dim);text-align:center">Paste it in your post: X shows your card under it.</p>
+    <button class="pbtn grey" data-close style="width:100%">CANCEL</button>
+  </div>
+</div>
+
 <!-- SAVE IMAGE where the browser cannot download (X's in-app browser): the picture, to press and hold -->
 <div class="modal" id="mSaveImg" hidden style="z-index:110">
   <div class="panel">
@@ -1823,28 +1839,47 @@ function openCardShare() {
 }
 $('#sharePrev').onclick = () => { share.idx = (share.idx + share.variants.length - 1) % share.variants.length; renderShare(); };
 $('#shareNext').onclick = () => { share.idx = (share.idx + 1) % share.variants.length; renderShare(); };
-// The image is uploaded and gets its own link (/c/<id>) whose og:image X shows
-// as a big card under the post. If the upload fails, the old way: copy the image.
-$('#sharePost').onclick = async () => {
+// The card is uploaded and gets its own link (/c/<id>) whose og:image X shows
+// as a big card under the post. POST ON X first asks how: straight to X, or
+// copy that link and post it yourself. If the upload fails, the old way: copy the image.
+async function uploadShare() {
+  try {
+    const r = await fetch('/api/airdrop/card', {
+      method: 'POST', body: await xBlob(),
+      headers: { 'Content-Type': 'image/png', 'X-Airdrop-Kind': share.kind || 'card' },
+    });
+    if (r.ok) return (await r.json()).url;
+  } catch (e) {}
+  return null;
+}
+$('#sharePost').onclick = () => {
+  share.linkP = uploadShare();
+  const inp = $('#pcLink'); inp.value = 'Preparing your link...';
+  share.linkP.then(link => { inp.value = link || refUrl(); });
+  $('#mPostChoice').hidden = false;
+};
+$('#pcX').onclick = async () => {
   // Open the tab inside the click, before any await, or the browser blocks it.
   const win = window.open('about:blank', '_blank');
   if (win) win.opener = null;
-  const btn = $('#sharePost'); btn.disabled = true;
-  let link = null;
-  try {
-    const blob = await xBlob();
-    const r = await fetch('/api/airdrop/card', {
-      method: 'POST', body: blob,
-      headers: { 'Content-Type': 'image/png', 'X-Airdrop-Kind': share.kind || 'card' },
-    });
-    if (r.ok) link = (await r.json()).url;
-  } catch (e) {}
+  const btn = $('#pcX'); btn.disabled = true;
+  const link = await share.linkP;
   btn.disabled = false;
   let copied = false;
   if (!link) { try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': share.blob })]); copied = true; } catch (e) {} }
   const intent = 'https://x.com/intent/post?text=' + encodeURIComponent(share.text) + '&url=' + encodeURIComponent(link || refUrl());
   if (win) win.location.href = intent; else window.open(intent, '_blank', 'noopener');
   if (!link) toast(copied ? 'IMAGE COPIED - PASTE IT IN THE POST' : 'USE SAVE IMAGE AND ATTACH IT');
+  $('#mPostChoice').hidden = true;
+  if (share.done) share.done();
+};
+$('#pcCopy').onclick = async () => {
+  const link = (await share.linkP) || refUrl(), inp = $('#pcLink');
+  inp.value = link;
+  // In-app browsers may not allow the clipboard: then the link is left selected to copy by hand.
+  try { await navigator.clipboard.writeText(link); toast('LINK COPIED - PASTE IT IN YOUR POST'); }
+  catch (e) { inp.focus(); inp.select(); toast('HOLD THE LINK TO COPY IT'); return; }
+  $('#mPostChoice').hidden = true;
   if (share.done) share.done();
 };
 $('#shareSave').onclick = async () => {
