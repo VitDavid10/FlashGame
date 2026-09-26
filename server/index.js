@@ -809,9 +809,11 @@ function savePlayerStats(sync) {
 setInterval(savePlayerStats, 2 * 60 * 1000);
 // Ranking automático cada 5 min (solo jugadores reales), también en chunks.
 setInterval(() => computeRanking(false), 5 * 60 * 1000);
-// airdrop.flush: the airdrop data waits up to 1 s before being written; a restart must not drop it.
-process.on('SIGTERM', () => { savePlayerStats(true); try { airdrop.flush(); } catch (e) {} process.exit(0); });
-process.on('SIGINT',  () => { savePlayerStats(true); try { airdrop.flush(); } catch (e) {} process.exit(0); });
+process.on('SIGTERM', () => { savePlayerStats(true); process.exit(0); });
+process.on('SIGINT',  () => { savePlayerStats(true); process.exit(0); });
+// The airdrop data waits up to 1 s before being written. 'exit' runs on EVERY way
+// out (systemd's SIGTERM, Ctrl+C, the admin panel's restart), so nothing is dropped.
+process.on('exit', () => { try { airdrop.flush(); } catch (e) {} });
 // BLINDAJE: un error puntual (p.ej. un ws.send sobre un socket roto durante un
 // broadcast) NO debe tumbar el proceso entero — si lo hace, se caen TODAS las
 // salas y todos los bots a la vez. Logueamos y seguimos.
