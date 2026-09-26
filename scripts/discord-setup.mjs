@@ -46,7 +46,8 @@ const ROLE_DEFS = [
   { name: 'Tester', color: 0x4cc9f0, hoist: true, mentionable: false, permissions: '0' },
   { name: 'Player', color: 0x80ed99, hoist: false, mentionable: false, permissions: s(PLAYER_PERMS) },
   // Cosmetic: given by the "Claim Genesis Hunter" button in #genesis-drop (code from the airdrop page).
-  { name: 'Genesis Hunter', color: 0xffce3d, hoist: false, mentionable: false, permissions: '0' },
+  // Shown apart in the member list, like Team, and above Player so the name is gold.
+  { name: 'Genesis Hunter', color: 0xffce3d, hoist: true, mentionable: false, permissions: '0' },
 ];
 const roles = await api('GET', `/guilds/${GUILD}/roles`);
 const role = {};
@@ -55,6 +56,13 @@ for (const d of ROLE_DEFS) {
   role[d.name] = r ? await api('PATCH', `/guilds/${GUILD}/roles/${r.id}`, d) : await api('POST', `/guilds/${GUILD}/roles`, d);
 }
 await api('PATCH', `/guilds/${GUILD}/roles/${GUILD}`, { permissions: '0' });
+// Genesis Hunter right above Player (a member's name takes the colour of their highest coloured role).
+{
+  const all = (await api('GET', `/guilds/${GUILD}/roles`)).filter(r => r.id !== GUILD).sort((a, b) => a.position - b.position);
+  const order = all.filter(r => r.id !== role['Genesis Hunter'].id);
+  order.splice(order.findIndex(r => r.id === role.Player.id) + 1, 0, role['Genesis Hunter']);
+  await api('PATCH', `/guilds/${GUILD}/roles`, order.map((r, i) => ({ id: r.id, position: i + 1 })));
+}
 
 // ---- Canales ----
 let channels = await api('GET', `/guilds/${GUILD}/channels`);
