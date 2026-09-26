@@ -259,20 +259,26 @@ Need to talk to us privately? Press a button and a private channel opens that on
 
 One open ticket per person. The team will never ask for your seed phrase or private key.`;
 
+// Only when a text changed: re-posting everything made each channel look new
+// again (and pinged people) even for a change that had nothing to do with it.
 async function repost(channel, messages) {
-  const old = await api('GET', `/channels/${channel.id}/messages?limit=50`);
-  for (const m of old) if (m.author.id === role.botId) await api('DELETE', `/channels/${channel.id}/messages/${m.id}`);
+  // Límite de 2000 caracteres por mensaje: se parte por párrafos y los botones van en el último trozo.
+  const out = [];
   for (const m of messages) {
-    // Límite de 2000 caracteres por mensaje: se parte por párrafos y los botones van en el último trozo.
     const parts = [];
     for (const para of (m.content || '').split('\n\n')) {
       if (parts.length && parts[parts.length - 1].length + para.length + 2 <= 1900) parts[parts.length - 1] += '\n\n' + para;
       else parts.push(para);
     }
-    for (const [i, content] of parts.entries()) {
-      await api('POST', `/channels/${channel.id}/messages`, { allowed_mentions: { parse: [] }, ...(i === parts.length - 1 ? m : {}), content });
-    }
+    parts.forEach((content, i) => out.push({ allowed_mentions: { parse: [] }, ...(i === parts.length - 1 ? m : {}), content }));
   }
+  const old = (await api('GET', `/channels/${channel.id}/messages?limit=50`)).filter(m => m.author.id === role.botId).reverse();
+  const buttons = m => JSON.stringify((m.components || []).map(r => (r.components || []).map(c => [c.label, c.custom_id])));
+  const same = old.length === out.length && old.every((m, i) => m.content === out[i].content && buttons(m) === buttons(out[i]));
+  if (same) { console.log('  #' + channel.name + ': sin cambios'); return; }
+  for (const m of old) await api('DELETE', `/channels/${channel.id}/messages/${m.id}`);
+  for (const m of out) await api('POST', `/channels/${channel.id}/messages`, m);
+  console.log('  #' + channel.name + ': republicado');
 }
 role.botId = (await api('GET', '/users/@me')).id;
 
