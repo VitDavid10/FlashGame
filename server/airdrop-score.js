@@ -231,6 +231,14 @@ function createScore(opts) {
         m.finished = !!(body && body.finished);
         m.place = body && Number.isInteger(body.place) && body.place > 0 ? body.place : null;
         if (!m.credited && (now() - m.startedAt >= MIN_MATCH_MS || m.kills > 0)) { s.daily.matches++; m.credited = true; }
+        // Arena stats (the STATS button): only what the server measured itself,
+        // for matches that count. `last` is compared against everyone's best.
+        if (m.credited) {
+            const st = s.stats = s.stats || { matches: 0, kills: 0, bestKills: 0, bestMass: 0, last: null };
+            st.matches++; st.kills += m.kills;
+            st.bestKills = Math.max(st.bestKills, m.kills); st.bestMass = Math.max(st.bestMass, m.maxMass);
+            st.last = { kills: m.kills, mass: m.maxMass, at: now() };
+        }
         checkMissions(u);
         const out = view(u);
         matches.delete(u.uid);

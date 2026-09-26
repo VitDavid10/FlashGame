@@ -222,6 +222,12 @@ function createAirdrop(opts) {
         return list.length <= 300;
     };
     async function handleApi(req, res, urlPath) {
+        if (urlPath === '/api/airdrop/arena/stats') {
+            if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
+            const u = store.sessionUser(sessionToken(req));
+            const st = u && admin.arenaStats(u.uid);
+            return st ? json(res, 200, st) : json(res, 404, { error: 'no_stats' });
+        }
         if (urlPath === '/api/airdrop/leaderboard') {
             if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
             const u = store.sessionUser(sessionToken(req));

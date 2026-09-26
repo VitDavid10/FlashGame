@@ -822,6 +822,15 @@ else {
 </div>
 
 <!-- share modal: preview the image before posting -->
+<!-- STATS after a match: this match against every player's best -->
+<div class="modal" id="mStats" hidden style="z-index:110">
+  <div class="panel">
+    <h3 class="ptitle">YOUR MATCH STATS</h3>
+    <div id="statsBody" style="text-align:center;color:var(--dim)">Loading...</div>
+    <button class="pbtn grey" data-close style="width:100%;margin-top:14px">CLOSE</button>
+  </div>
+</div>
+
 <!-- POST ON X: post straight away, or copy the card's link and post it yourself -->
 <div class="modal" id="mPostChoice" hidden style="z-index:110">
   <div class="panel">
@@ -2446,6 +2455,22 @@ function stopMatch() {
   return m;
 }
 
+// STATS: the last match's kills and mass against every player's best match.
+async function showStats() {
+  const body = $('#statsBody'); body.innerHTML = 'Loading...';
+  $('#mStats').hidden = false;
+  let st = null;
+  try { st = await api('arena/stats'); } catch (e) {}
+  if (!st) { body.innerHTML = 'Connect X or your wallet and play a full match to get your stats.'; return; }
+  const pct = p => (p < 1 ? p.toFixed(2) : p < 10 ? p.toFixed(1) : Math.round(p)) + '%';
+  const row = (label, s, col) => '<div class="box" style="margin:0 0 10px;padding:12px">' +
+    '<div style="font-family:var(--px);font-size:10px;color:var(--dim)">' + label + '</div>' +
+    '<div style="font-family:var(--px);font-size:22px;color:' + col + ';margin:8px 0">' + fmt(s.value) + '</div>' +
+    '<div style="color:#fff">TOP <b style="color:var(--gold)">' + pct(s.pct) + '</b> &middot; #' + fmt(s.rank) + ' of ' + fmt(st.players) + ' players</div></div>';
+  body.innerHTML = row('KILLS THIS MATCH', st.kills, 'var(--green)') + row('MASS THIS MATCH', st.mass, 'var(--gold)') +
+    '<div style="margin-top:4px">Your best: ' + fmt(st.best.kills) + ' kills &middot; ' + fmt(st.best.mass) + ' mass &middot; ' + fmt(st.matches) + ' matches</div>';
+}
+
 // EXIT from the game: back to the attract screen, never to the game menu.
 function resetArena() {
   // Leaving mid-match (not through GAME OVER/MATCH FINISHED, which already
@@ -2499,11 +2524,13 @@ async function endMatch(w, tipo) {
     'AIRDROP POINTS <em>+' + fmt(m.earned) + '</em></div>' +
     '<div class="btns"><button class="pbtn green big" id="again">TRY AGAIN</button>' +
     '<button class="pbtn blue big" id="shareRun"><img src="game/img/cartel-hero/icon-twitter.png" alt="">SHARE ON X</button>' +
-    '<button class="pbtn grey big" id="quit">EXIT</button></div>';
+    '<button class="pbtn grey big" id="quit">EXIT</button></div>' +
+    '<div class="btns"><button class="pbtn big" id="statsBtn">STATS</button></div>';
   over.hidden = false;
   deathsInWorld++;
   $('#again').onclick = () => { over.hidden = true; if (deathsInWorld >= FRESH_EVERY) playFresh(); else w.tryAgainOnline(); };
   $('#quit').onclick = resetArena;
+  $('#statsBtn').onclick = showStats;
   $('#shareRun').onclick = () => openShare({
     title: 'SHARE YOUR RUN', kind: 'run',
     variants: [g => drawRun(g, shot, m, tipo)],

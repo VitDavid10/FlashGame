@@ -151,6 +151,25 @@ ${error ? '<p>' + esc(error) + '</p>' : ''}
         };
     }
 
+    // STATS button after a match: where that match's kills and mass stand
+    // against every player's best match (discarded players left out).
+    let statsCache = null;
+    function arenaStats(uid) {
+        if (!statsCache || now() - statsCache.at > 30000) {
+            const all = Object.values(store._data().users).filter(u => !u.discarded && u.score && u.score.stats && u.score.stats.matches);
+            statsCache = { at: now(), kills: all.map(u => u.score.stats.bestKills), mass: all.map(u => u.score.stats.bestMass) };
+        }
+        const u = store._data().users[uid], st = u && u.score && u.score.stats;
+        if (!st || !st.last) return null;
+        const players = Math.max(1, statsCache.kills.length);
+        const place = (list, v) => {
+            const rank = 1 + list.filter(x => x > v).length;
+            return { value: v, rank, pct: Math.max(0.01, Math.min(100, rank / players * 100)) };
+        };
+        return { players, kills: place(statsCache.kills, st.last.kills), mass: place(statsCache.mass, Math.round(st.last.mass)),
+            best: { kills: st.bestKills, mass: Math.round(st.bestMass) }, matches: st.matches };
+    }
+
     const head = '<tr><th>#</th><th>X</th><th>WALLET</th><th class=n>ON-CHAIN+X+INV</th><th class=n>QUESTS</th><th class=n>ARENA</th><th class=n>BOOST</th><th class=n>TOTAL</th><th class=n>SHARE</th><th class=n>$PILLY</th><th></th></tr>';
     function walletCell(r, why) {
         if (!r.wallet) return '<i>no wallet</i>';
@@ -238,7 +257,7 @@ document.querySelectorAll('.act:not(.del)').forEach(function(b){b.onclick=functi
 </body></html>`;
     }
 
-    return { fromServerItself, mint, valid, login, loginPage, setDiscarded, removeUser, leaderboard, page, ADMIN_TTL_MS };
+    return { fromServerItself, mint, valid, login, loginPage, setDiscarded, removeUser, leaderboard, arenaStats, page, ADMIN_TTL_MS };
 }
 
 module.exports = { createAdmin, fromServerItself, ADMIN_TTL_MS };

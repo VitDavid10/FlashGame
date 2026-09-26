@@ -43,6 +43,7 @@ function client(base) {
         event: ev => call('/api/airdrop/arena/event', ev),
         end: body => call('/api/airdrop/arena/end', body || {}),
         quest: key => call('/api/airdrop/quest/complete', { key }),
+        stats: () => call('/api/airdrop/arena/stats'),
     };
 }
 
@@ -273,4 +274,20 @@ test('the public leaderboard ranks real participants and tells you your place', 
     assert.strictEqual(r.top[0].pts, 100);
     assert.strictEqual(r.me, null);              // no session on this request
     assert.ok(!('uid' in r.top[0]));             // internal ids never leave the server
+});
+
+test('STATS: a finished match is ranked against every player\'s best, from server-measured numbers', async (t) => {
+    const { server, base } = await startServer();
+    t.after(() => server.close());
+    const a = client(base);
+    await a.demoWallet();
+    assert.strictEqual((await a.stats()).status, 404);        // no match yet
+    await a.begin();
+    await a.event({ type: 'botKilled' });
+    await a.event({ type: 'mass', value: 4321 });
+    await a.end({});
+    const r = await a.stats();
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual([r.json.kills.value, r.json.kills.rank, r.json.mass.value, r.json.players], [1, 1, 4321, 1]);
+    assert.strictEqual(r.json.best.kills, 1);
 });
