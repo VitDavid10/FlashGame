@@ -242,6 +242,9 @@ function createAirdrop(opts) {
             else if (urlPath === '/api/airdrop/quest/complete') r = body.key === 'discord' ? { error: 'bad_key' } : score.completeTask(u, String(body.key || ''));
             else return json(res, 404, { error: 'not found' });
             if (r.error) return json(res, r.error === 'rate' ? 429 : r.error === 'not_linked' ? 403 : 409, { error: r.error });
+            // Points, quests and the Daily Arena live on the user record: write it,
+            // or a restart loses everything since the last unrelated save.
+            store.save();
             return json(res, 200, { score: r.view });
         }
         if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
@@ -560,7 +563,7 @@ function createAirdrop(opts) {
         return { ok: true };
     }
 
-    return { handle, only: ONLY, closed: CLOSED, claimDiscord };
+    return { handle, only: ONLY, closed: CLOSED, claimDiscord, flush: store.flush };
 }
 
 module.exports = { createAirdrop };

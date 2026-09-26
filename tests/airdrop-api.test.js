@@ -232,3 +232,19 @@ test('the owner can unlock the real site with a link minted on the server', asyn
     await fetch(base + '/api/airdrop/unlock-link', { method: 'POST' });
     assert.strictEqual((await withPass('/index.html')).status, 404);
 });
+
+test('quests and Daily Arena progress are written to disk, so a restart keeps them', async (t) => {
+    const { server, base } = await startServer();
+    t.after(() => server.close());
+    const file = process.env.AIRDROP_DATA_FILE;
+    const c = client(base);
+    await c.demoWallet();
+    await new Promise(r => setTimeout(r, 1300));   // let the signup's own save land first
+    assert.strictEqual((await c.quest('follow')).status, 200);
+    await c.begin();
+    await c.end({});
+    await new Promise(r => setTimeout(r, 1300));
+    const u = Object.values(JSON.parse(fs.readFileSync(file, 'utf8')).users)[0];
+    assert.strictEqual(u.score.tasks.follow, true);
+    assert.strictEqual(u.score.tasks.play, true);
+});
