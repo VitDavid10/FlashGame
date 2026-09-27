@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Freeze, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Audio, Video } from "@remotion/media";
 import { ArenaFloor, FPS, Food, GAME_ANGLE, PX, Pill, VT } from "./ui";
 import voice from "../public/guide/voice.json";
@@ -152,7 +152,9 @@ export const GuidePost: React.FC<{ id: string }> = ({ id }) => <PostView p={POST
 
 /* Intro of the merged video: the airdrop trailer's loud colours. */
 const LIME = "#ccff00", RED = "#f62a2d", CYAN = "#00e5ff";
-export const INTRO_FRAMES = sec(3.6);
+// Frame 0 is the finished title card (no white flash): X, Discord and Telegram use it as the thumbnail.
+const POSTER = 1;
+export const INTRO_FRAMES = sec(3.6) + POSTER;
 const Slam: React.FC<{ at: number; text: string; y: number; size: number; color: string }> = ({ at: a0, text, y, size, color }) => {
   const f = useCurrentFrame(), t = f - a0;
   if (t < 0) return null;
@@ -192,7 +194,8 @@ export const GuideAll: React.FC = () => {
   let from = INTRO_FRAMES;
   return (
     <AbsoluteFill style={{ background: "#050505" }}>
-      <Sequence durationInFrames={INTRO_FRAMES}><Intro /></Sequence>
+      <Sequence durationInFrames={POSTER}><Freeze frame={sec(3)}><Intro /></Freeze></Sequence>
+      <Sequence from={POSTER} durationInFrames={INTRO_FRAMES - POSTER}><Intro /></Sequence>
       {POSTS.map((p) => { const d = postFrames(p), el = <Sequence key={p.id} from={from} durationInFrames={d}><PostView p={p} music={false} /></Sequence>; from += d; return el; })}
       {/* The game's own match music (snd/music.mp3, 3 min): one continuous take for the whole video. */}
       <Audio src={staticFile("guide/music.mp3")}
