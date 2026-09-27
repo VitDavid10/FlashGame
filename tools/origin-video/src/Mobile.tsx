@@ -69,12 +69,19 @@ const Seeker: React.FC<{ ry: number; scale: number; y: number; screen: React.Rea
   );
 };
 
-// The dApp Store, rebuilt from pieces of their promo image (1200x675 space, x1.6):
-// the cube and the phone come in together, the title writes itself in, then we
-// zoom into the phone and PillWars slides into the first row (instead of Orca).
-const Piece: React.FC<{ x: number; y: number; w: number; h: number; style?: React.CSSProperties }> = ({ x, y, w, h, style }) => (
-  <div style={{ position: "absolute", left: x, top: y, width: w, height: h, overflow: "hidden", ...style }}>
-    <Img src={staticFile("perks/dappstore.png")} style={{ position: "absolute", left: -x, top: -y, width: 1200, height: 675, maxWidth: "none" }} />
+// The dApp Store, rebuilt in HTML after their promo image (1200x675 layout, x1.6) so it
+// stays sharp when we zoom in: the cube and the phone come in together, the title
+// writes itself in, then we zoom into the phone and PillWars (with its Install) slides
+// into the first row of "Ecosystem" (Orca's place in the original).
+const DS = "'Segoe UI', 'Inter', Arial, sans-serif";
+const Row: React.FC<{ y: number; icon: string; name: string; desc: string; style?: React.CSSProperties; line?: boolean }> = ({ y, icon, name, desc, style, line = true }) => (
+  <div style={{ position: "absolute", left: 800, top: y, width: 321, height: 64, ...style }}>
+    <Img src={staticFile(icon)} style={{ position: "absolute", left: 0, top: 0, width: 47, height: 47, borderRadius: 10, maxWidth: "none" }} />
+    <div style={{ position: "absolute", left: 57, top: 3, fontFamily: DS, fontSize: 15.5, color: "#f2f2f2" }}>{name}</div>
+    <div style={{ position: "absolute", left: 57, top: 25, fontFamily: DS, fontSize: 12.5, color: "#bdbdc2" }}>{desc}</div>
+    <div style={{ position: "absolute", right: 0, top: 10, width: 52, height: 27, borderRadius: 14, background: "#7d2ff0", display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: DS, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>Install</div>
+    {line && <div style={{ position: "absolute", left: 0, right: 0, top: 64, height: 1, background: "#2a2a2c" }} />}
   </div>
 );
 const Store: React.FC = () => {
@@ -84,24 +91,44 @@ const Store: React.FC = () => {
   const l2 = interpolate(f, [at(2), at(2) + 10], [0, 1], { ...clamp, easing: ease });
   const zoom = interpolate(f, [at(4), at(6)], [0, 1], { ...clamp, easing: ease });
   const row = interpolate(f, [at(6.5), at(6.5) + 9], [0, 1], { ...clamp, easing: ease });
-  const T: React.CSSProperties = { position: "absolute", fontFamily: SANS, color: "#fff" };
+  const T: React.CSSProperties = { position: "absolute", fontFamily: DS, color: "#fff" };
+  const title: React.CSSProperties = { ...T, left: 36, fontSize: 124, fontWeight: 500, letterSpacing: -3, lineHeight: 1, whiteSpace: "nowrap" };
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 675, transformOrigin: "0 0", transform: "scale(1.6)" }}>
         <div style={{ position: "absolute", inset: 0, transformOrigin: "965px 346px", transform: `translate(${-365 * zoom}px, ${-8 * zoom}px) scale(${1 + zoom * 0.9})` }}>
-          <Piece x={40} y={30} w={100} h={100} style={{ opacity: inK * (1 - zoom), transform: `scale(${0.4 + inK * 0.6}) rotate(${(1 - inK) * -40}deg)` }} />
-          <Piece x={20} y={145} w={660} h={112} style={{ opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l1) * 100}% 0)`, transform: `translateY(${(1 - l1) * 40}px)` }} />
-          <Piece x={20} y={258} w={660} h={150} style={{ opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l2) * 100}% 0)`, transform: `translateY(${(1 - l2) * 40}px)` }} />
+          <Img src={staticFile("perks/ds-cube.png")} style={{ position: "absolute", left: 48, top: 37, width: 86, height: 88, maxWidth: "none", mixBlendMode: "screen",
+            opacity: inK * (1 - zoom), transform: `scale(${0.4 + inK * 0.6}) rotate(${(1 - inK) * -40}deg)` }} />
+          <div style={{ ...title, top: 150, opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l1) * 100}% 0)`, transform: `translateY(${(1 - l1) * 40}px)` }}>Solana</div>
+          <div style={{ ...title, top: 272, opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l2) * 100}% 0)`, transform: `translateY(${(1 - l2) * 40}px)` }}>dApp Store</div>
+          {/* the phone */}
           <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 675, transform: `translateY(${(1 - inK) * 420}px)` }}>
-            <Piece x={760} y={25} w={410} h={650} />
-            <div style={{ position: "absolute", left: 795, top: 274, width: 110, height: 32, background: "#000" }} />
-            <div style={{ ...T, left: 800, top: 276, fontSize: 21, fontWeight: 600 }}>Ecosystem</div>
-            <div style={{ position: "absolute", left: 796, top: 316, width: 268, height: 62, background: "#000" }} />
-            <div style={{ position: "absolute", left: 796, top: 316, width: 268, height: 62, opacity: row, transform: `translateX(${(1 - row) * 40}px)` }}>
-              <Img src={staticFile("perks/pw-icon.png")} style={{ position: "absolute", left: 4, top: 5, width: 46, height: 46, borderRadius: 10 }} />
-              <div style={{ ...T, left: 60, top: 10, fontSize: 15, fontWeight: 500 }}>PillWars</div>
-              <div style={{ ...T, left: 60, top: 32, fontSize: 12.5, color: "#c8c8cc" }}>Eat, grow and outplay rival pills</div>
-            </div>
+            {[[252, 43], [324, 56], [425, 30]].map(([y, h]) => <div key={y} style={{ position: "absolute", left: 1147, top: y, width: 4, height: h, borderRadius: 2, background: "#7fd99a" }} />)}
+            <div style={{ position: "absolute", left: 770, top: 36, width: 380, height: 700, borderRadius: 40, background: "#0d0d0e", border: "3px solid #2c2c2e" }} />
+            <div style={{ position: "absolute", left: 779, top: 45, width: 362, height: 690, borderRadius: 33, background: "#000" }} />
+            <div style={{ ...T, left: 801, top: 66, fontSize: 12.5, fontWeight: 500 }}>2:33</div>
+            <div style={{ position: "absolute", left: 953, top: 68, width: 14, height: 14, borderRadius: 7, background: "#111", boxShadow: "0 0 0 2px #070707" }} />
+            <svg style={{ position: "absolute", left: 1090, top: 68, width: 30, height: 14 }} viewBox="0 0 30 14">
+              <path d="M1 5 A10 10 0 0 1 17 5 L9 13 Z" fill="#fff" /><rect x="22" y="1" width="6" height="12" rx="1.5" fill="#fff" />
+            </svg>
+            <div style={{ position: "absolute", left: 800, top: 107, width: 270, height: 41, borderRadius: 21, background: "#333336" }} />
+            <svg style={{ position: "absolute", left: 813, top: 117, width: 20, height: 20 }} viewBox="0 0 20 20"><circle cx="8" cy="8" r="6" stroke="#fff" strokeWidth="2.2" fill="none" /><path d="M12.5 12.5 L18 18" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" /></svg>
+            <div style={{ ...T, left: 850, top: 118, fontSize: 14, color: "#9a9aa0" }}>Search for dapps or games</div>
+            <div style={{ position: "absolute", left: 1080, top: 107, width: 41, height: 41, borderRadius: 21, background: "#333336" }} />
+            <svg style={{ position: "absolute", left: 1090, top: 117, width: 22, height: 20 }} viewBox="0 0 22 20"><circle cx="8" cy="6" r="4" stroke="#fff" strokeWidth="1.8" fill="none" /><path d="M1 18 C1 12 15 12 15 18" stroke="#fff" strokeWidth="1.8" fill="none" /><circle cx="17" cy="14" r="3" stroke="#fff" strokeWidth="1.6" fill="none" /></svg>
+            <div style={{ ...T, left: 799, top: 196, fontSize: 29, fontWeight: 500, letterSpacing: -0.3 }}>Solana dApp Store</div>
+            <div style={{ ...T, left: 800, top: 275, fontSize: 20, fontWeight: 600 }}>Ecosystem</div>
+            <div style={{ ...T, left: 1066, top: 281, fontSize: 14, fontWeight: 500, color: "#cdb6ff" }}>See all</div>
+            <Row y={321} icon="perks/pw-icon.png" name="PillWars" desc="Eat, grow and outplay rival pills" style={{ opacity: row, transform: `translateX(${(1 - row) * 40}px)` }} />
+            <Row y={400} icon="perks/ds-jup.png" name="Jupiter" desc="Liquidity aggregator & swaps" />
+            <Row y={481} icon="perks/ds-mar.png" name="Marinade" desc="Stake without locking your funds" />
+            <div style={{ ...T, left: 800, top: 593, fontSize: 20, fontWeight: 600 }}>Top categories</div>
+            {[[800, "Wallets"], [968, "NFTs"]].map(([x, t]) => (
+              <div key={t as string} style={{ position: "absolute", left: x as number, top: 639, width: 154, height: 60, borderRadius: 9, border: "1px solid #333", }}>
+                <div style={{ ...T, left: 44, top: 14, fontSize: 14 }}>{t}</div>
+                <div style={{ position: "absolute", left: 16, top: 15, width: 16, height: 16, borderRadius: 3, border: "2px solid #b999ff" }} />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -180,13 +207,8 @@ export const Mobile: React.FC = () => {
         </AbsoluteFill>
       </Sequence>
 
-      {/* music: the song up to the store, then its calm outro (154.41 s, on a bar) for the last two screens */}
-      <Sequence durationInFrames={at(E + 16)} layout="none">
-        <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(E + 16) - 10, at(E + 16)], [0, 0.9, 0.9, 0], clamp)} />
-      </Sequence>
-      <Sequence from={at(E + 16)} layout="none">
-        <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(154.41 * 30)} volume={(v) => interpolate(v, [0, 3, at(8) - 18, at(8)], [0, 0.9, 0.9, 0], clamp)} />
-      </Sequence>
+      {/* music: one take of the song from 14.98 s to the very end, fading out on the last screen */}
+      <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(END_BEATS + 21), MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
       <Sequence from={at(8)} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
     </AbsoluteFill>
   );
