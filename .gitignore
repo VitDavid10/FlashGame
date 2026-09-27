@@ -104,3 +104,4 @@ server/airdrop-data.json.tmp
 *.keystore
 *.jks
 android/**/*.apk
+tools/origin-video/public/perks/madlads.png

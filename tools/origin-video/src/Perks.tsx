@@ -47,4 +47,31 @@ const Perk: React.FC<{ who: string; line: string; phone?: boolean }> = ({ who, l
 );
 
 export const PerkSeeker: React.FC = () => <Perk who={"SAGA & SEEKER"} line="Link a wallet holding a Saga or Seeker Genesis Token" phone />;
-export const PerkMadLads: React.FC = () => <Perk who="MAD LADS" line="Link a wallet holding a Mad Lad" />;
+
+/* Mad Lads perk: all their red, our X account's logo, our lime only for the prize. */
+const ML_RED = "#f62038";
+const PFP = "perks/pillwars-pfp.png", MLP = "perks/madlads.png";
+const Logo: React.FC<{ src: string; x: number; y: number; s: number; border?: string; rot?: number }> = ({ src, x, y, s, border = "#000", rot = 0 }) => (
+  <div style={{ position: "absolute", left: x, top: y, width: s, height: s, border: `${Math.round(s / 30)}px solid ${border}`, boxShadow: `${Math.round(s / 18)}px ${Math.round(s / 18)}px 0 #000`, transform: `rotate(${rot}deg)`, overflow: "hidden" }}>
+    <Img src={staticFile(src)} style={{ width: "100%", height: "100%", imageRendering: "pixelated" }} />
+  </div>
+);
+const T: React.FC<{ y: number; size: number; color: string; children: React.ReactNode; sh?: string; x?: number; w?: number; align?: "center" | "left" }> = ({ y, size, color, children, sh = "#000", x = 0, w = 1920, align = "center" }) => (
+  <div style={{ position: "absolute", left: x, width: w, top: y, textAlign: align, fontFamily: PX, fontSize: size, color, lineHeight: 1.25, textShadow: `${Math.round(size / 12)}px ${Math.round(size / 12)}px 0 ${sh}` }}>{children}</div>
+);
+
+export const PerkMadLads: React.FC = () => (
+  <AbsoluteFill style={{ background: ML_RED }}>
+    <AbsoluteFill style={{ backgroundImage: "linear-gradient(rgba(0,0,0,.12) 2px, transparent 2px), linear-gradient(90deg, rgba(0,0,0,.12) 2px, transparent 2px)", backgroundSize: "60px 60px" }} />
+    <Logo src={PFP} x={640} y={110} s={260} rot={-5} />
+    <T y={190} size={70} color="#000" sh="transparent"><span style={{ marginLeft: 0 }}>🤝</span></T>
+    <Logo src={MLP} x={1020} y={110} s={260} rot={5} />
+    <T y={470} size={60} color="#000" sh="rgba(255,255,255,.25)">PERK FOR</T>
+    <T y={560} size={130} color="#fff" sh="#000">MAD LADS</T>
+    {/* "airdrop" spelled out: someone who never heard of PillWars must still get what the points are */}
+    <div style={{ position: "absolute", left: 290, right: 290, top: 780, height: 130, background: "#000", boxShadow: "12px 12px 0 rgba(0,0,0,.35)" }} />
+    <T y={815} size={58} color={LIME} sh="transparent">+10,000 AIRDROP POINTS</T>
+    <T y={990} size={26} color="#000" sh="transparent">PILLWARS GENESIS DROP · PILLWARS.FUN</T>
+  </AbsoluteFill>
+);
+
