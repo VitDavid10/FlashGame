@@ -12,8 +12,13 @@ const SANS = "'Segoe UI', 'Inter', Arial, sans-serif";
 
 // Cut to the music: "Deflector" (Ghostrifter), 105 BPM, played from 14.98 s so its drop
 // (21.84 s in the song) lands on the first gameplay cut. Every cut falls on a bar.
-const BEAT = 60 / 105, BAR = BEAT * 4, SONG_FROM = 14.98;
-const at = (beats: number) => Math.round(beats * BEAT * 30);
+// The video starts in the song's short pause (15.40 s): the drop (21.84 s) is then at 6.44 s,
+// where the gameplay starts; from there every cut sits on a beat (at), intro marks on the song's own hits (tf).
+const BEAT = 60 / 105, BAR = BEAT * 4, SONG_FROM = 15.40, DROP = 21.84 - SONG_FROM;
+const at = (beats: number) => Math.round((DROP + (beats - 12) * BEAT) * 30);
+const bt = (beats: number) => Math.round(beats * BEAT * 30);
+const tf = (songSec: number) => Math.round((songSec - SONG_FROM) * 30);
+const T_LOCK = tf(16.67), T_PHONE = tf(18.25), T_FLIP = tf(20.25);
 const INTRO_BEATS = 12;
 const CLIPS = [1, 1, 1, 1, 1, 1, 1, 1, 2];   // bars per clip (public/mobile/kN.mp4)
 const STARTS: number[] = []; { let b = INTRO_BEATS; for (const n of CLIPS) { STARTS.push(at(b)); b += n * 4; } }
@@ -87,10 +92,10 @@ const Row: React.FC<{ y: number; icon: string; name: string; desc: string; style
 const Store: React.FC = () => {
   const f = useCurrentFrame();
   const inK = interpolate(f, [0, 12], [0, 1], { ...clamp, easing: ease });
-  const l1 = interpolate(f, [at(1), at(1) + 10], [0, 1], { ...clamp, easing: ease });
-  const l2 = interpolate(f, [at(2), at(2) + 10], [0, 1], { ...clamp, easing: ease });
-  const zoom = interpolate(f, [at(4), at(6)], [0, 1], { ...clamp, easing: ease });
-  const row = interpolate(f, [at(6.5), at(6.5) + 9], [0, 1], { ...clamp, easing: ease });
+  const l1 = interpolate(f, [bt(1), bt(1) + 10], [0, 1], { ...clamp, easing: ease });
+  const l2 = interpolate(f, [bt(2), bt(2) + 10], [0, 1], { ...clamp, easing: ease });
+  const zoom = interpolate(f, [bt(4), bt(6)], [0, 1], { ...clamp, easing: ease });
+  const row = interpolate(f, [bt(6.5), bt(6.5) + 9], [0, 1], { ...clamp, easing: ease });
   const T: React.CSSProperties = { position: "absolute", fontFamily: DS, color: "#fff" };
   const title: React.CSSProperties = { ...T, left: 36, fontSize: 124, fontWeight: 500, letterSpacing: -3, lineHeight: 1, whiteSpace: "nowrap" };
   return (
@@ -146,8 +151,8 @@ const SolMark: React.FC<{ h: number }> = ({ h }) => (
 export const Mobile: React.FC = () => {
   const f = useCurrentFrame();
   // beats 0-2: built on Solana, 2-7: Seeker × PillWars, 7-12: the phone alone turns and zooms into the game (drop).
-  const ry = f < at(8) ? interpolate(f, [at(7), at(8)], [205, 180], clamp) : interpolate(f, [at(8), at(9.5)], [180, 0], { ...clamp, easing: ease });
-  const zoom = interpolate(f, [at(INTRO_BEATS - 1.5), INTRO], [0, 1], { ...clamp, easing: ease });
+  const ry = f < T_FLIP ? interpolate(f, [T_PHONE, T_FLIP], [200, 180], clamp) : interpolate(f, [T_FLIP, T_FLIP + 22], [180, 0], { ...clamp, easing: ease });
+  const zoom = interpolate(f, [T_FLIP + 22, INTRO], [0, 1], { ...clamp, easing: ease });
   const out = interpolate(f, [PLAY_END, at(END_BEATS + 2)], [0, 1], { ...clamp, easing: ease });
   const scale = interpolate(zoom, [0, 1], [0.7, 1.231]) * interpolate(out, [0, 1], [1, 0.55]);
   const y = interpolate(zoom, [0, 1], [560, 540]) + out * 150;
@@ -156,19 +161,19 @@ export const Mobile: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 115%, #1f7f79 0%, #0b3a40 32%, #050809 62%, #000 100%)" }}>
       {/* 1. built on Solana */}
-      <Sequence durationInFrames={at(2)}>
+      <Sequence durationInFrames={T_LOCK}>
         <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 40,
-          opacity: interpolate(f, [0, 6], [0, 1], clamp), transform: `scale(${interpolate(f, [0, at(2)], [0.94, 1.02])})` }}>
+          opacity: interpolate(f, [0, 6], [0, 1], clamp), transform: `scale(${interpolate(f, [0, T_LOCK], [0.94, 1.02])})` }}>
           <div style={{ fontFamily: SANS, fontSize: 64, fontWeight: 600, color: "#fff", letterSpacing: 6 }}>BUILT ON</div>
           <SolMark h={86} />
           <div style={{ fontFamily: SANS, fontSize: 96, fontWeight: 700, color: "#fff", letterSpacing: 2 }}>SOLANA</div>
         </AbsoluteFill>
       </Sequence>
       {/* 2. Seeker × PillWars, zooming in */}
-      <Sequence from={at(2)} durationInFrames={at(7) - at(2)}>
+      <Sequence from={T_LOCK} durationInFrames={T_PHONE - T_LOCK}>
         <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 70,
-          opacity: interpolate(f, [at(2), at(2) + 5], [0, 1], clamp),
-          transform: `scale(${interpolate(f, [at(2), at(7)], [0.88, 1.06], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 2) })})` }}>
+          opacity: interpolate(f, [T_LOCK, T_LOCK + 5], [0, 1], clamp),
+          transform: `scale(${interpolate(f, [T_LOCK, T_PHONE], [0.88, 1.06], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 2) })})` }}>
           <SeekerLockup h={220} />
           <div style={{ fontFamily: SANS, fontSize: 90, fontWeight: 300, color: "#fff" }}>×</div>
           <Img src={staticFile("perks/pillwars-pfp.png")} style={{ width: 250, height: 250, borderRadius: 40 }} />
@@ -176,13 +181,13 @@ export const Mobile: React.FC = () => {
       </Sequence>
 
       {/* 3. the phone, no text: turns, zooms into the game, and at the end steps back */}
-      <Sequence from={at(7)} durationInFrames={at(E + 4) - at(7)}>
+      <Sequence from={T_PHONE} durationInFrames={at(E + 4) - T_PHONE}>
         <AbsoluteFill>
           <div style={{ position: "absolute", left: 0, right: 0, top: 50, opacity: endLock, display: "flex", justifyContent: "center" }}><SeekerLockup h={200} /></div>
           <Seeker ry={ry} scale={scale} y={y} screen={<>
-            <Sequence durationInFrames={INTRO - at(7)} layout="none"><Img src={staticFile("perks/screen-start.png")} style={{ width: "100%", height: "100%" }} /></Sequence>
+            <Sequence durationInFrames={INTRO - T_PHONE} layout="none"><Img src={staticFile("perks/screen-start.png")} style={{ width: "100%", height: "100%" }} /></Sequence>
             {CLIPS.map((_, i) => (
-              <Sequence key={i} from={STARTS[i] - at(7)} durationInFrames={i === CLIPS.length - 1 ? undefined : STARTS[i + 1] - STARTS[i]} layout="none">
+              <Sequence key={i} from={STARTS[i] - T_PHONE} durationInFrames={i === CLIPS.length - 1 ? undefined : STARTS[i + 1] - STARTS[i]} layout="none">
                 <Video src={staticFile(`mobile/k${i + 1}.mp4`)} muted style={{ width: "100%", height: "100%" }} />
               </Sequence>
             ))}
@@ -209,7 +214,7 @@ export const Mobile: React.FC = () => {
 
       {/* music: one take of the song from 14.98 s to the very end, fading out on the last screen */}
       <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(END_BEATS + 21), MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
-      <Sequence from={at(8)} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
+      <Sequence from={T_FLIP} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
     </AbsoluteFill>
   );
 };
