@@ -194,11 +194,9 @@ export const GuideAll: React.FC = () => {
     <AbsoluteFill style={{ background: "#050505" }}>
       <Sequence durationInFrames={INTRO_FRAMES}><Intro /></Sequence>
       {POSTS.map((p) => { const d = postFrames(p), el = <Sequence key={p.id} from={from} durationInFrames={d}><PostView p={p} music={false} /></Sequence>; from += d; return el; })}
-      {/* One track from the first step to the end, not restarted on every step. */}
-      <Sequence from={INTRO_FRAMES} layout="none">
-        <Audio src={staticFile("snd/action-music.wav")} loop
-          volume={(v) => interpolate(v, [0, 10, GUIDE_ALL_FRAMES - INTRO_FRAMES - 25, GUIDE_ALL_FRAMES - INTRO_FRAMES], [0, 0.18, 0.18, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
-      </Sequence>
+      {/* The game's own match music (snd/music.mp3, 3 min): one continuous take for the whole video. */}
+      <Audio src={staticFile("guide/music.mp3")}
+        volume={(v) => interpolate(v, [0, 10, GUIDE_ALL_FRAMES - 25, GUIDE_ALL_FRAMES], [0, 0.18, 0.18, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
     </AbsoluteFill>
   );
 };
