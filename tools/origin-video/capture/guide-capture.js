@@ -14,8 +14,8 @@ const BASE = process.argv[2] || 'http://localhost:8095';
 const TMP = process.argv[3] || path.join(require('os').tmpdir(), 'guide-capture');
 const OUT = path.join(__dirname, '..', 'public', 'guide');
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-// 2x: the edit zooms in on the player. Slower game clock to keep the frame rate up at that size.
-const VW = 1280, VH = 720, DPR = 2, FPS = 30, SLOW = 0.4;
+// 1.5x = 1920x1080 (the edit shows the whole game, no zoom). Slower game clock for a smooth frame rate.
+const VW = 1280, VH = 720, DPR = 1.5, FPS = 30, SLOW = 0.4;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
 
@@ -51,13 +51,15 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
         rec = { dir, frames: [], start: Date.now() / 1000 };
         const mk = marks[clip] = {};
         await cmd('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: VW * DPR, maxHeight: VH * DPR, everyNthFrame: 1 });
+        // Each clip only keeps its own prey/hunter on stage.
+        await js(`(() => { try { ${G}.__keep.clear(); } catch (e) {} })()`);
         await during(name => { mk[name] = (Date.now() / 1000 - rec.start) * SLOW; });
         await cmd('Page.stopScreencast');
         const { frames, start } = rec, end = Date.now() / 1000; rec = null;
         for (const fr of frames) fr.t = Math.min(end, Math.max(start, fr.t));
         const list = frames.map((fr, i) => `file '${fr.f.replace(/\\/g, '/')}'\nduration ${Math.max(0.001, ((frames[i + 1] ? frames[i + 1].t : end) - fr.t) * SLOW).toFixed(4)}`).join('\n') + `\nfile '${frames[frames.length - 1].f.replace(/\\/g, '/')}'`;
         const lf = path.join(dir, 'list.txt'); fs.writeFileSync(lf, list);
-        execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lf, '-vf', `fps=${FPS},scale=2560:1440:flags=lanczos,format=yuv420p`, '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', path.join(OUT, clip + '.mp4')]);
+        execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', lf, '-vf', `fps=${FPS},scale=1920:1080:flags=lanczos,format=yuv420p`, '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', path.join(OUT, clip + '.mp4')]);
         console.log(clip, frames.length, 'frames', JSON.stringify(mk));
     }
 
@@ -65,7 +67,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
     // Aiming: the game turns the mouse into a world point with its own view scale,
     // so instead the sim's input (movement) and actions (split, skills) are
     // pointed straight at a world target while w.__aim is set.
-    const HELPERS = `(() => { const w = ${G}, sim = w.__pwLab.sim;
+    const HELPERS = `(() => { const w = ${G}, sim = w.__pwLab.sim; w.__keep = new Set();
       const oI = sim.setInput.bind(sim), oQ = sim.queueAction.bind(sim);
       sim.setInput = (id, inp) => oI(id, id === 'me' && w.__aim ? w.__aim() : inp);
       sim.queueAction = (id, a) => oQ(id, id === 'me' && w.__aim ? Object.assign({}, a, w.__aim()) : a);
@@ -77,7 +79,11 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
         key(code, key) { w.dispatchEvent(new w.KeyboardEvent('keydown', { code, key })); setTimeout(() => w.dispatchEvent(new w.KeyboardEvent('keyup', { code, key })), 60); },
         big() { const c = w.me().cells; return c.slice().sort((a, z) => z.r - a.r)[0]; },
         // A pill held still (or sliding) somewhere, followed by id: the game re-creates its objects.
-        hold(id, fn) { clearInterval(w.__holdT); w.__holdT = setInterval(() => { const b = w.__pwLab.sim.enemies.filter(e => e.id === id).sort((a, z) => z.r - a.r)[0]; if (!b) return clearInterval(w.__holdT); b.immuneTime = 0; b.tpPhase = 0; b.boostX = 0; b.boostY = 0; b.vx = 0; b.vy = 0; b.lastSplitTime = w.__pwLab.sim.now; fn(b); }, 10); },
+        // Clear stage: any bot that isn't part of the play (w.__keep) and comes within
+        // 2000 of the player is sent back out, off camera.
+        guard(on) { clearInterval(w.__guardT); if (!on) return; w.__guardT = setInterval(() => { const p = w.__h.big(); if (!p) return;
+          for (const e of w.__pwLab.sim.enemies) { if (w.__keep.has(e.id)) continue; const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1; if (d < 2000) { e.x = p.x + dx / d * 2300; e.y = p.y + dy / d * 2300; } } }, 20); },
+        hold(id, fn) { w.__keep.add(id); clearInterval(w.__holdT); w.__holdT = setInterval(() => { const b = w.__pwLab.sim.enemies.filter(e => e.id === id).sort((a, z) => z.r - a.r)[0]; if (!b) return clearInterval(w.__holdT); b.immuneTime = 0; b.tpPhase = 0; b.boostX = 0; b.boostY = 0; b.vx = 0; b.vy = 0; b.lastSplitTime = w.__pwLab.sim.now; fn(b); }, 10); },
         stop() { clearInterval(w.__holdT); },
         singleBot(maxR) { const n = {}; for (const e of w.__pwLab.sim.enemies) n[e.id] = (n[e.id] || 0) + 1; return w.__pwLab.sim.enemies.filter(e => n[e.id] === 1 && e.r < maxR).sort((a, z) => a.r - z.r)[0]; },
         alive(id) { return w.__pwLab.sim.enemies.some(e => e.id === id); },
@@ -115,7 +121,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
     await wait(800);
     await js(`${G}.__pwLab.nextSkillPickTime = 1e9`);
     await js(`window.__allowPick = false; clearInterval(window.__pickT); window.__pickT = setInterval(() => { if (window.__allowPick) return; try { const d = ${G}.document, o = d.getElementById('skillChoiceOverlay'); if (o && getComputedStyle(o).display !== 'none') d.querySelector('#skillOptionsContainer .skill-opt-btn').click(); } catch (e) {} }, 60)`);
-    await g(`w.__h.center()`);
+    await g(`w.__h.center(); w.__h.guard(true);`);
     await wait(1500);
     await slowMo(true);
 
@@ -149,7 +155,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
         await W(900);
         // A big pill charges through the virus.
         // It comes from the side with no other virus on the way, and appears there already big.
-        await g(`const v = w.__virus, big = w.__h.singleBig(); w.__hunter = big.id; w.__vci = v.ci;
+        await g(`const v = w.__virus, big = w.__h.singleBig(); w.__hunter = big.id; w.__keep.add(big.id); w.__vci = v.ci;
           let best = 0, bestD = -1; for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, ax = Math.cos(a), ay = Math.sin(a); let near = 1e9;
             for (const o of sim.viruses) { if (o === v) continue; const t = Math.max(0, Math.min(600, (o.x - v.x) * ax + (o.y - v.y) * ay)); near = Math.min(near, Math.hypot(o.x - (v.x + ax * t), o.y - (v.y + ay * t))); }
             if (near > bestD) { bestD = near; best = a; } }
@@ -183,31 +189,45 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
         await W(2600);
     });
 
-    // ---- 4. Skills: pick a card, SHOT pops a virus, SPRINT ----
-    await g(`w.__h.clearSkills(); w.__h.grant(2, 3);`);
-    // Off camera: a virus straight ahead, in range.
-    await g(`const v = w.__h.virusNearMiddle(); w.__virus = v; for (const x of me.cells) { x.x = v.x - 420; x.y = v.y; } w.__h.mouse(0, 0);`);
+    // ---- 4. Skills: pick a card, SPRINT to catch a first kill, BLINK away from a pill about to eat you ----
+    await g(`w.__h.center(); w.__h.mouse(0, 0);`);
     await wait(1200);
     const slotOf = sid => js(`(() => { const s = ${G}.me().skillSlots || []; const i = s.findIndex(x => x && x.id === ${sid}); return i < 0 ? 0 : i + 1; })()`);
     await record('skills', async mark => {
         await js(`window.__allowPick = true; ${G}.__pwLab.nextSkillPickTime = 0`);   // a skill card right now
         for (let i = 0; i < 40 && !(await js(picking)); i++) await wait(100);
         mark('pick');
-        await W(1500);
+        await W(1400);
         await js(`${G}.document.querySelector('#skillOptionsContainer .skill-opt-btn').click(); window.__allowPick = false; ${G}.__pwLab.nextSkillPickTime = 1e9`);
         mark('picked');
-        await W(1400);
-        await g(`w.__h.aimAt(w.__virus.x, w.__virus.y)`);    // aim at the virus
-        await W(500);
-        const shot = await slotOf(2);
-        mark('shot'); mark('shotKey' + shot);
-        await g(`w.__h.key('Digit${shot}', '${shot}')`); await W(450); await g(`w.__h.key('Digit${shot}', '${shot}')`);
-        await W(1800);
+        await g(`w.__h.clearSkills(); w.__h.grant(3, 4);`);            // SPRINT and BLINK in the bar
+        await W(700);
+        // A prey ahead, out of reach until the sprint.
+        const k0 = await kills();
+        await g(`const c = w.__h.big(), b = w.__h.singleBot(c.r * 2); if (!b) return; w.__prey = b.id; w.__dash = false;
+          w.__h.hold(b.id, x => { const p = w.__h.big(); if (!p) return; x.r = p.r * 0.55; x.sprintTime = 0;
+            if (w.__dash) { x.x = w.__pp.x; x.y = w.__pp.y; return; }
+            x.x = p.x + p.r * 9; x.y = p.y - p.r; w.__pp = { x: x.x, y: x.y }; });
+          w.__h.aimAtBot(b.id);`);
+        await W(2400);
         const sprint = await slotOf(3);
-        await g(`w.__h.mouse(-320, 120)`);
-        mark('sprint'); mark('sprintKey' + sprint);
-        await g(`w.__h.key('Digit${sprint}', '${sprint}')`);
-        await W(2600);
+        mark('sprintKey' + sprint);
+        await g(`w.__dash = true; w.__h.key('Digit${sprint}', '${sprint}')`);
+        for (let i = 0; i < 60 && (await kills()) === k0; i++) await wait(100);
+        mark('kill');
+        await g(`w.__h.stop(); w.__h.mouse(300, 0)`);
+        // A bigger pill closes in from behind; right before it eats you, BLINK.
+        await W(300);
+        await g(`const big = w.__h.singleBig(); w.__hunter = big.id; const t0 = w.performance.now();
+          w.__h.hold(big.id, b => { const p = w.__h.big(); if (!p) return; b.r = p.r * 2.4; const k = Math.min(1, (w.performance.now() - t0) / 1500); const d = p.r * (8 - k * 5.6); b.x = p.x - d; b.y = p.y + d * 0.15; });`);
+        mark('hunter');
+        await W(1500);
+        const blink = await slotOf(4);
+        mark('blinkKey' + blink);
+        await g(`w.__h.key('Digit${blink}', '${blink}')`);
+        await W(250);
+        await g(`w.__h.stop()`);
+        await W(1500);
     });
 
     // ---- 5. Survive: a big pill closes in, you run ----

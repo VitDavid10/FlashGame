@@ -8,7 +8,7 @@ SCENES = [
     ('move', "First, the controls. Your pill follows your mouse, or use the W A S D keys. On mobile, just drag your finger. Eat the food dots to grow, and remember: any pill smaller than you is food too."),
     ('hide', "Being hunted? Slip inside a virus. While you're smaller than it, nobody can eat you in there, and anything bigger that crashes into it bursts into pieces."),
     ('split', "Press space to split. Half of your pill shoots forward, so you can catch pills that are running away. Aim with your mouse, and split right on top of them."),
-    ('skills', "Every thirty seconds you pick one of two skills. Fire them with the keys one to four, and use them to land your first kill, or to run away."),
+    ('skills', "Every thirty seconds you pick one of two skills. Fire them with the keys one to four. Sprint to catch your first kill, and blink away when a bigger pill is about to eat you."),
     ('survive', "Run from anything bigger than you, clear your daily missions and bank airdrop points. Play now at pillwars dot fun."),
 ]
 

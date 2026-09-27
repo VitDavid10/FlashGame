@@ -26,7 +26,7 @@ type Sfx = { at: number; src: string; vol?: number };
 type Post = { id: string; n: number; title: string; keys?: Key[]; sfx?: Sfx[]; tags?: { at: number; to?: number; text: string; color?: string }[]; outro?: boolean };
 const mk = (clip: string, name: string) => M[clip]?.[name];
 const firstKey = (clip: string, prefix: string) => { const k = Object.keys(M[clip] || {}).find((x) => x.startsWith(prefix)); return k ? { at: M[clip][k], n: k.slice(prefix.length) } : null; };
-const shotK = firstKey("skills", "shotKey"), sprintK = firstKey("skills", "sprintKey"), escapeK = firstKey("survive", "sprintKey");
+const sprintK = firstKey("skills", "sprintKey"), blinkK = firstKey("skills", "blinkKey"), escapeK = firstKey("survive", "sprintKey");
 
 export const POSTS: Post[] = [
   { id: "move", n: 1, title: "MOVE & GROW",
@@ -40,10 +40,11 @@ export const POSTS: Post[] = [
     sfx: [{ at: mk("split", "space") ?? 1.3, src: "snd/split.mp3" }, ...(mk("split", "kill") ? [{ at: mk("split", "kill"), src: "snd/kill1.mp3" }] : [])] },
   { id: "skills", n: 4, title: "YOUR FIRST SKILLS",
     keys: [
-      ...(shotK ? [{ at: shotK.at, label: shotK.n, sub: "SHOT" }] : []),
       ...(sprintK ? [{ at: sprintK.at, label: sprintK.n, sub: "SPRINT" }] : []),
+      ...(blinkK ? [{ at: blinkK.at, label: blinkK.n, sub: "BLINK" }] : []),
     ],
-    sfx: [...(shotK ? [{ at: shotK.at + 0.5, src: "snd/virus.mp3" }] : []), ...(sprintK ? [{ at: sprintK.at, src: "snd/sprint.mp3" }] : [])] },
+    sfx: [...(sprintK ? [{ at: sprintK.at, src: "snd/sprint.mp3" }] : []), ...(mk("skills", "kill") ? [{ at: mk("skills", "kill"), src: "snd/kill1.mp3" }] : []),
+      ...(blinkK ? [{ at: blinkK.at, src: "snd/shield.mp3" }] : [])] },
   { id: "survive", n: 5, title: "SURVIVE & EARN",
     keys: escapeK ? [{ at: escapeK.at, label: escapeK.n, sub: "SPRINT" }] : [],
     sfx: escapeK ? [{ at: escapeK.at, src: "snd/sprint.mp3" }] : [], outro: true },
@@ -128,7 +129,7 @@ const Outro: React.FC<{ from: number }> = ({ from }) => {
   );
 };
 
-const PostView: React.FC<{ p: Post }> = ({ p }) => {
+const PostView: React.FC<{ p: Post; music?: boolean }> = ({ p, music = true }) => {
   const total = postFrames(p);
   return (
     <AbsoluteFill style={{ background: "#050505" }}>
@@ -140,8 +141,8 @@ const PostView: React.FC<{ p: Post }> = ({ p }) => {
       {p.outro && <Outro from={total - sec(2.2)} />}
       <Sequence from={sec(LEAD)} layout="none"><Audio src={staticFile(`guide/${p.id}.mp3`)} /></Sequence>
       {(p.sfx ?? []).map((s, i) => <Sequence key={i} from={sec(s.at)} layout="none"><Audio src={staticFile(s.src)} volume={s.vol ?? 0.5} /></Sequence>)}
-      <Audio src={staticFile("snd/action-music.wav")} loop
-        volume={(v) => interpolate(v, [0, 10, total - 20, total], [0, 0.18, 0.18, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+      {music && <Audio src={staticFile("snd/action-music.wav")} loop
+        volume={(v) => interpolate(v, [0, 10, total - 20, total], [0, 0.18, 0.18, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />}
       <Subs id={p.id} />
     </AbsoluteFill>
   );
@@ -192,7 +193,12 @@ export const GuideAll: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: "#050505" }}>
       <Sequence durationInFrames={INTRO_FRAMES}><Intro /></Sequence>
-      {POSTS.map((p) => { const d = postFrames(p), el = <Sequence key={p.id} from={from} durationInFrames={d}><PostView p={p} /></Sequence>; from += d; return el; })}
+      {POSTS.map((p) => { const d = postFrames(p), el = <Sequence key={p.id} from={from} durationInFrames={d}><PostView p={p} music={false} /></Sequence>; from += d; return el; })}
+      {/* One track from the first step to the end, not restarted on every step. */}
+      <Sequence from={INTRO_FRAMES} layout="none">
+        <Audio src={staticFile("snd/action-music.wav")} loop
+          volume={(v) => interpolate(v, [0, 10, GUIDE_ALL_FRAMES - INTRO_FRAMES - 25, GUIDE_ALL_FRAMES - INTRO_FRAMES], [0, 0.18, 0.18, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+      </Sequence>
     </AbsoluteFill>
   );
 };
