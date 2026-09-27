@@ -1,3 +1,4 @@
+import { MOBILE_FRAMES, Mobile } from "./Mobile";
 import { PerkMadLads, PerkSeeker } from "./Perks";
 import "./index.css";
 import { Composition } from "remotion";
@@ -34,6 +35,8 @@ export const RemotionRoot: React.FC = () => {
       {/* The whole thread in one video, with its intro. */}
       <Composition id="Guide-all" component={GuideAll} durationInFrames={GUIDE_ALL_FRAMES} fps={30} width={W} height={H} />
       {/* Holder perks of the Genesis Drop, one still per tweet. */}
+      {/* "Coming to Saga & Seeker": gameplay recorded on the phone. */}
+      <Composition id="Mobile" component={Mobile} durationInFrames={MOBILE_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
       {/* Posters for the posts, one still each (see src/Concepts.tsx). */}
