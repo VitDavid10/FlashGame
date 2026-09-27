@@ -232,7 +232,7 @@ test('walletPts is zero until the chain has been checked, then follows the tiers
     assert.strictEqual(walletPts(null, { txs: 999999 }), 0);
     const nowS = Math.floor(Date.now() / 1000);
     const full = walletPts('W', { txs: 6000, firstAt: nowS - 4 * 365 * 86400, nfts: ['saga', 'madlads'], airdrops: ['jto', 'pyth', 'w', 'tnsr', 'drift', 'me', 'met'] });
-    assert.strictEqual(full, 11000 + 7000 + 7000 + 2400 + 2400);   // every category maxed
+    assert.strictEqual(full, 11000 + 10000 + 10000 + 2400 + 2400);   // every category maxed
 });
 
 test('view works with the chain exactly as the store keeps it (nfts as { id: mint })', () => {
@@ -244,14 +244,14 @@ test('view works with the chain exactly as the store keeps it (nfts as { id: min
     s.setChain(W, { txs: 6000, firstAt: nowS - 4 * 365 * 86400, capped: false, checkedAt: Date.now(), nfts: { saga: 'MintA', madlads: 'MintB' }, airdrops: ['jto', 'pyth'] });
     const sc = createScore({ inviteCountOf: s.inviteCount });
     const u = s.sessionUser(r.token);
-    assert.strictEqual(sc.view(u).verified, Math.round(11000 * 0.35) + 7000 + 7000 + 2400 + 2400);
+    assert.strictEqual(sc.view(u).verified, Math.round(11000 * 0.35) + 10000 + 10000 + 2400 + 2400);
 });
 
 test('invitePts follows the milestone table', () => {
     assert.strictEqual(invitePts(0), 0);
-    assert.strictEqual(invitePts(1), 250);
-    assert.strictEqual(invitePts(2), 250);
-    assert.strictEqual(invitePts(50), 250 + 350 + 500 + 700 * 8 + 1300);   // 8 milestones of 700: 10,15,20,25,30,35,40,45
+    assert.strictEqual(invitePts(1), 500);
+    assert.strictEqual(invitePts(2), 500);
+    assert.strictEqual(invitePts(50), 500 + 700 + 1000 + 1300 * 8 + 2400);   // 8 milestones of 1300: 10,15,20,25,30,35,40,45
 });
 
 test('invite count used for scoring comes from the injected store function, never the client', () => {

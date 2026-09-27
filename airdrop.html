@@ -1068,7 +1068,7 @@ function xProfile(x) {
   if (x.verified) lines.push(['Verified account', 300]);
   return { lines };
 }
-// On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 14,000 (Saga or
+// On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 20,000 (Saga or
 // Seeker Genesis Token + Mad Lads), wallet age and transactions up to 2,400 (tiers).
 // Real ones are verified on the server: the wallet's account for that mint has
 // a transaction dated at or before that project's own claim deadline (a date
@@ -1088,7 +1088,7 @@ const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
 // Checked on-chain by the server: a Saga or Seeker Genesis Token (either one
 // pays, not both) and, separately, a Mad Lad.
-const GENESIS_PTS = 7000, MADLADS_PTS = 7000;
+const GENESIS_PTS = 10000, MADLADS_PTS = 10000;
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   // Age and transactions are real, read by the server from mainnet (S.chain);
@@ -1115,8 +1115,8 @@ function walletProfile(addr) {
     ],
   };
 }
-// Invites = 20% of a player's maximum (8,000 with 50). They pay at these counts only.
-const INVITE_MILES = [[1, 250], [3, 350], [5, 500], [10, 700], [15, 700], [20, 700], [25, 700], [30, 700], [35, 700], [40, 700], [45, 700], [50, 1300]];
+// Invites = 20% of a player's maximum (15,000 with 50). They pay at these counts only.
+const INVITE_MILES = [[1, 500], [3, 700], [5, 1000], [10, 1300], [15, 1300], [20, 1300], [25, 1300], [30, 1300], [35, 1300], [40, 1300], [45, 1300], [50, 2400]];
 const MAX_INVITES = 50;
 const inviteCount = () => Math.min(MAX_INVITES, S.refs);
 const invitePts = () => INVITE_MILES.reduce((a, m) => a + (inviteCount() >= m[0] ? m[1] : 0), 0);
@@ -2156,28 +2156,28 @@ setInterval(tick, 1000);
 const T = (t, short) => ({ t, short });
 const DC = () => S.daily.c;
 const QUEST_POOLS = [
-  { tier: 'EASY', pts: 20, quests: [
+  { tier: 'EASY', pts: 40, quests: [
     { id: 'e-kill1', ...T('KILL 1 ENEMY', 'Kill 1 enemy'), goal: 1, today: () => S.daily.kills },
     { id: 'e-pieces5', ...T('EAT 5 ENEMY PIECES', 'Eat 5 pieces'), goal: 5, today: () => DC().pieces },
     { id: 'e-skills2', ...T('USE 2 SKILLS', 'Use 2 skills'), goal: 2, today: () => DC().skills },
     { id: 'e-mass3k', ...T('REACH 3,000 MASS', 'Reach 3,000 mass'), goal: 3000, match: m => m.maxMass },
     { id: 'e-survive60', ...T('SURVIVE 60 SECONDS', 'Survive 60s'), goal: 60, match: m => Math.floor(m.alive) },
   ] },
-  { tier: 'MEDIUM', pts: 60, quests: [
+  { tier: 'MEDIUM', pts: 120, quests: [
     { id: 'm-kill3', ...T('KILL 3 ENEMIES', 'Kill 3 enemies'), goal: 3, today: () => S.daily.kills },
     { id: 'm-splitkill', ...T('KILL AN ENEMY WITH A SPLIT', 'Split kill'), goal: 1, today: () => DC().splitKills },
     { id: 'm-pieces15', ...T('EAT 15 ENEMY PIECES', 'Eat 15 pieces'), goal: 15, today: () => DC().pieces },
     { id: 'm-mass8k', ...T('REACH 8,000 MASS', 'Reach 8,000 mass'), goal: 8000, match: m => m.maxMass },
     { id: 'm-skills3', ...T('USE 3 DIFFERENT SKILLS', '3 different skills'), goal: 3, today: () => DC().skillSet.length },
   ] },
-  { tier: 'HARD', pts: 130, quests: [
+  { tier: 'HARD', pts: 260, quests: [
     { id: 'h-kill5', ...T('KILL 5 ENEMIES', 'Kill 5 enemies'), goal: 5, today: () => S.daily.kills },
     { id: 'h-kill3match', ...T('KILL 3 ENEMIES IN ONE MATCH', '3 kills, one match'), goal: 3, match: m => m.kills },
     { id: 'h-mass20k', ...T('REACH 20,000 MASS', 'Reach 20,000 mass'), goal: 20000, match: m => m.maxMass },
     { id: 'h-finish', ...T('BE ALIVE WHEN THE CLOCK ENDS', 'Survive the clock'), goal: 1, match: m => m.finished ? 1 : 0 },
     { id: 'h-top5', ...T('FINISH A MATCH IN THE TOP 5', 'Finish top 5'), goal: 1, match: m => m.finished && m.place && m.place <= 5 ? 1 : 0 },
   ] },
-  { tier: 'SKILL', pts: 45, quests: [
+  { tier: 'SKILL', pts: 90, quests: [
     { id: 's-sprint', ...T('USE SPRINT', 'Use SPRINT'), goal: 1, today: () => DC().skill[3] || 0 },
     { id: 's-blink', ...T('USE BLINK', 'Use BLINK'), goal: 1, today: () => DC().skill[4] || 0 },
     { id: 's-magnet', ...T('USE MAGNET', 'Use MAGNET'), goal: 1, today: () => DC().skill[5] || 0 },
@@ -2185,7 +2185,7 @@ const QUEST_POOLS = [
     { id: 's-shot', ...T('USE SHOT', 'Use SHOT'), goal: 1, today: () => DC().skill[2] || 0 },
     { id: 's-gamble', ...T('WIN A GAMBLE', 'Win a GAMBLE'), goal: 1, today: () => DC().gambleWins },
   ] },
-  { tier: 'GRIND', pts: 45, quests: [
+  { tier: 'GRIND', pts: 90, quests: [
     { id: 'g-play3', ...T('PLAY 3 MATCHES', 'Play 3 matches'), goal: 3, today: () => S.daily.matches },
     { id: 'g-survive90', ...T('SURVIVE 90 SECONDS', 'Survive 90s'), goal: 90, match: m => Math.floor(m.alive) },
     { id: 'g-split10', ...T('SPLIT 10 TIMES', 'Split 10 times'), goal: 10, today: () => DC().splits },

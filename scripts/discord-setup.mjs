@@ -174,10 +174,10 @@ Example: you finish with 10,000 points and all players together have 20,000,000 
 The fewer players or the more points you have, the bigger your share. The full 100M is always split: nothing stays with the team.
 
 ## Points
-• **Solana wallet:** up to 29,800 (past Solana airdrops, Saga/Seeker Genesis Token, Mad Lads, wallet age, transactions)
+• **Solana wallet:** up to 35,800 (past Solana airdrops, Saga/Seeker Genesis Token, Mad Lads, wallet age, transactions)
 • **X account:** up to 4,000 (followers, account age, verified)
-• **Invites:** up to 8,000 (the friend must link a wallet 60+ days old with 50+ transactions)
-• **Daily Arena:** up to 300 a day
+• **Invites:** up to 15,000 (the friend must link a wallet 60+ days old with 50+ transactions)
+• **Daily Arena:** up to 600 a day
 • **Social quests:** daily post, sharing your points card, reposts and likes
 • **Boost:** follow our X, join the Telegram, play your first match and claim the Genesis Hunter role at the bottom of this channel → **all your points ×1.5**
 
@@ -280,6 +280,13 @@ async function repost(channel, messages) {
   const buttons = m => JSON.stringify((m.components || []).map(r => (r.components || []).map(c => [c.label, c.custom_id])));
   const same = old.length === out.length && old.every((m, i) => m.content === out[i].content && buttons(m) === buttons(out[i]));
   if (same) { console.log('  #' + channel.name + ': sin cambios'); return; }
+  // Same number of messages: edit in place, so pins and reactions stay.
+  if (old.length === out.length) {
+    for (let i = 0; i < old.length; i++) if (old[i].content !== out[i].content || buttons(old[i]) !== buttons(out[i]))
+      await api('PATCH', `/channels/${channel.id}/messages/${old[i].id}`, { content: out[i].content, components: out[i].components || [] });
+    console.log('  #' + channel.name + ': editado');
+    return;
+  }
   for (const m of old) await api('DELETE', `/channels/${channel.id}/messages/${m.id}`);
   for (const m of out) await api('POST', `/channels/${channel.id}/messages`, m);
   console.log('  #' + channel.name + ': republicado');

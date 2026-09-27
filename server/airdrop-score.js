@@ -29,8 +29,8 @@ const AIRDROPS_TOTAL = 11;   // 10 verified airdrops + Jumper (see airdrop-token
 const HUNTER_MAX = 11000, HUNTER_TIERS = [[1, .2], [2, .35], [3, .5], [4, .65], [5, .8], [6, .9], [7, 1]];
 const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2500, .8], [5000, 1]];
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
-const GENESIS_PTS = 7000, MADLADS_PTS = 7000;
-const INVITE_MILES = [[1, 250], [3, 350], [5, 500], [10, 700], [15, 700], [20, 700], [25, 700], [30, 700], [35, 700], [40, 700], [45, 700], [50, 1300]];
+const GENESIS_PTS = 10000, MADLADS_PTS = 10000;
+const INVITE_MILES = [[1, 500], [3, 700], [5, 1000], [10, 1300], [15, 1300], [20, 1300], [25, 1300], [30, 1300], [35, 1300], [40, 1300], [45, 1300], [50, 2400]];
 const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
 
 const MIN_KILL_GAP_MS = 350;      // anti-flood; the split-kill bonus below uses its own 1500ms window
@@ -52,28 +52,28 @@ function rng(seed) {
 
 // Same five tiers, same daily point values as the client's QUEST_POOLS.
 const QUEST_POOLS = [
-    { tier: 'EASY', pts: 20, quests: [
+    { tier: 'EASY', pts: 40, quests: [
         { id: 'e-kill1', goal: 1, today: d => d.kills },
         { id: 'e-pieces5', goal: 5, today: d => d.c.pieces },
         { id: 'e-skills2', goal: 2, today: d => d.c.skills },
         { id: 'e-mass3k', goal: 3000, match: m => m.maxMass },
         { id: 'e-survive60', goal: 60, match: m => m.aliveS },
     ] },
-    { tier: 'MEDIUM', pts: 60, quests: [
+    { tier: 'MEDIUM', pts: 120, quests: [
         { id: 'm-kill3', goal: 3, today: d => d.kills },
         { id: 'm-splitkill', goal: 1, today: d => d.c.splitKills },
         { id: 'm-pieces15', goal: 15, today: d => d.c.pieces },
         { id: 'm-mass8k', goal: 8000, match: m => m.maxMass },
         { id: 'm-skills3', goal: 3, today: d => d.c.skillSet.length },
     ] },
-    { tier: 'HARD', pts: 130, quests: [
+    { tier: 'HARD', pts: 260, quests: [
         { id: 'h-kill5', goal: 5, today: d => d.kills },
         { id: 'h-kill3match', goal: 3, match: m => m.kills },
         { id: 'h-mass20k', goal: 20000, match: m => m.maxMass },
         { id: 'h-finish', goal: 1, match: m => m.finished ? 1 : 0 },
         { id: 'h-top5', goal: 1, match: m => m.finished && m.place && m.place <= 5 ? 1 : 0 },
     ] },
-    { tier: 'SKILL', pts: 45, quests: [
+    { tier: 'SKILL', pts: 90, quests: [
         { id: 's-sprint', goal: 1, today: d => d.c.skill[3] || 0 },
         { id: 's-blink', goal: 1, today: d => d.c.skill[4] || 0 },
         { id: 's-magnet', goal: 1, today: d => d.c.skill[5] || 0 },
@@ -81,7 +81,7 @@ const QUEST_POOLS = [
         { id: 's-shot', goal: 1, today: d => d.c.skill[2] || 0 },
         { id: 's-gamble', goal: 1, today: d => d.c.gambleWins },
     ] },
-    { tier: 'GRIND', pts: 45, quests: [
+    { tier: 'GRIND', pts: 90, quests: [
         { id: 'g-play3', goal: 3, today: d => d.matches },
         { id: 'g-survive90', goal: 90, match: m => m.aliveS },
         { id: 'g-split10', goal: 10, today: d => d.c.splits },

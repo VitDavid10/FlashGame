@@ -8,8 +8,8 @@ in proportion to each player's points.
 | Category | Max points | How |
 |---|---|---|
 | Airdrop Hunter | 11,000 | Tiers by Solana airdrops the wallet qualified for |
-| Saga / Seeker Genesis Token | 2,400 | Holding a Saga or Seeker Genesis Token (either one, not both) |
-| Mad Lads | 2,400 | Holding a Mad Lads NFT |
+| Saga / Seeker Genesis Token | 10,000 | Holding a Saga or Seeker Genesis Token (either one, not both) |
+| Mad Lads | 10,000 | Holding a Mad Lads NFT |
 | Wallet age | 2,400 | Tiers by days since the wallet's first transaction |
 | Transactions | 2,400 | Tiers by successful transactions |
 
@@ -78,7 +78,7 @@ Wallet data is read from Solana mainnet by our server and refreshed once a day.
 | Account age | 100 per year, up to 1,200 |
 | Verified account | 300 |
 
-## 3. Invites (max 8,000)
+## 3. Invites (max 15,000)
 
 An invite counts when the invited person links a Solana wallet **at least 60 days old
 with at least 50 transactions**. Linking only X does not count. Nobody can invite
@@ -86,21 +86,21 @@ themselves, each person counts once, and only the first 50 invites pay.
 
 | Invites | 1 | 3 | 5 | 10 | 15 | 20 | 25 | 30 | 35 | 40 | 45 | 50 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Points | 250 | 350 | 500 | 700 | 700 | 700 | 700 | 700 | 700 | 700 | 700 | 1,300 |
+| Points | 500 | 700 | 1,000 | 1,300 | 1,300 | 1,300 | 1,300 | 1,300 | 1,300 | 1,300 | 1,300 | 2,400 |
 
 Your invite link (`?ref=`) and every card link you share (`/c/...`) count the same.
 
-## 4. Daily Arena (up to 300 a day)
+## 4. Daily Arena (up to 600 a day)
 
 Five missions a day, one per level, rotating daily. Progress does not reset with TRY AGAIN.
 
 | Level | Points |
 |---|---|
-| Easy | 20 |
-| Medium | 60 |
-| Hard | 130 |
-| Skill | 45 |
-| Grind | 45 |
+| Easy | 40 |
+| Medium | 120 |
+| Hard | 260 |
+| Skill | 90 |
+| Grind | 90 |
 
 ## 5. Social quests
 
