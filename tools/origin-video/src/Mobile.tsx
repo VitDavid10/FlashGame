@@ -18,7 +18,7 @@ const BEAT = 60 / 105, BAR = BEAT * 4, SONG_FROM = 15.40, DROP = 21.84 - SONG_FR
 const at = (beats: number) => Math.round((DROP + (beats - 12) * BEAT) * 30);
 const bt = (beats: number) => Math.round(beats * BEAT * 30);
 const tf = (songSec: number) => Math.round((songSec - SONG_FROM) * 30);
-const T_LOCK = tf(16.67), T_PHONE = tf(18.25), T_FLIP = tf(20.25);
+const T_LOCK = 30, T_PHONE = 72, T_FLIP = 129;   // 1.0 s, 2.4 s, 4.3 s (picked by ear)
 const INTRO_BEATS = 12;
 const CLIPS = [1, 1, 1, 1, 1, 1, 1, 1, 2];   // bars per clip (public/mobile/kN.mp4)
 const STARTS: number[] = []; { let b = INTRO_BEATS; for (const n of CLIPS) { STARTS.push(at(b)); b += n * 4; } }
