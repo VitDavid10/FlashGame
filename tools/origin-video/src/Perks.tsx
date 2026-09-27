@@ -1,52 +1,10 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile } from "remotion";
-import { ArenaFloor, Food, GAME_ANGLE, PX, Pill, VT } from "./ui";
+import { PX } from "./ui";
 
 /* Stills for the holder perks in the Genesis Drop (Saga/Seeker Genesis Token,
-   Mad Lads): one image per tweet. Text only for the other projects - no logos
-   of theirs, it's a perk for their holders, not a partnership. */
-const LIME = "#ccff00", RED = "#f62a2d", CYAN = "#00e5ff";
-const shadow = (d: number, c = 4) => `${c}px 0 0 ${RED}, ${-c}px 0 0 ${CYAN}, ${d}px ${d}px 0 #000, ${d * 2}px ${d * 2}px 0 rgba(0,0,0,.45)`;
-
-// A pixel phone with a pill on its screen (Saga / Seeker).
-const Phone: React.FC = () => (
-  <div style={{ position: "absolute", left: 150, top: 250, width: 300, height: 560, background: "#1b1f24", border: "12px solid #3a414a", borderRadius: 36,
-    boxShadow: "16px 16px 0 #000", transform: "rotate(-8deg)" }}>
-    <div style={{ position: "absolute", inset: 18, background: "#07120a", borderRadius: 14, overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 50%, rgba(204,255,0,.35), transparent 70%)" }} />
-    </div>
-    <div style={{ position: "absolute", left: 125, top: -6, width: 26, height: 26, borderRadius: 13, background: "#000" }} />
-  </div>
-);
-
-const Perk: React.FC<{ who: string; line: string; phone?: boolean }> = ({ who, line, phone }) => (
-  <AbsoluteFill style={{ background: "#050505" }}>
-    <ArenaFloor />
-    <AbsoluteFill style={{ background: "radial-gradient(ellipse at 62% 48%, rgba(204,255,0,.33), rgba(0,255,136,.1) 45%, rgba(0,0,0,0) 75%)" }} />
-    <Food seed={"perk-" + who} n={80} />
-    {phone ? <><Phone /><Pill x={300} y={520} wL={16} scale={8} top="#F44336" bot="#3F51B5" ang={GAME_ANGLE} /></>
-      : <>
-        <Pill x={290} y={330} wL={20} scale={9} top="#FFC107" bot="#9C27B0" ang={GAME_ANGLE} />
-        <Pill x={330} y={760} wL={16} scale={8} top="#c0c8d0" bot="#00ff44" ang={GAME_ANGLE} />
-      </>}
-    <Pill x={1790} y={170} wL={12} scale={7} top="#03A9F4" bot="#8BC34A" ang={GAME_ANGLE} />
-    <Pill x={1780} y={930} wL={14} scale={7} top="#F44336" bot="#3F51B5" ang={GAME_ANGLE} />
-    <div style={{ position: "absolute", left: 560, right: 60, top: 150, textAlign: "center" }}>
-      <div style={{ fontFamily: PX, fontSize: 30, color: "#fff", letterSpacing: 2, textShadow: shadow(3, 0) }}>PILLWARS GENESIS DROP</div>
-      <div style={{ fontFamily: PX, fontSize: 70, color: "#fff", marginTop: 70, lineHeight: 1.3, textShadow: shadow(7, 3) }}>{who}</div>
-      <div style={{ fontFamily: PX, fontSize: 44, color: "#fff", marginTop: 26, textShadow: shadow(4, 0) }}>HOLDERS GET</div>
-      <div style={{ fontFamily: PX, fontSize: 150, color: LIME, marginTop: 40, textShadow: shadow(14, 6) }}>+10,000</div>
-      <div style={{ fontFamily: PX, fontSize: 56, color: LIME, marginTop: 20, textShadow: shadow(5, 0) }}>POINTS</div>
-      <div style={{ fontFamily: VT, fontSize: 46, color: "#e8ffe0", marginTop: 50 }}>{line}</div>
-    </div>
-    <div style={{ position: "absolute", left: 60, right: 60, bottom: 50, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <Img src={staticFile("howto/brand.png")} style={{ width: 330, filter: "drop-shadow(6px 6px 0 #000)" }} />
-      <div style={{ fontFamily: PX, fontSize: 34, color: "#fff", textShadow: shadow(3, 0) }}>PILLWARS.FUN</div>
-    </div>
-  </AbsoluteFill>
-);
-
-export const PerkSeeker: React.FC = () => <Perk who={"SAGA & SEEKER"} line="Link a wallet holding a Saga or Seeker Genesis Token" phone />;
+   Mad Lads): one image per tweet, each in that project's own look. */
+const LIME = "#ccff00";
 
 /* Mad Lads perk: all their red, our X account's logo, our lime only for the prize. */
 const ML_RED = "#f62038";
@@ -75,3 +33,52 @@ export const PerkMadLads: React.FC = () => (
   </AbsoluteFill>
 );
 
+
+/* Saga & Seeker perk: Solana Mobile's dark teal and purple-to-green, both phones
+   lying on their side with PillWars on screen (landscape reads better). */
+const SOL = "linear-gradient(90deg, #9945ff, #14f195)";
+const Bar: React.FC<{ x: number; y: number; w: number; h: number; o?: number }> = ({ x, y, w, h, o = 1 }) => (
+  <div style={{ position: "absolute", left: x, top: y, width: w, height: h, opacity: o, background: SOL, borderRadius: 16,
+    clipPath: `polygon(${h}px 0, 100% 0, calc(100% - ${h}px) 100%, 0 100%)` }} />
+);
+const Phone2: React.FC<{ x: number; y: number; w: number; rot: number; screen: string; body: string; edge: string; buttons?: string; tag: string }> = ({ x, y, w, rot, screen, body, edge, buttons, tag }) => {
+  const h = Math.round(w * 1080 / 2400), b = Math.round(w * 0.028);
+  return (
+    <div style={{ position: "absolute", left: x, top: y, width: w + b * 2, height: h + b * 2, transform: `rotate(${rot}deg)` }}>
+      {buttons && <>
+        <div style={{ position: "absolute", left: w * 0.55, top: -10, width: w * 0.09, height: 14, background: buttons, borderRadius: 6 }} />
+        <div style={{ position: "absolute", left: w * 0.67, top: -10, width: w * 0.05, height: 14, background: buttons, borderRadius: 6 }} />
+      </>}
+      <div style={{ position: "absolute", inset: 0, background: body, borderRadius: b * 3.2, border: `3px solid ${edge}`,
+        boxShadow: "0 40px 70px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06) inset" }} />
+      <div style={{ position: "absolute", left: b, top: b, width: w, height: h, borderRadius: b * 2.2, overflow: "hidden", background: "#000" }}>
+        <Img src={staticFile(screen)} style={{ width: "100%", height: "100%" }} />
+        <AbsoluteFill style={{ background: "linear-gradient(115deg, rgba(255,255,255,.14), rgba(255,255,255,0) 35%)" }} />
+      </div>
+      <div style={{ position: "absolute", left: "50%", bottom: -66, transform: "translateX(-50%)", padding: "8px 18px", background: "#000", border: "3px solid #14f195",
+        fontFamily: PX, fontSize: 22, color: "#fff", whiteSpace: "nowrap" }}>{tag}</div>
+    </div>
+  );
+};
+export const PerkSeeker: React.FC = () => (
+  <AbsoluteFill style={{ background: "linear-gradient(180deg, #030607 0%, #071413 45%, #1d6b64 100%)" }}>
+    <Bar x={-120} y={640} w={620} h={70} o={0.55} />
+    <Bar x={-160} y={740} w={620} h={70} o={0.4} />
+    <Bar x={1600} y={30} w={420} h={50} o={0.5} />
+    <Bar x={1640} y={100} w={420} h={50} o={0.35} />
+    <div style={{ position: "absolute", left: 0, right: 0, top: 40, textAlign: "center", fontFamily: PX, fontSize: 38, color: "#fff", textShadow: "4px 4px 0 #000" }}>PERK FOR</div>
+    <div style={{ position: "absolute", left: 0, right: 0, top: 100, textAlign: "center" }}>
+      <span style={{ fontFamily: PX, fontSize: 84, background: SOL, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+        filter: "drop-shadow(7px 7px 0 #000)" }}>SAGA & SEEKER</span>
+    </div>
+    <div style={{ position: "absolute", left: 0, right: 0, top: 222, textAlign: "center", fontFamily: PX, fontSize: 38, color: "#fff", textShadow: "4px 4px 0 #000" }}>HOLDERS</div>
+    <div style={{ position: "absolute", left: 400, right: 400, top: 295, height: 100, padding: 5, boxSizing: "border-box", background: SOL, boxShadow: "10px 10px 0 rgba(0,0,0,.5)" }}>
+      <div style={{ width: "100%", height: "100%", background: "#050909", display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: PX, fontSize: 46, color: LIME, whiteSpace: "nowrap" }}>+10,000 AIRDROP POINTS</div>
+    </div>
+    <Phone2 x={1010} y={500} w={740} rot={8} screen="perks/screen-arcade.png" body="#0a0a0b" edge="#26292c" buttons="#1fd18a" tag="SAGA" />
+    <Phone2 x={150} y={480} w={780} rot={-9} screen="perks/screen-start.png" body="#2e3b3d" edge="#4b5a5c" tag="SEEKER" />
+    <div style={{ position: "absolute", left: 0, right: 0, bottom: 26, textAlign: "center", fontFamily: PX, fontSize: 22, color: "#d8fff4", textShadow: "3px 3px 0 #000" }}>
+      HOLD A SAGA OR SEEKER GENESIS TOKEN · PILLWARS.FUN</div>
+  </AbsoluteFill>
+);
