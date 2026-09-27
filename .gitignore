@@ -105,3 +105,5 @@ server/airdrop-data.json.tmp
 *.jks
 android/**/*.apk
 tools/origin-video/public/perks/madlads.png
+tools/origin-video/public/perks/seeker-back.png
+tools/origin-video/public/mobile/
