@@ -66,7 +66,11 @@ await api('PATCH', `/guilds/${GUILD}/roles/${GUILD}`, { permissions: '0' });
 
 // ---- Canales ----
 let channels = await api('GET', `/guilds/${GUILD}/channels`);
-const find = (name, type) => channels.find(c => c.name === name && c.type === type);
+// Some channels wear an emoji like "『💬』general": found by their plain name either way.
+const DECO = { rules: '📌', announcements: '📢', 'official-links': '🔗', 'genesis-drop': '🎁', faq: '❓', roadmap: '🗺', general: '💬', clips: '🎬', suggestions: '💡', bugs: '🐛', 'flex-and-refs': '🏆', strategy: '🧠' };
+const plain = n => n.replace(/^『[^』]*』/, '');
+const deco = n => (DECO[n] ? '『' + DECO[n] + '』' + n : n);
+const find = (name, type) => channels.find(c => (c.name === name || (c.type === 0 && plain(c.name) === name)) && c.type === type);
 async function ensure(name, type, extra = {}) {
   const c = find(name, type);
   if (c) return api('PATCH', `/channels/${c.id}`, extra);
@@ -109,7 +113,7 @@ const defs = [
   ['team', '🛠 TEAM', 'Team and mods only.', staffOnly],
 ];
 for (const [i, [name, parent, topic, perms, extra]] of defs.entries()) {
-  C[name] = await ensure(name, 0, { parent_id: cat[parent].id, position: i, topic, permission_overwrites: perms, ...(extra || {}) });
+  C[name] = await ensure(name, 0, { name: deco(name), parent_id: cat[parent].id, position: i, topic, permission_overwrites: perms, ...(extra || {}) });
 }
 C.voice = await ensure('General', 2, { parent_id: cat['🔊 VOICE'].id, position: 0, permission_overwrites: [] });
 C.voice2 = await ensure('Arena', 2, { parent_id: cat['🔊 VOICE'].id, position: 1, permission_overwrites: [] });
