@@ -19,7 +19,7 @@ const CLIPS = [1, 1, 1, 1, 1, 1, 1, 1, 2];   // bars per clip (public/mobile/kN.
 const STARTS: number[] = []; { let b = INTRO_BEATS; for (const n of CLIPS) { STARTS.push(at(b)); b += n * 4; } }
 const END_BEATS = INTRO_BEATS + CLIPS.reduce((a, n) => a + n * 4, 0);
 const INTRO = at(INTRO_BEATS), PLAY_END = at(END_BEATS);
-export const MOBILE_FRAMES = at(END_BEATS + 20);
+export const MOBILE_FRAMES = at(END_BEATS + 24);
 void BAR;
 
 // Solana Mobile's mark (the three stacked bars), white as on the Seeker.
@@ -39,8 +39,6 @@ const SeekerLockup: React.FC<{ h: number }> = ({ h }) => (
     </div>
   </div>
 );
-// A small push on every beat.
-const bump = (f: number) => { const k = (f % (BEAT * 30)) / (BEAT * 30); return 1 + 0.018 * Math.exp(-k * 6); };
 
 // Seeker, landscape. Two faces: the real back (photo) and the screen.
 const PW = 1560, PH = PW * 1080 / 2400;
@@ -71,64 +69,93 @@ const Seeker: React.FC<{ ry: number; scale: number; y: number; screen: React.Rea
   );
 };
 
-// The dApp Store (their promo image) with PillWars in the first row instead of Orca.
+// The dApp Store, rebuilt from pieces of their promo image (1200x675 space, x1.6):
+// the cube and the phone come in together, the title writes itself in, then we
+// zoom into the phone and PillWars slides into the first row (instead of Orca).
+const Piece: React.FC<{ x: number; y: number; w: number; h: number; style?: React.CSSProperties }> = ({ x, y, w, h, style }) => (
+  <div style={{ position: "absolute", left: x, top: y, width: w, height: h, overflow: "hidden", ...style }}>
+    <Img src={staticFile("perks/dappstore.png")} style={{ position: "absolute", left: -x, top: -y, width: 1200, height: 675, maxWidth: "none" }} />
+  </div>
+);
 const Store: React.FC = () => {
-  const f = useCurrentFrame(), row = interpolate(f, [at(2), at(2) + 8], [0, 1], { ...clamp, easing: ease });
+  const f = useCurrentFrame();
+  const inK = interpolate(f, [0, 12], [0, 1], { ...clamp, easing: ease });
+  const l1 = interpolate(f, [at(1), at(1) + 10], [0, 1], { ...clamp, easing: ease });
+  const l2 = interpolate(f, [at(2), at(2) + 10], [0, 1], { ...clamp, easing: ease });
+  const zoom = interpolate(f, [at(4), at(6)], [0, 1], { ...clamp, easing: ease });
+  const row = interpolate(f, [at(6.5), at(6.5) + 9], [0, 1], { ...clamp, easing: ease });
   const T: React.CSSProperties = { position: "absolute", fontFamily: SANS, color: "#fff" };
   return (
     <AbsoluteFill style={{ background: "#000" }}>
-      <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 675, transformOrigin: "0 0", transform: `scale(${1.6 * interpolate(f, [0, at(8)], [1, 1.03])})` }}>
-        <Img src={staticFile("perks/dappstore.png")} style={{ width: 1200, height: 675 }} />
-        <div style={{ position: "absolute", left: 795, top: 274, width: 110, height: 32, background: "#000" }} />
-        <div style={{ ...T, left: 800, top: 276, fontSize: 21, fontWeight: 600 }}>Ecosystem</div>
-        <div style={{ position: "absolute", left: 796, top: 316, width: 268, height: 62, background: "#000" }} />
-        <div style={{ position: "absolute", left: 796, top: 316, width: 268, height: 62, opacity: row, transform: `translateX(${(1 - row) * 30}px)` }}>
-          <Img src={staticFile("perks/pw-icon.png")} style={{ position: "absolute", left: 4, top: 5, width: 46, height: 46, borderRadius: 10 }} />
-          <div style={{ ...T, left: 60, top: 10, fontSize: 15, fontWeight: 500 }}>PillWars</div>
-          <div style={{ ...T, left: 60, top: 32, fontSize: 12.5, color: "#c8c8cc" }}>Eat, grow and outplay rival pills</div>
+      <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 675, transformOrigin: "0 0", transform: "scale(1.6)" }}>
+        <div style={{ position: "absolute", inset: 0, transformOrigin: "965px 346px", transform: `translate(${-365 * zoom}px, ${-8 * zoom}px) scale(${1 + zoom * 0.9})` }}>
+          <Piece x={40} y={30} w={100} h={100} style={{ opacity: inK * (1 - zoom), transform: `scale(${0.4 + inK * 0.6}) rotate(${(1 - inK) * -40}deg)` }} />
+          <Piece x={20} y={145} w={660} h={112} style={{ opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l1) * 100}% 0)`, transform: `translateY(${(1 - l1) * 40}px)` }} />
+          <Piece x={20} y={258} w={660} h={150} style={{ opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l2) * 100}% 0)`, transform: `translateY(${(1 - l2) * 40}px)` }} />
+          <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 675, transform: `translateY(${(1 - inK) * 420}px)` }}>
+            <Piece x={760} y={25} w={410} h={650} />
+            <div style={{ position: "absolute", left: 795, top: 274, width: 110, height: 32, background: "#000" }} />
+            <div style={{ ...T, left: 800, top: 276, fontSize: 21, fontWeight: 600 }}>Ecosystem</div>
+            <div style={{ position: "absolute", left: 796, top: 316, width: 268, height: 62, background: "#000" }} />
+            <div style={{ position: "absolute", left: 796, top: 316, width: 268, height: 62, opacity: row, transform: `translateX(${(1 - row) * 40}px)` }}>
+              <Img src={staticFile("perks/pw-icon.png")} style={{ position: "absolute", left: 4, top: 5, width: 46, height: 46, borderRadius: 10 }} />
+              <div style={{ ...T, left: 60, top: 10, fontSize: 15, fontWeight: 500 }}>PillWars</div>
+              <div style={{ ...T, left: 60, top: 32, fontSize: 12.5, color: "#c8c8cc" }}>Eat, grow and outplay rival pills</div>
+            </div>
+          </div>
         </div>
       </div>
     </AbsoluteFill>
   );
 };
+// The Solana mark in its colours.
+const SolMark: React.FC<{ h: number }> = ({ h }) => (
+  <svg viewBox="0 0 100 86" style={{ height: h, width: h * 1.16 }}>
+    <defs><linearGradient id="solg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#9945ff" /><stop offset="1" stopColor="#14f195" /></linearGradient></defs>
+    <polygon points="18,0 100,0 82,20 0,20" fill="url(#solg)" /><polygon points="0,33 82,33 100,53 18,53" fill="url(#solg)" /><polygon points="18,66 100,66 82,86 0,86" fill="url(#solg)" />
+  </svg>
+);
 
 export const Mobile: React.FC = () => {
   const f = useCurrentFrame();
-  // 0-4 beats: their Seeker banner, 4-6: Seeker × PillWars, 6-12: the phone alone turns and zooms in.
-  const ry = f < at(7) ? interpolate(f, [at(6), at(7)], [215, 180], clamp) : interpolate(f, [at(7), at(9)], [180, 0], { ...clamp, easing: ease });
-  const zoom = interpolate(f, [at(INTRO_BEATS - 2), INTRO], [0, 1], { ...clamp, easing: ease });
+  // beats 0-2: built on Solana, 2-7: Seeker × PillWars, 7-12: the phone alone turns and zooms into the game (drop).
+  const ry = f < at(8) ? interpolate(f, [at(7), at(8)], [205, 180], clamp) : interpolate(f, [at(8), at(9.5)], [180, 0], { ...clamp, easing: ease });
+  const zoom = interpolate(f, [at(INTRO_BEATS - 1.5), INTRO], [0, 1], { ...clamp, easing: ease });
   const out = interpolate(f, [PLAY_END, at(END_BEATS + 2)], [0, 1], { ...clamp, easing: ease });
   const scale = interpolate(zoom, [0, 1], [0.7, 1.231]) * interpolate(out, [0, 1], [1, 0.55]);
   const y = interpolate(zoom, [0, 1], [560, 540]) + out * 150;
   const endLock = interpolate(f, [at(END_BEATS + 1), at(END_BEATS + 1) + 8], [0, 1], clamp);
-  const b = bump(f);
   const E = END_BEATS;
   return (
     <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 115%, #1f7f79 0%, #0b3a40 32%, #050809 62%, #000 100%)" }}>
-      {/* 1. their banner, moving on the beat */}
-      <Sequence durationInFrames={at(4)}>
-        <AbsoluteFill style={{ background: "#000", opacity: interpolate(f, [0, 6], [0, 1], clamp) }}>
-          <Img src={staticFile("perks/seeker-banner.png")} style={{ position: "absolute", left: 0, top: 540 - 491, width: 1920, height: 982,
-            transform: `scale(${interpolate(f, [0, at(4)], [1.1, 1.0]) * b}) translateX(${interpolate(f, [0, at(4)], [-20, 10])}px)` }} />
+      {/* 1. built on Solana */}
+      <Sequence durationInFrames={at(2)}>
+        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 40,
+          opacity: interpolate(f, [0, 6], [0, 1], clamp), transform: `scale(${interpolate(f, [0, at(2)], [0.94, 1.02])})` }}>
+          <div style={{ fontFamily: SANS, fontSize: 64, fontWeight: 600, color: "#fff", letterSpacing: 6 }}>BUILT ON</div>
+          <SolMark h={86} />
+          <div style={{ fontFamily: SANS, fontSize: 96, fontWeight: 700, color: "#fff", letterSpacing: 2 }}>SOLANA</div>
         </AbsoluteFill>
       </Sequence>
-      {/* 2. Seeker × PillWars */}
-      <Sequence from={at(4)} durationInFrames={at(2)}>
-        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 70 }}>
-          <div style={{ transform: `scale(${b})` }}><SeekerLockup h={220} /></div>
+      {/* 2. Seeker × PillWars, zooming in */}
+      <Sequence from={at(2)} durationInFrames={at(7) - at(2)}>
+        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 70,
+          opacity: interpolate(f, [at(2), at(2) + 5], [0, 1], clamp),
+          transform: `scale(${interpolate(f, [at(2), at(7)], [0.88, 1.06], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 2) })})` }}>
+          <SeekerLockup h={220} />
           <div style={{ fontFamily: SANS, fontSize: 90, fontWeight: 300, color: "#fff" }}>×</div>
-          <Img src={staticFile("perks/pillwars-pfp.png")} style={{ width: 250, height: 250, borderRadius: 40, transform: `scale(${b})` }} />
+          <Img src={staticFile("perks/pillwars-pfp.png")} style={{ width: 250, height: 250, borderRadius: 40 }} />
         </AbsoluteFill>
       </Sequence>
 
       {/* 3. the phone, no text: turns, zooms into the game, and at the end steps back */}
-      <Sequence from={at(6)} durationInFrames={at(E + 4) - at(6)}>
+      <Sequence from={at(7)} durationInFrames={at(E + 4) - at(7)}>
         <AbsoluteFill>
           <div style={{ position: "absolute", left: 0, right: 0, top: 50, opacity: endLock, display: "flex", justifyContent: "center" }}><SeekerLockup h={200} /></div>
           <Seeker ry={ry} scale={scale} y={y} screen={<>
-            <Sequence durationInFrames={INTRO - at(6)} layout="none"><Img src={staticFile("perks/screen-start.png")} style={{ width: "100%", height: "100%" }} /></Sequence>
+            <Sequence durationInFrames={INTRO - at(7)} layout="none"><Img src={staticFile("perks/screen-start.png")} style={{ width: "100%", height: "100%" }} /></Sequence>
             {CLIPS.map((_, i) => (
-              <Sequence key={i} from={STARTS[i] - at(6)} durationInFrames={i === CLIPS.length - 1 ? undefined : STARTS[i + 1] - STARTS[i]} layout="none">
+              <Sequence key={i} from={STARTS[i] - at(7)} durationInFrames={i === CLIPS.length - 1 ? undefined : STARTS[i + 1] - STARTS[i]} layout="none">
                 <Video src={staticFile(`mobile/k${i + 1}.mp4`)} muted style={{ width: "100%", height: "100%" }} />
               </Sequence>
             ))}
@@ -137,24 +164,30 @@ export const Mobile: React.FC = () => {
       </Sequence>
 
       {/* 4. the dApp Store, PillWars in it */}
-      <Sequence from={at(E + 4)} durationInFrames={at(8)}><Store /></Sequence>
+      <Sequence from={at(E + 4)} durationInFrames={at(E + 16) - at(E + 4)}><Store /></Sequence>
       {/* 5. coming soon */}
-      <Sequence from={at(E + 12)} durationInFrames={at(4)}>
+      <Sequence from={at(E + 16)} durationInFrames={at(E + 20) - at(E + 16)}>
         <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 40 }}>
-          <div style={{ fontFamily: PX, fontSize: 96, color: "#fff", textShadow: "8px 8px 0 #1d6b64", transform: `scale(${b})` }}>COMING SOON</div>
+          <div style={{ fontFamily: PX, fontSize: 96, color: "#fff", textShadow: "8px 8px 0 #1d6b64" }}>COMING SOON</div>
           <div style={{ fontFamily: SANS, fontSize: 44, fontWeight: 600, color: "#fff" }}>on the Solana dApp Store</div>
         </AbsoluteFill>
       </Sequence>
       {/* 6. our usual ending */}
-      <Sequence from={at(E + 16)}>
+      <Sequence from={at(E + 20)}>
         <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 50 }}>
-          <Img src={staticFile("howto/brand.png")} style={{ width: 1000, filter: "drop-shadow(10px 10px 0 #1d6b64)", transform: `scale(${b})` }} />
+          <Img src={staticFile("howto/brand.png")} style={{ width: 1000, filter: "drop-shadow(10px 10px 0 #1d6b64)" }} />
           <div style={{ fontFamily: PX, fontSize: 44, color: "#ccff00", textShadow: "4px 4px 0 #000" }}>PILLWARS.FUN</div>
         </AbsoluteFill>
       </Sequence>
 
-      <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, MOBILE_FRAMES - 20, MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
-      <Sequence from={at(7)} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
+      {/* music: the song up to the store, then its calm outro (154.41 s, on a bar) for the last two screens */}
+      <Sequence durationInFrames={at(E + 16)} layout="none">
+        <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(E + 16) - 10, at(E + 16)], [0, 0.9, 0.9, 0], clamp)} />
+      </Sequence>
+      <Sequence from={at(E + 16)} layout="none">
+        <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(154.41 * 30)} volume={(v) => interpolate(v, [0, 3, at(8) - 18, at(8)], [0, 0.9, 0.9, 0], clamp)} />
+      </Sequence>
+      <Sequence from={at(8)} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
     </AbsoluteFill>
   );
 };
