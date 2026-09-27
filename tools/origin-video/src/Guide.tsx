@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { Audio, Video } from "@remotion/media";
-import { FPS, PX, VT } from "./ui";
+import { ArenaFloor, FPS, Food, GAME_ANGLE, PX, Pill, VT } from "./ui";
 import voice from "../public/guide/voice.json";
 import marksJson from "../public/guide/marks.json";
 
@@ -18,8 +18,8 @@ const LEAD = 0.25, TAIL = 0.8;
 const sec = (s: number) => Math.round(s * FPS);
 const voiceLen = (id: string) => { const ws = vo(id).words; return ws[ws.length - 1].t + ws[ws.length - 1].d; };
 const GREEN = "#00ff88", GOLD = "#ffce3d";
-// A bit closer on the player (from the 2560x1440 clips), anchored to the bottom so the skill bar stays whole.
-const ZOOM = 1.12;
+// When the voice says a word (s, from the post's start).
+const at = (id: string, w: string) => { const x = vo(id).words.find((k) => k.w.toLowerCase().startsWith(w.toLowerCase())); return LEAD + (x ? x.t : 0); };
 
 type Key = { at: number; label: string; sub?: string };
 type Sfx = { at: number; src: string; vol?: number };
@@ -30,7 +30,7 @@ const shotK = firstKey("skills", "shotKey"), sprintK = firstKey("skills", "sprin
 
 export const POSTS: Post[] = [
   { id: "move", n: 1, title: "MOVE & GROW",
-    keys: [{ at: 0.3, label: "MOUSE", sub: "your pill follows it" }],
+    keys: [{ at: at("move", "mouse"), label: "MOUSE", sub: "your pill follows it" }, { at: at("move", "W"), label: "W A S D", sub: "or the keyboard" }],
     sfx: mk("move", "kill") ? [{ at: mk("move", "kill"), src: "snd/kill1.mp3" }] : [] },
   { id: "hide", n: 2, title: "HIDE IN A VIRUS",
     tags: [{ at: mk("hide", "inside") ?? 2, to: mk("hide", "burst") ?? 5, text: "SAFE INSIDE" }, { at: mk("hide", "burst") ?? 5, text: "BURST!", color: GOLD }],
@@ -108,7 +108,7 @@ const Subs: React.FC<{ id: string }> = ({ id }) => {
   const shown = line.split(" "), aligned = shown.length === p.toks.length;
   const now = p.toks.reduce((a, k, i) => (t >= k.t - 0.02 ? i : a), 0);
   return (
-    <div style={{ position: "absolute", left: 0, right: 0, bottom: 70, display: "flex", justifyContent: "center" }}>
+    <div style={{ position: "absolute", left: 0, right: 0, bottom: 170, display: "flex", justifyContent: "center" }}>
       <div style={{ maxWidth: 1500, padding: "14px 30px 18px", background: "rgba(0,0,0,.82)", boxShadow: "6px 6px 0 #000", fontFamily: VT, fontSize: 68, lineHeight: 1.05, color: "#fff", textAlign: "center" }}>
         {aligned ? shown.map((w, i) => <span key={i} style={{ color: i === now ? GREEN : "#fff" }}>{w}{i < shown.length - 1 ? " " : ""}</span>) : line}
       </div>
@@ -132,8 +132,8 @@ const PostView: React.FC<{ p: Post }> = ({ p }) => {
   const total = postFrames(p);
   return (
     <AbsoluteFill style={{ background: "#050505" }}>
-      <Video src={staticFile(`guide/${p.id}.mp4`)} muted
-        style={{ position: "absolute", left: 960 - 960 * ZOOM, top: 1080 - 1080 * ZOOM, width: 1920 * ZOOM, height: 1080 * ZOOM }} />
+      {/* The whole game, not zoomed: nothing of it cut off. */}
+      <Video src={staticFile(`guide/${p.id}.mp4`)} muted style={{ position: "absolute", inset: 0, width: 1920, height: 1080 }} />
       {(p.tags ?? []).map((t, i) => <Tag key={i} {...t} />)}
       {(p.keys ?? []).map((k, i) => <KeyCap key={i} {...k} />)}
       <Step n={p.n} title={p.title} />
@@ -148,3 +148,51 @@ const PostView: React.FC<{ p: Post }> = ({ p }) => {
 };
 
 export const GuidePost: React.FC<{ id: string }> = ({ id }) => <PostView p={POSTS.find((x) => x.id === id)!} />;
+
+/* Intro of the merged video: the airdrop trailer's loud colours. */
+const LIME = "#ccff00", RED = "#f62a2d", CYAN = "#00e5ff";
+export const INTRO_FRAMES = sec(3.6);
+const Slam: React.FC<{ at: number; text: string; y: number; size: number; color: string }> = ({ at: a0, text, y, size, color }) => {
+  const f = useCurrentFrame(), t = f - a0;
+  if (t < 0) return null;
+  const s2 = t < 2 ? 1.9 : t < 4 ? 0.88 : t < 6 ? 1.06 : 1, c = Math.max(0, 14 - t * 2), d = Math.round(size / 9);
+  return (
+    <div style={{ position: "absolute", left: 0, right: 0, top: y, textAlign: "center", fontFamily: PX, fontSize: size, color, whiteSpace: "nowrap", transform: `scale(${s2})`,
+      textShadow: `${c}px 0 0 ${RED}, ${-c}px 0 0 ${CYAN}, ${d}px ${d}px 0 #000, ${d * 2}px ${d * 2}px 0 rgba(0,0,0,.45)` }}>{text}</div>
+  );
+};
+const Intro: React.FC = () => {
+  const f = useCurrentFrame(), { fps } = useVideoConfig();
+  const flash = interpolate(f, [0, 6], [0.9, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const logo = spring({ frame: f - 22, fps, config: { damping: 12 } });
+  const drift = f * 1.6;
+  return (
+    <AbsoluteFill>
+      <ArenaFloor />
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 45%, rgba(204,255,0,.35), rgba(0,255,136,.12) 45%, rgba(0,0,0,0) 75%)` }} />
+      <Food seed="guide-intro" n={90} />
+      <Pill x={260 + drift} y={250} wL={20} scale={9} top="#F44336" bot="#3F51B5" ang={GAME_ANGLE} />
+      <Pill x={1680 - drift} y={820} wL={24} scale={9} top="#FFC107" bot="#9C27B0" ang={GAME_ANGLE} />
+      <Pill x={1560 - drift * 0.6} y={210} wL={14} scale={8} top="#03A9F4" bot="#8BC34A" ang={GAME_ANGLE} />
+      <Pill x={330 + drift * 0.6} y={860} wL={16} scale={8} top="#c0c8d0" bot="#00ff44" ang={GAME_ANGLE} />
+      <Slam at={4} text="HOW TO PLAY" y={300} size={120} color={LIME} />
+      <div style={{ position: "absolute", left: 0, right: 0, top: 500, display: "flex", justifyContent: "center", transform: `scale(${logo})` }}>
+        <Img src={staticFile("howto/brand.png")} style={{ width: 900, filter: "drop-shadow(10px 10px 0 #000)" }} />
+      </div>
+      <Slam at={42} text="IN 5 STEPS" y={720} size={46} color="#fff" />
+      <AbsoluteFill style={{ background: "#fff", opacity: flash }} />
+      <Sequence from={sec(0.35)} layout="none"><Audio src={staticFile("guide/intro.mp3")} /></Sequence>
+      <Sequence from={0} layout="none"><Audio src={staticFile("snd/split.mp3")} volume={0.5} /></Sequence>
+    </AbsoluteFill>
+  );
+};
+export const GUIDE_ALL_FRAMES = INTRO_FRAMES + POSTS.reduce((a, p) => a + postFrames(p), 0);
+export const GuideAll: React.FC = () => {
+  let from = INTRO_FRAMES;
+  return (
+    <AbsoluteFill style={{ background: "#050505" }}>
+      <Sequence durationInFrames={INTRO_FRAMES}><Intro /></Sequence>
+      {POSTS.map((p) => { const d = postFrames(p), el = <Sequence key={p.id} from={from} durationInFrames={d}><PostView p={p} /></Sequence>; from += d; return el; })}
+    </AbsoluteFill>
+  );
+};

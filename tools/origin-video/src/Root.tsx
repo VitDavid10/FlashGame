@@ -6,7 +6,7 @@ import { ACTION_FRAMES, Action } from "./Action";
 import { SOCIALS_FRAMES, SOCIALS_X_FRAMES, Socials, SocialsX } from "./Socials";
 import { AIRDROP_FRAMES, Airdrop } from "./Airdrop";
 import { HOWTO_FRAMES, HowTo } from "./HowTo";
-import { GuidePost, POSTS, postFrames } from "./Guide";
+import { GUIDE_ALL_FRAMES, GuideAll, GuidePost, POSTS, postFrames } from "./Guide";
 import { H, W } from "./ui";
 
 export const RemotionRoot: React.FC = () => {
@@ -30,6 +30,8 @@ export const RemotionRoot: React.FC = () => {
       {POSTS.map((p) => (
         <Composition key={p.id} id={"Guide-" + p.id} component={GuidePost} defaultProps={{ id: p.id }} durationInFrames={postFrames(p)} fps={30} width={W} height={H} />
       ))}
+      {/* The whole thread in one video, with its intro. */}
+      <Composition id="Guide-all" component={GuideAll} durationInFrames={GUIDE_ALL_FRAMES} fps={30} width={W} height={H} />
       {/* Posters for the posts, one still each (see src/Concepts.tsx). */}
       {CONCEPTS.map(([id, C]) => (
         <Composition key={id} id={id} component={C} durationInFrames={1} fps={30} width={W} height={H} />

@@ -103,7 +103,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
     await cmd('Page.navigate', { url: BASE + '/' }); await wait(6000);
     await js(`document.getElementById('introEnter').click()`); await wait(1000);
     await js(`document.getElementById('arenaBlock').scrollIntoView()`); await wait(2500);
-    await js(`document.getElementById('screen').classList.add('full'); document.body.classList.add('arena-full')`); await wait(800);
+    await js(`document.getElementById('screen').classList.add('full'); document.body.classList.add('arena-full'); document.getElementById('hudq').style.setProperty('display', 'none', 'important')`); await wait(800);
     await js(`window.__oldDoc = ${G}.document; document.getElementById('veil').click()`);
     for (let i = 0; i < 150; i++) { if (await js(`(() => { try { const w = ${G}, p = w.document !== window.__oldDoc && w.me && w.me(); if (p && p.alive && p.cells.length && w.__pwLab && w.__pwLab.sim) { p.godMode = true; return true; } } catch (e) {} return false; })()`)) break; await wait(100); }
     await js(HELPERS);
@@ -121,7 +121,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
 
     // ---- 1. Move & grow: steer around eating food, then a smaller pill ----
     await record('move', async mark => {
-        const path_ = [[320, 60], [260, 240], [-80, 300], [-300, 120], [-260, -160]];
+        const path_ = [[320, 60], [260, 240], [-80, 300], [-300, 120], [-260, -160], [60, -320], [300, -120], [280, 120]];
         for (const [dx, dy] of path_) { await g(`w.__h.mouse(${dx}, ${dy})`); await W(1200); }
         mark('prey');
         const k0 = await kills();
@@ -131,7 +131,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
         for (let i = 0; i < 90 && (await kills()) === k0; i++) await wait(100);
         mark('kill');
         await g(`w.__h.stop(); w.__h.mouse(200, 150)`);
-        await W(1600);
+        await W(3000);
     });
 
     // ---- 2. Hide in a virus: slip in, a big pill crashes into it and bursts ----
@@ -207,7 +207,7 @@ const W = ms => wait(ms / SLOW);   // a wait in game (slow-motion) time
         await g(`w.__h.mouse(-320, 120)`);
         mark('sprint'); mark('sprintKey' + sprint);
         await g(`w.__h.key('Digit${sprint}', '${sprint}')`);
-        await W(2300);
+        await W(2600);
     });
 
     // ---- 5. Survive: a big pill closes in, you run ----
