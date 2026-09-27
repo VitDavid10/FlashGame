@@ -13,11 +13,10 @@ const SANS = "'Segoe UI', 'Inter', Arial, sans-serif";
 // Cut to the music: "Deflector" (Ghostrifter), 105 BPM, played from 14.98 s so its drop
 // (21.84 s in the song) lands on the first gameplay cut. Every cut falls on a bar.
 // The video starts in the song's short pause (15.40 s): the drop (21.84 s) is then at 6.44 s,
-// where the gameplay starts; from there every cut sits on a beat (at), intro marks on the song's own hits (tf).
+// where the gameplay starts; from there every cut sits on a beat (at).
 const BEAT = 60 / 105, BAR = BEAT * 4, SONG_FROM = 15.40, DROP = 21.84 - SONG_FROM;
 const at = (beats: number) => Math.round((DROP + (beats - 12) * BEAT) * 30);
 const bt = (beats: number) => Math.round(beats * BEAT * 30);
-const tf = (songSec: number) => Math.round((songSec - SONG_FROM) * 30);
 const T_LOCK = 30, T_PHONE = 72, T_FLIP = 129;   // 1.0 s, 2.4 s, 4.3 s (picked by ear)
 const INTRO_BEATS = 12;
 const CLIPS = [1, 1, 1, 1, 1, 1, 1, 1, 2];   // bars per clip (public/mobile/kN.mp4)
