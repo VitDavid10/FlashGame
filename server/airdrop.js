@@ -78,7 +78,7 @@ function createAirdrop(opts) {
     };
     log('[airdrop] on-chain RPC ' + AIRDROP_RPC.replace(/([?&]api-key=)[^&]+/, '$1***'));
     // Real post ids to repost/like - keep this in sync with POSTS in airdrop.html.
-    const POST_IDS = ['2103911009433841817'];
+    const POST_IDS = ['2104586375907729522', '2103911009433841817'];
     const score = createScore({ postIds: POST_IDS, inviteCountOf: store.inviteCount });
     const admin = createAdmin({ store, score, log, password: process.env.ADMIN_KEY });
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
