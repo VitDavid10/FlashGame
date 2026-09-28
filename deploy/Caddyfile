@@ -16,6 +16,16 @@
 
 pillwars.fun, www.pillwars.fun {
 	encode zstd gzip
+	# Log de acceso propio (sin cookies, sin terceros): sirve para contar
+	# visitantes mientras Google Analytics siga desactivado. roll_keep_for
+	# 1440h = 60 dias, igual que el resto de logs del proyecto (RGPD).
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 50mb
+			roll_keep 20
+			roll_keep_for 1440h
+		}
+	}
 	handle_path /h0/* {
 		reverse_proxy localhost:8081
 	}
