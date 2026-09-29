@@ -93,6 +93,7 @@ const Store: React.FC = () => {
   const inK = interpolate(f, [0, 12], [0, 1], { ...clamp, easing: ease });
   const zoom = interpolate(f, [bt(4), bt(6)], [0, 1], { ...clamp, easing: ease });
   const row = interpolate(f, [bt(6.5), bt(6.5) + 9], [0, 1], { ...clamp, easing: ease });
+  const soon = interpolate(f, [bt(8), bt(8) + 6], [0, 1], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 3) });
   const T: React.CSSProperties = { position: "absolute", fontFamily: DS, color: "#fff" };
   const title: React.CSSProperties = { ...T, left: 36, fontSize: 124, fontWeight: 500, letterSpacing: -3, lineHeight: 1, whiteSpace: "nowrap" };
   return (
@@ -121,7 +122,9 @@ const Store: React.FC = () => {
             <div style={{ ...T, left: 799, top: 196, fontSize: 29, fontWeight: 500, letterSpacing: -0.3 }}>Solana dApp Store</div>
             <div style={{ ...T, left: 800, top: 275, fontSize: 20, fontWeight: 600 }}>Ecosystem</div>
             <div style={{ ...T, left: 1066, top: 281, fontSize: 14, fontWeight: 500, color: "#cdb6ff" }}>See all</div>
-            <Row y={321} icon="perks/pw-icon.png" name="PillWars" desc="Eat, grow and outplay rival pills" soon style={{ opacity: row, transform: `translateX(${(1 - row) * 40}px)` }} />
+            <Row y={321} icon="perks/pw-icon.png" name="PillWars" desc="Eat, grow and outplay rival pills" style={{ opacity: row, transform: `translateX(${(1 - row) * 40}px)` }} />
+            <div style={{ position: "absolute", left: 1004, top: 296, padding: "5px 11px 4px", background: "#ffc53d", border: "2.5px solid #10281f", boxShadow: "4px 4px 0 #10281f",
+              fontFamily: PX, fontSize: 15, color: "#10281f", opacity: soon > 0 ? 1 : 0, transform: `rotate(9deg) scale(${interpolate(soon, [0, 1], [2.2, 1])})` }}>SOON</div>
             <Row y={400} icon="perks/ds-jup.png" name="Jupiter" desc="Liquidity aggregator & swaps" />
             <Row y={481} icon="perks/ds-mar.png" name="Marinade" desc="Stake without locking your funds" />
             <div style={{ ...T, left: 800, top: 593, fontSize: 20, fontWeight: 600 }}>Top categories</div>
@@ -148,22 +151,22 @@ const SolMark: React.FC<{ h: number }> = ({ h }) => (
 // Scene 7: one word per beat on black, the game's pixel font, between two matches.
 const Card: React.FC = () => {
   const f = useCurrentFrame();
-  const words = ["EAT.", "SPLIT.", "SURVIVE."];
+  const lines: [string, number, string, number][] = [["EVERY KILL PAYS", 0, "#ccff00", 76], ["DIE AND IT'S GONE", 1.5, "#fff", 76]];
   return (
-    <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 34 }}>
-      {words.map((w, i) => {
-        const t = f - bt(i);
-        if (t < 0) return <div key={w} style={{ height: 118 }} />;
+    <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 30 }}>
+      {lines.map(([w, b, c, size]) => {
+        const t = f - bt(b), h = size * 1.15;
+        if (t < 0) return <div key={w} style={{ height: h }} />;
         const k = interpolate(t, [0, 5], [1.35, 1], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 3) });
-        return <div key={w} style={{ fontFamily: PX, fontSize: 104, lineHeight: "118px", color: i === 2 ? "#ccff00" : "#fff", transform: `scale(${k})`, opacity: interpolate(t, [0, 3], [0, 1], clamp),
-          textShadow: "8px 8px 0 #1d6b64" }}>{w}</div>;
+        return <div key={w} style={{ fontFamily: PX, fontSize: size, lineHeight: `${h}px`, color: c, transform: `scale(${k})`, opacity: interpolate(t, [0, 3], [0, 1], clamp),
+          textShadow: `${size / 13}px ${size / 13}px 0 #1d6b64` }}>{w}</div>;
       })}
     </AbsoluteFill>
   );
 };
 // The ending on the phone's screen (same look as the full-screen ending once it fills the frame).
-const EndCard: React.FC = () => (
-  <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32 }}>
+const EndCard: React.FC<{ show: number }> = ({ show }) => (
+  <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32, opacity: show }}>
     <Img src={staticFile("howto/brand.png")} style={{ width: 645, filter: "drop-shadow(6px 6px 0 #1d6b64)" }} />
     <div style={{ fontFamily: PX, fontSize: 28, color: "#ccff00", textShadow: "2px 2px 0 #000" }}>PILLWARS.FUN</div>
   </AbsoluteFill>
@@ -229,7 +232,8 @@ export const Mobile: React.FC = () => {
       {/* 5. only on Seeker: the Seeker (back), text beside it; then it turns to landscape, flips over and
           its screen, showing our ending, zooms in until it is the whole frame */}
       <Sequence from={at(E + 16)}>
-        <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 120%, #1f7f79 0%, #0b3a40 30%, #030607 62%, #000 100%)", fontFamily: SANS }}>
+        <AbsoluteFill style={{ background: "#000", fontFamily: SANS }}>
+          <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 120%, #1f7f79 0%, #0b3a40 30%, #030607 62%, #000 100%)", opacity: rIn }} />
           <div style={{ position: "absolute", left: 150, top: 300, opacity: rIn * (1 - rOut), transform: `translateY(${(1 - rIn) * 30}px)` }}>
             <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: 10, color: "#9fe8dc" }}>ONLY ON SEEKER</div>
             <div style={{ marginTop: 22, fontSize: 132, fontWeight: 600, letterSpacing: -4, color: "#fff", lineHeight: 1.02 }}>Exclusive<br />rewards</div>
@@ -238,7 +242,7 @@ export const Mobile: React.FC = () => {
             </div>
           </div>
           <AbsoluteFill style={{ transformOrigin: "960px 540px", transform: `translate(${585 * (1 - rTurn)}px, ${(1 - rIn) * 60}px) rotate(${-104 * (1 - rTurn)}deg)`, opacity: rIn }}>
-            <Seeker ry={180 * (1 - rFlip)} scale={0.55 + rTurn * 0.15 + rZoom * 0.85} y={540} screen={<EndCard />} />
+            <Seeker ry={180 * (1 - rFlip)} scale={0.55 + rTurn * 0.15 + rZoom * 0.85} y={540} screen={<EndCard show={interpolate(f, [at(R + 10.5), at(R + 10.5) + 6], [0, 1], clamp)} />} />
           </AbsoluteFill>
         </AbsoluteFill>
       </Sequence>
