@@ -34,25 +34,32 @@ export const PerkMadLads: React.FC = () => (
 );
 
 
-/* Jumper Exchange perk: their own dark violet + purple (matched live off
-   jumper.xyz: body #120B1E, primary button #653CA2), no logo asset on file
-   so it's a typographic wordmark instead of an image lockup. */
-const JMP_BG = "#120b1e", JMP_PURPLE = "#653ca2", JMP_GRAD = "linear-gradient(90deg, #653ca2, #b98bff)";
+/* Jumper Exchange perk: their dark violet + purple (matched live off jumper.xyz:
+   body #120B1E, primary button #653CA2). The icon is redrawn as SVG from their
+   X avatar: a lilac chevron with a magenta cap on a dark tile. */
+const JMP_BG = "#120b1e", JMP_PURPLE = "#653ca2";
+const JumperIcon: React.FC<{ x: number; y: number; s: number; rot: number }> = ({ x, y, s, rot }) => (
+  <div style={{ position: "absolute", left: x, top: y, width: s, height: s, transform: `rotate(${rot}deg)`, boxShadow: `${Math.round(s / 18)}px ${Math.round(s / 18)}px 0 #000`, border: `${Math.round(s / 30)}px solid #000`, overflow: "hidden" }}>
+    <svg viewBox="10 5 795 795" width="100%" height="100%" style={{ display: "block" }}>
+      <rect x="10" y="5" width="795" height="795" fill="#1c0a33" />
+      <path d="M248 218 Q330 140 410 220 L330 300 Z" fill="#cc66ff" />
+      <path d="M455 262 L548 352 Q580 385 568 425 L385 610 Q335 650 275 620 Q235 595 255 578 L410 425 Q420 405 405 390 L375 355 Q368 345 380 330 Z" fill="#c3a3ec" />
+    </svg>
+  </div>
+);
 export const PerkJumper: React.FC = () => (
   <AbsoluteFill style={{ background: JMP_BG }}>
     <AbsoluteFill style={{ backgroundImage: `radial-gradient(circle at 22% 20%, rgba(101,60,162,.55), transparent 42%), radial-gradient(circle at 82% 78%, rgba(185,139,255,.35), transparent 40%)` }} />
     <AbsoluteFill style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.05) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,.05) 2px, transparent 2px)", backgroundSize: "60px 60px" }} />
-    <Logo src={PFP} x={780} y={110} s={260} rot={-5} border="#fff" />
-    <T y={190} size={70} color="#fff" sh="transparent">🤝</T>
-    <div style={{ position: "absolute", left: 1020, top: 110, width: 260, height: 260, border: `9px solid ${JMP_PURPLE}`, boxShadow: "14px 14px 0 #000", background: "#1c1030", display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(5deg)" }}>
-      <span style={{ fontFamily: PX, fontSize: 46, lineHeight: 1.3, textAlign: "center", background: JMP_GRAD, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>JMP</span>
-    </div>
-    <T y={470} size={60} color="#fff" sh="rgba(0,0,0,.4)">PERK FOR</T>
-    <T y={560} size={130} color="#fff" sh={JMP_PURPLE}>JUMPER</T>
-    <T y={700} size={44} color="#d8c6ff" sh="transparent">LEVEL 10+ ON JUMPER EXCHANGE (500+ XP)</T>
-    <div style={{ position: "absolute", left: 290, right: 290, top: 780, height: 130, background: "#000", boxShadow: "12px 12px 0 rgba(0,0,0,.35)" }} />
-    <T y={815} size={58} color={LIME} sh="transparent">+5,000 AIRDROP POINTS</T>
-    <T y={990} size={26} color="#d8c6ff" sh="transparent">PILLWARS GENESIS DROP · PILLWARS.FUN</T>
+    <Logo src={PFP} x={520} y={70} s={260} rot={-4} border="#fff" />
+    <T y={165} size={80} color="#d8c6ff" sh="#000">X</T>
+    <JumperIcon x={1140} y={70} s={260} rot={4} />
+    <T y={410} size={60} color="#fff" sh="rgba(0,0,0,.4)">PERK FOR</T>
+    <T y={500} size={130} color="#fff" sh={JMP_PURPLE}>JUMPER</T>
+    <T y={720} size={40} color="#d8c6ff" sh="transparent">LEVEL 10+ ON JUMPER EXCHANGE (500+ XP)</T>
+    <div style={{ position: "absolute", left: 290, right: 290, top: 810, height: 130, background: JMP_PURPLE, border: "6px solid #c3a3ec", boxSizing: "border-box", boxShadow: "12px 12px 0 #000" }} />
+    <T y={845} size={58} color="#fff" sh="#120b1e">+5,000 AIRDROP POINTS</T>
+    <T y={1000} size={30} color="#d8c6ff" sh="transparent">PILLWARS X JUMPTEMBER</T>
   </AbsoluteFill>
 );
 
