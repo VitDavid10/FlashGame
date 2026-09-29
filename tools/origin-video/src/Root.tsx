@@ -1,5 +1,5 @@
 import { MOBILE_FRAMES, Mobile } from "./Mobile";
-import { PerkMadLads, PerkSeeker } from "./Perks";
+import { PerkJumper, PerkMadLads, PerkSeeker } from "./Perks";
 import "./index.css";
 import { Composition } from "remotion";
 import { Origin, TOTAL } from "./Origin";
@@ -42,6 +42,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="CountrySkins" component={CountrySkins} durationInFrames={COUNTRY_SKINS_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
+      <Composition id="Perk-jumper" component={PerkJumper} durationInFrames={1} fps={30} width={W} height={H} />
       {/* Posters for the posts, one still each (see src/Concepts.tsx). */}
       {CONCEPTS.map(([id, C]) => (
         <Composition key={id} id={id} component={C} durationInFrames={1} fps={30} width={W} height={H} />

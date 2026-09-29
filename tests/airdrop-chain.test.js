@@ -59,7 +59,7 @@ test('the page only sees the history of the wallet currently linked', () => {
     const a = s.linkWallet(null, W1, '');
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).chain, null);
     s.setChain(W1, { txs: 42, firstAt: 1700000000, capped: false, checkedAt: 1 });
-    assert.deepStrictEqual(s.publicView(s.sessionUser(a.token)).chain, { txs: 42, firstAt: 1700000000, capped: false, nfts: [], airdrops: [] });
+    assert.deepStrictEqual(s.publicView(s.sessionUser(a.token)).chain, { txs: 42, firstAt: 1700000000, capped: false, nfts: [], airdrops: [], jumper: false });
     s.unlink(a.token, 'wallet');
     s.linkWallet(a.token, W2, '');
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).chain, null);

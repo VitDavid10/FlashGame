@@ -1070,7 +1070,8 @@ function xProfile(x) {
   return { lines };
 }
 // On-chain: Airdrop Hunter up to 11,000 (tiers), NFT Holder up to 20,000 (Saga or
-// Seeker Genesis Token + Mad Lads), wallet age and transactions up to 2,400 (tiers).
+// Seeker Genesis Token + Mad Lads), Jumper 5,000 flat, wallet age and transactions
+// up to 2,400 (tiers).
 // Real ones are verified on the server: the wallet's account for that mint has
 // a transaction dated at or before that project's own claim deadline (a date
 // that can't be faked by buying the token today). See server/airdrop-tokens.js.
@@ -1080,7 +1081,7 @@ const AIRDROPS = [
   { id: 'jto', name: 'Jito (JTO)' }, { id: 'pyth', name: 'Pyth (PYTH)' }, { id: 'w', name: 'Wormhole (W)' },
   { id: 'tnsr', name: 'Tensor (TNSR)' }, { id: 'drift', name: 'Drift (DRIFT)' }, { id: 'me', name: 'Magic Eden (ME)' },
   { id: 'met', name: 'Meteora (MET)' }, { id: 'bonk', name: 'BONK' }, { id: 'cloud', name: 'Sanctum (CLOUD)' },
-  { id: 'grass', name: 'Grass (GRASS)' }, { id: 'jumper', name: 'Jumper (1,000+ XP)' },
+  { id: 'grass', name: 'Grass (GRASS)' },
 ];
 // [minimum, share of the category]: the highest tier reached pays.
 const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
@@ -1089,7 +1090,7 @@ const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
 // Checked on-chain by the server: a Saga or Seeker Genesis Token (either one
 // pays, not both) and, separately, a Mad Lad.
-const GENESIS_PTS = 10000, MADLADS_PTS = 10000;
+const GENESIS_PTS = 10000, MADLADS_PTS = 10000, JUMPER_PTS = 5000;
 function walletProfile(addr) {
   const r = rng('w:' + addr);
   // Age and transactions are real, read by the server from mainnet (S.chain);
@@ -1102,6 +1103,7 @@ function walletProfile(addr) {
   const got = AIRDROPS.filter(a => airdrops.includes(a.id));
   const nfts = demo ? ['saga', 'madlads'].filter(() => r() < 0.4) : c ? c.nfts || [] : [];
   const genesis = nfts.includes('saga') || nfts.includes('seeker'), madlads = nfts.includes('madlads');
+  const jumperOk = demo ? r() < 0.4 : c ? !!c.jumper : false;
   const tip = '<div class="tip"><b>AIRDROPS QUALIFIED</b>' + AIRDROPS.map(a => {
     const ok = got.includes(a);
     return '<div class="' + (ok ? 'ok' : 'no') + '"><i>' + (ok ? 'YES' : a.pending ? '?' : '-') + '</i>' + esc(a.name) + (a.pending ? ' (pending)' : '') + '</div>';
@@ -1111,6 +1113,7 @@ function walletProfile(addr) {
       ['Airdrop Hunter (' + got.length + '/' + AIRDROPS.length + ')', Math.round(HUNTER_MAX * tierPct(got.length, HUNTER_TIERS)), tip],
       ['Saga / Seeker Genesis Token' + (wait ? ' (checking...)' : genesis ? '' : ' (none)'), genesis ? GENESIS_PTS : 0],
       ['Mad Lads' + (wait ? ' (checking...)' : madlads ? '' : ' (none)'), madlads ? MADLADS_PTS : 0],
+      ['Jumper (Level 10+)' + (wait ? ' (checking...)' : jumperOk ? '' : ' (none)'), jumperOk ? JUMPER_PTS : 0],
       ['Wallet age (' + (wait ? 'checking...' : fmt(days) + (c && c.capped ? '+' : '') + ' days') + ')', Math.round(AGE_MAX * tierPct(days, AGE_TIERS))],
       ['Transactions (' + (wait ? 'checking...' : fmt(txs) + (c && c.capped ? '+' : '')) + ')', Math.round(TX_MAX * tierPct(txs, TX_TIERS))],
     ],

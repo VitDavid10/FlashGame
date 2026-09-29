@@ -25,11 +25,11 @@
  *    against a total computed here from verified data, not a number the
  *    client can influence.
  */
-const AIRDROPS_TOTAL = 11;   // 10 verified airdrops + Jumper (see airdrop-tokens.js / airdrop-jumper.js)
+const AIRDROPS_TOTAL = 10;   // 10 verified airdrops (see airdrop-tokens.js); Jumper is its own flat perk now
 const HUNTER_MAX = 11000, HUNTER_TIERS = [[1, .2], [2, .35], [3, .5], [4, .65], [5, .8], [6, .9], [7, 1]];
 const TX_MAX = 2400, TX_TIERS = [[50, .1], [200, .25], [500, .4], [1000, .6], [2500, .8], [5000, 1]];
 const AGE_MAX = 2400, AGE_TIERS = [[30, .1], [90, .25], [180, .4], [365, .6], [730, .8], [1095, 1]];
-const GENESIS_PTS = 10000, MADLADS_PTS = 10000;
+const GENESIS_PTS = 10000, MADLADS_PTS = 10000, JUMPER_PTS = 5000;
 const INVITE_MILES = [[1, 500], [3, 700], [5, 1000], [10, 1300], [15, 1300], [20, 1300], [25, 1300], [30, 1300], [35, 1300], [40, 1300], [45, 1300], [50, 2400]];
 const tierPct = (v, tiers) => tiers.reduce((p, t) => v >= t[0] ? t[1] : p, 0);
 
@@ -123,7 +123,7 @@ function walletPts(wallet, chain) {
     const airdrops = Array.isArray(chain.airdrops) ? chain.airdrops : [];
     const genesis = nfts.includes('saga') || nfts.includes('seeker'), madlads = nfts.includes('madlads');
     return Math.round(HUNTER_MAX * tierPct(airdrops.length, HUNTER_TIERS)) +
-        (genesis ? GENESIS_PTS : 0) + (madlads ? MADLADS_PTS : 0) +
+        (genesis ? GENESIS_PTS : 0) + (madlads ? MADLADS_PTS : 0) + (chain.jumper ? JUMPER_PTS : 0) +
         Math.round(AGE_MAX * tierPct(days, AGE_TIERS)) + Math.round(TX_MAX * tierPct(chain.txs || 0, TX_TIERS));
 }
 const invitePts = n => INVITE_MILES.reduce((a, m) => a + (n >= m[0] ? m[1] : 0), 0);

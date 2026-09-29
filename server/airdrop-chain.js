@@ -63,7 +63,7 @@ function createChain(opts) {
             out.nfts = await nfts.walletNfts(address);
             out.airdrops = await tokens.walletAirdrops(address);
             const xp = await jumper.fetchXP(address, { fetch: doFetch, log });
-            if (jumper.qualifies(xp)) out.airdrops.push('jumper');
+            out.jumper = jumper.qualifies(xp);
         }
         return out;
     }

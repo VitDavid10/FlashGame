@@ -231,8 +231,8 @@ test('walletPts is zero until the chain has been checked, then follows the tiers
     assert.strictEqual(walletPts('W', null), 0);
     assert.strictEqual(walletPts(null, { txs: 999999 }), 0);
     const nowS = Math.floor(Date.now() / 1000);
-    const full = walletPts('W', { txs: 6000, firstAt: nowS - 4 * 365 * 86400, nfts: ['saga', 'madlads'], airdrops: ['jto', 'pyth', 'w', 'tnsr', 'drift', 'me', 'met'] });
-    assert.strictEqual(full, 11000 + 10000 + 10000 + 2400 + 2400);   // every category maxed
+    const full = walletPts('W', { txs: 6000, firstAt: nowS - 4 * 365 * 86400, nfts: ['saga', 'madlads'], airdrops: ['jto', 'pyth', 'w', 'tnsr', 'drift', 'me', 'met'], jumper: true });
+    assert.strictEqual(full, 11000 + 10000 + 10000 + 5000 + 2400 + 2400);   // every category maxed
 });
 
 test('view works with the chain exactly as the store keeps it (nfts as { id: mint })', () => {

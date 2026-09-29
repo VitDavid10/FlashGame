@@ -10,6 +10,7 @@ in proportion to each player's points.
 | Airdrop Hunter | 11,000 | Tiers by Solana airdrops the wallet qualified for |
 | Saga / Seeker Genesis Token | 10,000 | Holding a Saga or Seeker Genesis Token (either one, not both) |
 | Mad Lads | 10,000 | Holding a Mad Lads NFT |
+| Jumper | 5,000 | Level 10+ (500+ XP) on Jumper Exchange |
 | Wallet age | 2,400 | Tiers by days since the wallet's first transaction |
 | Transactions | 2,400 | Tiers by successful transactions |
 
@@ -31,11 +32,12 @@ Checked live on mainnet by the server (`server/airdrop-tokens.js`):
 | Sanctum (CLOUD) | 14 Apr 2025 | [phantom.com](https://phantom.com/learn/crypto-101/sanctum-cloud-airdrop) |
 | Grass (GRASS), season 1 only | 27 Mar 2025 | [coingabbar.com](https://www.coingabbar.com/en/crypto-currency-news/grass-airdrop-claim-period-extended-check-grass-claim-details) |
 
-**Jumper (1,000+ XP)** — checked live against a third-party site
-(`jumper-jade.vercel.app`, not run by Jumper Exchange itself; there is no
-official public API for this) that reports a Solana wallet's Jumper XP. If
-that site is unreachable the wallet just doesn't get the points this check —
-never a false yes (`server/airdrop-jumper.js`).
+**Jumper (Level 10+, 500+ XP)** — a flat 5,000, separate from the Airdrop
+Hunter tiers above (same shape as Mad Lads). Checked live against a
+third-party site (`jumper-jade.vercel.app`, not run by Jumper Exchange
+itself; there is no official public API for this) that reports a Solana
+wallet's Jumper XP. If that site is unreachable the wallet just doesn't get
+the points this check — never a false yes (`server/airdrop-jumper.js`).
 
 **Jupiter (JUP)** and **Kamino (KMNO)** are not in the list: both are ongoing,
 season-based programs with no fixed snapshot or deadline, so there is no way

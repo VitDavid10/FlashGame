@@ -9,7 +9,7 @@
  */
 const ENDPOINT = 'https://jumper-jade.vercel.app/api/wallet?sol=';
 const TIMEOUT_MS = 8000;
-const MIN_XP = 1000;
+const MIN_XP = 500;   // Jumper's own Level 10
 
 async function fetchXP(address, opts) {
     const doFetch = (opts && opts.fetch) || fetch;
