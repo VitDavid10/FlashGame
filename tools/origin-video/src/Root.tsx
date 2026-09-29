@@ -11,6 +11,7 @@ import { HOWTO_FRAMES, HowTo } from "./HowTo";
 import { GUIDE_ALL_FRAMES, GuideAll, GuidePost, POSTS, postFrames } from "./Guide";
 import { H, W } from "./ui";
 import { COUNTRY_SKINS_FRAMES, CountrySkins } from "./CountrySkins";
+import { CHAOS_FRAMES, Chaos } from "./Chaos";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -40,6 +41,8 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Mobile" component={Mobile} durationInFrames={MOBILE_FRAMES} fps={30} width={W} height={H} />
       {/* 8 s: 12 country skins over their flags, then "UP TO 32 COUNTRY SKINS". */}
       <Composition id="CountrySkins" component={CountrySkins} durationInFrames={COUNTRY_SKINS_FRAMES} fps={30} width={W} height={H} />
+      {/* ~29 s of frantic gameplay on a reworked song: skills, escapes, kills that take money. */}
+      <Composition id="Chaos" component={Chaos} durationInFrames={CHAOS_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-jumper" component={PerkJumper} durationInFrames={1} fps={30} width={W} height={H} />
