@@ -37,7 +37,7 @@ const Mark: React.FC<{ h: number }> = ({ h }) => (
 // "Seeker" (their wordmark, public/perks/seeker-word.png) over "SOLANA ▤ MOBILE".
 const SeekerLockup: React.FC<{ h: number }> = ({ h }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-    <Img src={staticFile("perks/seeker-word.png")} style={{ height: h, mixBlendMode: "screen" }} />
+    <Img src={staticFile("perks/seeker-word.png")} style={{ height: h }} />
     <div style={{ marginTop: h * 0.02, display: "flex", alignItems: "center", gap: h * 0.1, fontFamily: SANS, fontWeight: 600, fontSize: h * 0.15, color: "#fff", letterSpacing: h * 0.028 }}>
       <span>SOLANA</span><Mark h={h * 0.16} /><span>MOBILE</span>
     </div>
@@ -158,30 +158,33 @@ export const Mobile: React.FC = () => {
   const endLock = interpolate(f, [at(END_BEATS + 1), at(END_BEATS + 1) + 8], [0, 1], clamp);
   const E = END_BEATS;
   return (
-    <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 115%, #1f7f79 0%, #0b3a40 32%, #050809 62%, #000 100%)" }}>
+    <AbsoluteFill style={{ background: "#000" }}>
       {/* 1. built on Solana */}
       <Sequence durationInFrames={T_LOCK}>
-        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 40,
-          opacity: interpolate(f, [0, 6], [0, 1], clamp), transform: `scale(${interpolate(f, [0, T_LOCK], [0.94, 1.02])})` }}>
+        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 40 }}>
+          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 40, opacity: interpolate(f, [0, 6], [0, 1], clamp), transform: `scale(${interpolate(f, [0, T_LOCK], [0.94, 1.02])})` }}>
           <div style={{ fontFamily: SANS, fontSize: 64, fontWeight: 600, color: "#fff", letterSpacing: 6 }}>BUILT ON</div>
           <SolMark h={86} />
           <div style={{ fontFamily: SANS, fontSize: 96, fontWeight: 700, color: "#fff", letterSpacing: 2 }}>SOLANA</div>
+          </div>
         </AbsoluteFill>
       </Sequence>
       {/* 2. Seeker × PillWars, zooming in */}
       <Sequence from={T_LOCK} durationInFrames={T_PHONE - T_LOCK}>
-        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 70,
-          opacity: interpolate(f, [T_LOCK, T_LOCK + 5], [0, 1], clamp),
-          transform: `scale(${interpolate(f, [T_LOCK, T_PHONE], [0.88, 1.06], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 2) })})` }}>
+        <AbsoluteFill style={{ background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 70, opacity: interpolate(f, [T_LOCK, T_LOCK + 5], [0, 1], clamp),
+            transform: `scale(${interpolate(f, [T_LOCK, T_PHONE], [0.88, 1.06], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 2) })})` }}>
           <SeekerLockup h={220} />
           <div style={{ fontFamily: SANS, fontSize: 90, fontWeight: 300, color: "#fff" }}>×</div>
           <Img src={staticFile("perks/pillwars-pfp.png")} style={{ width: 250, height: 250, borderRadius: 40 }} />
+          </div>
         </AbsoluteFill>
       </Sequence>
 
       {/* 3. the phone, no text: turns, zooms into the game, and at the end steps back */}
       <Sequence from={T_PHONE} durationInFrames={at(E + 4) - T_PHONE}>
         <AbsoluteFill>
+          <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 115%, #1f7f79 0%, #0b3a40 32%, #050809 62%, #000 100%)", opacity: interpolate(f, [T_PHONE, T_PHONE + 10], [0, 1], clamp) }} />
           <div style={{ position: "absolute", left: 0, right: 0, top: 50, opacity: endLock, display: "flex", justifyContent: "center" }}><SeekerLockup h={200} /></div>
           <Seeker ry={ry} scale={scale} y={y} screen={<>
             <Sequence durationInFrames={INTRO - T_PHONE} layout="none"><Img src={staticFile("perks/screen-start.png")} style={{ width: "100%", height: "100%" }} /></Sequence>
