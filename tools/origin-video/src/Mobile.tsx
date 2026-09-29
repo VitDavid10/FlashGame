@@ -23,7 +23,7 @@ const CLIPS = [1, 1, 1, 1, 1, 1, 1, 1, 2];   // bars per clip (public/mobile/kN.
 const STARTS: number[] = []; { let b = INTRO_BEATS; for (const n of CLIPS) { STARTS.push(at(b)); b += n * 4; } }
 const END_BEATS = INTRO_BEATS + CLIPS.reduce((a, n) => a + n * 4, 0);
 const INTRO = at(INTRO_BEATS), PLAY_END = at(END_BEATS);
-export const MOBILE_FRAMES = at(END_BEATS + 24);
+export const MOBILE_FRAMES = at(END_BEATS + 30);
 void BAR;
 
 // Solana Mobile's mark (the three stacked bars), white as on the Seeker.
@@ -78,21 +78,19 @@ const Seeker: React.FC<{ ry: number; scale: number; y: number; screen: React.Rea
 // writes itself in, then we zoom into the phone and PillWars (with its Install) slides
 // into the first row of "Ecosystem" (Orca's place in the original).
 const DS = "'Segoe UI', 'Inter', Arial, sans-serif";
-const Row: React.FC<{ y: number; icon: string; name: string; desc: string; style?: React.CSSProperties; line?: boolean }> = ({ y, icon, name, desc, style, line = true }) => (
+const Row: React.FC<{ y: number; icon: string; name: string; desc: string; style?: React.CSSProperties; line?: boolean; soon?: boolean }> = ({ y, icon, name, desc, style, line = true, soon }) => (
   <div style={{ position: "absolute", left: 800, top: y, width: 321, height: 64, ...style }}>
     <Img src={staticFile(icon)} style={{ position: "absolute", left: 0, top: 0, width: 47, height: 47, borderRadius: 10, maxWidth: "none" }} />
     <div style={{ position: "absolute", left: 57, top: 3, fontFamily: DS, fontSize: 15.5, color: "#f2f2f2" }}>{name}</div>
     <div style={{ position: "absolute", left: 57, top: 25, fontFamily: DS, fontSize: 12.5, color: "#bdbdc2" }}>{desc}</div>
-    <div style={{ position: "absolute", right: 0, top: 10, width: 52, height: 27, borderRadius: 14, background: "#7d2ff0", display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: DS, fontSize: 12.5, fontWeight: 700, color: "#fff" }}>Install</div>
+    <div style={{ position: "absolute", right: 0, top: 10, width: 52, height: 27, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DS, fontSize: 12.5, fontWeight: 700,
+      ...(soon ? { background: "#ccff00", color: "#000", letterSpacing: 1 } : { background: "#7d2ff0", color: "#fff" }) }}>{soon ? "SOON" : "Install"}</div>
     {line && <div style={{ position: "absolute", left: 0, right: 0, top: 64, height: 1, background: "#2a2a2c" }} />}
   </div>
 );
 const Store: React.FC = () => {
   const f = useCurrentFrame();
   const inK = interpolate(f, [0, 12], [0, 1], { ...clamp, easing: ease });
-  const l1 = interpolate(f, [bt(1), bt(1) + 10], [0, 1], { ...clamp, easing: ease });
-  const l2 = interpolate(f, [bt(2), bt(2) + 10], [0, 1], { ...clamp, easing: ease });
   const zoom = interpolate(f, [bt(4), bt(6)], [0, 1], { ...clamp, easing: ease });
   const row = interpolate(f, [bt(6.5), bt(6.5) + 9], [0, 1], { ...clamp, easing: ease });
   const T: React.CSSProperties = { position: "absolute", fontFamily: DS, color: "#fff" };
@@ -103,8 +101,8 @@ const Store: React.FC = () => {
         <div style={{ position: "absolute", inset: 0, transformOrigin: "965px 346px", transform: `translate(${-365 * zoom}px, ${-8 * zoom}px) scale(${1 + zoom * 0.9})` }}>
           <Img src={staticFile("perks/ds-cube.png")} style={{ position: "absolute", left: 48, top: 37, width: 86, height: 88, maxWidth: "none", mixBlendMode: "screen",
             opacity: inK * (1 - zoom), transform: `scale(${0.4 + inK * 0.6}) rotate(${(1 - inK) * -40}deg)` }} />
-          <div style={{ ...title, top: 150, opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l1) * 100}% 0)`, transform: `translateY(${(1 - l1) * 40}px)` }}>Solana</div>
-          <div style={{ ...title, top: 272, opacity: 1 - zoom, clipPath: `inset(0 0 ${(1 - l2) * 100}% 0)`, transform: `translateY(${(1 - l2) * 40}px)` }}>dApp Store</div>
+          <div style={{ ...title, top: 150, opacity: inK * (1 - zoom), transform: `translateY(${(1 - inK) * 40}px)` }}>Solana</div>
+          <div style={{ ...title, top: 272, opacity: inK * (1 - zoom), transform: `translateY(${(1 - inK) * 40}px)` }}>dApp Store</div>
           {/* the phone */}
           <div style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 675, transform: `translateY(${(1 - inK) * 420}px)` }}>
             {[[252, 43], [324, 56], [425, 30]].map(([y, h]) => <div key={y} style={{ position: "absolute", left: 1147, top: y, width: 4, height: h, borderRadius: 2, background: "#7fd99a" }} />)}
@@ -123,7 +121,7 @@ const Store: React.FC = () => {
             <div style={{ ...T, left: 799, top: 196, fontSize: 29, fontWeight: 500, letterSpacing: -0.3 }}>Solana dApp Store</div>
             <div style={{ ...T, left: 800, top: 275, fontSize: 20, fontWeight: 600 }}>Ecosystem</div>
             <div style={{ ...T, left: 1066, top: 281, fontSize: 14, fontWeight: 500, color: "#cdb6ff" }}>See all</div>
-            <Row y={321} icon="perks/pw-icon.png" name="PillWars" desc="Eat, grow and outplay rival pills" style={{ opacity: row, transform: `translateX(${(1 - row) * 40}px)` }} />
+            <Row y={321} icon="perks/pw-icon.png" name="PillWars" desc="Eat, grow and outplay rival pills" soon style={{ opacity: row, transform: `translateX(${(1 - row) * 40}px)` }} />
             <Row y={400} icon="perks/ds-jup.png" name="Jupiter" desc="Liquidity aggregator & swaps" />
             <Row y={481} icon="perks/ds-mar.png" name="Marinade" desc="Stake without locking your funds" />
             <div style={{ ...T, left: 800, top: 593, fontSize: 20, fontWeight: 600 }}>Top categories</div>
@@ -147,6 +145,30 @@ const SolMark: React.FC<{ h: number }> = ({ h }) => (
   </svg>
 );
 
+// Scene 7: one word per beat on black, the game's pixel font, between two matches.
+const Card: React.FC = () => {
+  const f = useCurrentFrame();
+  const words = ["EAT.", "SPLIT.", "SURVIVE."];
+  return (
+    <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 34 }}>
+      {words.map((w, i) => {
+        const t = f - bt(i);
+        if (t < 0) return <div key={w} style={{ height: 118 }} />;
+        const k = interpolate(t, [0, 5], [1.35, 1], { ...clamp, easing: (x) => 1 - Math.pow(1 - x, 3) });
+        return <div key={w} style={{ fontFamily: PX, fontSize: 104, lineHeight: "118px", color: i === 2 ? "#ccff00" : "#fff", transform: `scale(${k})`, opacity: interpolate(t, [0, 3], [0, 1], clamp),
+          textShadow: "8px 8px 0 #1d6b64" }}>{w}</div>;
+      })}
+    </AbsoluteFill>
+  );
+};
+// The ending on the phone's screen (same look as the full-screen ending once it fills the frame).
+const EndCard: React.FC = () => (
+  <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32 }}>
+    <Img src={staticFile("howto/brand.png")} style={{ width: 645, filter: "drop-shadow(6px 6px 0 #1d6b64)" }} />
+    <div style={{ fontFamily: PX, fontSize: 28, color: "#ccff00", textShadow: "2px 2px 0 #000" }}>PILLWARS.FUN</div>
+  </AbsoluteFill>
+);
+
 export const Mobile: React.FC = () => {
   const f = useCurrentFrame();
   // beats 0-2: built on Solana, 2-7: Seeker × PillWars, 7-12: the phone alone turns and zooms into the game (drop).
@@ -156,7 +178,12 @@ export const Mobile: React.FC = () => {
   const scale = interpolate(zoom, [0, 1], [0.7, 1.231]) * interpolate(out, [0, 1], [1, 0.55]);
   const y = interpolate(zoom, [0, 1], [560, 540]) + out * 150;
   const endLock = interpolate(f, [at(END_BEATS + 1), at(END_BEATS + 1) + 8], [0, 1], clamp);
-  const E = END_BEATS;
+  const E = END_BEATS, R = E + 16;
+  const rIn = interpolate(f, [at(R), at(R) + 12], [0, 1], { ...clamp, easing: ease });
+  const rOut = interpolate(f, [at(R + 6), at(R + 7)], [0, 1], clamp);
+  const rTurn = interpolate(f, [at(R + 6), at(R + 8)], [0, 1], { ...clamp, easing: ease });
+  const rFlip = interpolate(f, [at(R + 8), at(R + 9)], [0, 1], { ...clamp, easing: ease });
+  const rZoom = interpolate(f, [at(R + 9), at(R + 10.5)], [0, 1], { ...clamp, easing: ease });
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       {/* 1. built on Solana */}
@@ -190,7 +217,7 @@ export const Mobile: React.FC = () => {
             <Sequence durationInFrames={INTRO - T_PHONE} layout="none"><Img src={staticFile("perks/screen-start.png")} style={{ width: "100%", height: "100%" }} /></Sequence>
             {CLIPS.map((_, i) => (
               <Sequence key={i} from={STARTS[i] - T_PHONE} durationInFrames={i === CLIPS.length - 1 ? undefined : STARTS[i + 1] - STARTS[i]} layout="none">
-                <Video src={staticFile(`mobile/k${i + 1}.mp4`)} muted style={{ width: "100%", height: "100%" }} />
+                {i === 6 ? <Card /> : <Video src={staticFile(`mobile/k${i + 1}.mp4`)} muted style={{ width: "100%", height: "100%" }} />}
               </Sequence>
             ))}
           </>} />
@@ -199,23 +226,25 @@ export const Mobile: React.FC = () => {
 
       {/* 4. the dApp Store, PillWars in it */}
       <Sequence from={at(E + 4)} durationInFrames={at(E + 16) - at(E + 4)}><Store /></Sequence>
-      {/* 5. coming soon */}
-      <Sequence from={at(E + 16)} durationInFrames={at(E + 20) - at(E + 16)}>
-        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 40 }}>
-          <div style={{ fontFamily: PX, fontSize: 96, color: "#fff", textShadow: "8px 8px 0 #1d6b64" }}>COMING SOON</div>
-          <div style={{ fontFamily: SANS, fontSize: 44, fontWeight: 600, color: "#fff" }}>on the Solana dApp Store</div>
-        </AbsoluteFill>
-      </Sequence>
-      {/* 6. our usual ending */}
-      <Sequence from={at(E + 20)}>
-        <AbsoluteFill style={{ background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 50 }}>
-          <Img src={staticFile("howto/brand.png")} style={{ width: 1000, filter: "drop-shadow(10px 10px 0 #1d6b64)" }} />
-          <div style={{ fontFamily: PX, fontSize: 44, color: "#ccff00", textShadow: "4px 4px 0 #000" }}>PILLWARS.FUN</div>
+      {/* 5. only on Seeker: the Seeker (back), text beside it; then it turns to landscape, flips over and
+          its screen, showing our ending, zooms in until it is the whole frame */}
+      <Sequence from={at(E + 16)}>
+        <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 120%, #1f7f79 0%, #0b3a40 30%, #030607 62%, #000 100%)", fontFamily: SANS }}>
+          <div style={{ position: "absolute", left: 150, top: 300, opacity: rIn * (1 - rOut), transform: `translateY(${(1 - rIn) * 30}px)` }}>
+            <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: 10, color: "#9fe8dc" }}>ONLY ON SEEKER</div>
+            <div style={{ marginTop: 22, fontSize: 132, fontWeight: 600, letterSpacing: -4, color: "#fff", lineHeight: 1.02 }}>Exclusive<br />rewards</div>
+            <div style={{ marginTop: 34, display: "flex", alignItems: "center", gap: 22, fontSize: 38, fontWeight: 500, color: "#d8f3ee" }}>
+              <span>for</span><Img src={staticFile("perks/seeker-word.png")} style={{ height: 78 }} /><span>holders</span>
+            </div>
+          </div>
+          <AbsoluteFill style={{ transformOrigin: "960px 540px", transform: `translate(${585 * (1 - rTurn)}px, ${(1 - rIn) * 60}px) rotate(${-104 * (1 - rTurn)}deg)`, opacity: rIn }}>
+            <Seeker ry={180 * (1 - rFlip)} scale={0.55 + rTurn * 0.15 + rZoom * 0.85} y={540} screen={<EndCard />} />
+          </AbsoluteFill>
         </AbsoluteFill>
       </Sequence>
 
       {/* music: one take of the song from 14.98 s to the very end, fading out on the last screen */}
-      <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(END_BEATS + 21), MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
+      <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(END_BEATS + 29), MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
       <Sequence from={T_FLIP} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
     </AbsoluteFill>
   );
