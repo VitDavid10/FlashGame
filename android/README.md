@@ -38,8 +38,9 @@ Export the password environment variables before running the CLI release build.
 
 Generado el 21-sep-2026 con `npx solana-mobile@0.5.0 webshell init android --manifest android/branding/manifest.json ...`. Si se regenera con `--force`, la plantilla pisa estos cambios y hay que volver a aplicarlos:
 
-- `AndroidManifest.xml`: `screenOrientation="portrait"`. `configChanges` lleva además `screenLayout|smallestScreenSize|keyboard|uiMode`, para que la partida no se recargue con esos cambios.
-  - Vertical y no horizontal a propósito: en vertical, el juego se gira solo por CSS (`juegoGirado()`), y ese es el camino adaptado a móvil. Con el móvil tumbado de verdad, el menú de login usa otra maquetación: a 740×360 el botón PLAY queda fuera de la pantalla y aparece CONNECT (wallet), que en la app no funcionaría. Comprobado el 21-sep-2026.
+- `AndroidManifest.xml`: `screenOrientation="sensorLandscape"`. `configChanges` lleva además `screenLayout|smallestScreenSize|keyboard|uiMode`, para que la partida no se recargue con esos cambios.
+  - Horizontal de verdad desde el 30-sep-2026 (antes `portrait` y el juego se giraba solo por CSS). `sensorLandscape` fuerza horizontal aunque el usuario tenga la rotación bloqueada, y las capturas salen horizontales. El viewport pasa a ser apaisado y entra el bloque «TUMBADO» de `game/index.html` (body -90° + pantallas +90°, se anulan). Probado en la Saga: splash, selector de modo, menú y partida se ven bien. Con el teclado en horizontal, el botón PLAY NOW del nombre queda tapado: se envía con Enter.
+- `SolanaSplash.kt`: pantalla de carga «BUILT ON SOLANA» (misma que abre el vídeo, `tools/origin-video/src/Mobile.tsx`). Se muestra `SPLASH_MIN_MS` (1,8 s) como mínimo y hasta que la página empieza a pintar.
 - `MainActivity.kt`:
   - pantalla completa inmersiva (`hideSystemBars`, también al recuperar el foco) y `FLAG_KEEP_SCREEN_ON`;
   - sin tirar-para-recargar (`SwipeRefreshLayout` desactivado);

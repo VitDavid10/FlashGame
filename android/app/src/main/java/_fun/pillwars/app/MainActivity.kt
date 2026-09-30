@@ -18,6 +18,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +50,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import _fun.pillwars.app.ui.theme.WebShellTheme
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
@@ -99,6 +102,11 @@ fun WebShellScreen() {
     var isRefreshing by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
+    var splashMinDone by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(SPLASH_MIN_MS)
+        splashMinDone = true
+    }
 
     val webView =
         remember {
@@ -237,7 +245,7 @@ fun WebShellScreen() {
         swipeRefreshLayout = swipeRefreshLayout,
         isRefreshing = isRefreshing,
         hasError = hasError,
-        showSplash = showSplash,
+        showSplash = showSplash || !splashMinDone,
         onRetry = {
             hasError = false
             isRefreshing = false
@@ -295,18 +303,14 @@ private fun WebViewLayer(
             }
         }
 
-        // Negro liso hasta que la pagina empieza a pintar, sin el circulo de
-        // carga de Material: la carga la enseña el propio juego.
+        // BUILT ON SOLANA (SolanaSplash) hasta que la pagina empieza a pintar,
+        // sin el circulo de carga de Material: la carga la enseña el propio
+        // juego. Se queda un minimo para que el rotulo se llegue a leer.
         AnimatedVisibility(
             visible = showSplash,
-            exit = fadeOut(),
+            exit = fadeOut(tween(400)),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-            )
+            SolanaSplash()
         }
     }
 }
@@ -360,6 +364,8 @@ private fun normalizeHttpUrl(): String? {
 private const val TAG = "WebShell"
 
 private const val EXIT_BACK_WINDOW_MS = 2000L
+
+private const val SPLASH_MIN_MS = 1800L
 
 private const val GAME_BACKGROUND = 0xFF050505.toInt()
 
