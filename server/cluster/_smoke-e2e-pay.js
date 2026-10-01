@@ -38,7 +38,7 @@ function makeWallet() {
 }
 function signedEntry(w, comboKey, fee) {
     const ts = Date.now();
-    const message = `PillWars enter ${comboKey} paying ${fee} PILL @ ${ts}`;
+    const message = `PillWars enter ${comboKey} paying ${fee} PILLY @ ${ts}`;
     const signature = Array.from(nacl.sign.detached(new TextEncoder().encode(message), w.kp.secretKey));
     return { wallet: w.addr, ts, message, signature };
 }

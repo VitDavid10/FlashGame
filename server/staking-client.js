@@ -71,7 +71,7 @@ function initialize(programId, { mint, authority, payer }) {
     ], ixDisc('initialize'));
 }
 
-/** Mete $PILL en el pool. El principal sigue siendo del usuario. */
+/** Mete $PILLY en el pool. El principal sigue siendo del usuario. */
 function stake(programId, { from, owner, amountRaw }) {
     const { config, stakeVault } = pdas(programId);
     return ix(programId, [

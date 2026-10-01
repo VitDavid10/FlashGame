@@ -426,14 +426,14 @@ function paisPagina(idx, porPagina) {
 
 /* ===== SKINS EN PROPIEDAD ===== ------------------------------------------
  * PROVISIONAL: vive en localStorage, o sea SOLO en este navegador. No es una
- * compra de verdad — el ledger de $PILL y de skill points, quien posee que y
+ * compra de verdad — el ledger de $PILLY y de skill points, quien posee que y
  * que eso persista es trabajo de servidor. Esto existe para poder ver el
  * recorrido de la tienda (comprar -> asignar -> llevarla puesta) sin montar la
  * economia antes de tener el diseño cerrado. Cuando exista el endpoint, estas
  * cuatro funciones son lo unico que hay que cambiar.
  */
-// Precio unico para las 32. 250 SP o 25.000 $PILL, o sea 100 $PILL por SP: el
-// cambio de 1000 $PILL = 10 SP sale de aqui y no de una segunda constante que
+// Precio unico para las 32. 250 SP o 25.000 $PILLY, o sea 100 $PILLY por SP: el
+// cambio de 1000 $PILLY = 10 SP sale de aqui y no de una segunda constante que
 // pudiera quedarse descuadrada.
 const PAIS_PRECIO_SP = 250;
 const PAIS_PILL_POR_SP = 100;
@@ -445,7 +445,7 @@ function paisPrecioTexto(pill) { return pill >= 1000 ? (pill / 1000) + 'K' : Str
  * Antes esto vivia en localStorage, lo que significaba que cualquiera podia
  * escribirse las 32 skins desde la consola sin pagar nada: el cliente se creia
  * a si mismo. Ahora comprar, equipar y el saldo pasan por /api/skins, que cobra
- * de verdad (SP del ledger o $PILL del saldo WAR, con firma de la wallet).
+ * de verdad (SP del ledger o $PILLY del saldo WAR, con firma de la wallet).
  *
  * El estado se CACHEA porque las funciones de dibujo lo consultan a cada frame
  * (cellPais mira paisPuesta() en cada celda) y no pueden ser asincronas. La
@@ -480,7 +480,7 @@ async function paisSync() {
     return _paisEstado;
 }
 
-// Firma del gasto en $PILL. El mensaje lleva la cantidad DENTRO, asi que la
+// Firma del gasto en $PILLY. El mensaje lleva la cantidad DENTRO, asi que la
 // firma de una compra no sirve para gastar otra cantidad distinta.
 async function _paisFirma(provider, wallet, mensaje, ts) {
     const res = await provider.signMessage(new TextEncoder().encode(mensaje), 'utf8');
@@ -500,7 +500,7 @@ async function paisComprar(code, moneda) {
         if (!c.wallet || !c.provider) return { ok: false, error: 'connect your wallet first' };
         const ts = Date.now();
         try {
-            cuerpo.pay = await _paisFirma(c.provider, c.wallet, `PillWars buy skin ${code} for ${PAIS_PRECIO_PILL} PILL @ ${ts}`, ts);
+            cuerpo.pay = await _paisFirma(c.provider, c.wallet, `PillWars buy skin ${code} for ${PAIS_PRECIO_PILL} PILLY @ ${ts}`, ts);
         } catch (e) { return { ok: false, error: 'you must sign the payment' }; }
     }
     try {
@@ -529,7 +529,7 @@ async function paisConvertir(pill) {
     const ts = Date.now();
     let pay;
     try {
-        pay = await _paisFirma(c.provider, c.wallet, `PillWars convert ${pill} PILL to ${pill / PAIS_PILL_POR_SP} SP @ ${ts}`, ts);
+        pay = await _paisFirma(c.provider, c.wallet, `PillWars convert ${pill} PILLY to ${pill / PAIS_PILL_POR_SP} SP @ ${ts}`, ts);
     } catch (e) { return { ok: false, error: 'you must sign the exchange' }; }
     try {
         const r = await fetch('/api/skins/convert', { method: 'POST', headers: _paisCab(), body: JSON.stringify({ pill, nonce: _paisNonce(), wallet: c.wallet, pay }) });
@@ -1452,10 +1452,10 @@ function _paisPintaBotones(code) {
     const cont = document.querySelector('#' + PAIS_MODAL_ID + ' .pm-btns'); if (!cont) return;
     cont.innerHTML = '';
     // La app de la dApp Store (html.pw-app, ver el head de game/index.html) no
-    // tiene wallet: el boton de $PILL solo podria fallar, asi que alli no sale.
+    // tiene wallet: el boton de $PILLY solo podria fallar, asi que alli no sale.
     const enApp = document.documentElement.classList.contains('pw-app');
     const defs = !paisTengo(code)
-        ? (enApp ? [] : [['BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL', PM_ROJO, () => paisComprar(code, 'pill')]])
+        ? (enApp ? [] : [['BUY · ' + paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILLY', PM_ROJO, () => paisComprar(code, 'pill')]])
             .concat([['BUY · ' + PAIS_PRECIO_SP + ' SP', PM_VERDE, () => paisComprar(code, 'sp')]])
         : paisPuesta() === code ? [['EQUIPPED', PM_VERDE, null]]
         : [['ASSIGN', PM_ROJO, () => paisPoner(code)]];

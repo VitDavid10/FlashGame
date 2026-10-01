@@ -90,7 +90,7 @@ function vault(title, sub, data, rpc, locked) {
     if (!data) return '';
     return '<div class="panel vault' + (locked ? ' locked warn' : '') + '">'
         + '<h3>' + esc(title) + '</h3>'
-        + '<div class="amt">' + fmt(data.balance) + ' <small>$PILL</small></div>'
+        + '<div class="amt">' + fmt(data.balance) + ' <small>$PILLY</small></div>'
         + '<div class="sub">' + esc(sub) + '</div>'
         + '<a class="addr" href="' + solscan(data.address, rpc) + '" target="_blank" rel="noopener">' + esc(data.address) + '</a>'
         + '</div>';
@@ -124,7 +124,7 @@ function renderReserves(d) {
     const ok = d.reservasCompletas;
     return '<div class="panel ' + (ok ? 'ok' : 'bad') + '">'
         + '<b>Reserves ' + (ok ? 'fully backed' : 'SHORT') + '.</b> '
-        + fmt(d.custody.balance) + ' $PILL in custody against ' + fmt(d.obligaciones) + ' $PILL owed to players'
+        + fmt(d.custody.balance) + ' $PILLY in custody against ' + fmt(d.obligaciones) + ' $PILLY owed to players'
         + (d.reservesRatio != null ? ' (' + (d.reservesRatio * 100).toFixed(2) + '%)' : '') + '.'
         + (ok ? '' : ' There is less on-chain than is owed. This should never happen.')
         + '</div>';
@@ -139,7 +139,7 @@ function renderRounds(prizes) {
         + r.map(x => '<tr>'
             + '<td>' + esc(x.date) + '</td>'
             + '<td class="mono">' + x.epoch + '</td>'
-            + '<td class="num">' + fmt(x.pill) + ' $PILL</td>'
+            + '<td class="num">' + fmt(x.pill) + ' $PILLY</td>'
             + '<td class="num">' + x.winners + '</td>'
             + '<td class="num">' + x.cobrados + '/' + x.winners + '</td>'
             + '<td class="mono"><a href="/api/rewards/' + x.epoch + '">' + esc(String(x.root).slice(0, 16)) + '…</a>'
@@ -157,7 +157,7 @@ function renderLiabilities(d) {
     if (!p) return '<div class="panel muted">No liabilities snapshot published yet.</div>';
     const covered = d.custody ? d.custody.balance >= p.total : null;
     let h = '<div class="panel ' + (covered === false ? 'bad' : 'ok') + '">'
-        + '<b>' + fmt(p.total) + ' $PILL owed</b> across ' + fmt(p.wallets) + ' wallets, as of snapshot #' + p.snapshot + '.'
+        + '<b>' + fmt(p.total) + ' $PILLY owed</b> across ' + fmt(p.wallets) + ' wallets, as of snapshot #' + p.snapshot + '.'
         + (covered === true ? ' Fully covered by custody.' : covered === false ? ' <b>CUSTODY DOES NOT COVER IT.</b>' : '')
         + '</div>';
     h += '<div class="panel"><p class="muted">Saying how much you hold is easy. The hard half is proving how much you <b class="k">owe</b>: '
@@ -204,7 +204,7 @@ async function checkBalance() {
         const r = await (await fetch('/api/reserves/proof?wallet=' + encodeURIComponent(w))).json();
         if (!r || r.error) { out.innerHTML = '<span style="color:var(--red)">' + esc(r && r.error || 'not found') + '</span>'; return; }
         out.innerHTML = r.incluida
-            ? '<div class="panel ok" style="margin:0"><b>' + fmt(r.saldo) + ' $PILL</b> for this wallet in snapshot #' + r.snapshot + '.'
+            ? '<div class="panel ok" style="margin:0"><b>' + fmt(r.saldo) + ' $PILLY</b> for this wallet in snapshot #' + r.snapshot + '.'
               + '<br><span class="mono">proof: ' + r.proof.length + ' node(s) · root ' + esc(String(r.root).slice(0, 24)) + '…</span>'
               + '<br><span class="muted">If this is not what the game shows you, that is the discrepancy this page exists to expose.</span></div>'
             : '<div class="panel warn" style="margin:0">This wallet is <b>not in the published list</b>, meaning we claim to owe it nothing. '
@@ -256,22 +256,22 @@ function render(d) {
             const c = d.config;
             h += section('The tap') + '<div class="panel">'
                 + table('<tbody>'
-                + '<tr><td>Max per day</td><td class="num">' + fmt(c.rewardCapPerEpoch) + ' $PILL</td></tr>'
+                + '<tr><td>Max per day</td><td class="num">' + fmt(c.rewardCapPerEpoch) + ' $PILLY</td></tr>'
                 + '<tr><td>Max share of treasury per day</td><td class="num">' + (c.rewardBpsPerEpoch / 100).toFixed(2) + '%</td></tr>'
                 + '<tr><td>Review window before a claim opens</td><td class="num">' + c.challengeHoras + ' h</td></tr>'
-                + '<tr><td>Currently reserved for unclaimed prizes</td><td class="num">' + fmt(c.reservado) + ' $PILL</td></tr>'
+                + '<tr><td>Currently reserved for unclaimed prizes</td><td class="num">' + fmt(c.reservado) + ' $PILLY</td></tr>'
                 + '</tbody>')
                 + '<p class="muted" style="margin-top:14px">Whichever of the first two is lower wins. Even a fully malicious operator '
                 + 'could not move more than this out per day, and every payout is public 48 h in advance.</p></div>';
 
             h += section('Lifetime totals') + '<div class="panel">'
                 + table('<tbody>'
-                + '<tr><td>Deposited by players</td><td class="num">' + fmt(c.totales.depositado) + ' $PILL</td></tr>'
-                + '<tr><td>Withdrawn by players</td><td class="num">' + fmt(c.totales.retirado) + ' $PILL</td></tr>'
-                + '<tr><td>Funded into the treasury</td><td class="num">' + fmt(c.totales.aportado) + ' $PILL</td></tr>'
-                + '<tr><td>Swept from game revenue</td><td class="num">' + fmt(c.totales.barrido) + ' $PILL</td></tr>'
-                + '<tr><td>Paid out as rewards</td><td class="num">' + fmt(c.totales.premiado) + ' $PILL</td></tr>'
-                + '<tr><td>Expired unclaimed</td><td class="num">' + fmt(c.totales.caducado) + ' $PILL</td></tr>'
+                + '<tr><td>Deposited by players</td><td class="num">' + fmt(c.totales.depositado) + ' $PILLY</td></tr>'
+                + '<tr><td>Withdrawn by players</td><td class="num">' + fmt(c.totales.retirado) + ' $PILLY</td></tr>'
+                + '<tr><td>Funded into the treasury</td><td class="num">' + fmt(c.totales.aportado) + ' $PILLY</td></tr>'
+                + '<tr><td>Swept from game revenue</td><td class="num">' + fmt(c.totales.barrido) + ' $PILLY</td></tr>'
+                + '<tr><td>Paid out as rewards</td><td class="num">' + fmt(c.totales.premiado) + ' $PILLY</td></tr>'
+                + '<tr><td>Expired unclaimed</td><td class="num">' + fmt(c.totales.caducado) + ' $PILLY</td></tr>'
                 + '<tr><td>Rounds published</td><td class="num">' + fmt(c.totales.rondas) + '</td></tr>'
                 + '</tbody>')
                 + '<p class="muted" style="margin-top:14px">Counters kept by the contract itself. Nobody can edit them.</p></div>';

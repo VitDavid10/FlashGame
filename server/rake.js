@@ -8,7 +8,7 @@
  * DOS DESTINOS, y no es lo mismo:
  *
  *   AL STAKING   los ingresos corrientes del juego. Se reparten entre quien
- *                inmoviliza $PILL, por goteo.
+ *                inmoviliza $PILLY, por goteo.
  *                  - exit fee de classic (10/20/50 % según kills)
  *                  - tienda de skins y conversor de SP
  *
@@ -170,9 +170,9 @@ async function barre(solana, treasuryClient, programId, log, stakingMod, apunta)
             dirty = true; save();
             hecho.stake = { pill: cantidad, sig };
             if (apunta) apunta('staking', cantidad, sig);
-            if (log) log(`Rake: ${cantidad} $PILL al pozo del staking (goteo ${GOTEO_SECS / 3600} h) — ${sig}`);
+            if (log) log(`Rake: ${cantidad} $PILLY al pozo del staking (goteo ${GOTEO_SECS / 3600} h) — ${sig}`);
         } catch (e) {
-            if (log) log(`Rake al staking FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);
+            if (log) log(`Rake al staking FALLIDO (${cantidad} $PILLY siguen pendientes): ${e.message}`);
         }
     }
 
@@ -189,9 +189,9 @@ async function barre(solana, treasuryClient, programId, log, stakingMod, apunta)
             dirty = true; save();
             hecho.tesoreria = { pill: cantidad, sig };
             if (apunta) apunta('treasury', cantidad, sig);
-            if (log) log(`Rake: ${cantidad} $PILL a la tesoreria — ${sig}`);
+            if (log) log(`Rake: ${cantidad} $PILLY a la tesoreria — ${sig}`);
         } catch (e) {
-            if (log) log(`Rake a tesoreria FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);
+            if (log) log(`Rake a tesoreria FALLIDO (${cantidad} $PILLY siguen pendientes): ${e.message}`);
         }
     }
     return hecho;

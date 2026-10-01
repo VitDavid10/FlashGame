@@ -34,7 +34,7 @@ const kp = nacl.sign.keyPair();
 const WALLET = new PublicKey(Buffer.from(kp.publicKey)).toBase58();
 function signedEntry(comboKey, fee) {
     const ts = Date.now();
-    const message = `PillWars enter ${comboKey} paying ${fee} PILL @ ${ts}`;
+    const message = `PillWars enter ${comboKey} paying ${fee} PILLY @ ${ts}`;
     const signature = Array.from(nacl.sign.detached(new TextEncoder().encode(message), kp.secretKey));
     return { wallet: WALLET, ts, message, signature };
 }

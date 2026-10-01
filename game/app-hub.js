@@ -32,6 +32,10 @@
         npc: '<circle cx="12" cy="8.2" r="4.4"/><path d="M3.6 21.5c0-4.9 3.8-8.4 8.4-8.4s8.4 3.5 8.4 8.4z"/>',
         xlogo: '<path d="M4 3.5h4.6l3.9 5.4 4.6-5.4h2.4l-6 7 6.9 9.5h-4.6l-4.2-5.8-5 5.8H4.2l6.4-7.5z"/>',
         wallet: '<rect x="2.8" y="6" width="18.4" height="13" rx="2"/><path d="M5 6l11-2.6V6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="12.5" r="1.6" fill="#07140f"/>',
+        bolt: '<path d="M13.5 2.5L5 13.5h6l-1 8 8.5-11h-6z"/>',
+        star: '<path d="M12 2.8l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 17l-5.8 3.3 1.4-6.4-4.9-4.4 6.5-.7z"/>',
+        crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-1.8 10.5H4.8z"/>',
+        ghost: '<path d="M12 2.8a7.2 7.2 0 00-7.2 7.2v11l2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8V10A7.2 7.2 0 0012 2.8z"/><circle cx="9.3" cy="10.2" r="1.4" fill="#07140f"/><circle cx="14.7" cy="10.2" r="1.4" fill="#07140f"/>',
         back: '<path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>',
         music: '<path d="M9 17.5V5.2l10-2v11.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.6" cy="17.6" r="2.6"/><circle cx="16.6" cy="15" r="2.6"/>',
         sound: '<path d="M3.5 9h4l5-4v14l-5-4h-4z"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -189,21 +193,38 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell .pr.own{color:var(--ac)}
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
+#ahSv{z-index:7}
+.sv-b{display:flex;flex-direction:column;align-items:center;gap:.6em;padding:.4em 0 .2em}
+.sv-b canvas{width:9em;height:9em}
+.sv-n{font-size:.6em;letter-spacing:.06em;text-shadow:.15em .15em 0 #000}
+.sv-p{font-size:.48em;color:#ffd23a}.sv-p.own{color:var(--ac)}
+.sv-bt{display:flex;gap:.6em;width:100%;margin-top:.3em}.sv-bt .tb{flex:1;width:auto}
+.cv-b{flex:1;display:flex;flex-direction:column;justify-content:center;gap:.8em;padding:0 1em}
+.cv-r{display:flex;justify-content:space-between;font-size:.5em;color:var(--mut)}.cv-r b{font-weight:400;color:#fff}
+.cv-in{display:flex;gap:.5em;align-items:center}
+.cv-in input{flex:1;min-width:0;font-family:'Press Start 2P',monospace;font-size:.6em;padding:.8em;background:#050c09;color:#fff;border:.18em solid var(--edge);outline:none;text-align:center}
+.cv-in .tb{width:auto;padding:.6em 1em}
+.cv-out{font-size:.6em;text-align:center;color:#ffd23a}
 .cn-b{display:flex;gap:.8em;margin-top:.9em}
 .cn-o{flex:1;height:5.4em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;background:rgba(0,0,0,.28);border:.14em solid var(--edge);color:#fff;font-family:'Russo One',sans-serif;font-size:.72em;letter-spacing:.12em;cursor:pointer}
 .cn-o .i{width:2.6em;height:2.6em;border-radius:50%;background:var(--ac);color:#04150c;display:flex;align-items:center;justify-content:center}
 .cn-o .i svg{width:1.4em;height:1.4em}
 .cn-o:active{border-color:var(--ac)}
 .pr-me{justify-content:center!important;gap:.6em!important}
-.pr-pic{width:6.4em;height:6.4em;border-radius:50%;overflow:hidden;box-shadow:0 0 0 .22em var(--ac),0 0 0 .38em #000}
+.pr-pic{width:4.2em;height:4.2em;flex:none;border-radius:50%;overflow:hidden;box-shadow:0 0 0 .22em var(--ac),0 0 0 .38em #000}
 .pr-pic img{width:100%;height:100%;object-fit:cover}
 .pr-pic .npc{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--in2);color:var(--ac)}.pr-pic .npc svg{width:3.2em;height:3.2em}
-.pr-at{font-size:.5em;color:var(--ac);letter-spacing:.06em}
-.pr-nm{font-size:.42em;color:var(--mut)}
+.pr-at{font-size:.46em;color:var(--ac);letter-spacing:.06em}
+.pr-ic,.pr-cl{display:flex;gap:.25em;justify-content:center}
+.pr-ic b{width:1.15em;height:1.15em;display:flex;align-items:center;justify-content:center;background:var(--in2);color:#eaf5ef;box-shadow:0 0 0 .1em var(--edge);cursor:pointer}
+.pr-ic b svg{width:.8em;height:.8em}.pr-ic b.on{box-shadow:0 0 0 .14em var(--ac)}
+.pr-cl b{width:.95em;height:.95em;cursor:pointer;box-shadow:0 0 0 .1em #000}.pr-cl b.on{outline:.14em solid #fff;outline-offset:.08em}
+.av{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#07140f}
+.av svg{width:58%;height:58%}
 .pr-r{flex:1;min-width:0;display:flex;flex-direction:column;gap:.5em}
 .pr-box{flex:1;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.7em .9em}
 .pr-box .k,.pr-st .k{font-size:.38em;color:var(--mut);letter-spacing:.1em}
-.pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em}
+.pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em;cursor:pointer;word-break:break-all}
 .pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
 .pr-bt{display:flex;gap:.5em;margin-top:.8em}.pr-bt .tb{width:auto;flex:1}
 .pr-st{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;height:3.6em}
@@ -235,7 +256,22 @@ body.hub-on .pw-modal-box>canvas.hub-placa{position:absolute;inset:0;width:100%;
 body.hub-on .pw-modal-box>*:not(.hub-placa){position:relative;z-index:1;margin-left:14px!important;margin-right:14px!important}
 body.hub-on .pw-modal-box>.pw-modal-title{margin-top:10px!important}
 body.hub-on .pw-modal-box>:last-child{margin-bottom:10px!important}
-body.hub-on #riBody,body.hub-on .pw-modal-box .ri-row{font-size:1.2em!important}
+body.hub-on .room-info .pw-modal-title{font-size:15px!important}
+body.hub-on #riBody,body.hub-on #riBody *{font-size:12px!important;line-height:1.7!important}
+body.hub-on .room-info .pw-big-btn{font-size:12px!important;padding:11px 8px!important}
+body.hub-on .room-info .pw-modal-cancel{font-size:11px!important}
+body.hub-on .gameModalBox .close{display:none!important}
+body.hub-on .gameModalBox>button.hub-close{display:block;margin:0 auto 12px!important;background:none;border:2px solid #2c3630;color:#cfd8d3;font-family:'Russo One',sans-serif;letter-spacing:.12em;padding:7px 22px;cursor:pointer}
+body.hub-on #sysModal .exit-box{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;padding:22px 26px!important}
+body.hub-on #sysModal .exit-box>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
+body.hub-on #sysModal .exit-box>*:not(.hub-placa){position:relative;z-index:1}
+body.hub-on #sysModal .exit-box{min-width:320px!important;max-width:420px!important}
+body.hub-on #sysModalTitle canvas{height:22px!important;width:auto!important}
+body.hub-on #sysModalTitle canvas:first-child:not(:only-child),body.hub-on #sysModalTitle canvas:last-child:not(:only-child){display:none!important}
+body.hub-on #sysModal .exit-actions{display:flex!important;justify-content:center!important}
+body.hub-on #sysModal .exit-desc{font-size:11px!important;line-height:1.8!important;font-family:'Russo One',sans-serif!important;letter-spacing:.06em!important;color:#cfd8d3!important}
+body.hub-on #sysModal .btn-sys{background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#cfd8d3!important;
+  font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important;padding:7px 26px!important;width:auto!important;min-width:0!important;flex:0 0 auto!important;max-width:none!important}
 body.hub-on .pw-modal-title{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important}
 body.hub-on .pw-big-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;border-image:none!important;box-shadow:none!important;color:#04150c!important;
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;border-radius:0!important}
@@ -261,12 +297,15 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
     // Cuando sale un cartel del juego con el hub puesto, se le pinta el marco placa del modo.
     function visteModal(m) {
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
-        const box = m.querySelector('.pw-modal-box, .gameModalBox'); if (!box || typeof drawPlacaCaja !== 'function') return;
+        const box = m.querySelector('.pw-modal-box, .gameModalBox, .exit-box'); if (!box || typeof drawPlacaCaja !== 'function') return;
+        // CLOSE en vez de la x de la esquina (se montaba encima del titulo).
+        const x = box.querySelector(':scope>.close');
+        if (x && !box.querySelector(':scope>.hub-close')) { const b = document.createElement('button'); b.className = 'hub-close'; b.textContent = 'CLOSE'; b.onclick = () => x.click(); box.appendChild(b); }
         let cv = box.querySelector(':scope>canvas.hub-placa');
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
         requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1); });
     }
-    new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal'))) visteModal(r.target); }))
+    new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal') || r.target.id === 'sysModal')) visteModal(r.target); }))
         .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['style'] });
 
     const hub = document.createElement('div'); hub.id = 'appHub';
@@ -286,24 +325,23 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
-  <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILL</div></div></div></div>
-<div class="ov" id="ahCn"><div class="pnl" style="width:26em"><canvas></canvas><div class="pin">
-  <div class="ph"><button class="tb on">CONNECT</button><span class="cnt"></span><button class="px">CLOSE</button></div>
-  <div class="cn-b"><button class="cn-o" id="ahCnX"><span class="i">${svg('xlogo')}</span>X ACCOUNT</button><button class="cn-o" id="ahCnW"><span class="i">${svg('wallet')}</span>WALLET</button></div>
-  <div class="foot">Your SP and skins are saved to the account you pick</div></div></div></div>
+  <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILLY</div></div></div></div>
+<div class="ov" id="ahSv"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin">
+  <div class="sv-b"><canvas id="ahSvPill"></canvas><div class="sv-n" id="ahSvN"></div><div class="sv-p" id="ahSvP"></div>
+  <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
 <div class="ov" id="ahPr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic"><img alt=""></div><div class="pr-at" id="ahPrAt"></div><div class="pr-nm" id="ahPrNm"></div><button class="tb" id="ahPrAddX" style="width:auto;padding:.5em 1em">+ CONNECT X</button></div>
+  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div></div>
   <div class="pr-r">
     <div class="pr-box"><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
-      <div class="k" style="margin-top:.9em">IN-GAME $PILL</div><div class="pr-bal" id="ahPrBal">0</div>
+      <div class="k" style="margin-top:.9em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
       <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
-  <div class="foot">Your SP and skins are saved to your X account</div></div></div></div>
+  <div class="foot">Tap an icon and a color to change your avatar</div></div></div></div>
 <div class="ov" id="ahSt"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
-  <div class="ph"><button class="tb" data-s="shop">STORE</button><button class="tb" data-s="mine">MY SKINS</button><span class="cnt" id="ahStSp"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b"><div class="sn" id="ahStG" style="grid-template-columns:repeat(4,1fr)"></div></div>
+  <div class="ph"><button class="tb" data-s="shop">STORE</button><button class="tb" data-s="mine">MY SKINS</button><button class="tb" data-s="conv">CONVERT</button><span class="cnt" id="ahStSp"></span><button class="px">CLOSE</button></div>
+  <div class="sk-b"><div class="sn" id="ahStG" style="grid-template-columns:repeat(4,1fr)"></div><div class="cv-b" id="ahCv"></div></div>
   <div class="foot" id="ahStFoot"></div></div></div></div>
 <div class="ov" id="ahQ"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">QUESTS</button><span class="qb" id="ahQBoost"></span><span class="cnt" id="ahQSp"></span><button class="px">CLOSE</button></div>
@@ -518,6 +556,8 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.classList.toggle('on', b.dataset.s === storeTab));
         $('#ahStSp').textContent = (typeof paisSp === 'function' ? paisSp() : 0) + ' SP';
         const sn = $('#ahStG');
+        sn.style.display = storeTab === 'conv' ? 'none' : ''; $('#ahCv').style.display = storeTab === 'conv' ? '' : 'none';
+        if (storeTab === 'conv') { renderConvert(); placa($('#ahSt .pnl'), 1); return; }
         if (storeTab === 'mine') { $('#ahStFoot').textContent = 'Tap a skin to wear it'; renderSkins(sn, $('#ahSt .pin')); placa($('#ahSt .pnl'), 1); return; }
         $('#ahStFoot').textContent = 'You can get SP with daily quests';
         sn.innerHTML = '';
@@ -537,15 +577,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
             pr.className = 'pr' + (tengo ? ' own' : '');
             pr.textContent = puesta === code ? 'ON' : tengo ? 'OWNED' : buying === code ? 'BUY ' + PAIS_PRECIO_SP + ' SP' : PAIS_PRECIO_SP + ' SP';
             c.append(cv, nm, pr);
-            c.onclick = async () => {
-                if (tengo) { storeTab = 'mine'; renderStore(); return; }
-                if (buying !== code) { buying = code; try { SoundManager.play('simpleselect'); } catch (e) {} renderStore(); return; }
-                buying = null;
-                let r = null; try { r = await paisComprar(code, 'sp'); } catch (e) {}
-                if (r && r.ok === false) { try { showSystemMsg(r.error || 'Could not buy that skin.', 'STORE'); } catch (e) {} }
-                else { try { SoundManager.play('select'); } catch (e) {} }
-                renderStore(); paintStatic();
-            };
+            c.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} verSkin(code); };
             sn.appendChild(c);
         });
         if (pags > 1) {
@@ -555,6 +587,56 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
             $('#ahSt .pin').appendChild(pg);
         }
         placa($('#ahSt .pnl'), 1);
+    }
+    // Vista grande de una skin: la pildora en grande y COMPRAR (o PONER si ya es tuya).
+    function verSkin(code) {
+        const sv = $('#ahSv'), tengo = typeof paisTengo === 'function' && paisTengo(code);
+        const puesta = typeof paisPuesta === 'function' ? paisPuesta() : null;
+        const cv = $('#ahSvPill'); cv.width = cv.height = 128;
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+        try { const o = paisPillRot(48, code, -Math.PI / 4), k = 120 / o.cv.width; g.drawImage(o.cv, 64 - o.cv.width * k / 2, 64 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); } catch (e) {}
+        try { $('#ahSvN').textContent = skinNombreCelda(code); } catch (e) { $('#ahSvN').textContent = code; }
+        const p = $('#ahSvP'), go = $('#ahSvGo');
+        p.className = 'sv-p' + (tengo ? ' own' : '');
+        p.textContent = puesta === code ? 'WEARING IT' : tengo ? 'YOU OWN IT' : PAIS_PRECIO_SP + ' SP';
+        go.textContent = puesta === code ? 'TAKE OFF' : tengo ? 'WEAR IT' : 'BUY';
+        go.onclick = async () => {
+            go.disabled = true;
+            let r = null;
+            try { r = tengo ? await paisPoner(puesta === code ? null : code) : await paisComprar(code, 'sp'); } catch (e) {}
+            go.disabled = false;
+            if (r && r.ok === false) { try { showSystemMsg(r.error === 'not enough SP' ? 'You need ' + PAIS_PRECIO_SP + ' SP. Earn SP with quests or convert $PILLY in CONVERT.' : (r.error || 'Could not do it.'), 'STORE'); } catch (e) {} return; }
+            try { SoundManager.play('select'); } catch (e) {}
+            try { renderMenuPill(); } catch (e) {}
+            sv.classList.remove('open'); renderStore(); paintStatic();
+        };
+        sv.classList.add('open'); placa($('#ahSv .pnl'), 1);
+    }
+    // CONVERT: $PILLY del saldo del juego -> SP (100 $PILLY = 1 SP), firmado con la wallet.
+    async function renderConvert() {
+        const cv = $('#ahCv');
+        $('#ahStFoot').textContent = '100 $PILLY = 1 SP. It comes out of your in-game $PILLY';
+        const w = window.GameWallet && GameWallet.address;
+        if (!w) { cv.innerHTML = '<div class="cv-out" style="color:var(--mut)">CONNECT YOUR WALLET TO CONVERT</div><button class="tb on" id="ahCvCon" style="width:auto;align-self:center;padding:.6em 1.6em">CONNECT WALLET</button>';
+            $('#ahCvCon').onclick = async () => { await loginWallet(); renderConvert(); }; return; }
+        cv.innerHTML = '<div class="cv-r"><span>IN-GAME $PILLY</span><b id="ahCvBal">...</b></div><div class="cv-r"><span>YOUR SP</span><b>' + (typeof paisSp === 'function' ? paisSp() : 0) + '</b></div>' +
+            '<div class="cv-in"><input id="ahCvIn" inputmode="numeric" value="1000"><button class="tb" id="ahCvMax">MAX</button></div><div class="cv-out" id="ahCvOut"></div><button class="tb on" id="ahCvGo" style="width:auto;align-self:center;padding:.6em 2em">CONVERT</button>';
+        let bal = 0;
+        try { bal = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
+        $('#ahCvBal').textContent = Math.floor(bal).toLocaleString('en-US');
+        const inp = $('#ahCvIn'), out = $('#ahCvOut');
+        const calc = () => { inp.value = inp.value.replace(/[^0-9]/g, ''); const n = Math.floor((+inp.value || 0) / 100) * 100; out.textContent = '= ' + (n / 100) + ' SP' + (n !== (+inp.value || 0) ? '  (MULTIPLES OF 100)' : ''); return n; };
+        inp.oninput = calc; calc();
+        $('#ahCvMax').onclick = () => { inp.value = String(Math.floor(bal / 100) * 100); calc(); };
+        $('#ahCvGo').onclick = async () => {
+            const n = calc();
+            if (n < 100) { try { showSystemMsg('Convert at least 100 $PILLY.', 'CONVERT'); } catch (e) {} return; }
+            if (n > bal) { try { showSystemMsg('You only have ' + Math.floor(bal).toLocaleString('en-US') + ' $PILLY in the game. Deposit more from your PROFILE.', 'CONVERT'); } catch (e) {} return; }
+            let r = null; try { r = await paisConvertir(n); } catch (e) {}
+            if (r && r.ok === false) { try { showSystemMsg(r.error || 'Could not convert.', 'CONVERT'); } catch (e) {} return; }
+            try { SoundManager.play('select'); } catch (e) {}
+            renderStore(); paintStatic();
+        };
     }
     function openStore(tab) { storeTab = tab || 'shop'; buying = null; shopPage = 0; skinPage = 0; $('#ahSt').classList.add('open'); renderStore(); }
 
@@ -639,68 +721,81 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         $('#ahSk').classList.add('open'); renderPill();
     }
 
-    // ---------- cuenta de X ----------
-    let xUser = null;
+    // ---------- cuenta: la wallet del movil; avatar elegido por el jugador ----------
     const cidLocal = () => { try { return localStorage.getItem('pw_cid') || ''; } catch (e) { return ''; } };
-    function pintaX() {
-        const img = $('.ah-ava img'), npc = $('.ah-ava .npc');
-        if (xUser && xUser.pic) { img.src = xUser.pic.replace('_normal.', '_200x200.'); img.hidden = false; npc.style.display = 'none'; }
-        else { img.hidden = true; npc.style.display = ''; npc.innerHTML = svg(xWallet ? 'wallet' : 'npc'); }
-        $('#ahX').textContent = xUser ? '@' + String(xUser.username || '').toUpperCase() : xWallet ? 'WALLET ' + xWallet.slice(0, 4) + '...' + xWallet.slice(-4) : 'TAP TO CONNECT';
-        if (xUser && !((document.getElementById('playerNameInput') || {}).value || '').trim()) guardaNombre(String(xUser.username || '').slice(0, 12));
+    const AV_ICONS = ['npc', 'wallet', 'bolt', 'star', 'crown', 'ghost'];
+    const AV_COLS = ['#8a948f', '#ab9ff2', '#00ffaa', '#ccff00', '#ffd23a', '#ff6a5a'];
+    let xWallet = null;
+    function avatar() {
+        let a = null; try { a = JSON.parse(localStorage.getItem('pw_avatar')); } catch (e) {}
+        // Sin elegir: gris de jugador sin conectar; con wallet, el icono de wallet en el morado de Phantom.
+        if (!a || AV_ICONS.indexOf(a.i) === -1) a = (xWallet || (window.GameWallet && GameWallet.address)) ? { i: 'wallet', c: '#ab9ff2' } : { i: 'npc', c: '#8a948f' };
+        return a;
     }
-    // Con sesion de X: este movil pasa a la cuenta (los SP se suman alli) y se pinta la foto.
+    const avHtml = a => '<span class="av" style="background:' + a.c + '">' + svg(a.i) + '</span>';
+    function pintaX() {
+        const w = xWallet || (window.GameWallet && GameWallet.address);
+        $('.ah-ava').innerHTML = avHtml(avatar());
+        $('#ahX').textContent = w ? 'WALLET ' + w.slice(0, 4) + '...' + w.slice(-4) : 'TAP TO CONNECT';
+    }
+    // Sesion del juego (la firma de wallet del airdrop): este movil pasa a esa cuenta.
     async function syncX() {
         try {
             const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json();
-            xUser = j && j.user && j.user.x || null;
             xWallet = j && j.user && !j.user.walletPasted && j.user.wallet || null;
-        } catch (e) { xUser = null; }
-        if ((xUser || xWallet) && cidLocal()) {
+        } catch (e) {}
+        if (xWallet && cidLocal()) {
             try { await fetch('/api/account/link', { method: 'POST', headers: { 'x-client-id': cidLocal() } }); } catch (e) {}
             try { if (typeof paisSync === 'function') await paisSync(); } catch (e) {}
         }
         pintaX(); paintStatic();
     }
-    // Perfil (con X conectada): foto en grande, wallet, saldo del juego y stats.
-    let xWallet = null;
+    function pintaAvatarEditor() {
+        const a = avatar();
+        $('#ahPrPic').innerHTML = avHtml(a);
+        $('#ahPrIc').innerHTML = AV_ICONS.map(i => '<b data-i="' + i + '" class="' + (i === a.i ? 'on' : '') + '">' + svg(i) + '</b>').join('');
+        $('#ahPrCl').innerHTML = AV_COLS.map(c => '<b data-c="' + c + '" class="' + (c === a.c ? 'on' : '') + '" style="background:' + c + '"></b>').join('');
+        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} pintaAvatarEditor(); pintaX(); };
+        $('#ahPrIc').querySelectorAll('b').forEach(b => b.onclick = () => guarda({ i: b.dataset.i, c: a.c }));
+        $('#ahPrCl').querySelectorAll('b').forEach(b => b.onclick = () => guarda({ i: a.i, c: b.dataset.c }));
+    }
     async function openProfile() {
-        const pr = $('#ahPr');
-        const pic = pr.querySelector('.pr-pic');
-        pic.innerHTML = xUser && xUser.pic ? '<img alt="" src="' + xUser.pic.replace('_normal.', '_400x400.') + '">' : '<span class="npc">' + svg('wallet') + '</span>';
-        $('#ahPrAt').textContent = xUser ? '@' + String(xUser.username || '').toUpperCase() : xWallet.slice(0, 4) + '...' + xWallet.slice(-4);
-        $('#ahPrNm').textContent = xUser ? String(xUser.name || '').toUpperCase().slice(0, 18) : 'WALLET ACCOUNT';
-        $('#ahPrAddX').style.display = xUser ? 'none' : '';
+        const pr = $('#ahPr'), w = xWallet || (window.GameWallet && GameWallet.address);
+        $('#ahPrAt').textContent = ((document.getElementById('playerNameInput') || {}).value || 'PLAYER').toUpperCase().slice(0, 12);
         $('#ahPrSp').textContent = (typeof paisSp === 'function' ? paisSp() : 0) + ' SP';
+        pintaAvatarEditor();
         pr.classList.add('open'); placa($('#ahPr .pnl'), 1);
         pintaWallet();
-        try {
+        if (w) try {
             const st = await (await fetch('/api/airdrop/arena/stats', { cache: 'no-store' })).json();
             $('#ahPrM').textContent = st.matches || 0;
             $('#ahPrK').textContent = (st.best && st.best.kills) || 0;
             $('#ahPrMs').textContent = ((st.best && st.best.mass) || 0).toLocaleString('en-US');
         } catch (e) {}
     }
-    // La wallet: la conectada en la app (Seed Vault) o, si no, la enlazada al airdrop.
+    let saldoJuego = 0;
     async function pintaWallet() {
         const conectada = window.GameWallet && GameWallet.address;
         const w = conectada || xWallet;
-        $('#ahPrW').textContent = w ? w.slice(0, 6) + '...' + w.slice(-6) + (conectada ? '' : '  (LINKED)') : 'NOT CONNECTED';
+        $('#ahPrW').textContent = w ? w.slice(0, 6) + '...' + w.slice(-6) + '  (TAP TO COPY)' : 'NOT CONNECTED';
+        // Tocar la direccion la copia entera (para pegarla donde haga falta).
+        $('#ahPrW').onclick = w ? async () => {
+            try { await navigator.clipboard.writeText(w); $('#ahPrW').textContent = 'ADDRESS COPIED'; } catch (e) { $('#ahPrW').textContent = w; }
+            setTimeout(pintaWallet, 1500);
+        } : null;
         $('#ahPrCon').style.display = conectada ? 'none' : '';
         $('#ahPrDep').style.display = $('#ahPrWd').style.display = conectada ? '' : 'none';
-        let bal = 0;
-        if (w) try { bal = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
-        $('#ahPrBal').textContent = Math.floor(bal).toLocaleString('en-US');
-        if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = bal;
+        saldoJuego = 0;
+        if (w) try { saldoJuego = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
+        $('#ahPrBal').textContent = Math.floor(saldoJuego).toLocaleString('en-US');
+        if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
     }
-    function conectaX() {
-        if (xUser || xWallet) { openProfile(); return; }
-        $('#ahCn').classList.add('open'); placa($('#ahCn .pnl'), 1);
-    }
+    function conectaX() { openProfile(); }
     // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
+    // Devuelve true si quedo conectada.
     async function loginWallet() {
         const p = window.GameWallet && GameWallet.getProvider('mwa');
-        if (!p) { try { showSystemMsg('The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return; }
+        if (!p) { try { showSystemMsg('The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return false; }
         try {
             const r = await p.connect();
             const addr = r.publicKey.toString();
@@ -711,9 +806,20 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
             if (j.error) throw new Error(j.error);
             GameWallet.address = addr; GameWallet.provider = p;
             try { localStorage.setItem('pw_wallet', 'mwa'); localStorage.setItem('pw_addr', addr); } catch (e) {}
-            $('#ahCn').classList.remove('open');
             await syncX();
-        } catch (e) { try { showSystemMsg('The wallet did not sign in. Please try again.', 'WALLET'); } catch (x) {} }
+            return true;
+        } catch (e) { try { showSystemMsg('The wallet did not sign in. Please try again.', 'WALLET'); } catch (x) {} return false; }
+    }
+    // Sala de pago: antes de nada (ROOM INFO, firma...) se mira si llega el saldo;
+    // si no, solo sale el cartel de depositar. Devuelve true si se puede seguir.
+    async function saldoParaSala() {
+        if (!(window.GameWallet && GameWallet.address) && !(await loginWallet())) return false;
+        const r = rooms.find(x => x.mode === mode && x.room === room) || {};
+        const fee = Math.ceil(r.pillFeeLive || r.pillFee || 0);
+        let bal = 0;
+        try { bal = (await (await fetch('/api/warbalance?wallet=' + GameWallet.address, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
+        if (bal >= fee) return true;
+        return !!(await GameWalletUI.pedirDeposito(fee, bal));
     }
 
     function tap(e) {
@@ -740,13 +846,15 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.onclick = () => { storeTab = b.dataset.s; buying = null; skinPage = 0; try { SoundManager.play('simpleselect'); } catch (x) {} renderStore(); });
         // X dentro de la app: el WebView mantiene a X dentro durante el login
         // (ver WebShellViewClient.kt) y vuelve aqui con la cookie puesta.
-        const xEnApp = () => { location.href = '/airdrop-auth/x/login?ret=' + encodeURIComponent(location.pathname); };
-        $('#ahCnX').onclick = xEnApp;
-        $('#ahCnW').onclick = () => loginWallet();
-        $('#ahPrAddX').onclick = xEnApp;
-        $('#ahPrCon').onclick = async () => { try { await GameWalletUI.connectWith('mwa'); } catch (e) {} pintaWallet(); };
+        $('#ahPrCon').onclick = async () => { await loginWallet(); pintaWallet(); pintaAvatarEditor(); };
         $('#ahPrDep').onclick = () => { try { GameWalletUI.openDeposit(); } catch (e) {} };
-        $('#ahPrWd').onclick = () => { try { GameWalletUI.openWithdraw(); } catch (e) {} };
+        // Sin nada en el juego no se abre el cartel de retirar: se dice y ya.
+        $('#ahPrWd').onclick = async () => {
+            await pintaWallet();
+            if (saldoJuego <= 0) { try { showSystemMsg('You have no $PILLY in the game to withdraw.', 'WITHDRAW'); } catch (e) {} return; }
+            try { GameWalletUI.openWithdraw(); } catch (e) {}
+        };
+        $('#ahSvBack').onclick = () => $('#ahSv').classList.remove('open');
         $('#ahName').addEventListener('input', e => guardaNombre(e.target.value));
         $('#ahName').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
         hub.querySelectorAll('.sk-slot').forEach(sl => sl.onclick = () => { slotSel = +sl.dataset.s; pillTab = 'skills'; renderPill(); });
@@ -754,11 +862,12 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
             const pg = $('#ahSk .pin .pg'); if (pg) pg.remove();
             pillTab = b.dataset.t; renderPill();
         });
-        $('.ah-play').onclick = () => {
+        $('.ah-play').onclick = async () => {
             const kind = room === 'offline' ? 'offline' : 'online';
             try { SoundManager.play('select'); } catch (x) {}
             try {
                 if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }
+                if (kind === 'online' && room !== 'Free' && !(await saldoParaSala())) return;
                 const nombre = ((document.getElementById('playerNameInput') || {}).value || '').trim();
                 // Con nombre ya puesto se entra sin preguntar; si falta, el cartel de nombre de siempre.
                 if (kind === 'online' && currentServer !== room && !selectRoom(room)) return;
@@ -778,10 +887,6 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         document.body.appendChild(hub);
         try { const n = localStorage.getItem('pw_app_name'); if (n) guardaNombre(n); } catch (e) {}
         syncX();
-        // Vuelta del login de X (#x=ok / #xerr=...): se limpia el hash y se avisa si fallo.
-        const ho = /^#xhandoff=([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
-        if (ho) { let sec = ''; try { sec = localStorage.getItem('pw_xs') || ''; localStorage.removeItem('pw_xs'); } catch (e) {} location.replace('/airdrop-auth/x/handoff?t=' + ho[1] + '&s=' + encodeURIComponent(sec)); return; }
-        if (/^#x(err)?=/.test(location.hash)) { const err = /xerr/.test(location.hash); history.replaceState(null, '', location.pathname + location.search); if (err) try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} }
         wire(); setInterval(() => { if (hub.classList.contains('on')) pullRooms(); }, 5000);
         addEventListener('resize', () => { if (hub.classList.contains('on')) { scale(); paintStatic(); } });
         // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.

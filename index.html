@@ -17,7 +17,7 @@
         }
     </script>
     <title>PillWars - The Crypto Arena</title>
-    <meta name="description" content="PillWars is a multiplayer .io arena game: eat, grow and outsmart rival pills with special skills. Play free or enter $PILL rooms on Solana.">
+    <meta name="description" content="PillWars is a multiplayer .io arena game: eat, grow and outsmart rival pills with special skills. Play free or enter $PILLY rooms on Solana.">
     <!-- canonical = the "official" address of this page, so pillwars.fun,
          pillwars.fun/index.html or a link with ?ref=... count as ONE page. -->
     <link rel="canonical" href="https://pillwars.fun/">
@@ -27,7 +27,7 @@
     <meta property="og:site_name" content="PillWars">
     <meta property="og:url" content="https://pillwars.fun/">
     <meta property="og:title" content="PillWars - The Crypto Arena">
-    <meta property="og:description" content="PillWars is a multiplayer .io arena game: eat, grow and outsmart rival pills with special skills. Play free or enter $PILL rooms on Solana.">
+    <meta property="og:description" content="PillWars is a multiplayer .io arena game: eat, grow and outsmart rival pills with special skills. Play free or enter $PILLY rooms on Solana.">
     <meta property="og:image" content="https://pillwars.fun/img/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -268,7 +268,7 @@
             justify-content: space-between; transition: all 0.3s ease;
         }
         /* gap elastico (clamp) en vez de 40px fijos: a partir de ~1150px de
-           ancho el contenido de la navbar —logo + 4 enlaces + PLAY NOW + $PILL
+           ancho el contenido de la navbar —logo + 4 enlaces + PLAY NOW + $PILLY
            + los dos iconos— dejaba de caber y el grupo de la derecha se salia
            por el borde. Al encogerse los huecos primero, el conjunto sigue
            entero y pegado a su esquina. En pantallas anchas el clamp topa en
@@ -553,12 +553,12 @@
         .dropdown { position: relative; display: flex; align-items: center; height: 100%; z-index: 1005; }
         .dropbtn { font-weight: 800; font-size: var(--fs-3); color: #fff; display: flex; align-items: center; gap: 8px; }
         /* absolute (no fixed): asi el desplegable cuelga del propio .dropdown y
-           lo SIGUE cuando el editor de layout mueve el $PILL de sitio. Con fixed
+           lo SIGUE cuando el editor de layout mueve el $PILLY de sitio. Con fixed
            el translate del padre pasaba a ser su containing block, de modo que
            las coordenadas de viewport que se le calculaban quedaban desplazadas
            dos veces y aparecia fuera de sitio. */
         /* SIN min-width: la caja la mide el contenido. Estaba en 220 y luego en
-           150, pero el contenido real (icono + "CHART" / "BUY $PILL" en Press
+           150, pero el contenido real (icono + "CHART" / "BUY $PILLY" en Press
            Start 2P + su padding) mide 122, asi que siempre sobraba hueco muerto
            a la derecha del texto — el marco se cerraba mucho despues de acabar
            la palabra. Con max-content el filo derecho cae donde termina el
@@ -566,7 +566,7 @@
            mismo por los dos lados. #nav-play-area lo pisa con min-width:100%
            (ver mas abajo), asi que alli no cambia nada. */
         .dropdown-content { display: none; position: absolute; top: 100%; right: 0; z-index: 1; pointer-events: auto; padding-top: 8px; min-width: max-content; }
-        /* Mismo aspecto que la barra IN GAME / $PILL (.wallet-bal-box): fondo
+        /* Mismo aspecto que la barra IN GAME / $PILLY (.wallet-bal-box): fondo
            oscuro translucido con filo dorado, esquinas de 8px y blur detras.
            Antes era una caja gris plana (#111 con borde #333) que no pegaba con
            el resto de la navbar. */
@@ -578,11 +578,11 @@
            .wallet-bal-box no esta en esa lista, por eso conserva el redondeo y
            el blur — esto es lo que iguala a los dos. */
         #pill-dropdown .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
-        /* El cuadro cae JUSTO DEBAJO del rotulo $PILL, igual que el de PLAY NOW
+        /* El cuadro cae JUSTO DEBAJO del rotulo $PILLY, igual que el de PLAY NOW
            (#nav-play-area .dropdown-content, mas abajo). Dos piezas:
 
            1) min-width:100% — nunca mas estrecho que el rotulo del que cuelga.
-              Con el precio cargado ("$PILL  $0.001234") el rotulo mide 116-152px
+              Con el precio cargado ("$PILLY  $0.001234") el rotulo mide 116-152px
               y el cuadro se estira a ESE ancho, asi que sus dos filos coinciden
               con los del rotulo y queda calcado debajo. Es literalmente la misma
               linea que usa PLAY NOW para lograr lo mismo.
@@ -590,7 +590,7 @@
            2) letra y padding ceñidos — el cuadro venia con 12px de letra
               mientras el rotulo usa --fs-1 (9px, ver body.pixel-pack .dropbtn):
               un tercio mas grande que el boton del que cuelga, lo que ensanchaba
-              "BUY $PILL" 27px de mas y descolgaba el cuadro muy a la izquierda
+              "BUY $PILLY" 27px de mas y descolgaba el cuadro muy a la izquierda
               (medido: 170px de cuadro contra 45px de rotulo). Igualarlo a --fs-1
               lo mete DENTRO del ancho del rotulo, que es la condicion para que
               min-width:100% mande y el cuadro quede pegado. El padding baja de
@@ -613,7 +613,7 @@
            TODAS las claves de LAYOUT_ELS, navPillMenu incluida, asi que un x/y
            guardado de cuando se podia arrastrar el menu lo volveria a descolgar
            de su rotulo pase lo que pase con las reglas de arriba. El menu no es
-           una pieza que deba colocarse a mano: cuelga de $PILL y punto. La clave
+           una pieza que deba colocarse a mano: cuelga de $PILLY y punto. La clave
            se queda en LAYOUT_ELS porque los botones +/- de LETRA del panel de
            EDIT LAYOUT la siguen usando (--pw-font sigue vivo, solo se clavan
            posicion y escala). */
@@ -876,7 +876,7 @@
            hay uno ahi dentro), aparece al hacer scroll y salir de el (ver el
            IntersectionObserver mas abajo). Mismo sitio y mismo boton que CONNECT:
            reusa .wallet-area/.wb-box tal cual. Al pasar el raton despliega
-           MODES/SKINS en vertical, igual que el desplegable de $PILL (en el
+           MODES/SKINS en vertical, igual que el desplegable de $PILLY (en el
            hero los mismos dos van en una sola fila, ver .hero-play-links). */
         #nav-play-area { display: none; align-items: center; gap: 10px; position: relative; }
         body.nav-play-visible #nav-play-area { display: flex; }
@@ -892,19 +892,19 @@
             font-size: var(--pw-font, 15px);
         }
         /* Desplegable MODES/SKINS del PLAY NOW de la navbar: el MISMO cuadro
-           que el de $PILL (por eso reusa .dropdown-content/.dropdown-box/a, que
+           que el de $PILLY (por eso reusa .dropdown-content/.dropdown-box/a, que
            ya traen el dorado, la Press Start 2P y el separador). El id hace
            falta para ganarle a "body.pixel-pack .dropdown-box", que anula
            radius y blur con !important — mismo motivo que en #pill-dropdown. */
         #nav-play-area .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
-        /* min-width auto: el de $PILL reserva 220px para "Buy $PILL" + icono;
+        /* min-width auto: el de $PILLY reserva 220px para "Buy $PILLY" + icono;
            aqui son dos palabras sueltas y esa anchura dejaba el cuadro medio
            vacio. Se ciñe al boton. */
         #nav-play-area .dropdown-content { min-width: 100%; }
         #nav-play-area:hover .dropdown-content { display: block; }
         /* ===== Rotulo + caja del contrato =====
            Mismo formato que la barra IN GAME (.wallet-bal-box) y el desplegable
-           de $PILL: fondo negro translucido, filo dorado, esquinas de 8px, blur
+           de $PILLY: fondo negro translucido, filo dorado, esquinas de 8px, blur
            y Press Start 2P. Son cajas de CSS, no PNGs de ancho fijo, asi que el
            ancho lo pone el contenido y el contrato entra ENTERO en una linea
            (nowrap, sin el word-break/overflow:hidden que antes lo cortaba).
@@ -1380,7 +1380,7 @@ body.trailer-open #page-content{
            vez y en su hueco queda MENU, que los despliega en una columna. */
         body.nav-colapsada .nav-links-container > a.nav-link { display: none !important; }
         /* En estrecho, en la barra queda MENU y nada mas. REWARDS estuvo fuera un
-           tiempo por ser la seccion donde se cobra, pero al lado de MENU y $PILL no
+           tiempo por ser la seccion donde se cobra, pero al lado de MENU y $PILLY no
            cabia: por debajo de 420px habia que esconderlo igual, asi que eran dos
            reglas y un breakpoint para que el rotulo apareciera y desapareciera segun
            el ancho. Esta dentro del desplegable, que es donde estan las demas. */
@@ -1395,7 +1395,7 @@ body.trailer-open #page-content{
         #nav-menu-dd { display: none; }
         body.nav-colapsada #nav-menu-dd { display: flex; }
         /* Cuelga hacia la DERECHA del rotulo (es el primer item por la izquierda
-           de la barra); el de $PILL, que vive en la esquina opuesta, cuelga al reves. */
+           de la barra); el de $PILLY, que vive en la esquina opuesta, cuelga al reves. */
         #nav-menu-dd .dropdown-content { left: 0; right: auto; }
         #nav-menu-dd .dropdown-box { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,206,61,0.4); border-radius: 8px !important; overflow: hidden; backdrop-filter: blur(4px) !important; }
         #nav-menu-dd .dropbtn { cursor: pointer; }
@@ -1411,10 +1411,10 @@ body.trailer-open #page-content{
         /* Barra apretada: se cae el rotulo PILLWARS (el logo-pildora se queda) y
            PLAY NOW pasa a ocupar su sitio. Es lo que evita que, al aparecer PLAY
            NOW, MENU se vaya a la derecha y acabe encima de los iconos mientras
-           $PILL se le monta a PLAY NOW: el rotulo mide 211px y PLAY NOW 166, asi
+           $PILLY se le monta a PLAY NOW: el rotulo mide 211px y PLAY NOW 166, asi
            que cambiando uno por otro la fila hasta encoge. */
         body.nav-apretada .brand-name { display: none !important; }
-        /* Ni $PILL ni los iconos de redes se esconden nunca: son lo que queda
+        /* Ni $PILLY ni los iconos de redes se esconden nunca: son lo que queda
            siempre a la derecha. Lo que cede sitio es, por este orden, el rotulo
            PILLWARS (encogiendo, luego del todo) y los cuatro enlaces (a MENU).
            Y si aun asi no cabe —un movil estrecho con PLAY NOW dentro— lo ultimo
@@ -1423,8 +1423,8 @@ body.trailer-open #page-content{
            visual y no libera sitio en la fila; zoom si cuenta para el layout. */
         #nav-play-area { zoom: var(--nav-k, 1); }
         .icon-btn { zoom: var(--nav-k, 1); }
-        /* $PILL y MENU a la MISMA altura. Sale 1px mas bajo que MENU porque su
-           rotulo son dos trozos ("$PILL" en un span y el precio como texto
+        /* $PILLY y MENU a la MISMA altura. Sale 1px mas bajo que MENU porque su
+           rotulo son dos trozos ("$PILLY" en un span y el precio como texto
            suelto) y la caja de linea no mide igual. */
         #price-btn { position: relative; top: -1px; }
 
@@ -1971,7 +1971,7 @@ body.trailer-open #page-content{
                "UNA SOLA FILA SIEMPRE" mas abajo. */
             .navbar { padding: 0 14px; }
             /* Arriba del todo se ve el rotulo PILLWARS (mas pequeño que en
-               escritorio para que quepa junto a $PILL y los iconos). Al bajar
+               escritorio para que quepa junto a $PILLY y los iconos). Al bajar
                aparece el PLAY NOW de la navbar y el rotulo se retira para
                dejarle el sitio: se turnan, nunca estan los dos a la vez.
                El tamaño del rotulo en movil NO se pone aqui: las dos reglas que
@@ -1989,10 +1989,10 @@ body.trailer-open #page-content{
                boton arranca en el pixel exacto en el que arrancaba el rotulo. */
             body.nav-play-visible .nav-left { gap: 10px; }
             body.nav-play-visible .nav-links-container { margin-left: 0; }
-            /* $PILL SE QUEDA (peticion de David). Antes se escondia con PLAY NOW
+            /* $PILLY SE QUEDA (peticion de David). Antes se escondia con PLAY NOW
                a la vista porque se le montaba encima; ahora quien cede el sitio
                es el rotulo PILLWARS: primero encogiendo (--marca-k) y, si aun asi
-               no basta, retirandose del todo (body.nav-apretada). Ni $PILL ni los
+               no basta, retirandose del todo (body.nav-apretada). Ni $PILLY ni los
                iconos de redes se esconden nunca. */
 
             /* ===== EL CONJUNTO DEL HERO, JUNTO Y CENTRADO =====
@@ -2257,7 +2257,7 @@ body.trailer-open #page-content{
         body.pixel-pack .brand-name:not(.no-img) .bn-txt { display: none; }
         /* ...y en telefono, lo que quepa. Con los 32 de arriba el PNG mide 211px
            de ancho (640/97): en una pantalla de 360 el rotulo llegaba a x=261
-           mientras $PILL empieza en 188, o sea 73px montados uno encima del
+           mientras $PILLY empieza en 188, o sea 73px montados uno encima del
            otro; a 412 seguian siendo 21 y a 430 rozaba. Por eso la misma web se
            veia limpia en un telefono ancho y con el logo pisado en uno normal:
            no era el telefono, era el ancho en px CSS.
@@ -2265,7 +2265,7 @@ body.trailer-open #page-content{
            ancho con el que se midio: 20px cuadra justo en 360 y vuelve a pisar
            en 320. Se calcula el hueco real que queda en la barra —14 de padding,
            36 de la pildora del logo con su gap, 165 del grupo de la derecha
-           ($PILL + los dos iconos, que mide igual a cualquier ancho) y 20 de
+           ($PILLY + los dos iconos, que mide igual a cualquier ancho) y 20 de
            aire— y el rotulo nunca pasa de ahi. El 132 es el ancho a la altura
            de 20px, que es su tamaño de diseño en movil y su tope por arriba.
            Va AQUI y no en el @media de mas arriba a proposito: alli estaba la
@@ -2388,7 +2388,7 @@ body.trailer-open #page-content{
         // CONNECT, DEPOSIT, WITHDRAW y DISCONNECT comparten clave: nunca se ven
         // los cuatro a la vez y tienen que salir del mismo tamaño.
         navWalletBtn: '#wallet-btn-box, #wallet-deposit-box, #wallet-withdraw-box, #wallet-disconnect-box',
-        // El desplegable CHART / BUY $PILL y el rotulo $PILL que lo contiene.
+        // El desplegable CHART / BUY $PILLY y el rotulo $PILLY que lo contiene.
         navPillMenu: '#pill-dropdown .dropdown-content',
         navPill: '#pill-dropdown',
         navBal: '#wallet-bal-box',
@@ -2531,7 +2531,7 @@ body.trailer-open #page-content{
             <!-- min-width por enlace = (nº de letras x 1.1em). Reserva el hueco
                  EXACTO que ocupara el texto con Press Start 2P ya cargada, asi
                  que mientras se usa la fuente de reserva (mas estrecha) la fila
-                 NO cambia de ancho y $PILL -que va detras, en esta misma fila
+                 NO cambia de ancho y $PILLY -que va detras, en esta misma fila
                  flex- no se desplaza cuando la fuente termina de cargar.
                  En em (no px) para que siga cuadrando si cambia el font-size
                  (movil, pixel-pack...). Medido: 1.1em por caracter. -->
@@ -2551,7 +2551,7 @@ body.trailer-open #page-content{
                      EDIT LAYOUT). -->
                 <div class="wallet-area" id="nav-play-area">
                     <div class="wb-box"><button class="btn-connect" onclick="HeroPlayModal.open()">PLAY NOW</button></div>
-                    <!-- Mismo montaje que el desplegable de $PILL (dropdown-content
+                    <!-- Mismo montaje que el desplegable de $PILLY (dropdown-content
                          > dropdown-box > a): en la navbar sale en vertical, una
                          palabra por fila. -->
                     <div class="dropdown-content">
@@ -2583,22 +2583,22 @@ body.trailer-open #page-content{
         </div>
 
         <div class="nav-dropdown-group">
-            <!-- $PILL: AQUI, en el grupo de la derecha, no en la fila de enlaces
+            <!-- $PILLY: AQUI, en el grupo de la derecha, no en la fila de enlaces
                  de la izquierda. Antes estaba alli y se traia a esta esquina con
                  un translate de +1021px guardado desde EDIT LAYOUT — pixeles
                  fijos que solo cuadraban a una anchura concreta y descolocaban
                  el conjunto en cuanto se hacia zoom out. Como item de este flex
                  se queda pegado a la esquina pase lo que pase con el ancho. -->
-            <!-- STAKE: en el grupo de la DERECHA, pegado a $PILL. La wallet ya no vive
+            <!-- STAKE: en el grupo de la DERECHA, pegado a $PILLY. La wallet ya no vive
                  aqui (esta flotando fuera de la barra), asi que este es el ultimo
                  enlace antes del precio. -->
             <a href="#staking" class="nav-link nav-stake">STAKE</a>
             <div class="dropdown" id="pill-dropdown">
-                <span class="dropbtn" id="price-btn"><span>$PILL</span> &nbsp; Loading...</span>
+                <span class="dropbtn" id="price-btn"><span>$PILLY</span> &nbsp; Loading...</span>
                 <div class="dropdown-content">
                     <div class="dropdown-box">
                         <a href="https://dexscreener.com/" target="_blank"><img src="https://dexscreener.com/favicon.ico" class="dd-icon" alt="" loading="lazy"> Chart</a>
-                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" alt="" loading="lazy" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILL</a>
+                        <a href="https://pump.fun" target="_blank"><img src="https://pump.fun/favicon.ico" class="dd-icon" alt="" loading="lazy" onerror="this.src='https://i.imgur.com/2etxs7Q.png'"> Buy $PILLY</a>
                     </div>
                 </div>
             </div>
@@ -2767,7 +2767,7 @@ body.trailer-open #page-content{
                 <div class="big-subtitle">THE CRYPTO ARENA</div>
             </div>
             <!-- Rotulo y caja del contrato: los dos con el MISMO formato que la
-                 barra IN GAME / el desplegable de $PILL (fondo negro
+                 barra IN GAME / el desplegable de $PILLY (fondo negro
                  translucido, filo dorado, Press Start 2P). Antes cada uno era un
                  PNG distinto (official-contract.png y contract-box.png) con el
                  texto encimado dentro de un marco de ancho fijo, y ahi el
@@ -2810,7 +2810,7 @@ body.trailer-open #page-content{
                  verificar el reparto desde fuera. -->
             <div class="side-widget">
                 <div class="widget-row"><div class="widget-title">ACTIVE PLAYERS</div><div class="widget-val live" id="widget-players">—</div></div>
-                <div class="widget-row"><div class="widget-title">$PILL MARKET CAP</div><div class="widget-val" id="widget-mcap">Loading...</div></div>
+                <div class="widget-row"><div class="widget-title">$PILLY MARKET CAP</div><div class="widget-val" id="widget-mcap">Loading...</div></div>
                 <div class="widget-row gold"><div class="widget-title">VOLUME 24H</div><div class="widget-val" id="widget-vol">Loading...</div></div>
                 <a class="widget-row gold" id="widget-earned-link" href="#" target="_blank" rel="noopener">
                     <div class="widget-title">MONEY EARNED</div>
@@ -2882,8 +2882,8 @@ body.trailer-open #page-content{
         <!-- BATTLE MODES -->
         <div class="battle-modes-container reveal">
             <h2>BATTLE MODES</h2>
-            <span class="powered-by">POWERED BY $PILL</span>
-            <p class="mode-oracle-info">To enter the arena, you must use <b>$PILL</b> tokens. Our Oracle updates entry costs every 5 minutes to ensure fair competition regardless of price volatility.</p>
+            <span class="powered-by">POWERED BY $PILLY</span>
+            <p class="mode-oracle-info">To enter the arena, you must use <b>$PILLY</b> tokens. Our Oracle updates entry costs every 5 minutes to ensure fair competition regardless of price volatility.</p>
             
             <div class="modes-grid">
                 <div class="mode-card classic">
@@ -2967,7 +2967,7 @@ body.trailer-open #page-content{
     <div id="shop" class="section-container">
         <div class="store-panel">
             <h2 class="section-title holo-text">Skin Store</h2>
-            <div class="shop-sub">32 countries · buy with <b>$PILL</b> or <b>SP</b> · every $PILL spent here is burned</div>
+            <div class="shop-sub">32 countries · buy with <b>$PILLY</b> or <b>SP</b> · every $PILLY spent here is burned</div>
             <div class="shop-carrusel">
                 <button class="shop-flecha" id="shopPrev" aria-label="Previous">&#9664;</button>
                 <div class="shop-grid" id="shopGrid"></div>
@@ -3069,7 +3069,7 @@ body.trailer-open #page-content{
                     <div class="pw-mine-l">
                         <span class="pw-mine-lbl">YOUR REWARDS</span>
                         <span class="pw-mine-val" id="vrTotal">0</span>
-                        <span class="pw-mine-lbl">$PILL</span>
+                        <span class="pw-mine-lbl">$PILLY</span>
                     </div>
                     <button class="pw-claim" id="vrClaim" disabled onclick="PWRewards.claimTodo()">CLAIM</button>
                 </div>
@@ -3100,7 +3100,7 @@ body.trailer-open #page-content{
         <div class="ov-h">
             <div>
                 <h2>Staking</h2>
-                <p>Lock $PILL and take a cut of everything the game earns. No tokens are minted: what you get paid is the house's own income coming back.</p>
+                <p>Lock $PILLY and take a cut of everything the game earns. No tokens are minted: what you get paid is the house's own income coming back.</p>
             </div>
         </div>
         <div class="pw-sec">
@@ -3206,7 +3206,7 @@ body.trailer-open #page-content{
     <div id="deposit-modal" class="modal-overlay">
         <div class="modal-box">
             <span class="modal-close" onclick="App.Deposit.close()">×</span>
-            <div class="modal-title">Deposit $PILL</div>
+            <div class="modal-title">Deposit $PILLY</div>
             <!-- .gm-row: mismo nombre y mismo aspecto que las filas del cartel de
                  /game. Los colores van en gris (#c8cdd2), como alli, en vez del
                  verde/ambar que llevaban aqui. -->
@@ -3226,7 +3226,7 @@ body.trailer-open #page-content{
     <div id="withdraw-modal" class="modal-overlay">
         <div class="modal-box">
             <span class="modal-close" onclick="App.Withdraw.close()">×</span>
-            <div class="modal-title">Withdraw $PILL</div>
+            <div class="modal-title">Withdraw $PILLY</div>
             <div class="gm-row" style="display:flex;justify-content:space-between;color:#888;margin-bottom:16px"><span>In GAME</span><b id="wd-war-bal" style="color:#c8cdd2">—</b></div>
             <label class="cmodal-label">Amount</label>
             <div style="position:relative">
@@ -3356,7 +3356,7 @@ body.trailer-open #page-content{
         };
 
         const App = {
-            // DEVNET (fase de pruebas blockchain). Token $PILL de prueba creado con
+            // DEVNET (fase de pruebas blockchain). Token $PILLY de prueba creado con
             // scripts/create-devnet-token.js. Cambiar a mainnet + mint real al lanzar.
             Config: { Token: "Exth8VyQVuNaJdZsUjoPK3QdegdxJBYXAnzT3mP5xY1r", RPC: "https://api.devnet.solana.com", Cluster: "devnet", Treasury: "4ToGD9MyS5vxDtGGMgU2SRvmqnZ66XHmaUgKKdH65YMN", Decimals: 6 },
             isTouch: false,
@@ -3407,7 +3407,7 @@ body.trailer-open #page-content{
                             con esto solo y PILLWARS se queda a tamaño completo.
                          2. Solo si aun colapsado no cupiera, PILLWARS encoge
                             (NUNCA desaparece). Ultimo recurso, no el primero:
-                            $PILL no llega a tocar a MENU salvo en pantallas
+                            $PILLY no llega a tocar a MENU salvo en pantallas
                             muy estrechas.
 
                        CON PLAY NOW (ya has bajado del hero):
@@ -3421,7 +3421,7 @@ body.trailer-open #page-content{
                             miden igual, no hay salto al hacer el cambio.
                          4. Ultimo recurso: encoger boton e iconos.
 
-                       $PILL y los iconos de redes no se esconden nunca. */
+                       $PILLY y los iconos de redes no se esconden nunca. */
                     const NAV_AIRE = 24;   // hueco minimo entre los dos grupos
                     const ajustaNavbar = () => {
                         const nb = document.querySelector('.navbar');
@@ -3499,7 +3499,7 @@ body.trailer-open #page-content{
                         } else {
                             // PASO 1: los cuatro enlaces, a MENU. Casi siempre
                             // basta con esto y PILLWARS no llega a encoger nada:
-                            // $PILL no se acerca a MENU salvo pantalla muy estrecha.
+                            // $PILLY no se acerca a MENU salvo pantalla muy estrecha.
                             document.body.classList.add('nav-colapsada');
                             if (pide() <= hueco) return;
 
@@ -3513,7 +3513,7 @@ body.trailer-open #page-content{
                         // PASO 4: ya no queda nada que se pueda quitar sin perder
                         // informacion, asi que se encoge lo mas grande —el boton
                         // PLAY NOW y los iconos— hasta que entre. Nada
-                        // desaparece: $PILL y las redes siguen ahi, solo mas
+                        // desaparece: $PILLY y las redes siguen ahi, solo mas
                         // pequeñas. Tope en 0,6 para que sigan siendo pulsables.
                         const encogibles = [hayPlay ? play : null, ...document.querySelectorAll('.icon-btn')].filter(Boolean);
                         const anchoEncogible = encogibles.reduce((t, e) => t + e.getBoundingClientRect().width, 0);
@@ -4177,7 +4177,7 @@ body.trailer-open #page-content{
                 close: () => { DOM.msgModal.style.display = 'none'; }
             },
 
-            // Depósito de $PILL al saldo WAR (modal con estilo del sitio)
+            // Depósito de $PILLY al saldo WAR (modal con estilo del sitio)
             Deposit: {
                 open: () => {
                     if (!App.Wallet.address) { DOM.walletModal.style.display = 'flex'; return; }
@@ -4197,7 +4197,7 @@ body.trailer-open #page-content{
                     const amt = Math.max(1, parseInt(DOM.depositAmount.value, 10) || 0);
                     // No dejar firmar un deposito de mas tokens de los que hay en la wallet
                     const walletBal = parseInt((App.Wallet.pillBal || '').replace(/[^\d]/g, ''), 10);
-                    if (!isNaN(walletBal) && amt > walletBal) { App.Msg.show('Deposit failed', 'You only have ' + walletBal.toLocaleString('en-US') + ' $PILL in your wallet. Lower the amount.'); return; }
+                    if (!isNaN(walletBal) && amt > walletBal) { App.Msg.show('Deposit failed', 'You only have ' + walletBal.toLocaleString('en-US') + ' $PILLY in your wallet. Lower the amount.'); return; }
                     if (!window.PillChain) { App.Msg.show('Please wait', 'Wallet module still loading, try again in a moment.'); return; }
                     DOM.depositConfirm.disabled = true; const old = DOM.depositConfirm.innerText; DOM.depositConfirm.innerText = 'Depositing...';
                     try {
@@ -4206,7 +4206,7 @@ body.trailer-open #page-content{
                         if (!r.ok) throw new Error(r.reason || 'verification failed');
                         App.Deposit.close();
                         App.Market.fetchBalance(w); App.Market.fetchWar(w);
-                        App.Msg.show('Deposit complete', amt.toLocaleString('en-US') + ' $PILL added to your in-GAME balance.');
+                        App.Msg.show('Deposit complete', amt.toLocaleString('en-US') + ' $PILLY added to your in-GAME balance.');
                     } catch (e) {
                         console.error(e);
                         App.Msg.show('Deposit failed', _errWallet(e));
@@ -4215,7 +4215,7 @@ body.trailer-open #page-content{
                 }
             },
 
-            // Retiro de $PILL del saldo WAR de vuelta a la wallet
+            // Retiro de $PILLY del saldo WAR de vuelta a la wallet
             Withdraw: {
                 open: () => {
                     if (!App.Wallet.address) { DOM.walletModal.style.display = 'flex'; return; }
@@ -4236,7 +4236,7 @@ body.trailer-open #page-content{
                     try {
                         // Firmar el retiro con la wallet (autoriza; prueba que eres el dueño)
                         const ts = Date.now();
-                        const message = `PillWars withdraw ${amt} PILL @ ${ts}`;
+                        const message = `PillWars withdraw ${amt} PILLY @ ${ts}`;
                         const res = await App.Wallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
                         const sigBytes = res && res.signature ? res.signature : res;
                         const signature = Array.from(sigBytes);
@@ -4245,7 +4245,7 @@ body.trailer-open #page-content{
                         if (!r.ok) throw new Error(r.reason || 'withdraw failed');
                         App.Withdraw.close();
                         App.Market.fetchBalance(w); App.Market.fetchWar(w);
-                        App.Msg.show('Withdraw complete', amt.toLocaleString('en-US') + ' $PILL sent back to your wallet.');
+                        App.Msg.show('Withdraw complete', amt.toLocaleString('en-US') + ' $PILLY sent back to your wallet.');
                     } catch (e) {
                         console.error(e);
                         App.Msg.show('Withdraw failed', _errWallet(e));
@@ -4284,7 +4284,7 @@ body.trailer-open #page-content{
                     if (!window.PillChain || !wallet) return;
                     try {
                         const pill = await window.PillChain.getWarBalance(wallet);
-                        const txt = Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILL';
+                        const txt = Number(pill).toLocaleString('en-US', { maximumFractionDigits: 0 }) + ' $PILLY';
                         App.Wallet.warBal = txt;
                         if (DOM.depWarBal) DOM.depWarBal.innerText = txt;
                         if (DOM.wdWarBal) DOM.wdWarBal.innerText = txt;
@@ -4303,9 +4303,9 @@ body.trailer-open #page-content{
                         });
                         const data = await res.json();
                         if (data.error) { set('Net Err'); return; }
-                        if (!data.result || !data.result.value || data.result.value.length === 0) { set('0 $PILL'); return; }
+                        if (!data.result || !data.result.value || data.result.value.length === 0) { set('0 $PILLY'); return; }
                         const amount = parseFloat(data.result.value[0].account.data.parsed.info.tokenAmount.uiAmountString).toLocaleString('en-US', { maximumFractionDigits: 0 });
-                        set(`${amount} $PILL`);
+                        set(`${amount} $PILLY`);
                     } catch (e) { set('Net Err'); }
                 },
                 updateTicker: async () => {
@@ -4321,7 +4321,7 @@ body.trailer-open #page-content{
                     // su altura real (0 al ocultarse).
                     const sinMercado = () => {
                         if (DOM.tickerWrap) DOM.tickerWrap.style.display = 'none';
-                        if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span>`;
+                        if (DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILLY</span>`;
                         if (DOM.widgetMcap) DOM.widgetMcap.innerText = '—';
                         if (DOM.widgetVol) DOM.widgetVol.innerText = '—';
                     };
@@ -4340,7 +4340,7 @@ body.trailer-open #page-content{
 
                         if(DOM.widgetMcap) DOM.widgetMcap.innerHTML = mcap;
                         if(DOM.widgetVol) DOM.widgetVol.innerHTML = vol; 
-                        if(DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILL</span> &nbsp; $${price}`;
+                        if(DOM.priceBtn) DOM.priceBtn.innerHTML = `<span>$PILLY</span> &nbsp; $${price}`;
 
                         const col = chg >= 0 ? '#00ff88' : '#ff4747';
                         const sign = chg >= 0 ? '+' : '';
@@ -4732,8 +4732,8 @@ function toggleTrailerMode() {
                     const falta = new Date(pos.saleEl).getTime() - Date.now(), listo = falta <= 0;
                     cool.classList.toggle('ready', listo);
                     $('vsCoolTxt').innerHTML = listo
-                        ? '<b>' + _fmt(pos.saliendo) + ' $PILL</b> ready to withdraw.'
-                        : '<b>' + _fmt(pos.saliendo) + ' $PILL</b> on the way out · ' + this.dur(falta) + ' left';
+                        ? '<b>' + _fmt(pos.saliendo) + ' $PILLY</b> ready to withdraw.'
+                        : '<b>' + _fmt(pos.saliendo) + ' $PILLY</b> on the way out · ' + this.dur(falta) + ' left';
                     $('vsBtnWithdraw').disabled = !listo;
                 }
 
@@ -4760,8 +4760,8 @@ function toggleTrailerMode() {
             stake() {
                 const a = Math.max(0, parseInt(document.getElementById('vsAmount').value, 10) || 0);
                 if (!(a > 0)) { App.Msg.show('Staking', 'Enter how much you want to stake.'); return; }
-                if (this.walletBal != null && a > this.walletBal) { App.Msg.show('Not enough', 'You only have ' + _fmt(this.walletBal) + ' $PILL in your wallet.'); return; }
-                this._accion('stake', a, _fmt(a) + ' $PILL staked. It starts earning right away.');
+                if (this.walletBal != null && a > this.walletBal) { App.Msg.show('Not enough', 'You only have ' + _fmt(this.walletBal) + ' $PILLY in your wallet.'); return; }
+                this._accion('stake', a, _fmt(a) + ' $PILLY staked. It starts earning right away.');
             },
             compound() { this._accion('compound', 0, 'Rewards moved into your stake. They earn from now on.'); },
             claim() { this._accion('claim', 0, 'Rewards sent to your wallet.'); },
@@ -4770,8 +4770,8 @@ function toggleTrailerMode() {
                 if (!pos || !(pos.stakeado > 0)) return;
                 const esc = Math.max(0, parseInt(document.getElementById('vsAmount').value, 10) || 0);
                 const n = Math.min(esc > 0 ? esc : pos.stakeado, pos.stakeado);
-                if (!confirm(_fmt(n) + ' $PILL will stop earning now and can be withdrawn in 7 days.\n\nContinue?')) return;
-                this._accion('request_unstake', n, _fmt(n) + ' $PILL on the way out. You can withdraw them in 7 days.');
+                if (!confirm(_fmt(n) + ' $PILLY will stop earning now and can be withdrawn in 7 days.\n\nContinue?')) return;
+                this._accion('request_unstake', n, _fmt(n) + ' $PILLY on the way out. You can withdraw them in 7 days.');
             },
             withdrawUnstaked() { this._accion('withdraw_unstaked', 0, 'Tokens sent to your wallet.'); },
         };
@@ -4897,7 +4897,7 @@ function toggleTrailerMode() {
                             ? 'claimed on-chain · ' + tx(d.rondaSig, 'round TX')
                             : d.pagados + ' of ' + d.ganadores + ' claimed')
                         + ' · ' + tx(d.anclaSig, 'standings anchor') + '</div></div>'
-                        + '<div class="pw-pay-a">' + _fmt(d.pill) + ' <span style="font-size:12px;color:#8b9199">$PILL</span></div>'
+                        + '<div class="pw-pay-a">' + _fmt(d.pill) + ' <span style="font-size:12px;color:#8b9199">$PILLY</span></div>'
                         + barra + filas + '</div>';
                 }).join('');
 
@@ -5032,7 +5032,7 @@ function toggleTrailerMode() {
                             : '';
                         return '<div class="pw-rw">'
                             + '<div class="d">#' + x.rank + ' · ' + _esc(x.date) + '<div class="s">' + estado + '</div></div>'
-                            + '<div class="a">' + _fmt(x.pill) + ' $PILL</div>'
+                            + '<div class="a">' + _fmt(x.pill) + ' $PILLY</div>'
                             + '<div>' + (cobrado ? sig
                                 : '<button ' + (listo ? '' : 'disabled ')
                                   + 'onclick="PWRewards.claim(' + x.epoch + ')">CLAIM</button>') + '</div>'
@@ -5051,7 +5051,7 @@ function toggleTrailerMode() {
                 document.getElementById('vrClaim').disabled = !(total > 0);
 
                 const pend = lista.reduce((t, x) => t + (x.pill || 0), 0);
-                nota.innerHTML = (pend > 0 ? '<b>' + _fmt(pend) + ' $PILL</b> pending. ' : '')
+                nota.innerHTML = (pend > 0 ? '<b>' + _fmt(pend) + ' $PILLY</b> pending. ' : '')
                     + 'Each day\'s standings are hashed and anchored on Solana <b>before</b> a single token '
                     + 'moves, so what you get paid can be checked against a list that was already public. '
                     + 'Rewards never expire.';
@@ -5117,7 +5117,7 @@ function toggleTrailerMode() {
                     + '<span class="pw-tag ' + (c.tipo === 'wallet' ? 'w' : 'c') + '">'
                     + (c.tipo === 'wallet' ? 'WALLET' : c.tipo === 'programa' ? 'PROGRAM' : 'CONTRACT VAULT')
                     + '</span></div>'
-                    + '<div class="v">' + (c.pill == null ? '' : _fmt(c.pill) + ' $PILL') + '</div>'
+                    + '<div class="v">' + (c.pill == null ? '' : _fmt(c.pill) + ' $PILLY') + '</div>'
                     + '<div class="q">' + _esc(c.que) + '</div>'
                     /* Para cuantos dias da, EN EL PEOR CASO. Se divide por el techo
                        diario, no por lo que se paga: el bote de verdad es
@@ -5127,7 +5127,7 @@ function toggleTrailerMode() {
                        prevision es peor que no dar el numero. */
                     + (c.cubre && c.cubre.dias != null
                         ? '<div class="q" style="color:' + (c.cubre.seQuedaCorta ? '#ffb020' : '#8b9199') + '">'
-                          + 'At the daily cap of ' + _fmt(c.cubre.presupuestoDia) + ' $PILL that is '
+                          + 'At the daily cap of ' + _fmt(c.cubre.presupuestoDia) + ' $PILLY that is '
                           + _fmt(c.cubre.dias) + ' day' + (c.cubre.dias === 1 ? '' : 's')
                           + ' — and the pot only reaches the cap on a busy day, so it lasts longer than that.</div>'
                         : '')
@@ -5137,7 +5137,7 @@ function toggleTrailerMode() {
                 /* El pie con el mint, el supply y el enlace de compra ya no va aqui: en
                    una tarjeta que responde "de donde sale tu premio", tres datos del
                    token de los que ninguno responde eso solo distraen. El supply y los
-                   holders estan en su lista, y comprar se hace desde $PILL del nav. */
+                   holders estan en su lista, y comprar se hace desde $PILLY del nav. */
 
                 const hs = d.holders || [];
                 $('vrHolders').innerHTML = !hs.length
@@ -5151,7 +5151,7 @@ function toggleTrailerMode() {
                         + '<div class="w">' + link(h.dueno) + '</div>'
                         + '</div>').join('');
 
-                $('vrHoldersNota').innerHTML = 'Every account that holds $PILL, read straight from the chain. '
+                $('vrHoldersNota').innerHTML = 'Every account that holds $PILLY, read straight from the chain. '
                     + (d.holdersViejos ? '<span style="color:#ffb020">Showing the last good read ('
                         + Math.round((d.holdersEdad || 0) / 60) + ' min old): the RPC is not answering.</span> ' : '')
                     + 'Solscan\'s holders tab is often empty on devnet because the public RPC blocks the call '
@@ -5348,7 +5348,7 @@ function toggleTrailerMode() {
         })();
     </script>
 
-    <!-- Depósito de entrada $PILL (Solana). Módulo ESM: construye y firma el transfer
+    <!-- Depósito de entrada $PILLY (Solana). Módulo ESM: construye y firma el transfer
          al treasury con la wallet conectada. Base de las salas de pago (Fase B2). -->
     <script type="module">
         // Misma libreria servida por NUESTRO servidor (ver game/index.html).
@@ -5595,7 +5595,7 @@ function toggleTrailerMode() {
             setHeroZoom(layout.zoom || 1);
         }
 
-        // El desplegable de $PILL no se cierra en cuanto sales: espera un poco.
+        // El desplegable de $PILLY no se cierra en cuanto sales: espera un poco.
         // Con :hover puro, en cuanto el raton pisaba un pixel que no fuera ni el
         // boton ni el menu se cerraba de golpe — y eso pasa siempre que el menu
         // va desplazado (clave navPillMenu), porque entonces entre los dos queda
@@ -5804,7 +5804,7 @@ function toggleTrailerMode() {
                 const cod = document.createElement('div'); cod.className = 'sc-cod'; cod.textContent = p.code;
                 const nom = document.createElement('div'); nom.className = 'sc-nom'; nom.textContent = p.n;
                 const pre = document.createElement('div'); pre.className = 'sc-pre';
-                pre.textContent = paisPuesta() === p.code ? 'EQUIPPED' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILL');
+                pre.textContent = paisPuesta() === p.code ? 'EQUIPPED' : (paisTengo(p.code) ? 'OWNED' : paisPrecioTexto(PAIS_PRECIO_PILL) + ' $PILLY');
                 if (paisTengo(p.code)) pre.style.color = 'var(--primary)';
                 c.append(cod, nom, pre);
                 // El cursor-pildora se tiñe con la bandera del pais que tocas, y

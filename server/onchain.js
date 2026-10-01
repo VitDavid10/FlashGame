@@ -102,7 +102,7 @@ function catalogo() {
             que: 'The staking program. ' + (st.MODO === 'aparte' ? 'Its own contract.' : 'Lives inside the treasury contract.'),
             tipo: 'programa' });
         mete({ clave: 'stakeVault', nombre: 'Staking · principal', address: p.stakeVault.toBase58(),
-            que: '$PILL people have locked. It is theirs and leaves when they ask.',
+            que: '$PILLY people have locked. It is theirs and leaves when they ask.',
             tipo: 'boveda', pda: esPda(p.stakeVault.toBase58()) });
         mete({ clave: 'rewardVault', nombre: 'Staking · reward pool', address: p.rewardVault.toBase58(),
             que: 'What the game earned, waiting to be split between stakers.',
@@ -122,7 +122,7 @@ function catalogo() {
     return out;
 }
 
-/** El saldo en $PILL de la cuenta asociada de un dueño, o null si no tiene. */
+/** El saldo en $PILLY de la cuenta asociada de un dueño, o null si no tiene. */
 async function saldoDe(c, dueno) {
     const { PublicKey } = require('@solana/web3.js');
     const { getAssociatedTokenAddressSync, getAccount } = require('@solana/spl-token');

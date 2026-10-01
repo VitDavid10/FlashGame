@@ -34,7 +34,7 @@ const { fork } = require('child_process');
 const { WebSocketServer } = require('ws');
 const PillSim = require('../shared/sim.js');
 const proto = require('../shared/proto.js');     // protocolo binario para snaps (opt-in)
-const solana = require('./solana.js');     // verificación de depósitos $PILL
+const solana = require('./solana.js');     // verificación de depósitos $PILLY
 const warbank = require('./warbank.js');   // saldo WAR interno por wallet
 const leaderboard = require('./leaderboard.js');   // ranking DIARIO por wallet (premios de tesorería)
 const rewards = require('./rewards.js');           // rondas de premios: Merkle + publicación on-chain
@@ -46,7 +46,7 @@ const rake = require('./rake.js');                 // lo que se queda la casa, y
 // del otro para funcionar, y en los tests se puede probar cada uno por su lado.
 leaderboard.setProveedorOponentes(() => matches.oponentesDe());
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
-const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILL + quema)
+const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILLY + quema)
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
 const { createTelegram } = require('./telegram.js');  // anuncios fijados y posts de X en Telegram
@@ -538,22 +538,22 @@ const ORACLE_REFRESH_MS = Math.max(3000, parseInt(process.env.ORACLE_REFRESH_MS,
 function proximaLectura() { return Math.round(ORACLE_REFRESH_MS * (0.6 + Math.random() * 0.8)); }
 /*
  * El oráculo sigue un precio REAL, sin nada aleatorio: el de PUMP (el token de
- * pump.fun), tratado como si fuera el de $PILL.
+ * pump.fun), tratado como si fuera el de $PILLY.
  *
  * FUENTE: DexScreener, por el mint del token. No CoinGecko, por dos razones que
  * importan justo para el caso real:
  *   1. CoinGecko NO lista tokens de 50k-1M de capitalización. El día que salga
- *      $PILL no estaría ahí, así que el ensayo no valdría de nada. DexScreener
+ *      $PILLY no estaría ahí, así que el ensayo no valdría de nada. DexScreener
  *      indexa cualquier par de un DEX en cuanto existe.
  *   2. Su API pública no está pensada para una llamada por minuto (~43.000 al
  *      mes); DexScreener permite 300 por minuto en este endpoint.
  * Es además la misma fuente que ya usa la landing para el precio del token.
  *
- * PUMP y no SOL porque $PILL se creará en pump.fun: mismo tipo de token y mismo
+ * PUMP y no SOL porque $PILLY se creará en pump.fun: mismo tipo de token y mismo
  * orden de magnitud (~$0.0045 ⇒ ~223 PILL por dólar, salas de 1.100 a 11.000
  * PILL). Con SOL el rate se iba a ~9 PILL/$, que no se parecía a nada real.
  *
- * El día que $PILL cotice es cambiar ORACLE_TOKEN por su mint y ya: el bloqueo
+ * El día que $PILLY cotice es cambiar ORACLE_TOKEN por su mint y ya: el bloqueo
  * de precio por sala, el reparto por IPC, el redondeo de la tarifa y el aguante
  * ante un feed caído ya estarán rodados.
  *
@@ -651,7 +651,7 @@ if (PW_ROLE !== 'host' && !PILL_FIJO) {
 } else if (PILL_FIJO) {
     log(`Oráculo APAGADO por PILL_PER_DOLLAR=${PILL_FIJO}: precio fijo, no se consulta el feed.`);
 }
-// Quema del $PILL gastado en skins. Solo en el Director: los hosts no tocan
+// Quema del $PILLY gastado en skins. Solo en el Director: los hosts no tocan
 // economia, y dos procesos vaciando la misma cola quemarian dos veces.
 if (PW_ROLE !== 'host') skinshop.arrancaQuemaPeriodica(solana, log, require('./treasury-client.js'), process.env.TREASURY_PROGRAM || '');
 // Premios diarios de la tesorería: cierra el día, construye el árbol y publica la
@@ -678,7 +678,7 @@ if (PW_ROLE !== 'host') {
 }
 // Tarifa con un rate dado (el de la sala si está bloqueado, o el global del oráculo).
 // Math.round: la tarifa viaja DENTRO del mensaje que el jugador firma
-// ("...paying 48 PILL @ ..."), y el servidor reconstruye esa misma cadena para
+// ("...paying 48 PILLY @ ..."), y el servidor reconstruye esa misma cadena para
 // validarla. Con el rate en millares daba igual, pero con un rate real y
 // decimal (SOL/1000 ⇒ ~9.7) el producto sale en coma flotante
 // (5 * 9.695 = 48.474999999999994) y basta el mínimo desajuste entre los dos
@@ -738,7 +738,7 @@ function questsOf(clientId) {
     return questsStore[clientId];
 }
 
-// --- Faucet de testnet (devnet): claim diario de $PILL y SOL a la wallet ---
+// --- Faucet de testnet (devnet): claim diario de $PILLY y SOL a la wallet ---
 // Ambos son transferencias ON-CHAIN reales desde el treasury. Anti-abuso: 1 cada 24h
 // por wallet Y por IP (el SOL sale de fondos reales del treasury). Persistimos el
 // último claim por wallet/IP y kind en faucet.json.
@@ -746,7 +746,7 @@ const FAUCET_FILE = path.join(__dirname, 'faucet.json');
 const faucet = loadJson(FAUCET_FILE, { wallets: {}, ips: {} });
 let faucetDirty = false;
 setInterval(() => { if (faucetDirty) { faucetDirty = false; fs.writeFile(FAUCET_FILE, JSON.stringify(faucet), () => {}); } }, 3000);
-const CLAIM_PILL = 500000;         // $PILL por claim diario
+const CLAIM_PILL = 500000;         // $PILLY por claim diario
 const CLAIM_SOL = 0.005;           // SOL devnet por claim diario
 const CLAIM_COOLDOWN_MS = 24 * 3600 * 1000;
 // Devuelve ms que faltan para poder volver a reclamar `kind` (0 = disponible ya).
@@ -1024,7 +1024,7 @@ const directorLocal = {
         if (fee > 0 && !tester) {
             pay = pay || {};
             const w = String(pay.wallet || ''), ts = Number(pay.ts) || 0;
-            const expected = `PillWars enter ${comboKey} paying ${fee} PILL @ ${ts}`;
+            const expected = `PillWars enter ${comboKey} paying ${fee} PILLY @ ${ts}`;
             const balance = isSolAddr(w) ? warbank.getBalance(w) : 0;
             if (!isSolAddr(w) || pay.message !== expected || Math.abs(Date.now() - ts) > 120000) return { ok: false, reason: 'invalid payment signature', balance };
             const sigKey = 'enter_' + (Array.isArray(pay.signature) ? pay.signature.join(',') : '');
@@ -2778,7 +2778,7 @@ const httpServer = http.createServer(async (req, res) => {
         return;
     }
     // --- Saldo WAR (PILL depositado en el juego) ---
-    /* Saldo $PILL de una wallet EN LA CADENA (no el saldo in-game).
+    /* Saldo $PILLY de una wallet EN LA CADENA (no el saldo in-game).
      *
      * Lo usa el boton MAX del panel de staking: se stakea desde la wallet, que es
      * otra bolsa distinta de la custodia. Solo lectura y con el mismo limite de
@@ -2810,7 +2810,7 @@ const httpServer = http.createServer(async (req, res) => {
         return;
     }
     /* ===== TIENDA DE SKINS =====
-     * Mismo modelo que las salas: el saldo $PILL es interno (warbank) y gastarlo
+     * Mismo modelo que las salas: el saldo $PILLY es interno (warbank) y gastarlo
      * exige una FIRMA de la wallet con la cantidad exacta dentro del mensaje.
      * Sin eso bastaría con decir "soy esta wallet" en el body para vaciarle el
      * saldo a cualquiera — el endpoint no tiene sesión ni cookie que lo impida.
@@ -2851,7 +2851,7 @@ const httpServer = http.createServer(async (req, res) => {
             let p; try { p = JSON.parse(body); } catch (e) { res.end(JSON.stringify({ ok: false, error: 'invalid request' })); return; }
             const wallet = isSolAddr(String(p.wallet || '')) ? String(p.wallet) : null;
 
-            // Comprueba la firma de un gasto en $PILL. `esperado` es el mensaje
+            // Comprueba la firma de un gasto en $PILLY. `esperado` es el mensaje
             // EXACTO que el cliente tuvo que firmar: lleva dentro la cantidad, así
             // que una firma de 250 no sirve para gastar 25.000.
             const firmaVale = (esperado) => {
@@ -2871,7 +2871,7 @@ const httpServer = http.createServer(async (req, res) => {
                 const moneda = p.moneda === 'pill' ? 'pill' : 'sp';
                 if (moneda === 'pill') {
                     const ts = Number((p.pay || {}).ts) || 0;
-                    const mal = firmaVale(`PillWars buy skin ${code} for ${skinshop.PRECIO_PILL} PILL @ ${ts}`);
+                    const mal = firmaVale(`PillWars buy skin ${code} for ${skinshop.PRECIO_PILL} PILLY @ ${ts}`);
                     if (mal) { res.end(JSON.stringify({ ok: false, error: mal })); return; }
                 }
                 r = skinshop.comprar({ cid, wallet, code, moneda, nonce: String(p.nonce || '') });
@@ -2884,10 +2884,10 @@ const httpServer = http.createServer(async (req, res) => {
             } else {
                 const pill = Math.floor(Number(p.pill) || 0);
                 const ts = Number((p.pay || {}).ts) || 0;
-                const mal = firmaVale(`PillWars convert ${pill} PILL to ${pill / skinshop.PILL_POR_SP} SP @ ${ts}`);
+                const mal = firmaVale(`PillWars convert ${pill} PILLY to ${pill / skinshop.PILL_POR_SP} SP @ ${ts}`);
                 if (mal) { res.end(JSON.stringify({ ok: false, error: mal })); return; }
                 r = skinshop.convertir({ cid, wallet, pill, nonce: String(p.nonce || '') });
-                if (r.ok && !r.repetida) log(`Cambio ${pill} $PILL -> ${pill / skinshop.PILL_POR_SP} SP por ${wallet.slice(0, 6)}…`);
+                if (r.ok && !r.repetida) log(`Cambio ${pill} $PILLY -> ${pill / skinshop.PILL_POR_SP} SP por ${wallet.slice(0, 6)}…`);
             }
             res.end(JSON.stringify(r));
         });
@@ -2962,7 +2962,7 @@ const httpServer = http.createServer(async (req, res) => {
             if (warbank.sigUsed(sig)) { res.end(JSON.stringify({ ok: false, reason: 'deposit already credited' })); return; }
             const saldo = warbank.creditDeposit(wallet, v.amount, sig);
             logTx('deposit', wallet, v.amount, 'on-chain', sig);
-            logAdmin('-', 'Depósito $PILL', wallet.slice(0, 6) + '… +' + v.amount);
+            logAdmin('-', 'Depósito $PILLY', wallet.slice(0, 6) + '… +' + v.amount);
             log(`Depósito acreditado: ${wallet.slice(0, 6)}… +${v.amount} PILL → saldo ${saldo}`);
             res.end(JSON.stringify({ ok: true, credited: v.amount, warBalance: saldo }));
         });
@@ -2980,7 +2980,7 @@ const httpServer = http.createServer(async (req, res) => {
             const ts = Number(p.ts) || 0, message = String(p.message || ''), signature = p.signature;
             if (!isSolAddr(wallet) || amount <= 0) { res.end(JSON.stringify({ ok: false, reason: 'invalid data' })); return; }
             // El jugador debe FIRMAR el retiro con su wallet (prueba que es el dueño).
-            const expected = `PillWars withdraw ${amount} PILL @ ${ts}`;
+            const expected = `PillWars withdraw ${amount} PILLY @ ${ts}`;
             if (message !== expected) { res.end(JSON.stringify({ ok: false, reason: 'invalid message' })); return; }
             if (Math.abs(Date.now() - ts) > 120000) { res.end(JSON.stringify({ ok: false, reason: 'firma caducada, reintenta' })); return; }
             const sigKey = 'wd_' + (Array.isArray(signature) ? signature.join(',') : '');
@@ -3018,7 +3018,7 @@ const httpServer = http.createServer(async (req, res) => {
                 const sig = await solana.withdraw(wallet, amount);
                 const saldo = warbank.getBalance(wallet);
                 logTx('withdraw', wallet, -amount, '', sig);
-                logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + amount);
+                logAdmin('-', 'Retiro $PILLY', wallet.slice(0, 6) + '… -' + amount);
                 log(`Retiro: ${wallet.slice(0, 6)}… -${amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
                 res.end(JSON.stringify({ ok: true, withdrawn: amount, warBalance: saldo, sig }));
             } catch (e) {
@@ -3054,7 +3054,7 @@ const httpServer = http.createServer(async (req, res) => {
                 retirosPendientes.delete(wallet);   // el saldo ya se descontó al preparar
                 const saldo = warbank.getBalance(wallet);
                 logTx('withdraw', wallet, -pend.amount, '', sig);
-                logAdmin('-', 'Retiro $PILL', wallet.slice(0, 6) + '… -' + pend.amount);
+                logAdmin('-', 'Retiro $PILLY', wallet.slice(0, 6) + '… -' + pend.amount);
                 log(`Retiro: ${wallet.slice(0, 6)}… -${pend.amount} PILL → saldo ${saldo} (tx ${sig.slice(0, 8)}…)`);
                 res.end(JSON.stringify({ ok: true, withdrawn: pend.amount, warBalance: saldo, sig }));
             } catch (e) {
@@ -3068,7 +3068,7 @@ const httpServer = http.createServer(async (req, res) => {
         return;
     }
 
-    // --- Faucet de testnet: claim diario de $PILL o SOL (transfer on-chain real) ---
+    // --- Faucet de testnet: claim diario de $PILLY o SOL (transfer on-chain real) ---
     if (urlPath === '/api/claim' && req.method === 'POST') {
         if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ ok: false, reason: 'demasiadas peticiones, espera un minuto' })); return; }
         let body = '';
@@ -3202,7 +3202,7 @@ const httpServer = http.createServer(async (req, res) => {
     /* ===== STAKING =====
      *
      * El pool reparte los ingresos corrientes del juego —rake de partidas y tienda—
-     * entre quien inmoviliza $PILL. Todo lo que hace falta para operarlo lo firma el
+     * entre quien inmoviliza $PILLY. Todo lo que hace falta para operarlo lo firma el
      * propio usuario: el servidor solo formatea la transacción, igual que en el claim.
      * Ni el principal ni las recompensas pasan por sus manos.
      */

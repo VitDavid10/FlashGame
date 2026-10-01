@@ -302,7 +302,7 @@ function initStaking(programId, { authority, mint }) {
     ], ixDisc('init_staking'));
 }
 
-/** stake — el usuario inmoviliza $PILL. Su posicion se crea sola la primera vez. */
+/** stake — el usuario inmoviliza $PILLY. Su posicion se crea sola la primera vez. */
 function stake(programId, { owner, from, amountRaw }) {
     const p = pdas(programId);
     const w = new PublicKey(owner);

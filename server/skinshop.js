@@ -1,19 +1,19 @@
 /*
- * TIENDA DE SKINS — compra, propiedad y quema de $PILL.
+ * TIENDA DE SKINS — compra, propiedad y quema de $PILLY.
  *
  * Sigue el MISMO modelo que las salas de pago (ver warbank.js): el jugador
- * deposita $PILL una vez on-chain y a partir de ahi gasta de su saldo interno sin
+ * deposita $PILLY una vez on-chain y a partir de ahi gasta de su saldo interno sin
  * firmar nada. Comprar una skin es instantaneo; lo unico que va a la cadena es la
  * quema, y va en diferido.
  *
  * DOS MONEDAS:
  *   - SP: se gana jugando (daily quests). Va por clientId, sin wallet.
- *   - $PILL: sale del saldo WAR, que exige wallet conectada y deposito previo.
- * 250 SP o 25.000 $PILL por skin, y el cambio 1000 $PILL -> 10 SP sale del mismo
- * ratio (100 $PILL por SP), no de una segunda constante.
+ *   - $PILLY: sale del saldo WAR, que exige wallet conectada y deposito previo.
+ * 250 SP o 25.000 $PILLY por skin, y el cambio 1000 $PILLY -> 10 SP sale del mismo
+ * ratio (100 $PILLY por SP), no de una segunda constante.
  *
  * A DONDE VA LO GASTADO. Al POZO DEL STAKING, que lo reparte entre quien inmoviliza
- * $PILL. No se quema: quemar destruye los tokens y ya esta, mientras que mandarlos al
+ * $PILLY. No se quema: quemar destruye los tokens y ya esta, mientras que mandarlos al
  * staking devuelve ese mismo dinero a la gente que sostiene el token. Con
  * PILL_TREASURY_PCT se puede volver a quemar una parte, pero por defecto no se quema
  * nada. Los premios del top 10 no salen de aqui: esos vienen del principal bloqueado
@@ -110,7 +110,7 @@ function comprar({ cid, wallet, code, moneda, nonce }) {
         if (skinpoints.spendPoints(cid, PRECIO_SP) === false) return { ok: false, error: 'not enough SP' };
     } else if (moneda === 'pill') {
         if (!wallet) return { ok: false, error: 'connect your wallet' };
-        if (warbank.debit(wallet, PRECIO_PILL) === false) return { ok: false, error: 'not enough $PILL' };
+        if (warbank.debit(wallet, PRECIO_PILL) === false) return { ok: false, error: 'not enough $PILLY' };
         apuntaQuema(PRECIO_PILL);
     } else {
         return { ok: false, error: 'invalid currency' };
@@ -151,22 +151,22 @@ function vincular(cid, acct, wallet) {
     return { ok: true, estado: estado(cid, wallet) };
 }
 
-/* ===== CAMBIO $PILL -> SP ===== */
+/* ===== CAMBIO $PILLY -> SP ===== */
 // Solo en ese sentido: el SP se gana jugando y no deberia poder revenderse por
 // tokens, o el juego se convierte en una granja.
 function convertir({ cid, wallet, pill, nonce }) {
     if (!cid) return { ok: false, error: 'no session' };
     if (!wallet) return { ok: false, error: 'connect your wallet' };
     pill = Math.floor(Number(pill) || 0);
-    if (pill < CONVERSION_MIN_PILL) return { ok: false, error: 'minimum ' + CONVERSION_MIN_PILL + ' $PILL' };
+    if (pill < CONVERSION_MIN_PILL) return { ok: false, error: 'minimum ' + CONVERSION_MIN_PILL + ' $PILLY' };
     // Solo multiplos exactos: con el resto, cambiar 150 daria 1 SP y se comerian
-    // 50 $PILL sin contrapartida.
+    // 50 $PILLY sin contrapartida.
     if (pill % PILL_POR_SP !== 0) return { ok: false, error: 'must be a multiple of ' + PILL_POR_SP };
 
     const clave = cid + ':conv:' + nonce;
     if (nonce && data.nonces[clave]) return { ok: true, repetida: true, estado: estado(cid, wallet) };
 
-    if (warbank.debit(wallet, pill) === false) return { ok: false, error: 'not enough $PILL' };
+    if (warbank.debit(wallet, pill) === false) return { ok: false, error: 'not enough $PILLY' };
     apuntaQuema(pill);
     skinpoints.addPoints(cid, pill / PILL_POR_SP);
     if (nonce) data.nonces[clave] = { t: Date.now() };
@@ -174,7 +174,7 @@ function convertir({ cid, wallet, pill, nonce }) {
     return { ok: true, estado: estado(cid, wallet) };
 }
 
-/* ===== SALIDA DEL $PILL GASTADO: QUEMA Y/O TESORERIA =====
+/* ===== SALIDA DEL $PILLY GASTADO: QUEMA Y/O TESORERIA =====
  *
  * Todo lo que se gasta aqui sale del saldo WAR del jugador, o sea que fisicamente
  * sigue en la custodia. Lo que se decide ahora es a donde va:
@@ -273,10 +273,10 @@ async function quemarPendiente(solana, log) {
         data.quemas.push({ pill: cantidad, sig, t: Date.now() });
         if (data.quemas.length > 50) data.quemas = data.quemas.slice(-50);
         dirty = true; save();
-        if (log) log(`Quemados ${cantidad} $PILL — ${sig}`);
+        if (log) log(`Quemados ${cantidad} $PILLY — ${sig}`);
         return { ok: true, pill: cantidad, sig };
     } catch (e) {
-        if (log) log(`Quema FALLIDA (${cantidad} $PILL siguen pendientes): ${e.message}`);
+        if (log) log(`Quema FALLIDA (${cantidad} $PILLY siguen pendientes): ${e.message}`);
         return { ok: false, error: e.message };
     } finally {
         _quemando = false;
@@ -302,7 +302,7 @@ async function barrerPendiente(solana, treasuryClient, programId, log) {
         /*
          * Al POZO DEL STAKING, no a la tesoreria bloqueada. Son dos grifos con
          * fuentes distintas: lo que la gente se gasta en el juego va a quien
-         * inmoviliza $PILL, y los premios del top 10 salen del principal de la
+         * inmoviliza $PILLY, y los premios del top 10 salen del principal de la
          * compra inicial. Si se mezclaran, el rendimiento del staking se comeria
          * el principal bloqueado o los premios dependerian de que el juego facture.
          *
@@ -320,10 +320,10 @@ async function barrerPendiente(solana, treasuryClient, programId, log) {
         data.barridos.push({ pill: cantidad, sig, t: Date.now() });
         if (data.barridos.length > 50) data.barridos = data.barridos.slice(-50);
         dirty = true; save();
-        if (log) log(`Barridos ${cantidad} $PILL de la tienda al pozo del staking — ${sig}`);
+        if (log) log(`Barridos ${cantidad} $PILLY de la tienda al pozo del staking — ${sig}`);
         return { ok: true, pill: cantidad, sig };
     } catch (e) {
-        if (log) log(`Barrido FALLIDO (${cantidad} $PILL siguen pendientes): ${e.message}`);
+        if (log) log(`Barrido FALLIDO (${cantidad} $PILLY siguen pendientes): ${e.message}`);
         return { ok: false, error: e.message };
     }
 }

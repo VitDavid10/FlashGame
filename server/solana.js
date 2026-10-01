@@ -1,5 +1,5 @@
 /*
- * Verificación de depósitos $PILL en Solana (devnet) para las salas de pago.
+ * Verificación de depósitos $PILLY en Solana (devnet) para las salas de pago.
  *
  * Modelo (FASE B2, custodiado en devnet): el jugador hace un transfer SPL normal
  * de la entrada al "treasury" (por ahora la cuenta de la autoridad). El servidor
@@ -322,10 +322,10 @@ async function withdraw(toWallet, pill) {
     return sig;
 }
 
-// --- QUEMA de $PILL ---
+// --- QUEMA de $PILLY ---
 // Destruye tokens del ATA del treasury de verdad: bajan el supply total del mint,
 // no van a "otra cartera" de la que se pudieran sacar luego. Es lo que hace que
-// "el $PILL gastado en skins se quema" sea una afirmación comprobable en el
+// "el $PILLY gastado en skins se quema" sea una afirmación comprobable en el
 // explorador y no una promesa.
 // La autoridad es dueña del ATA, así que puede quemar de él sin permiso de nadie.
 async function burn(pill) {
@@ -442,7 +442,7 @@ function verifySignedMessage(wallet, message, signatureArr) {
 }
 
 /*
- * Saldo $PILL de una wallet EN LA CADENA, en PILL enteros.
+ * Saldo $PILLY de una wallet EN LA CADENA, en PILL enteros.
  *
  * Es otra bolsa distinta del saldo in-game: eso vive en custodia y se mueve con
  * deposit/withdraw; esto es lo que la wallet tiene suyo, y es desde donde se

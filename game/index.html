@@ -146,13 +146,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Play PillWars — Arcade &amp; Classic</title>
-    <meta name="description" content="Choose Arcade or Classic, pick your skin and jump into the arena. Split, use skills and eat the other pills to become the biggest. Free or $PILL rooms.">
+    <meta name="description" content="Choose Arcade or Classic, pick your skin and jump into the arena. Split, use skills and eat the other pills to become the biggest. Free or $PILLY rooms.">
     <link rel="canonical" href="https://pillwars.fun/game/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="PillWars">
     <meta property="og:url" content="https://pillwars.fun/game/">
     <meta property="og:title" content="Play PillWars — Arcade &amp; Classic">
-    <meta property="og:description" content="Choose Arcade or Classic, pick your skin and jump into the arena. Split, use skills and eat the other pills to become the biggest. Free or $PILL rooms.">
+    <meta property="og:description" content="Choose Arcade or Classic, pick your skin and jump into the arena. Split, use skills and eat the other pills to become the biggest. Free or $PILLY rooms.">
     <meta property="og:image" content="https://pillwars.fun/img/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -625,7 +625,7 @@
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
             }
-            /* Los carteles de la wallet (DEPOSIT, WITHDRAW, NOT ENOUGH $PILL,
+            /* Los carteles de la wallet (DEPOSIT, WITHDRAW, NOT ENOUGH $PILLY,
                STAKE...) son .gameModal y no .pw-modal: se quedaban sin girar y
                salian tumbados. Mismo giro, y la caja algo mas pequeña para que
                quepa en el lado corto. */
@@ -1459,7 +1459,7 @@
            oscuro translucido con un filo dorado, redondeada, y el ancho lo pone
            el CONTENIDO — que es justo lo que hacia falta, porque con la caja de
            360px fija el texto se salia por la derecha en cuanto depositabas una
-           cifra larga ("IN GAME: 27,360,550 $PILL"). Ahora la caja crece con el
+           cifra larga ("IN GAME: 27,360,550 $PILLY"). Ahora la caja crece con el
            numero y siempre queda igual de ajustada.
            La fuente pixel SI se queda (el resto del menu va en pixel y el cuerpo
            de letra es ajustable desde EDIT LAYOUT con --gw-font). ===== */
@@ -1477,7 +1477,7 @@
            ALT+rueda desde SETTINGS -> EDIT LAYOUT. El default de 13px es el
            punto de partida; lo que se guarde manda. */
         #gwBalBox .gw-lbl {
-            /* 10px y no 13: Press Start 2P es muy ancha y "IN GAME: 0 $PILL" llenaba
+            /* 10px y no 13: Press Start 2P es muy ancha y "IN GAME: 0 $PILLY" llenaba
                el recuadro de lado a lado. --gw-font sigue mandando si se ajusta desde
                EDIT LAYOUT; esto es solo el punto de partida. */
             font-family: 'Press Start 2P', monospace; font-size: var(--gw-font, 10px); color: #ffce3d;
@@ -1722,7 +1722,7 @@
         .lb-match a:hover { background:rgba(0,255,136,0.1); }
         .lb-match .lb-m-no { color:#454b52; font-size:10px; }
         /* Tabla de reparto (popup arcade) */
-        /* Piezas comunes de cualquier cifra de dinero: icono de $PILL, la unidad
+        /* Piezas comunes de cualquier cifra de dinero: icono de $PILLY, la unidad
            y el equivalente en dolares. Van mas pequeños que la cifra, que es lo
            que se cobra de verdad. */
         .pw-pill-ico { height: 1em; vertical-align: -0.14em; margin: 0 2px 0 5px; image-rendering: pixelated; }
@@ -2155,7 +2155,7 @@
         .oracle-layers button.act { background: var(--primary, #00ff88); color: #000; border-color: var(--primary, #00ff88); }
         .oracle-layers-hint { color: #555; font-size: 9px; letter-spacing: 0.5px; margin-left: 4px; flex: 1; }
         /* 1a columna 68px (era 52): al pasar de "$20" a "$20.00" el texto ya no
-           cabia y quedaba pegado a los $PILL. El gap sube de 8 a 14 por lo mismo.
+           cabia y quedaba pegado a los $PILLY. El gap sube de 8 a 14 por lo mismo.
            Centrada: asi FREE y los importes se leen como UNA columna, en vez de
            como dos textos de distinto largo alineados a la izquierda. */
         .oracle-row { display: grid; grid-template-columns: 68px 1fr auto 12px; gap: 14px; align-items: center; padding: 3px 5px; font-family: 'Russo One'; font-size: 11px; color: #ccc; border-top: 1px solid rgba(255,255,255,0.05); cursor: pointer; border-left: 2px solid transparent; transition: background 0.15s; }
@@ -3916,7 +3916,7 @@
     <div id="gameWalletArea">
         <!-- El arte del recuadro va VACIO: los rotulos se escriben aqui con la
              fuente pixel y en medio va la cantidad (digitos de game/img/pixnum). -->
-        <div id="gwBalBox"><span id="gwBalInner"><span class="gw-lbl">IN GAME:</span><span id="gwBalValue"></span><span class="gw-lbl">$PILL</span></span></div>
+        <div id="gwBalBox"><span id="gwBalInner"><span class="gw-lbl">IN GAME:</span><span id="gwBalValue"></span><span class="gw-lbl">$PILLY</span></span></div>
         <!-- El rotulo de cada boton va en su propio <span>: es una pieza de
              layout aparte (walletBtnTxt), igual que el contenido del recuadro
              azul, para poder moverlo/escalarlo DENTRO del boton sin tocar el
@@ -3988,7 +3988,7 @@
     <div id="gameTopUpModal" class="gameModal">
         <div class="gameModalBox">
             <span class="close" onclick="GameWalletUI.cancelTopUp()">×</span>
-            <h3>Not enough $PILL</h3>
+            <h3>Not enough $PILLY</h3>
             <div class="gm-body">
                 <div class="gm-row"><span>Entry</span><b id="tuFee" style="color:#c8cdd2">—</b></div>
                 <div class="gm-row"><span>In GAME</span><b id="tuBal" style="color:#c8cdd2">—</b></div>
@@ -4037,7 +4037,7 @@
                             <div class="rw-mine-l">
                                 <span class="rw-mine-lbl">YOUR REWARDS</span>
                                 <span class="rw-mine-val" id="rwMio">0</span>
-                                <span class="rw-mine-lbl">$PILL</span>
+                                <span class="rw-mine-lbl">$PILLY</span>
                             </div>
                             <button class="rw-claim" id="rwClaim" disabled onclick="RewardsUI.claim()">CLAIM</button>
                         </div>
@@ -4174,7 +4174,7 @@
         <!-- Sin X de cierre: el CONTINUE de abajo ya cierra el cartel. -->
         <div class="gameModalBox">
             <h3 id="prizeTitle" style="color:var(--primary)">YOU WON</h3>
-            <div id="prizeAmount" style="font-family:'Russo One';font-size:36px;color:#ffce3d;margin:8px 0 4px;text-shadow:0 0 18px rgba(255,206,61,0.5)">0 $PILL</div>
+            <div id="prizeAmount" style="font-family:'Russo One';font-size:36px;color:#ffce3d;margin:8px 0 4px;text-shadow:0 0 18px rgba(255,206,61,0.5)">0 $PILLY</div>
             <div id="prizeSubtitle" style="color:#aaa;font-size:13px;margin-bottom:18px"></div>
             <div id="prizeTable" style="margin-bottom:14px;display:none"></div>
             <!-- Los dos botones en un bloque, como los tres de fin de partida:
@@ -4255,7 +4255,7 @@
     </div>
 
     <!-- ROOM INFO: aviso previo a entrar online. Dice cuanto lleva abierta la
-         sala, cuanto le queda y — lo importante — cuantos $PILL cuesta DE VERDAD
+         sala, cuanto le queda y — lo importante — cuantos $PILLY cuesta DE VERDAD
          antes de cobrarlos, porque el precio se congelo al abrirse y desde
          entonces el token se ha movido. Sin esto, quien no mire el panel (movil,
          o le da rapido) elige "$20" y se le cobra otra cosa sin previo aviso.
@@ -4338,7 +4338,7 @@
                     <br><br>
                     DRAFT NEW POWERS EVERY <span style="color:#fff;">30s</span> TO DOMINATE THE ARENA.
                     <br><br>
-                    <span style="color:#ffd700;">$PILL ECONOMY:</span> THE <span style="color:var(--accent)">TOP 10</span> PLAYERS SPLIT THE MATCH REVENUE.
+                    <span style="color:#ffd700;">$PILLY ECONOMY:</span> THE <span style="color:var(--accent)">TOP 10</span> PLAYERS SPLIT THE MATCH REVENUE.
                     <br>
                     <span style="color:#888; font-size:10px; font-style:italic;">(PRACTICE FREE HERE UNLIMITED TIMES BEFORE WAGERING)</span>
                 </div>
@@ -4370,7 +4370,7 @@
                     <br><br>
                     <span style="color:#fff;">OBJECTIVE:</span> ELIMINATE <span style="color:var(--accent)">5 PLAYERS</span> (PENTAKILL) TO MAXIMIZE PROFIT.
                     <br><br>
-                    <span style="color:#ffd700;">$PILL ECONOMY:</span>
+                    <span style="color:#ffd700;">$PILLY ECONOMY:</span>
                     <ul style="margin:5px 0 10px 20px; padding:0; color:#ccc;">
                         <li>KILL 1 = BREAK EVEN (Recover Entry)</li>
                         <li>KILL 5 = <span style="color:var(--primary)">MAX ROI ($$$)</span></li>
@@ -4594,8 +4594,8 @@
                      posicion del contenido sin mover el cartel entero. -->
                 <div class="cartel-inner" id="oracleInner">
                     <div class="menu-side-head"><span>ROOM PRICES</span><span id="oracleTimer" class="otimer">LIVE</span></div>
-                    <div class="oracle-desc">The on-chain oracle re-prices every room every minute, so entry cost in $PILL adapts to the live token price.</div>
-                    <div class="oracle-rate"><span class="or-unit">1 $PILL =</span> <span class="or-amt" id="oracleRateAmt">$0.0045</span></div>
+                    <div class="oracle-desc">The on-chain oracle re-prices every room every minute, so entry cost in $PILLY adapts to the live token price.</div>
+                    <div class="oracle-rate"><span class="or-unit">1 $PILLY =</span> <span class="or-amt" id="oracleRateAmt">$0.0045</span></div>
                     <div id="oracleLayersBar" class="oracle-layers" style="display:none;">
                         <span class="oracle-layers-hint">view a specific room layer (you can't choose which one you'll be assigned to)</span>
                     </div>
@@ -4643,17 +4643,17 @@
                         <div class="skin-grid" id="mineGrid"></div>
                         <div class="skin-nav" id="mineVacio" style="display:none"></div>
                     </div>
-                    <!-- CONVERT: convertir $PILL a SP con cantidad libre.
+                    <!-- CONVERT: convertir $PILLY a SP con cantidad libre.
                          Sin estilos en linea: TODO (rotulo, parrafos, input y
                          boton) hereda la letra del contenedor, que lleva la
                          misma que la descripcion de ROOM · PRICES (.oracle-desc)
                          y cambia con el mismo boton ROOM DESC FONT. -->
                     <div id="sidePanelConvert" style="display:none">
-                        <div id="convertDesc" class="oracle-desc">Burn your $PILL to mint SP. Every conversion removes those tokens from circulation for good, and the $PILL you spend on skins burns too.</div>
-                        <input type="number" id="convertPillInput" class="cv-input" placeholder="AMOUNT IN $PILL">
+                        <div id="convertDesc" class="oracle-desc">Burn your $PILLY to mint SP. Every conversion removes those tokens from circulation for good, and the $PILLY you spend on skins burns too.</div>
+                        <input type="number" id="convertPillInput" class="cv-input" placeholder="AMOUNT IN $PILLY">
                         <div id="convertOutput" class="oracle-desc cv-out">= <span id="convertSpOutput">0</span> SP</div>
                         <button id="convertBtn" class="cv-btn" onclick="convertirPillCustom()" onmouseenter="SoundManager.playSimpleHover()">CONVERT</button>
-                        <div id="convertWarning" class="oracle-desc cv-warn">$PILL IS BURNED. THIS CANNOT BE REVERSED.</div>
+                        <div id="convertWarning" class="oracle-desc cv-warn">$PILLY IS BURNED. THIS CANNOT BE REVERSED.</div>
                     </div>
                     <!-- Pie del cartel, igual en las cuatro pestañas: numero de
                          pagina a la izquierda, puntos de pestaña en el centro y
@@ -4906,7 +4906,7 @@
         <div class="hud-item" id="hudMass">MASS: <span id="score" class="hud-val">0</span></div>
         <div class="hud-item" id="hudAlive">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
         <div class="hud-item econ-hud" id="econHud" style="display:none;border-color:rgba(255,206,61,0.5)">
-            <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span id="econUnit" style="color:#888;font-size:11px">$PILL</span>
+            <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span id="econUnit" style="color:#888;font-size:11px">$PILLY</span>
         </div>
         <div class="hud-item" id="debugHud" style="display:none;">FPS: <span id="fpsVal" style="color:#fff">0</span> | SPD: <span id="speedVal" style="color:#fff">0</span></div>
         <div class="hud-item" id="netHud" style="display:none;">PING: <span id="pingVal" style="color:#fff">--</span>ms | SNAPS: <span id="snapsVal" style="color:#fff">--</span>/s | JIT: <span id="jitVal" style="color:#fff">--</span>ms | FPS: <span id="netFpsVal" style="color:#fff">--</span></div>
@@ -6896,7 +6896,7 @@
     // marco verde fino (prize-panel.png, 9-slice como los demas carteles),
     // boton CONTINUE con su PNG horneado, y cantidad/subtitulo en fuente pixel.
     // La cantidad (.pw-amt-pix) replica la letra/color de las kills del GAME
-    // OVER (gris con bisel duro) + icono de $PILL inline (pill.png).
+    // OVER (gris con bisel duro) + icono de $PILLY inline (pill.png).
     function _prizeRule() {
         let css = '';
         if (cartelUsesAtlas('prize-panel')) {
@@ -6927,7 +6927,7 @@
             'color:#c8cdd2!important;text-shadow:3px 3px 0 rgba(0,0,0,.65)!important;line-height:1.4}' +
             'body.pixel-pack #prizeAmount.pw-amt-pix .pw-pill-ico{height:1em;vertical-align:-0.12em;margin:0 2px 0 5px;image-rendering:pixelated}' +
             'body.pixel-pack .prize-hero #prizeSubtitle{font-family:"Press Start 2P",monospace;font-size:8px;line-height:1.9;letter-spacing:0}' +
-            // GAME OVER: la linea de kills/$PILL del overlay de resultado con la
+            // GAME OVER: la linea de kills/$PILLY del overlay de resultado con la
             // misma fuente pixel (es la referencia de estilo de .pw-amt-pix).
             'body.pixel-pack #myResult{font-family:"Press Start 2P",monospace!important;font-size:13px!important;line-height:2}';
         // X de cierre pixel para los gameModal (deposit/withdraw y premio):
@@ -8936,7 +8936,7 @@
         html += `<div class="ri-line"><span>PLAYERS</span><b>${dentro} / ${aforo}</b></div>`;
 
         if (!gratis) {
-            html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILL</b></div>`;
+            html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILLY</b></div>`;
             html += `<div class="ri-line"><span>WORTH NOW</span><b>$${usdReal.toFixed(2)}</b></div>`;
             /*
              * El parrafo largo solo si la desviacion pasa del 5%. Por debajo, el
@@ -8954,12 +8954,12 @@
                 ? ` <b class="${est.cls}">${est.txt}</b>.`
                 : ' The match has not started yet.';
             if (desvio > 0.05) {
-                html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILL when it opened.
-                    $PILL has gone ${dif > 0 ? 'UP' : 'DOWN'} since then, so those tokens are worth
+                html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILLY when it opened.
+                    $PILLY has gone ${dif > 0 ? 'UP' : 'DOWN'} since then, so those tokens are worth
                     <b>$${usdReal.toFixed(2)}</b> right now instead of $${r.priceUsd.toFixed(2)}. This is not an error —
-                    the entry is fixed in $PILL, and its value in dollars moves with the token.${cuando}</div>`;
+                    the entry is fixed in $PILLY, and its value in dollars moves with the token.${cuando}</div>`;
             } else {
-                html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILL.${cuando}</div>`;
+                html += `<div class="ri-note">This room locked its entry at ${fee.toLocaleString('en-US')} $PILLY.${cuando}</div>`;
             }
             /*
              * La comisión de salida, dicha ANTES de firmar. Es lo que separa "me han
@@ -8994,7 +8994,7 @@
         cont.innerHTML = layers.map(L => {
             const e = riEstadoLayer(L, edad);
             const f = Number(L.pillFee) || 0;
-            const precio = gratis ? 'FREE' : f.toLocaleString('en-US') + ' $PILL'
+            const precio = gratis ? 'FREE' : f.toLocaleString('en-US') + ' $PILLY'
                 + (pillUsd > 0 ? ` ($${(f * pillUsd).toFixed(2)})` : '');
             return `<div class="ri-layer${L.layerIdx === r.pickLayerIdx ? ' cur' : ''}">
                 <span class="rl-name">L${L.layerIdx}</span>
@@ -9027,7 +9027,7 @@
         const fee = Number(r.pillFee) || 0;
         document.getElementById('ljBody').innerHTML =
             `<div class="ri-head">ONLY ${seg}s LEFT</div>`
-            + `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILL</b></div>`
+            + `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILLY</b></div>`
             + `<div class="ri-line"><span>EXIT FEE NOW</span><b class="ri-fee">50%</b></div>`
             + `<div class="ri-note">This match ends in <b>${seg} seconds</b>. When the timer runs out you cash out
                 automatically and an <b>exit fee</b> is taken from whatever you are carrying:
@@ -11257,7 +11257,7 @@
     }
     function hideSpectatorBar() { onlineSpectator = false; }
     // Línea de PILL con su icono, del mismo tamaño/color en los tres carteles.
-    // GAME OVER / ROOM RESTARTED: SIEMPRE en $PILL, sin el equivalente en dolares
+    // GAME OVER / ROOM RESTARTED: SIEMPRE en $PILLY, sin el equivalente en dolares
     // (peticion de David: aqui lo que importa es lo que pierdes en tokens).
     function lineaPill(cantidad, etiqueta) {
         return `<span style="color:#ffce3d;font-size:22px;">${etiqueta ? etiqueta + ' ' : ''}${fmtPill(cantidad)}</span>`;
@@ -11779,7 +11779,7 @@
                 this.refresh();
             } catch (e) { showSystemMsg('Sign-in was cancelled or the wallet refused the connection. Please try again.', 'CONNECT ERROR'); }
         },
-        /* Saldo $PILL de la wallet, leido del RPC. Estaba escrito dentro de
+        /* Saldo $PILLY de la wallet, leido del RPC. Estaba escrito dentro de
          * openDeposit; se saca aparte porque el cartel de "te falta saldo" tambien
          * lo necesita, y dos copias del mismo fetch acabarian divergiendo.
          *
@@ -11802,11 +11802,11 @@
         async openDeposit() {
             if (!GameWallet.address) { this.connect(); return; }
             document.getElementById('gameDepositModal').style.display = 'flex';
-            document.getElementById('gdGame').innerText = this.fmt(this.gameBalance) + ' $PILL';
+            document.getElementById('gdGame').innerText = this.fmt(this.gameBalance) + ' $PILLY';
             document.getElementById('gdWallet').innerText = '—';
             try {
                 const w = await this.refreshWallet();
-                document.getElementById('gdWallet').innerText = this.fmt(w) + ' $PILL';
+                document.getElementById('gdWallet').innerText = this.fmt(w) + ' $PILLY';
             } catch (e) {}
         },
         closeDeposit() { document.getElementById('gameDepositModal').style.display = 'none'; },
@@ -11814,13 +11814,13 @@
         // (firma de mensaje + POST /api/withdraw contra el saldo in-GAME) ---
         openWithdraw() {
             document.getElementById('gameWithdrawModal').style.display = 'flex';
-            document.getElementById('gwdGame').innerText = this.fmt(this.gameBalance) + ' $PILL';
+            document.getElementById('gwdGame').innerText = this.fmt(this.gameBalance) + ' $PILLY';
         },
         closeWithdraw() { document.getElementById('gameWithdrawModal').style.display = 'none'; },
         fillMaxWithdraw() { document.getElementById('gwdAmount').value = String(Math.floor(this.gameBalance || 0)); },
         async withdraw() {
             const amt = Math.max(1, parseInt(document.getElementById('gwdAmount').value, 10) || 0);
-            if (amt > (this.gameBalance || 0)) { showSystemMsg('You only have ' + this.fmt(this.gameBalance) + ' $PILL in GAME. Lower the amount.', 'WITHDRAW FAILED'); return; }
+            if (amt > (this.gameBalance || 0)) { showSystemMsg('You only have ' + this.fmt(this.gameBalance) + ' $PILLY in GAME. Lower the amount.', 'WITHDRAW FAILED'); return; }
             // Mismo 'select' que el CONTINUE de ROOM INFO: los dos abren la
             // wallet para firmar, y ese boton se quedaba mudo mientras la
             // extension tardaba en aparecer.
@@ -11828,7 +11828,7 @@
             const btn = document.getElementById('gwdConfirm'); const old = btn.innerText; btn.disabled = true; btn.innerText = 'Sign in wallet...';
             try {
                 const ts = Date.now();
-                const message = 'PillWars withdraw ' + amt + ' PILL @ ' + ts;
+                const message = 'PillWars withdraw ' + amt + ' PILLY @ ' + ts;
                 const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
                 const sigBytes = res && res.signature ? res.signature : res;
                 btn.innerText = 'Withdrawing...';
@@ -11850,7 +11850,7 @@
                 }
                 this.closeWithdraw();
                 this.refresh();
-                showSystemMsg(this.fmt(amt) + ' $PILL sent back to your wallet.', 'WITHDRAW COMPLETE');
+                showSystemMsg(this.fmt(amt) + ' $PILLY sent back to your wallet.', 'WITHDRAW COMPLETE');
             } catch (e) { showSystemMsg(walletErrText(e), 'WITHDRAW FAILED'); }
             btn.disabled = false; btn.innerText = old;
         },
@@ -11866,9 +11866,9 @@
         _topUp: null,
         pedirDeposito(fee, saldo) {
             const falta = Math.max(0, fee - saldo);
-            document.getElementById('tuFee').innerText = this.fmt(fee) + ' $PILL';
-            document.getElementById('tuBal').innerText = this.fmt(saldo) + ' $PILL';
-            document.getElementById('tuNeed').innerText = this.fmt(falta) + ' $PILL';
+            document.getElementById('tuFee').innerText = this.fmt(fee) + ' $PILLY';
+            document.getElementById('tuBal').innerText = this.fmt(saldo) + ' $PILLY';
+            document.getElementById('tuNeed').innerText = this.fmt(falta) + ' $PILLY';
             document.getElementById('tuAmount').value = String(falta);
             document.getElementById('tuWallet').innerText = '';
             document.getElementById('gameTopUpModal').style.display = 'flex';
@@ -11876,7 +11876,7 @@
             this.refreshWallet().then(() => {
                 const w = this.walletBalance | 0;
                 const el = document.getElementById('tuWallet');
-                if (el) el.innerText = 'In wallet: ' + this.fmt(w) + ' $PILL' + (w < falta ? ' — not enough to cover it' : '');
+                if (el) el.innerText = 'In wallet: ' + this.fmt(w) + ' $PILLY' + (w < falta ? ' — not enough to cover it' : '');
             }).catch(() => {});
             return new Promise(resolve => { this._topUp = { resolve, falta }; });
         },
@@ -11892,7 +11892,7 @@
             if (!this._topUp) return;
             const amt = Math.max(1, parseInt(document.getElementById('tuAmount').value, 10) || 0);
             if (amt < this._topUp.falta) {
-                showSystemMsg('You need at least ' + this.fmt(this._topUp.falta) + ' $PILL to cover the entry.', 'NOT ENOUGH');
+                showSystemMsg('You need at least ' + this.fmt(this._topUp.falta) + ' $PILLY to cover the entry.', 'NOT ENOUGH');
                 return;
             }
             const btn = document.getElementById('tuConfirm'); const old = btn.innerText;
@@ -11965,7 +11965,7 @@
                 });
             } catch (e) {}
             await this.refreshClaims();
-            showSystemMsg(this.fmt(p.pill) + ' $PILL sent from the treasury to your wallet.', 'REWARD CLAIMED');
+            showSystemMsg(this.fmt(p.pill) + ' $PILLY sent from the treasury to your wallet.', 'REWARD CLAIMED');
         },
 
         /*
@@ -11983,7 +11983,7 @@
             if (!r.ok) throw new Error(r.reason || 'claim failed');
             await this.refreshClaims();
             await this.refresh();
-            showSystemMsg(this.fmt(r.pill) + ' $PILL sent to your wallet.', 'REWARD CLAIMED');
+            showSystemMsg(this.fmt(r.pill) + ' $PILLY sent to your wallet.', 'REWARD CLAIMED');
         },
 
         // Desconecta la wallet del juego (y olvida la sesion recordada)
@@ -12002,7 +12002,7 @@
             // No dejar firmar un deposito de mas tokens de los que hay en la
             // wallet (si el RPC contesto; si no, la cadena lo rechazara igual).
             if (this.walletBalance != null && amt > this.walletBalance) {
-                showSystemMsg('You only have ' + this.fmt(this.walletBalance) + ' $PILL in your wallet. Lower the amount.', 'DEPOSIT FAILED');
+                showSystemMsg('You only have ' + this.fmt(this.walletBalance) + ' $PILLY in your wallet. Lower the amount.', 'DEPOSIT FAILED');
                 return;
             }
             // Mismo 'select' que el CONTINUE de ROOM INFO: los dos abren la
@@ -12025,7 +12025,7 @@
                 if (!r.ok) throw new Error(r.reason || 'verification failed');
                 this.closeDeposit();
                 this.refresh();
-                showSystemMsg(this.fmt(amt) + ' $PILL added to your in-GAME balance.', 'DEPOSIT COMPLETE');
+                showSystemMsg(this.fmt(amt) + ' $PILLY added to your in-GAME balance.', 'DEPOSIT COMPLETE');
             } catch (e) { showSystemMsg(walletErrText(e), 'DEPOSIT FAILED'); }
             finally { clearTimeout(liberar); btn.disabled = false; btn.innerText = old; }
         }
@@ -12036,7 +12036,7 @@
     // los precios de sala: 5$/10$/20$/50$). `pillRate` = PILL por $1, lo manda el
     // servidor en 'econ' y queda bloqueado al entrar en la sala, así que las
     // cantidades de una misma partida son coherentes entre sí.
-    // Con MONEY_IN_USD = false se vuelve a mostrar en $PILL (cuando el token exista).
+    // Con MONEY_IN_USD = false se vuelve a mostrar en $PILLY (cuando el token exista).
     const MONEY_IN_USD = true;
     let pillRate = 0;
     // Que ensena el cartel del botin: 'pill' (solo tokens), 'usd' (solo dolares)
@@ -12044,7 +12044,7 @@
     // entrar y mensaje 'killGainMode' si el admin lo cambia en mitad de la
     // partida. El default de aqui solo se usa si el servidor no contesta.
     let killGainMode = 'usd';
-    // Tokens abreviados: 25000 -> 25K, 1200000 -> 1.2M. Lo que se gana son $PILL
+    // Tokens abreviados: 25000 -> 25K, 1200000 -> 1.2M. Lo que se gana son $PILLY
     // y las cifras son largas; asi caben en el HUD y en los carteles.
     function fmtPillShort(pill) {
         const n = Math.round(Number(pill) || 0);
@@ -12059,7 +12059,7 @@
     function fmtMoney(pill) {
         const n = Number(pill || 0);
         if (MONEY_IN_USD && pillRate > 0) return fmtPillShort(n) + ' (~$' + (n / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ')';
-        return fmtPillShort(n) + ' $PILL';
+        return fmtPillShort(n) + ' $PILLY';
     }
     // Solo el equivalente en dolares, "(~$20)", o '' si no hay rate del oraculo.
     // El rate se BLOQUEA al entrar en la sala (mensaje 'econ'), asi que es el
@@ -12068,17 +12068,17 @@
         if (!(MONEY_IN_USD && pillRate > 0)) return '';
         return '(~$' + (Number(pill || 0) / pillRate).toLocaleString('en-US', { maximumFractionDigits: 2 }) + ')';
     }
-    // <img> del icono de $PILL (solo en pixel-pack, donde existe el arte).
+    // <img> del icono de $PILLY (solo en pixel-pack, donde existe el arte).
     function pillIcoHtml(cls) {
         if (!(pixelMode && cartelUsesAtlas('pill'))) return '';
         return '<img class="' + (cls || 'pw-pill-ico') + '" src="' + cartelHeroUrl('pill') + '">';
     }
-    // "25K [icono] $PILL" — sin dolares. Es la unidad REAL del juego: se usa en
+    // "25K [icono] $PILLY" — sin dolares. Es la unidad REAL del juego: se usa en
     // GAME OVER, en el bote de MATCH ENDED y en su ranking.
     function fmtPill(pill) {
         // Sin arte de pildora (modo clasico, o el atlas aun cargando) el icono se
-        // sustituye por un espacio: si no, salia "40K$PILL" todo pegado.
-        return fmtPillShort(pill) + (pillIcoHtml() || ' ') + '<span class="pw-unit">$PILL</span>';
+        // sustituye por un espacio: si no, salia "40K$PILLY" todo pegado.
+        return fmtPillShort(pill) + (pillIcoHtml() || ' ') + '<span class="pw-unit">$PILLY</span>';
     }
     // HUD del juego: actualiza carry/bote y muestra popup de premios al ganar.
     const EconHUD = {
@@ -12140,7 +12140,7 @@
             tbl.style.display = 'none'; tbl.innerHTML = '';
             // VICTORY/CASHOUT en pixel: panel verde fino propio (prize-panel.png)
             // + cantidad con la misma letra/color que las kills del GAME OVER y
-            // el icono de $PILL (pill.png). MATCH ENDED (arcadeEnd) igual pero
+            // el icono de $PILLY (pill.png). MATCH ENDED (arcadeEnd) igual pero
             // con la variante alta del marco (prize-panel-tall, lleva el top-10).
             const isHero = msg.reason === 'victory' || msg.reason === 'cashout';
             const isArcadeEnd = msg.reason === 'arcadeEnd';
@@ -12149,7 +12149,7 @@
             box.classList.toggle('prize-hero', usePix && cartelUsesAtlas('prize-panel'));
             box.classList.toggle('prize-tall', isArcadeEnd && pixelMode && cartelUsesAtlas('prize-panel-tall'));
             amt.classList.remove('pw-amt-pix');
-            // "+176K [pildora]$PILL (~$140)": la cifra con su unidad PEGADA (es lo
+            // "+176K [pildora]$PILLY (~$140)": la cifra con su unidad PEGADA (es lo
             // que se cobra de verdad) y el equivalente en dolares detras, mas
             // pequeño y aproximado — el oraculo se re-precia cada 5 minutos.
             const setAmt = amount => {
@@ -12166,16 +12166,16 @@
                 setAmt(msg.amount);
                 // El fee va SOLO en tokens: con el (~$) de fmtMoney quedaban
                 // parentesis dentro de parentesis y no se leia nada.
-                sub.innerHTML = msg.kills + (msg.kills === 1 ? ' kill' : ' kills') + ' · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtPillShort(msg.fee) + ' $PILL</b>)';
+                sub.innerHTML = msg.kills + (msg.kills === 1 ? ' kill' : ' kills') + ' · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtPillShort(msg.fee) + ' $PILLY</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
                 if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
-                // Bote y ranking SIEMPRE en $PILL (peticion de David): el reparto
+                // Bote y ranking SIEMPRE en $PILLY (peticion de David): el reparto
                 // se hace en tokens, y solo lo TUYO lleva ademas el (~$).
                 sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmtPill(msg.pot) + '</b>';
                 tbl.style.display = 'block';
                 tbl.innerHTML = (msg.top || []).map(t =>
-                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtPillShort(t.amount)} <span class="pw-unit">$PILL</span></span></div>`
+                    `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtPillShort(t.amount)} <span class="pw-unit">$PILLY</span></span></div>`
                 ).join('');
             }
             m.style.display = 'flex';
@@ -12217,7 +12217,7 @@
         let html;
         if (killGainMode === 'usd' && usd) html = '+' + usd;
         else {
-            html = '+' + fmtPillShort(n) + ' $PILL';
+            html = '+' + fmtPillShort(n) + ' $PILLY';
             if (killGainMode === 'both' && usd) html += '<span class="kg-usd">' + usd + '</span>';
         }
         pop.querySelector('.kg-money').innerHTML = html;
@@ -12384,8 +12384,8 @@
                 const listo = falta <= 0;
                 cola.classList.toggle('ready', listo);
                 $('stkColaTxt').innerHTML = listo
-                    ? '<b>' + this.fmt(pos.saliendo) + ' $PILL</b> ready to withdraw.'
-                    : '<b>' + this.fmt(pos.saliendo) + ' $PILL</b> on the way out · ' + this.dur(falta) + ' left';
+                    ? '<b>' + this.fmt(pos.saliendo) + ' $PILLY</b> ready to withdraw.'
+                    : '<b>' + this.fmt(pos.saliendo) + ' $PILLY</b> on the way out · ' + this.dur(falta) + ' left';
                 $('stkBtnWithdraw').disabled = !listo;
             }
 
@@ -12425,10 +12425,10 @@
             const amt = Math.max(0, parseInt(document.getElementById('stkAmount').value, 10) || 0);
             if (!(amt > 0)) { showSystemMsg('Enter how much you want to stake.', 'STAKING'); return; }
             if (this.walletBal != null && amt > this.walletBal) {
-                showSystemMsg('You only have ' + this.fmt(this.walletBal) + ' $PILL in your wallet.', 'NOT ENOUGH');
+                showSystemMsg('You only have ' + this.fmt(this.walletBal) + ' $PILLY in your wallet.', 'NOT ENOUGH');
                 return;
             }
-            this._accion('stake', amt, this.fmt(amt) + ' $PILL staked. It starts earning right away.');
+            this._accion('stake', amt, this.fmt(amt) + ' $PILLY staked. It starts earning right away.');
         },
         compound() { this._accion('compound', 0, 'Rewards moved into your stake. They earn from now on.'); },
         claim() { this._accion('claim', 0, 'Rewards sent to your wallet.'); },
@@ -12439,8 +12439,8 @@
             const n = Math.min(escrito > 0 ? escrito : pos.stakeado, pos.stakeado);
             // Se avisa ANTES de firmar: deja de rendir en el acto, y eso no se ve
             // en la pantalla de confirmacion de la wallet.
-            if (!confirm(this.fmt(n) + ' $PILL will stop earning now and can be withdrawn in 7 days.\n\nContinue?')) return;
-            this._accion('request_unstake', n, this.fmt(n) + ' $PILL on the way out. You can withdraw them in 7 days.');
+            if (!confirm(this.fmt(n) + ' $PILLY will stop earning now and can be withdrawn in 7 days.\n\nContinue?')) return;
+            this._accion('request_unstake', n, this.fmt(n) + ' $PILLY on the way out. You can withdraw them in 7 days.');
         },
         withdrawUnstaked() { this._accion('withdraw_unstaked', 0, 'Tokens sent to your wallet.'); },
     };
@@ -12485,7 +12485,7 @@
             const mia = (window.GameWallet && GameWallet.address) || null;
 
             $('lbTitle').textContent = 'Daily leaderboard · ' + (d.date || '');
-            $('lbBote').textContent = rep.botePill != null ? this.fmt(rep.botePill) + ' $PILL' : '—';
+            $('lbBote').textContent = rep.botePill != null ? this.fmt(rep.botePill) + ' $PILLY' : '—';
             $('lbElegibles').textContent = filas.length;
 
             // La barra de participacion: cuanta gente falta para el bote completo.
@@ -12566,7 +12566,7 @@
                     + '<span style="font-size:10.5px;color:#8b9199">'
                     + (d.modo === 'contrato' ? 'claimed on-chain' : d.pagados + ' of ' + d.ganadores + ' claimed')
                     + ' · ' + tx(d.anclaSig, 'anchor') + '</span></div>'
-                    + '<div style="font-family:\'Russo One\';font-size:16px;color:#ffce3d">' + this.fmt(d.pill) + ' $PILL</div>'
+                    + '<div style="font-family:\'Russo One\';font-size:16px;color:#ffce3d">' + this.fmt(d.pill) + ' $PILLY</div>'
                     + (o.pctCubierto == null ? '' :
                         '<div class="stk-note" style="margin:2px 0 6px">Paid from the <b>rewards allocation</b>. '
                         + 'The game itself took <b>' + this.fmt(o.rakeDelDia) + '</b> that day — ' + o.pctCubierto.toFixed(0)
@@ -12750,7 +12750,7 @@
             });
 
             $('rwSub').innerHTML = rep.botePill != null
-                ? 'Today\'s pool: <b style="color:#ffd700">' + this.fmt(rep.botePill) + ' $PILL</b>'
+                ? 'Today\'s pool: <b style="color:#ffd700">' + this.fmt(rep.botePill) + ' $PILLY</b>'
                   + ' · ' + filas.length + ' players qualify so far.'
                 : 'The top 10 of each day share the prize pool.';
 
@@ -12840,7 +12840,7 @@
     let oracleNextRefresh = 0;
     const ORACLE_EVERY_MS = 60 * 1000;
     /*
-     * Precio de 1 $PILL en dolares, con los decimales que hagan falta.
+     * Precio de 1 $PILLY en dolares, con los decimales que hagan falta.
      *
      * toFixed(4) fijo no vale: una moneda de 50k-1M de capitalizacion puede
      * cotizar a $0.00005 y saldria "$0.0001" (o directamente "$0.0000"), o sea
@@ -12912,8 +12912,8 @@
                 _lastPillPerDollar = newRate;
                 gamePillPerDollar = newRate;
                 const rateEl = document.getElementById('oracleRateAmt');
-                // Se ensena el precio en DOLARES por PILL ("1 $PILL = $0.004527"),
-                // que es como se mira el precio de un token, en vez de "223 $PILL
+                // Se ensena el precio en DOLARES por PILL ("1 $PILLY = $0.004527"),
+                // que es como se mira el precio de un token, en vez de "223 $PILLY
                 // = $1". El valor exacto lo manda el servidor (pillUsd); 1/rate
                 // seria el mismo numero pero ya redondeado dos veces.
                 const usd = Number(data.pillUsd) > 0 ? Number(data.pillUsd) : (1 / newRate);
@@ -12985,7 +12985,7 @@
                 // numero grande de arriba no es un error.
                 /*
                  * El precio de la IZQUIERDA es lo que cuesta la sala EN DOLARES
-                 * ahora mismo: los $PILL que pide (congelados al empezar la
+                 * ahora mismo: los $PILLY que pide (congelados al empezar la
                  * partida) valorados al precio de PILL de este momento.
                  *
                  * Con la sala vacia sale el nominal ($2.00), porque los PILL se
@@ -13000,7 +13000,7 @@
                 const lock = r.locked
                     ? ' <span title="Entry price is locked while this match runs, so its value in $ drifts with the token." style="color:#888">🔒</span>'
                     : '';
-                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILL' + lock;
+                const fee = r.priceUsd === 0 ? 'FREE' : Number(r.pillFee).toLocaleString('en-US') + ' $PILLY' + lock;
                 const cap = r.cap || 30;
                 // ending  → últimas 30s de partida: icono naranja + "LAST Xs"
                 // ended   → sala reiniciándose: icono azul + "Xs"
@@ -13159,9 +13159,9 @@
         });
         updateSkinFoot();
     }
-    /* Cambio $PILL -> SP, en la pestaña CONVERT. Solo en ese sentido: el SP se
+    /* Cambio $PILLY -> SP, en la pestaña CONVERT. Solo en ese sentido: el SP se
        gana jugando y poder revenderlo por tokens convertiria el juego en una
-       granja. El $PILL que entra aqui se QUEMA (el servidor lo apunta y lo
+       granja. El $PILLY que entra aqui se QUEMA (el servidor lo apunta y lo
        destruye del mint), no se guarda en ninguna cartera. */
     async function convertirPillCustom() {
         const input = document.getElementById('convertPillInput');
@@ -13478,12 +13478,12 @@
         skinBigRender();
         try { SoundManager.play('simpleselect'); } catch (e) {}
     }
-    // Precio SIN abreviar: aqui hay sitio de sobra, y "25,000 $PILL" se lee
-    // mucho mejor que el "25K $PILL" que hace falta en el cartel pequeno.
+    // Precio SIN abreviar: aqui hay sitio de sobra, y "25,000 $PILLY" se lee
+    // mucho mejor que el "25K $PILLY" que hace falta en el cartel pequeno.
     function skinPrecioLargo() {
         // En la app no hay wallet: alli las skins solo se compran con SP.
         if (EN_APP) return PAIS_PRECIO_SP + ' SP';
-        return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILL';
+        return (PAIS_PRECIO_PILL | 0).toLocaleString('en-US') + ' $PILLY';
     }
     // Ancho logico de la pildora y lado en px FISICOS de cada pixel suyo (con
     // el devicePixelRatio con el que se midio), medidos de la celda YA
@@ -13842,13 +13842,13 @@
             if (!deposito) return null;
             bal = await leeSaldo();
             if (bal < fee) {
-                showSystemMsg('The deposit did not cover the entry. You have ' + bal.toLocaleString('en-US') + ' $PILL and it costs ' + fee.toLocaleString('en-US') + '.', 'STILL NOT ENOUGH');
+                showSystemMsg('The deposit did not cover the entry. You have ' + bal.toLocaleString('en-US') + ' $PILLY and it costs ' + fee.toLocaleString('en-US') + '.', 'STILL NOT ENOUGH');
                 return null;
             }
         }
         try {
             const ts = Date.now();
-            const message = `PillWars enter ${mode}_${roomName} paying ${fee} PILL @ ${ts}`;
+            const message = `PillWars enter ${mode}_${roomName} paying ${fee} PILLY @ ${ts}`;
             const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
             const sigBytes = res && res.signature ? res.signature : res;
             return { pay: { wallet: GameWallet.address, message, ts, signature: Array.from(sigBytes) } };
@@ -16666,7 +16666,7 @@
     if (!startRemoteSpectator()) { /* arranque normal con menú */ }
 </script>
 
-<!-- Depósito de $PILL desde el juego: mismo módulo ESM que la web (web3.js + spl-token) -->
+<!-- Depósito de $PILLY desde el juego: mismo módulo ESM que la web (web3.js + spl-token) -->
 <script type="module">
     // La libreria la sirve NUESTRO servidor (vendor/solana.js, generado con
     // `npm run vendor:solana`). Antes venia de https://esm.sh en caliente: era

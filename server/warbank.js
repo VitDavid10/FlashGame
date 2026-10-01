@@ -1,5 +1,5 @@
 /*
- * "WAR bank": saldo interno de $PILL de cada jugador (off-chain).
+ * "WAR bank": saldo interno de $PILLY de cada jugador (off-chain).
  *
  * Modelo: el jugador DEPOSITA PILL al treasury (on-chain, una firma) → se le acredita
  * aquí un saldo WAR. Entrar a salas de pago DESCUENTA de este saldo (instantáneo, sin

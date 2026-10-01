@@ -22,7 +22,7 @@
  *
  * EL ORDEN. kills del dia, y a igualdad, masa maxima del dia. Es el mismo criterio
  * que ya ordena el ranking global (server/index.js:435), asi que no hay que explicar
- * una metrica nueva. Puntuar por $PILL ganado se descarto a proposito: premiaria
+ * una metrica nueva. Puntuar por $PILLY ganado se descarto a proposito: premiaria
  * apostar fuerte en las salas de 50 $, no jugar bien.
  *
  * SOLO PUNTUAN LAS SALAS DE PAGO, y no es un descuido: `payWallet` solo se rellena
