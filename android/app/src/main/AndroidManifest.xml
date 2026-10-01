@@ -20,11 +20,19 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode"
             android:screenOrientation="sensorLandscape"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.WebShell.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Vuelta del login de X por el navegador (server/airdrop.js, app=1) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pillwars" android:host="xlogin" />
             </intent-filter>
         </activity>
     </application>

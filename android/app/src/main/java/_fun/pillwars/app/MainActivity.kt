@@ -63,12 +63,23 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+        deepLink.value = intent?.dataString
         setContent {
             WebShellTheme {
-                WebShellScreen()
+                WebShellScreen(deepLink.value)
             }
         }
     }
+
+    // Vuelta del login de X por el navegador: pillwars://xlogin?t=... (ver
+    // server/airdrop.js, app=1). singleTask: llega aqui con la app ya abierta.
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink.value = intent.dataString
+    }
+
+    private val deepLink = mutableStateOf<String?>(null)
 
     // Las barras vuelven al abrir la wallet, un dialogo del sistema o al volver
     // a la app: se esconden otra vez cada vez que la ventana recupera el foco.
@@ -88,7 +99,7 @@ class MainActivity : ComponentActivity() {
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebShellScreen() {
+fun WebShellScreen(deepLink: String? = null) {
     val context = LocalContext.current
     val startUrl = remember { normalizeHttpUrl() }
     if (startUrl == null) {
@@ -106,6 +117,17 @@ fun WebShellScreen() {
     LaunchedEffect(Unit) {
         delay(SPLASH_MIN_MS)
         splashMinDone = true
+    }
+
+    // Login de X terminado en el navegador: el juego canjea el codigo dentro del
+    // WebView (#xhandoff=, ver game/app-hub.js), que es donde tiene que quedar la cookie.
+    LaunchedEffect(deepLink) {
+        val u = deepLink?.toUri() ?: return@LaunchedEffect
+        if (u.scheme != "pillwars" || u.host != "xlogin") return@LaunchedEffect
+        val t = u.getQueryParameter("t").orEmpty()
+        val err = u.getQueryParameter("err").orEmpty().filter { it.isLetter() }.take(16)
+        val hash = if (Regex("^[A-Za-z0-9_-]{16,64}$").matches(t)) "xhandoff=$t" else "xerr=" + err.ifEmpty { "api" }
+        webViewRef?.loadUrl(startUrl.substringBefore('#') + "#" + hash)
     }
 
     val webView =
@@ -181,6 +203,7 @@ fun WebShellScreen() {
                     }
 
                 loadUrl(startUrl)
+                webViewRef = this
             }
         }
     val swipeRefreshLayout =
@@ -362,6 +385,9 @@ private fun normalizeHttpUrl(): String? {
 }
 
 private const val TAG = "WebShell"
+
+// El WebView de la pantalla, para que el enlace de vuelta del login lo recargue.
+private var webViewRef: WebView? = null
 
 private const val EXIT_BACK_WINDOW_MS = 2000L
 

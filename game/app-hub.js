@@ -30,6 +30,8 @@
         swords: '<path d="M3.2 3.2h2.6l9.4 9.4-2.6 2.6-9.4-9.4z"/><path d="M20.8 3.2h-2.6l-9.4 9.4 2.6 2.6 9.4-9.4z"/><path d="M7.4 12.2l4.4 4.4M16.6 12.2l-4.4 4.4M14.6 16.4l4.2 4.2M9.4 16.4l-4.2 4.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
         swap: '<path d="M5.5 8.5h12l-3.2-3.2M18.5 15.5h-12l3.2 3.2" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>',
         npc: '<circle cx="12" cy="8.2" r="4.4"/><path d="M3.6 21.5c0-4.9 3.8-8.4 8.4-8.4s8.4 3.5 8.4 8.4z"/>',
+        xlogo: '<path d="M4 3.5h4.6l3.9 5.4 4.6-5.4h2.4l-6 7 6.9 9.5h-4.6l-4.2-5.8-5 5.8H4.2l6.4-7.5z"/>',
+        wallet: '<rect x="2.8" y="6" width="18.4" height="13" rx="2"/><path d="M5 6l11-2.6V6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="12.5" r="1.6" fill="#07140f"/>',
         back: '<path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>',
         music: '<path d="M9 17.5V5.2l10-2v11.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.6" cy="17.6" r="2.6"/><circle cx="16.6" cy="15" r="2.6"/>',
         sound: '<path d="M3.5 9h4l5-4v14l-5-4h-4z"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -187,9 +189,15 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell .pr.own{color:var(--ac)}
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
+.cn-b{display:flex;gap:.8em;margin-top:.9em}
+.cn-o{flex:1;height:5.4em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;background:rgba(0,0,0,.28);border:.14em solid var(--edge);color:#fff;font-family:'Russo One',sans-serif;font-size:.72em;letter-spacing:.12em;cursor:pointer}
+.cn-o .i{width:2.6em;height:2.6em;border-radius:50%;background:var(--ac);color:#04150c;display:flex;align-items:center;justify-content:center}
+.cn-o .i svg{width:1.4em;height:1.4em}
+.cn-o:active{border-color:var(--ac)}
 .pr-me{justify-content:center!important;gap:.6em!important}
 .pr-pic{width:6.4em;height:6.4em;border-radius:50%;overflow:hidden;box-shadow:0 0 0 .22em var(--ac),0 0 0 .38em #000}
 .pr-pic img{width:100%;height:100%;object-fit:cover}
+.pr-pic .npc{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--in2);color:var(--ac)}.pr-pic .npc svg{width:3.2em;height:3.2em}
 .pr-at{font-size:.5em;color:var(--ac);letter-spacing:.06em}
 .pr-nm{font-size:.42em;color:var(--mut)}
 .pr-r{flex:1;min-width:0;display:flex;flex-direction:column;gap:.5em}
@@ -237,6 +245,10 @@ body.hub-on .gameModalBox h3{font-family:'Russo One',sans-serif!important;letter
 body.hub-on .gameModalBox .gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;color:#04150c!important;font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;border-radius:0!important;box-shadow:none!important;margin-bottom:12px!important}
 body.hub-on .gameModalBox .close{color:#7d8a82!important}
 body.hub-on .gameModal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
+body.hub-on .name-choice .nc-title{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;text-align:center;margin-top:10px!important}
+body.hub-on .name-choice .nc-btn{display:block!important;margin:12px auto!important;background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#cfd8d3!important;
+  font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important;padding:8px 22px!important;width:auto!important}
+body.hub-on .name-choice .nc-close{color:#7d8a82!important}
 body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 `;
     const st = document.createElement('style'); st.textContent = css + cssModales; document.head.appendChild(st);
@@ -269,9 +281,13 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
   <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILL</div></div></div></div>
+<div class="ov" id="ahCn"><div class="pnl" style="width:26em"><canvas></canvas><div class="pin">
+  <div class="ph"><button class="tb on">CONNECT</button><span class="cnt"></span><button class="px">CLOSE</button></div>
+  <div class="cn-b"><button class="cn-o" id="ahCnX"><span class="i">${svg('xlogo')}</span>X ACCOUNT</button><button class="cn-o" id="ahCnW"><span class="i">${svg('wallet')}</span>WALLET</button></div>
+  <div class="foot">Your SP and skins are saved to the account you pick</div></div></div></div>
 <div class="ov" id="ahPr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic"><img alt=""></div><div class="pr-at" id="ahPrAt"></div><div class="pr-nm" id="ahPrNm"></div></div>
+  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic"><img alt=""></div><div class="pr-at" id="ahPrAt"></div><div class="pr-nm" id="ahPrNm"></div><button class="tb" id="ahPrAddX" style="width:auto;padding:.5em 1em">+ CONNECT X</button></div>
   <div class="pr-r">
     <div class="pr-box"><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
       <div class="k" style="margin-top:.9em">IN-GAME $PILL</div><div class="pr-bal" id="ahPrBal">0</div>
@@ -623,8 +639,8 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
     function pintaX() {
         const img = $('.ah-ava img'), npc = $('.ah-ava .npc');
         if (xUser && xUser.pic) { img.src = xUser.pic.replace('_normal.', '_200x200.'); img.hidden = false; npc.style.display = 'none'; }
-        else { img.hidden = true; npc.style.display = ''; }
-        $('#ahX').textContent = xUser ? '@' + String(xUser.username || '').toUpperCase() : 'TAP TO CONNECT X';
+        else { img.hidden = true; npc.style.display = ''; npc.innerHTML = svg(xWallet ? 'wallet' : 'npc'); }
+        $('#ahX').textContent = xUser ? '@' + String(xUser.username || '').toUpperCase() : xWallet ? 'WALLET ' + xWallet.slice(0, 4) + '...' + xWallet.slice(-4) : 'TAP TO CONNECT';
         if (xUser && !((document.getElementById('playerNameInput') || {}).value || '').trim()) guardaNombre(String(xUser.username || '').slice(0, 12));
     }
     // Con sesion de X: este movil pasa a la cuenta (los SP se suman alli) y se pinta la foto.
@@ -632,9 +648,9 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         try {
             const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json();
             xUser = j && j.user && j.user.x || null;
-            xWallet = j && j.user && j.user.wallet || null;
+            xWallet = j && j.user && !j.user.walletPasted && j.user.wallet || null;
         } catch (e) { xUser = null; }
-        if (xUser && cidLocal()) {
+        if ((xUser || xWallet) && cidLocal()) {
             try { await fetch('/api/account/link', { method: 'POST', headers: { 'x-client-id': cidLocal() } }); } catch (e) {}
             try { if (typeof paisSync === 'function') await paisSync(); } catch (e) {}
         }
@@ -644,9 +660,11 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
     let xWallet = null;
     async function openProfile() {
         const pr = $('#ahPr');
-        pr.querySelector('.pr-pic img').src = xUser && xUser.pic ? xUser.pic.replace('_normal.', '_400x400.') : '';
-        $('#ahPrAt').textContent = '@' + String(xUser.username || '').toUpperCase();
-        $('#ahPrNm').textContent = String(xUser.name || '').toUpperCase().slice(0, 18);
+        const pic = pr.querySelector('.pr-pic');
+        pic.innerHTML = xUser && xUser.pic ? '<img alt="" src="' + xUser.pic.replace('_normal.', '_400x400.') + '">' : '<span class="npc">' + svg('wallet') + '</span>';
+        $('#ahPrAt').textContent = xUser ? '@' + String(xUser.username || '').toUpperCase() : xWallet.slice(0, 4) + '...' + xWallet.slice(-4);
+        $('#ahPrNm').textContent = xUser ? String(xUser.name || '').toUpperCase().slice(0, 18) : 'WALLET ACCOUNT';
+        $('#ahPrAddX').style.display = xUser ? 'none' : '';
         $('#ahPrSp').textContent = (typeof paisSp === 'function' ? paisSp() : 0) + ' SP';
         pr.classList.add('open'); placa($('#ahPr .pnl'), 1);
         pintaWallet();
@@ -670,8 +688,37 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = bal;
     }
     function conectaX() {
-        if (xUser) { openProfile(); return; }
-        location.href = '/airdrop-auth/x/login?ret=' + encodeURIComponent(location.pathname);
+        if (xUser || xWallet) { openProfile(); return; }
+        $('#ahCn').classList.add('open'); placa($('#ahCn .pnl'), 1);
+    }
+    const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    // Login de X por el NAVEGADOR del movil (dentro del WebView X acababa en su
+    // propia app y no volvia). Antes de salir se guarda un secreto; el servidor
+    // devuelve a la app por pillwars://xlogin y solo con ese secreto se canjea.
+    async function loginX() {
+        const sec = b64u(crypto.getRandomValues(new Uint8Array(32)));
+        try { localStorage.setItem('pw_xs', sec); } catch (e) {}
+        const h = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sec)));
+        const url = location.host + '/airdrop-auth/x/login?app=1&h=' + h + '&ret=' + encodeURIComponent(location.pathname);
+        location.href = 'intent://' + url + '#Intent;scheme=' + location.protocol.replace(':', '') + ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
+    }
+    // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
+    async function loginWallet() {
+        const p = window.GameWallet && GameWallet.getProvider('mwa');
+        if (!p) { try { showSystemMsg('The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return; }
+        try {
+            const r = await p.connect();
+            const addr = r.publicKey.toString();
+            const post = (path, body) => fetch('/api/airdrop/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
+            const { nonce, message } = await post('nonce', {});
+            const out = await p.signMessage(new TextEncoder().encode(message));
+            const j = await post('wallet', { address: addr, nonce, signature: Array.from(out.signature) });
+            if (j.error) throw new Error(j.error);
+            GameWallet.address = addr; GameWallet.provider = p;
+            try { localStorage.setItem('pw_wallet', 'mwa'); localStorage.setItem('pw_addr', addr); } catch (e) {}
+            $('#ahCn').classList.remove('open');
+            await syncX();
+        } catch (e) { try { showSystemMsg('The wallet did not sign in. Please try again.', 'WALLET'); } catch (x) {} }
     }
 
     function tap(e) {
@@ -696,6 +743,9 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         hub.querySelectorAll('.px').forEach(b => b.onclick = () => cerrar(b.closest('.ov')));
         hub.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) cerrar(o); }));
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.onclick = () => { storeTab = b.dataset.s; buying = null; skinPage = 0; try { SoundManager.play('simpleselect'); } catch (x) {} renderStore(); });
+        $('#ahCnX').onclick = () => loginX();
+        $('#ahCnW').onclick = () => loginWallet();
+        $('#ahPrAddX').onclick = () => loginX();
         $('#ahPrCon').onclick = async () => { try { await GameWalletUI.connectWith('mwa'); } catch (e) {} pintaWallet(); };
         $('#ahPrDep').onclick = () => { try { GameWalletUI.openDeposit(); } catch (e) {} };
         $('#ahPrWd').onclick = () => { try { GameWalletUI.openWithdraw(); } catch (e) {} };
@@ -731,6 +781,8 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         try { const n = localStorage.getItem('pw_app_name'); if (n) guardaNombre(n); } catch (e) {}
         syncX();
         // Vuelta del login de X (#x=ok / #xerr=...): se limpia el hash y se avisa si fallo.
+        const ho = /^#xhandoff=([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
+        if (ho) { let sec = ''; try { sec = localStorage.getItem('pw_xs') || ''; localStorage.removeItem('pw_xs'); } catch (e) {} location.replace('/airdrop-auth/x/handoff?t=' + ho[1] + '&s=' + encodeURIComponent(sec)); return; }
         if (/^#x(err)?=/.test(location.hash)) { const err = /xerr/.test(location.hash); history.replaceState(null, '', location.pathname + location.search); if (err) try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} }
         wire(); setInterval(() => { if (hub.classList.contains('on')) pullRooms(); }, 5000);
         addEventListener('resize', () => { if (hub.classList.contains('on')) { scale(); paintStatic(); } });

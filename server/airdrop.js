@@ -341,6 +341,7 @@ function createAirdrop(opts) {
     // Vuelta tras el login de X: por defecto la pagina del airdrop; el juego de la
     // app pasa su propia ruta (?ret=). Solo rutas locales simples, sin query ni
     // dominio ("//x" o "https:" se rechazan): nada de redirecciones abiertas.
+    const xHandoff = new Map();   // codigo de un solo uso -> { token, h, ret, exp }
     const retOk = r => (typeof r === 'string' && /^\/(?!\/)[A-Za-z0-9_\-\/]{0,120}$/.test(r)) ? r : null;
     async function handleX(req, res, urlPath, query) {
         const now = Date.now();
@@ -352,7 +353,12 @@ function createAirdrop(opts) {
             if (!hitOk('xlogin:' + clientIp(req), X_LOGIN_PER_MIN) || xPending.size >= X_PENDING_MAX) return redirect(res, HOME + '#xerr=rate');
             const verifier = b64url(crypto.randomBytes(32)), state = b64url(crypto.randomBytes(16));
             const redirectUri = originOf(req) + '/airdrop-auth/x/callback';
-            xPending.set(state, { verifier, redirectUri, t: now, ret: retOk(query.get('ret')) });
+            // app=1: el login va por el NAVEGADOR del movil (dentro del WebView X
+            // acababa abriendo su propia app y no volvia). Al final se vuelve a la
+            // app por pillwars://xlogin con un codigo de un solo uso, atado a un
+            // secreto que la app guardo antes de salir (h = sha256 del secreto).
+            const h = /^[A-Za-z0-9_-]{43}$/.test(query.get('h') || '') ? query.get('h') : null;
+            xPending.set(state, { verifier, redirectUri, t: now, ret: retOk(query.get('ret')), app: query.get('app') === '1' && !!h, h });
             const q = new URLSearchParams({
                 response_type: 'code', client_id: X_CLIENT_ID, redirect_uri: redirectUri, scope: X_SCOPES, state,
                 code_challenge: b64url(crypto.createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256',
@@ -365,17 +371,36 @@ function createAirdrop(opts) {
             xPending.delete(state);
             const code = query.get('code');
             const vuelta = p.ret || HOME;
-            if (!code) { log('[airdrop] X callback: no code (' + (query.get('error') || 'denied') + ')'); return redirect(res, vuelta + '#xerr=denied'); }
+            const alApp = q => redirect(res, 'pillwars://xlogin?' + q);
+            if (!code) { log('[airdrop] X callback: no code (' + (query.get('error') || 'denied') + ')'); return p.app ? alApp('err=denied') : redirect(res, vuelta + '#xerr=denied'); }
             try {
                 const profile = await xExchange(code, p.verifier, p.redirectUri);
                 const r = store.linkX(sessionToken(req), profile);
                 log('[airdrop] X linked @' + profile.username + (sessionToken(req) ? ' (existing session)' : ' (new session)'));
                 setSession(req, res, r.token);
+                if (p.app) {
+                    const t = b64url(crypto.randomBytes(24));
+                    for (const [k, v] of xHandoff) if (v.exp < now) xHandoff.delete(k);
+                    xHandoff.set(t, { token: r.token, h: p.h, ret: p.ret, exp: now + 2 * 60 * 1000 });
+                    return alApp('t=' + t);
+                }
                 return redirect(res, vuelta + '#x=ok');
             } catch (e) {
                 log('[airdrop] X sign-in failed: ' + e.message);
-                return redirect(res, vuelta + '#xerr=api');
+                return p.app ? alApp('err=api') : redirect(res, vuelta + '#xerr=api');
             }
+        }
+        // La app canjea el codigo de pillwars://xlogin DENTRO de su WebView: aqui
+        // recibe la cookie de sesion. Un solo uso, 2 minutos, y solo con el
+        // secreto cuyo hash mando al empezar (una app que robara el enlace no lo tiene).
+        if (urlPath === '/airdrop-auth/x/handoff') {
+            const t = query.get('t') || '', sec = query.get('s') || '', hit = xHandoff.get(t);
+            xHandoff.delete(t);
+            if (!hit || hit.exp < now || !sec) return redirect(res, (hit && hit.ret || HOME) + '#xerr=state');
+            const hs = b64url(crypto.createHash('sha256').update(sec).digest());
+            if (!same(hs, hit.h)) { log('[airdrop] X handoff: bad secret'); return redirect(res, (hit.ret || HOME) + '#xerr=state'); }
+            setSession(req, res, hit.token);
+            return redirect(res, (hit.ret || HOME) + '#x=ok');
         }
         return notFound(req, res);
     }
@@ -603,9 +628,12 @@ function createAirdrop(opts) {
 
     // La cuenta de X de esta peticion (cookie de sesion del airdrop), para que el
     // juego guarde los SP en ella. null sin sesion o sin X enlazada.
+    // Sin X, la wallet firmada de la sesion tambien vale como cuenta.
     function xAccountOf(req) {
         const u = store.sessionUser(sessionToken(req));
-        return u && u.x && u.x.id ? { id: 'x_' + u.x.id, x: u.x } : null;
+        if (u && u.x && u.x.id) return { id: 'x_' + u.x.id, x: u.x, wallet: u.wallet || null };
+        if (u && u.wallet && !u.walletPasted) return { id: 'w_' + u.wallet, x: null, wallet: u.wallet };
+        return null;
     }
     return { handle, only: ONLY, closed: CLOSED, claimDiscord, flush: store.flush, xAccountOf };
 }

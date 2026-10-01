@@ -49,10 +49,6 @@ open class WebShellViewClient(
             "http", "https" -> {
                 if (url.host.equals(scopeHostProvider.invoke(), ignoreCase = true)) {
                     false
-                } else if (isXLogin(url)) {
-                    // Login con X (OAuth): dentro del WebView, para que la cookie de
-                    // sesion vuelva a la app. Fuera se quedaba en el navegador.
-                    false
                 } else {
                     launchExternal(Intent(Intent.ACTION_VIEW, url))
                     true
@@ -64,14 +60,6 @@ open class WebShellViewClient(
                 true
             }
         }
-    }
-
-    // Solo las pantallas de login/autorizacion de X (rutas /i/...). El resto de
-    // enlaces a X (seguir, compartir, posts) se siguen abriendo fuera.
-    private fun isXLogin(url: android.net.Uri): Boolean {
-        val host = url.host?.lowercase() ?: return false
-        val esX = host == "x.com" || host == "twitter.com" || host.endsWith(".x.com") || host.endsWith(".twitter.com")
-        return esX && (url.path ?: "").startsWith("/i/")
     }
 
     private fun handleIntentScheme(url: String) {
