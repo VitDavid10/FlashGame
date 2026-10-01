@@ -212,7 +212,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 @keyframes icFloat{50%{transform:translateY(-.3em)}}
 @keyframes icShine{0%{left:-60%}40%,100%{left:130%}}
 .av-big{width:8em;height:8em}
-.av-r{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.34em}
+.av-r{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.55em}
 .av-l{display:flex;align-items:center;gap:.6em}
 .av-l>span{width:11.5em;flex:none;font-size:.36em;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
 .av-l>div{display:flex;gap:.3em;flex-wrap:wrap}
@@ -559,7 +559,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="ph"><button class="tb on">AVATAR</button><span class="cnt"></span><button class="px">DONE</button></div>
   <div class="sk-b"><div class="sk-pill"><div class="av-big" id="ahAvBig"></div></div>
   <div class="av-r"><div class="av-l"><span>STYLE</span><div id="ahAvT"></div></div><div class="av-l"><span>BACKGROUND</span><div id="ahAvBg"></div></div>
-  <div class="av-l av-p"><span>PILL TOP</span><div id="ahAvTop"></div></div><div class="av-l av-p"><span>PILL BOTTOM</span><div id="ahAvBot"></div></div><div class="av-l av-p"><span>SKIN</span><div id="ahAvSk"></div></div><div class="av-l av-p"><span>PIECES</span><div id="ahAvN"></div></div><div class="av-l av-p"><span>CROWN</span><div id="ahAvCr"></div></div><div class="av-l av-p"><span>EFFECT</span><div id="ahAvFx"></div></div></div></div>
+  <div class="av-l av-p"><span>PILL TOP</span><div id="ahAvTop"></div></div><div class="av-l av-p"><span>PILL BOTTOM</span><div id="ahAvBot"></div></div><div class="av-l av-p"><span>SKIN</span><div id="ahAvSk"></div></div></div></div>
   <div class="foot">Your avatar shows on your profile</div></div></div></div>
 <div class="ov" id="ahIc"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin un-b">
   <div class="un-t">ICON UNLOCKED!</div><div class="ic-card"><canvas id="ahIcCv"></canvas><i></i></div>
@@ -1060,82 +1060,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const paso = px / 4; for (let i = 1; i < 4; i++) { g.fillRect(Math.round(i * paso), 0, Math.max(1, px / 100), px); g.fillRect(0, Math.round(i * paso), px, Math.max(1, px / 100)); }
         const top = a.top || ((document.getElementById('colTop') || {}).value) || '#c8ccd2';
         const bot = a.bot || ((document.getElementById('colBot') || {}).value) || '#00e05a';
-        // Tu pildora dividida tal cual se ve en partida: los trozos los coloca la
-        // misma regla de choque de shared/sim.js (se empujan lo que se solapan
-        // segun su grosor, por eso se pisan a lo largo) y se pintan con las
-        // funciones del juego (drawPixPillRot / paisPillRot y drawCellBuffFx
-        // para el efecto de skill). Sin nombre; la corona va encima.
-        const cel = avTrozos(a.n || 4);
-        const ratio = typeof PILL_RATIO === 'number' ? PILL_RATIO : 1.6;
-        let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-        cel.forEach(c => { const e = (c.r * 2 * ratio + c.r * 2) / 2 * 0.72; x0 = Math.min(x0, c.x - e); x1 = Math.max(x1, c.x + e); y0 = Math.min(y0, c.y - e); y1 = Math.max(y1, c.y + e); });
-        const corona = a.crown == null ? 1 : a.crown;   // 0 = sin corona
-        const alto = px * (corona ? 0.62 : 0.74), ancho = px * 0.74, k = Math.min(ancho / (x1 - x0), alto / (y1 - y0));
-        const cy = corona ? px * 0.6 : px * 0.5;
-        g.save(); g.translate(px / 2 - (x0 + x1) / 2 * k, cy - (y0 + y1) / 2 * k); g.scale(k, k);
-        const pxs = 1.5;   // pixel del sprite por pixel del icono: con el del juego (3) salia a bloques
-        cel.slice().sort((p, q) => q.r - p.r).forEach(c => {
-            const pW = c.r * 2, wL = Math.max(6, Math.min(64, Math.round(pW * k / pxs / 2) * 2));
-            let ok = false;
-            if (a.skin) try { const sp = paisPillRot(wL, a.skin, -Math.PI / 4); if (sp) { const u = pW / wL; g.drawImage(sp.cv, c.x - sp.S / 2 * u, c.y - sp.S / 2 * u, sp.S * u, sp.S * u); ok = true; } } catch (e) {}
-            if (!ok) try { drawPixPillRot(g, c.x, c.y, pW, wL, top, bot, -Math.PI / 4, true); } catch (e) {}
-        });
-        if (a.fx && typeof drawCellBuffFx === 'function') cel.forEach(c => {
-            const cell = { id: 'me', x: c.x, y: c.y, r: c.r, isBot: false, particles: [], sprintTime: a.fx === 'sprint' ? 1e9 : 0, immuneTime: a.fx === 'immune' ? 1e9 : 0, magnetTime: 0, tpPhase: 0 };
-            try { drawCellBuffFx(g, cell, 1); } catch (e) {}
-        });
-        // Sprint: los rayos que salen al correr (los mismos del juego), fijos.
-        if (a.fx === 'sprint' && typeof drawFxPop === 'function') cel.forEach((c, i) => {
-            const ang = i * 2.4 + 0.6, off = c.r * 0.55;
-            g.save(); g.translate(c.x + Math.cos(ang) * off, c.y + Math.sin(ang) * off - c.r * 0.4);
-            try { drawFxPop(g, 'bolt', Math.max(22, Math.min(52, c.r * 0.95)), 1); } catch (e) {}
-            g.restore();
-        });
-        g.restore();
-        if (corona) avCorona(g, px / 2, px * 0.08, Math.max(1, Math.round(px * 0.026)), corona);
-    }
-    // Coloca n trozos como en partida: se parten de la mas grande (r / raiz de 2,
-    // con impulso en direccion al azar), van todos hacia el mismo punto y se
-    // empujan lo que se solapan, a medias (resolveCellCollision de sim.js).
-    // Semilla fija por n: el icono sale siempre igual.
-    const _avTrozosCache = {};
-    function avTrozos(n) {
-        if (_avTrozosCache[n]) return _avTrozosCache[n];
-        let sem = n * 9301 + 49297; const rnd = () => { sem = (sem * 9301 + 49297) % 233280; return sem / 233280; };
-        const cel = [{ x: 0, y: 0, r: 40, vx: 0, vy: 0 }];
-        while (cel.length < n) {
-            const big = cel.reduce((p, q) => q.r > p.r ? q : p);
-            big.r /= Math.SQRT2;
-            const ang = rnd() * Math.PI * 2;
-            cel.push({ x: big.x, y: big.y, r: big.r, vx: Math.cos(ang) * 14, vy: Math.sin(ang) * 14 });
-        }
-        for (let paso = 0; paso < 400; paso++) {
-            cel.forEach(c => {
-                const d = Math.hypot(c.x, c.y), v = Math.min(d, 1.6);
-                if (d > 0.01) { c.x -= c.x / d * v; c.y -= c.y / d * v; }
-                c.x += c.vx; c.y += c.vy; c.vx *= 0.9; c.vy *= 0.9;
-            });
-            for (let i = 0; i < cel.length; i++) for (let j = i + 1; j < cel.length; j++) {
-                const A = cel[i], B = cel[j], dx = A.x - B.x, dy = A.y - B.y, dist = Math.hypot(dx, dy), min = A.r + B.r;
-                if (dist < min && dist > 0.001) { const f = (min - dist) / dist * 0.5; A.x += dx * f; A.y += dy * f; B.x -= dx * f; B.y -= dy * f; }
-            }
-        }
-        // A tamano de celula de partida (unos cientos de unidades): los efectos
-        // del juego calculan su grosor con el tamano real, y con trozos enanos el
-        // aro salia gordisimo. El icono reescala igual, la forma no cambia.
-        cel.forEach(c => { c.x *= 4; c.y *= 4; c.r *= 4; });
-        return (_avTrozosCache[n] = cel);
-    }
-    // Corona del podio de la partida (RANGO_CORONA de game/index.html): 1 oro,
-    // 2 plata, 3 bronce, con sus tres piedras.
-    function avCorona(g, cx, top, p, nivel) {
-        if (typeof _pintaMascara !== 'function' || !RANGO_METAL[nivel]) return;
-        const ox = Math.round(cx - 13 * p / 2), oy = Math.round(top);
-        _pintaMascara(g, RANGO_CORONA, RANGO_METAL[nivel], ox, oy, p);
-        RANGO_PIEDRAS.forEach(([x, y]) => {
-            g.fillStyle = '#000'; g.fillRect(ox + x * p - 1, oy + y * p - 1, p + 2, p + 2);
-            g.fillStyle = RANGO_GEMA[nivel]; g.fillRect(ox + x * p, oy + y * p, p, p);
-        });
+        let o = null;
+        try { o = a.skin ? paisPillRot(40, a.skin, -Math.PI / 4) : pixPillSpriteRot(40, top, bot, -Math.PI / 4, true); } catch (e) {}
+        if (o) { const sw = o.S || o.cv.width, k = px * 0.86 / sw; g.drawImage(o.cv, 0, 0, sw, sw, px / 2 - sw * k / 2, px / 2 - sw * k / 2, sw * k, sw * k); }
     }
     function avEl(a, px) {
         if (a.t === 'pill') { const cv = document.createElement('canvas'); avPill(cv, a, px || 96); cv.className = 'av-cv'; return cv; }
@@ -1187,22 +1114,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             if (!code) { b.className = 'no'; b.title = 'NO SKIN'; b.innerHTML = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.2 11.8 11.8 4.2" stroke="currentColor" stroke-width="2"/></svg>'; return; }
             const cv = document.createElement('canvas'); avPill(cv, { bg: '#1a3a2e', skin: code }, 48); b.appendChild(cv);
         }, code => (code || null) === (a.skin || null), code => guarda(Object.assign({}, a, { skin: code })));
-        const NO_SVG = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.2 11.8 11.8 4.2" stroke="currentColor" stroke-width="2"/></svg>';
-        const casilla = pinta => { const cv = document.createElement('canvas'); cv.width = cv.height = 48;
-            const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.fillStyle = '#1a3a2e'; g.fillRect(0, 0, 48, 48); pinta(g); return cv; };
-        fila('#ahAvN', [2, 3, 4, 6, 8], (b, n) => {
-            const cv = document.createElement('canvas'); avPill(cv, Object.assign({}, a, { n, crown: 0, fx: null }), 48); b.appendChild(cv);
-        }, n => n === (a.n || 4), n => guarda(Object.assign({}, a, { n })));
-        // 0 = sin corona; 1 oro, 2 plata, 3 bronce.
-        fila('#ahAvCr', [0, 1, 2, 3], (b, n) => {
-            if (!n) { b.className = 'no'; b.title = 'NO CROWN'; b.innerHTML = NO_SVG; return; }
-            b.appendChild(casilla(g => avCorona(g, 24, 15, 3, n)));
-        }, n => n === (a.crown == null ? 1 : a.crown), n => guarda(Object.assign({}, a, { crown: n })));
-        // Efecto de skill: ninguno, sprint (rayito) o immune.
-        fila('#ahAvFx', [null, 'sprint', 'immune'], (b, fx) => {
-            if (!fx) { b.className = 'no'; b.title = 'NO EFFECT'; b.innerHTML = NO_SVG; return; }
-            const cv = document.createElement('canvas'); avPill(cv, Object.assign({}, a, { fx, crown: 0 }), 48); b.appendChild(cv);
-        }, fx => (fx || null) === (a.fx || null), fx => guarda(Object.assign({}, a, { fx })));
         av.classList.add('open'); placa($('#ahAv .pnl'), 1);
     }
     async function openProfile() {
