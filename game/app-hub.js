@@ -276,6 +276,10 @@ body.hub-on .pw-modal{background:rgba(3,6,4,.9)!important}
 /* Los avisos propios de la wallet (Mobile Wallet Adapter) cuelgan de <body>, que
    en horizontal va girado: se gira su contenedor igual que los carteles. */
 body > .mwa-host{display:none!important}
+/* Avisos del juego (sysModal) en la app: un 20 % mas grandes y legibles. */
+html:not([data-hero]) body.mobile-allowed #sysModal .exit-box{transform:scale(1.2)!important;transform-origin:center!important}
+html:not([data-hero]) body.mobile-allowed #sysModal .exit-desc{font-size:9px!important;line-height:2!important;margin-bottom:14px!important}
+html:not([data-hero]) body.mobile-allowed #sysModal .btn-sys{font-size:11px!important;padding:9px 18px!important}
 html:not([data-hero]) body.mobile-allowed > .mwa-host{position:fixed!important;z-index:30000!important;width:var(--pw-largo,100dvh);height:var(--pw-corto,100dvw);
   top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center;pointer-events:auto}
 body.hub-on .pw-modal-box{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;outline:none!important;min-width:20em}
