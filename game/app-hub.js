@@ -187,6 +187,19 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell .pr.own{color:var(--ac)}
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
+.pr-me{justify-content:center!important;gap:.6em!important}
+.pr-pic{width:6.4em;height:6.4em;border-radius:50%;overflow:hidden;box-shadow:0 0 0 .22em var(--ac),0 0 0 .38em #000}
+.pr-pic img{width:100%;height:100%;object-fit:cover}
+.pr-at{font-size:.5em;color:var(--ac);letter-spacing:.06em}
+.pr-nm{font-size:.42em;color:var(--mut)}
+.pr-r{flex:1;min-width:0;display:flex;flex-direction:column;gap:.5em}
+.pr-box{flex:1;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.7em .9em}
+.pr-box .k,.pr-st .k{font-size:.38em;color:var(--mut);letter-spacing:.1em}
+.pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em}
+.pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
+.pr-bt{display:flex;gap:.5em;margin-top:.8em}.pr-bt .tb{width:auto;flex:1}
+.pr-st{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;height:3.6em}
+.pr-st .cell{justify-content:center;gap:.4em}.pr-st .v{font-size:.62em;text-shadow:.12em .12em 0 #000}
 .sn{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:.45em}
 .sn .cell{justify-content:center;gap:.35em;padding:.3em}
 .sn .cell canvas{width:3.6em;height:3.6em}
@@ -216,18 +229,26 @@ body.hub-on .pw-big-btn{background:var(--hub-ac)!important;background-image:none
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;border-radius:0!important}
 body.hub-on .pw-modal-cancel{background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#7d8a82!important;
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important}
+body.hub-on .gameModal{background:rgba(3,6,4,.9)!important}
+body.hub-on .gameModalBox{position:relative;background:none!important;border:none!important;box-shadow:none!important;min-width:20em}
+body.hub-on .gameModalBox>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
+body.hub-on .gameModalBox>*:not(.hub-placa){position:relative;z-index:1;margin-left:14px!important;margin-right:14px!important}
+body.hub-on .gameModalBox h3{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin-top:10px!important}
+body.hub-on .gameModalBox .gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;color:#04150c!important;font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;border-radius:0!important;box-shadow:none!important;margin-bottom:12px!important}
+body.hub-on .gameModalBox .close{color:#7d8a82!important}
+body.hub-on .gameModal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 `;
     const st = document.createElement('style'); st.textContent = css + cssModales; document.head.appendChild(st);
     // Cuando sale un cartel del juego con el hub puesto, se le pinta el marco placa del modo.
     function visteModal(m) {
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
-        const box = m.querySelector('.pw-modal-box'); if (!box || typeof drawPlacaCaja !== 'function') return;
+        const box = m.querySelector('.pw-modal-box, .gameModalBox'); if (!box || typeof drawPlacaCaja !== 'function') return;
         let cv = box.querySelector(':scope>canvas.hub-placa');
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
         requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1); });
     }
-    new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && r.target.classList.contains('pw-modal')) visteModal(r.target); }))
+    new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal'))) visteModal(r.target); }))
         .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['style'] });
 
     const hub = document.createElement('div'); hub.id = 'appHub';
@@ -247,7 +268,17 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
-  <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms open on PC and Mac</div></div></div></div>
+  <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILL</div></div></div></div>
+<div class="ov" id="ahPr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
+  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic"><img alt=""></div><div class="pr-at" id="ahPrAt"></div><div class="pr-nm" id="ahPrNm"></div></div>
+  <div class="pr-r">
+    <div class="pr-box"><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
+      <div class="k" style="margin-top:.9em">IN-GAME $PILL</div><div class="pr-bal" id="ahPrBal">0</div>
+      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button></div></div>
+    <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
+  </div></div>
+  <div class="foot">Your SP and skins are saved to your X account</div></div></div></div>
 <div class="ov" id="ahSt"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb" data-s="shop">STORE</button><button class="tb" data-s="mine">MY SKINS</button><span class="cnt" id="ahStSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sn" id="ahStG" style="grid-template-columns:repeat(4,1fr)"></div></div>
@@ -341,7 +372,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         g.appendChild(off);
         PRICES.forEach(p => {
             const r = mine.find(x => x.room === p) || { players: 0, cap: 70, state: 'waiting', needed: 5 };
-            const lock = p !== 'Free' && document.body.classList.contains('mobile-allowed');
+            const lock = false;
             const est = lock ? 'PC ONLY' : r.state === 'playing' ? 'IN GAME' : r.players >= (r.needed || 5) ? 'STARTING' : 'WAITING';
             const c = document.createElement('div');
             c.className = 'cell' + (p === room ? ' sel' : '') + (lock ? ' lock' : '');
@@ -376,8 +407,6 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         $('#ahSkFoot').textContent = pillTab === 'skills' ? 'You start the match with these two skills' : pillTab === 'color' ? 'Tap a color to paint that half' : 'Tap a skin to wear it';
         $('#ahSkSp').textContent = $('#ahSp').textContent + ' SP';
         drawPill($('#ahSkPill'), 96, 0.92);
-        $('#ahName').addEventListener('input', e => guardaNombre(e.target.value));
-        $('#ahName').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
         hub.querySelectorAll('.sk-slot').forEach(sl => {
             const i = +sl.dataset.s, id = picks[i];
             sl.className = 'sk-slot' + (id ? ' full' : '') + (i === slotSel && pillTab === 'skills' ? ' act' : '');
@@ -603,6 +632,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         try {
             const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json();
             xUser = j && j.user && j.user.x || null;
+            xWallet = j && j.user && j.user.wallet || null;
         } catch (e) { xUser = null; }
         if (xUser && cidLocal()) {
             try { await fetch('/api/account/link', { method: 'POST', headers: { 'x-client-id': cidLocal() } }); } catch (e) {}
@@ -610,8 +640,37 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         }
         pintaX(); paintStatic();
     }
+    // Perfil (con X conectada): foto en grande, wallet, saldo del juego y stats.
+    let xWallet = null;
+    async function openProfile() {
+        const pr = $('#ahPr');
+        pr.querySelector('.pr-pic img').src = xUser && xUser.pic ? xUser.pic.replace('_normal.', '_400x400.') : '';
+        $('#ahPrAt').textContent = '@' + String(xUser.username || '').toUpperCase();
+        $('#ahPrNm').textContent = String(xUser.name || '').toUpperCase().slice(0, 18);
+        $('#ahPrSp').textContent = (typeof paisSp === 'function' ? paisSp() : 0) + ' SP';
+        pr.classList.add('open'); placa($('#ahPr .pnl'), 1);
+        pintaWallet();
+        try {
+            const st = await (await fetch('/api/airdrop/arena/stats', { cache: 'no-store' })).json();
+            $('#ahPrM').textContent = st.matches || 0;
+            $('#ahPrK').textContent = (st.best && st.best.kills) || 0;
+            $('#ahPrMs').textContent = ((st.best && st.best.mass) || 0).toLocaleString('en-US');
+        } catch (e) {}
+    }
+    // La wallet: la conectada en la app (Seed Vault) o, si no, la enlazada al airdrop.
+    async function pintaWallet() {
+        const conectada = window.GameWallet && GameWallet.address;
+        const w = conectada || xWallet;
+        $('#ahPrW').textContent = w ? w.slice(0, 6) + '...' + w.slice(-6) + (conectada ? '' : '  (LINKED)') : 'NOT CONNECTED';
+        $('#ahPrCon').style.display = conectada ? 'none' : '';
+        $('#ahPrDep').style.display = $('#ahPrWd').style.display = conectada ? '' : 'none';
+        let bal = 0;
+        if (w) try { bal = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
+        $('#ahPrBal').textContent = Math.floor(bal).toLocaleString('en-US');
+        if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = bal;
+    }
     function conectaX() {
-        if (xUser) return;
+        if (xUser) { openProfile(); return; }
         location.href = '/airdrop-auth/x/login?ret=' + encodeURIComponent(location.pathname);
     }
 
@@ -632,10 +691,14 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
     function wire() {
         hub.addEventListener('click', tap);
         $('#ahPill').addEventListener('click', () => { try { SoundManager.play('simpleselect'); } catch (x) {} openPill('color'); });
-        const cerrar = o => { o.classList.remove('open'); if (o.id === 'ahQ') closeQuests(); if (o.id === 'ahSk' || o.id === 'ahSt') { const pg = o.querySelector('.pg'); if (pg) pg.remove(); } };
+        const cerrar = o => { o.classList.remove('open');
+            if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests(); if (o.id === 'ahSk' || o.id === 'ahSt') { const pg = o.querySelector('.pg'); if (pg) pg.remove(); } };
         hub.querySelectorAll('.px').forEach(b => b.onclick = () => cerrar(b.closest('.ov')));
         hub.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) cerrar(o); }));
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.onclick = () => { storeTab = b.dataset.s; buying = null; skinPage = 0; try { SoundManager.play('simpleselect'); } catch (x) {} renderStore(); });
+        $('#ahPrCon').onclick = async () => { try { await GameWalletUI.connectWith('mwa'); } catch (e) {} pintaWallet(); };
+        $('#ahPrDep').onclick = () => { try { GameWalletUI.openDeposit(); } catch (e) {} };
+        $('#ahPrWd').onclick = () => { try { GameWalletUI.openWithdraw(); } catch (e) {} };
         $('#ahName').addEventListener('input', e => guardaNombre(e.target.value));
         $('#ahName').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
         hub.querySelectorAll('.sk-slot').forEach(sl => sl.onclick = () => { slotSel = +sl.dataset.s; pillTab = 'skills'; renderPill(); });
@@ -650,6 +713,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
                 if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }
                 const nombre = ((document.getElementById('playerNameInput') || {}).value || '').trim();
                 // Con nombre ya puesto se entra sin preguntar; si falta, el cartel de nombre de siempre.
+                if (kind === 'online' && currentServer !== room && !selectRoom(room)) return;
                 if (nombre) continueChoosePlay(kind); else choosePlay(kind);
             } catch (x) {}
         };
@@ -673,7 +737,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
-        window._hubShow = show;
+        window._hubShow = show; window._hubSyncX = syncX;
         // La partida tapa al hub: se esconde al empezar y vuelve al volver al menu.
         ['startGame', 'startOnlineGame'].forEach(fn => {
             const o = window[fn];

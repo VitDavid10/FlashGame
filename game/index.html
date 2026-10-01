@@ -44,6 +44,9 @@
         // html.pw-app y de EN_APP. En el navegador el juego sigue como antes
         // (pedido por David). Aqui, antes de pintar nada, para que no salte.
         if (/Solana Mobile Web Shell/.test(navigator.userAgent) || new URLSearchParams(location.search).has('app')) el.classList.add('pw-app');
+        // App: la wallet del movil (Seed Vault) va por Mobile Wallet Adapter. Solo
+        // aqui se carga; en la web no hace falta (ver mwaProvider).
+        if (el.classList.contains('pw-app')) { const s = document.createElement('script'); s.src = '/vendor/mwa.js'; s.async = true; document.head.appendChild(s); }
         // El MAYOR de las tres medidas, no visualViewport a secas. Las tres
         // dicen cosas distintas mientras la barra del navegador se esta
         // encogiendo -visualViewport es lo visible AHORA, que al principio es
@@ -8751,7 +8754,8 @@
     // Devuelve false si no se pudo (movil + sala de pago).
     function selectRoom(a) {
         // En móvil (warning aceptado) solo se permite la sala FREE; las de pago requieren PC/Mac.
-        if (document.body.classList.contains('mobile-allowed') && a !== 'Free') {
+        // La app (1-oct-2026) SI tiene salas de pago: firma con la Seed Vault (MWA).
+        if (document.body.classList.contains('mobile-allowed') && a !== 'Free' && !EN_APP) {
             // 'alert' y no 'cd': cd es el zumbido de "skill en enfriamiento" y
             // aqui no hay ningun cooldown, es un aviso. Sonaba a error de
             // gameplay en medio del menu.
@@ -8815,9 +8819,10 @@
         continueChoosePlay(kind);
     }
     function continueChoosePlay(kind) {
-        // La app de la dApp Store no tiene salas de pago (pedido por David):
-        // siempre FREE, online u offline, sin enseñar el selector de salas.
-        if (EN_APP) { selectRoom('Free'); runPlay(kind); return; }
+        // App: desde el 1-oct-2026 SI tiene salas de pago (antes era siempre FREE).
+        // La sala ya viene elegida desde ROOMS del menu (app-hub.js); offline
+        // es practica y va siempre a FREE.
+        if (EN_APP) { if (kind === 'offline' || !currentServer) selectRoom('Free'); runPlay(kind); return; }
         // En movil se pregunta la sala SIEMPRE, aunque ya hubiera uma elegida:
         // en el telefono no se ve el panel de precios, asi que sin esto te
         // metia en la ultima sala usada (normalmente Free) sin decir nada y no
@@ -11638,9 +11643,51 @@
     let netState = null;   // { url, token, attempts, joinMsg }
 
     // --- Wallet en la página del juego (para pagar la entrada de salas de pago) ---
+    // Wallet de la APP (Saga/Seeker): dentro del WebView no hay extensiones, la
+    // Seed Vault se habla por Mobile Wallet Adapter (vendor/mwa.js, solo en la
+    // app). Este objeto imita la API de Phantom que usa el resto del juego
+    // (connect / signMessage / signTransaction), asi depositar, retirar y firmar
+    // la entrada de sala funcionan sin tocar ese codigo. Cluster devnet, el
+    // mismo del RPC y del mint del juego.
+    let _mwa = null;
+    function mwaProvider() {
+        if (_mwa) return _mwa;
+        const M = window.PillMWA; if (!M) return null;
+        const w = new M.LocalSolanaMobileWalletAdapterWallet({
+            appIdentity: { name: 'PillWars', uri: location.origin, icon: 'favicon.ico' },
+            authorizationCache: M.createDefaultAuthorizationCache(),
+            chains: ['solana:devnet'],
+            chainSelector: M.createDefaultChainSelector(),
+            onWalletNotFound: M.createDefaultWalletNotFoundHandler(),
+        });
+        let cuenta = null;
+        const pk = a => ({ toString: () => a, toBase58: () => a });
+        _mwa = {
+            isMwa: true, publicKey: null,
+            // onlyIfTrusted = reconexion silenciosa con la autorizacion guardada.
+            async connect(opts) {
+                const r = await w.features['standard:connect'].connect(opts && opts.onlyIfTrusted ? { silent: true } : undefined);
+                cuenta = r && r.accounts && r.accounts[0];
+                if (!cuenta) throw new Error('no account');
+                this.publicKey = pk(cuenta.address);
+                return { publicKey: this.publicKey };
+            },
+            async signMessage(bytes) {
+                const [o] = await w.features['solana:signMessage'].signMessage({ account: cuenta, message: bytes });
+                return { signature: o.signature };
+            },
+            async signTransaction(tx) {
+                const [o] = await w.features['solana:signTransaction'].signTransaction({ account: cuenta, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }) });
+                return { serialize: () => o.signedTransaction };
+            },
+            async disconnect() { try { await w.features['standard:disconnect'].disconnect(); } catch (e) {} cuenta = null; this.publicKey = null; },
+        };
+        return _mwa;
+    }
     const GameWallet = {
         address: null, provider: null,
         getProvider(name) {
+            if (name === 'mwa') return EN_APP ? mwaProvider() : null;
             if (name === 'phantom') return (window.phantom && window.phantom.solana) || (window.solana && window.solana.isPhantom ? window.solana : null);
             if (name === 'solflare') return window.solflare || null;
             if (name === 'backpack') return (window.backpack) || (window.xnft && window.xnft.solana) || null;
@@ -11698,6 +11745,8 @@
             if (shouldShow) this.refresh();
         },
         connect() {
+            // App: la unica wallet es la del movil (Seed Vault por MWA), sin selector.
+            if (EN_APP) { this.connectWith('mwa'); return; }
             // Como en la web principal: selector con las 3 wallets para que el
             // usuario ELIJA. Antes se conectaba a la primera instalada que se
             // encontrara (orden fijo phantom→solflare→backpack): si tenias

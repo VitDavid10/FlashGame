@@ -29,6 +29,7 @@
     "uuid": "^11.1.1"
   },
   "devDependencies": {
+    "@solana-mobile/wallet-standard-mobile": "0.6.0",
     "esbuild": "^0.28.2"
   }
 }

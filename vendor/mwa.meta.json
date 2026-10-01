@@ -1,0 +1,8 @@
+{
+  "generado": "2026-10-01T02:03:09.209Z",
+  "esbuild": "0.28.2",
+  "paquetes": {
+    "@solana-mobile/wallet-standard-mobile": "0.6.0"
+  },
+  "bytes": 179547
+}
