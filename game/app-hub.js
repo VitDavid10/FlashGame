@@ -207,7 +207,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .av-l b.on{outline:.14em solid #fff;outline-offset:.08em}
 .av-l b svg{width:.95em;height:.95em}
 .av-l b canvas{width:100%;height:100%}
-.av-l b.no{background:var(--in2);font-size:.36em;color:var(--mut)}
+.av-l b.no{background:var(--in2);color:var(--mut)}
 .av-p{display:none}#ahAv.pill .av-p{display:flex}
 .un-b{display:flex;flex-direction:column;align-items:center;gap:.5em;overflow:hidden}
 .un-t{font-size:.95em;color:var(--ac);text-shadow:.12em .12em 0 #000,0 0 .01em #fff;animation:unPop .5s steps(5) both}
@@ -339,6 +339,30 @@ html.pw-app #btnTryAgainOnline,html.pw-app #prizeContinue{--plate:var(--ah-placa
 html.pw-app #resultOverlay .btn-spectate,html.pw-app #prizeShare{--plate:var(--ah-placa-blue)!important}
 html.pw-app #btnBackToMenu{--plate:var(--ah-placa-grey)!important}
 html.pw-app #ahResShare{--plate:var(--ah-placa-gold)!important}
+/* DEPOSIT / WITHDRAW en la app: sin la X; el boton de confirmar mas pequeno y
+   un CLOSE al lado, los dos en la misma fila. */
+html.pw-app :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox>.close{display:none!important}
+html.pw-app .ah-gm-acts{display:flex;gap:10px;justify-content:center;margin-top:12px}
+html.pw-app body :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn{--plate:var(--ah-placa-green);flex:1 1 0;min-width:0;margin:0!important;width:auto!important;height:auto!important;aspect-ratio:auto!important;transform:none!important;background:none!important;background-image:none!important;border:9px solid transparent!important;border-image:var(--plate) 3 fill / 9px / 0 stretch!important;border-radius:0!important;box-shadow:none!important;min-height:42px!important;padding:2px 8px!important;font-family:'Press Start 2P',monospace!important;font-size:11px!important;letter-spacing:0!important;color:#fff!important;text-shadow:2px 2px 0 rgba(0,0,0,.7)!important;white-space:nowrap;image-rendering:pixelated;filter:drop-shadow(3px 3px 0 rgba(0,0,0,.55))}
+html.pw-app body :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn.ah-gm-close{--plate:var(--ah-placa-grey)}
+/* Variante B (html.ah-wal-hub): DEPOSIT y WITHDRAW con el marco de los menus del
+   hub, como NOT ENOUGH $PILLY, en vez del gris de los avisos. */
+html:not(.ah-wal-hub) :is(#gameDepositModal,#gameWithdrawModal) canvas.hub-placa{display:none!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal){background:rgba(3,6,4,.9)!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;transform:none!important;width:380px!important;max-width:none!important;padding:18px 24px 14px!important;text-align:center}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox:before,html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox:after{display:none!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox>*:not(.hub-placa){position:relative;z-index:1}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) h3{font-family:'Russo One',sans-serif!important;font-size:15px!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin:4px 0 14px!important;background:none!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gm-row{font-family:'Russo One',sans-serif!important;font-size:12px!important;line-height:1.7!important;color:#cfd8d3!important;display:flex;justify-content:space-between}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gm-row b{color:#fff!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) label{font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.1em;color:var(--hub-ac)!important;display:block;text-align:left;margin-top:4px}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important;font-size:13px!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;border-image:none!important;filter:none!important;min-height:0!important;border-radius:0!important;box-shadow:none!important;color:#04150c!important;
+  font-family:'Russo One',sans-serif!important;font-size:12px!important;letter-spacing:.12em!important;padding:11px 8px!important;text-shadow:none!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn.ah-gm-close{background:none!important;border:2px solid #2c3630!important;color:#7d8a82!important}
+/* SKIN del editor de avatar: "sin skin" es una casilla del mismo tamano que las demas. */
+
 /* DEPOSIT, NOT ENOUGH $PILLY...: la animacion de entrada (fadeIn) mueve con
    transform y durante sus 0,2 s pisaba el giro del cartel, que asomaba un
    instante como un recuadro oscuro sin girar. */
@@ -402,12 +426,16 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     })();
     // Cuando sale un cartel del juego con el hub puesto, se le pinta el marco placa del modo.
     function visteModal(m) {
+        // La pieza "actions" de carteles-layout.json escala el boton de confirmar
+        // (pensado para cuando iba solo): en la fila con CLOSE se salia de la caja.
+        ['gdConfirm', 'gwdConfirm'].forEach(id => { const e = document.getElementById(id); if (e) e.style.removeProperty('transform'); });
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
-        if (m.classList.contains('gameModal') && m.id !== 'gameTopUpModal') return;
+        const walHub = document.documentElement.classList.contains('ah-wal-hub') && (m.id === 'gameDepositModal' || m.id === 'gameWithdrawModal');
+        if (m.classList.contains('gameModal') && m.id !== 'gameTopUpModal' && !walHub) return;
         const box = m.querySelector('.pw-modal-box, .gameModalBox'); if (!box || typeof drawPlacaCaja !== 'function') return;
         // CLOSE en vez de la x de la esquina (se montaba encima del titulo).
         const x = box.querySelector(':scope>.close');
-        if (x && !box.querySelector(':scope>.hub-close')) { const b = document.createElement('button'); b.className = 'hub-close'; b.textContent = 'CLOSE'; b.onclick = () => x.click(); box.appendChild(b); }
+        if (x && !walHub && !box.querySelector(':scope>.hub-close')) { const b = document.createElement('button'); b.className = 'hub-close'; b.textContent = 'CLOSE'; b.onclick = () => x.click(); box.appendChild(b); }
         let cv = box.querySelector(':scope>canvas.hub-placa');
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
         requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1); });
@@ -449,6 +477,34 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     setInterval(pintaPilly, 3000);
     window._hubCorto = corto;   // pruebas
+    // DEPOSIT / WITHDRAW: el boton de confirmar y un CLOSE en la misma fila.
+    [['gameDepositModal', 'gdConfirm', 'DEPOSIT', () => GameWalletUI.closeDeposit()],
+     ['gameWithdrawModal', 'gwdConfirm', 'WITHDRAW', () => GameWalletUI.closeWithdraw()]].forEach(([mid, bid, txt, cerrar]) => {
+        const ok = document.getElementById(bid); if (!ok || ok.parentElement.classList.contains('ah-gm-acts')) return;
+        const fila = document.createElement('div'); fila.className = 'ah-gm-acts';
+        ok.parentElement.insertBefore(fila, ok); fila.appendChild(ok); ok.textContent = txt;
+        const c = document.createElement('button'); c.className = 'gm-btn ah-gm-close'; c.textContent = 'CLOSE'; c.onclick = cerrar;
+        fila.appendChild(c);
+    });
+    // Teclado del movil: en horizontal tapa media pantalla y el campo de la
+    // cantidad quedaba debajo. Al escribir, el cartel sube lo justo para que el
+    // campo quede a la vista; al soltar el teclado vuelve a su sitio.
+    function subeCampo(inp) {
+        const box = inp.closest('.gameModalBox, .pw-modal-box'); if (!box) return;
+        const vv = window.visualViewport, alto = window.innerHeight;
+        const visible = vv && vv.height < alto - 60 ? vv.height : alto * 0.5;
+        box.style.removeProperty('translate');
+        const r = inp.getBoundingClientRect(), falta = r.bottom + 10 - visible;
+        if (falta > 0) box.style.setProperty('translate', '0 ' + (-falta) + 'px');
+    }
+    document.addEventListener('focusin', e => {
+        const t = e.target; if (!t || t.tagName !== 'INPUT') return;
+        if (t.closest('.gameModal, .pw-modal')) setTimeout(() => subeCampo(t), 250);
+    });
+    document.addEventListener('focusout', e => {
+        const box = e.target && e.target.closest && e.target.closest('.gameModalBox, .pw-modal-box');
+        if (box) box.style.removeProperty('translate');
+    });
     const hub = document.createElement('div'); hub.id = 'appHub';
     hub.innerHTML = `
 <canvas id="ahBg"></canvas><div id="ahShade"></div>
@@ -957,7 +1013,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         fila('#ahAvBot', SWATCH, (b, c) => { b.style.background = c; }, c => !a.skin && c === a.bot, c => guarda(Object.assign({}, a, { bot: c, skin: null })));
         let mias = []; try { mias = skinMiasOrdenadas(); } catch (e) {}
         fila('#ahAvSk', [null].concat(mias.slice(0, 9)), (b, code) => {
-            if (!code) { b.className = 'no'; b.textContent = 'NO'; return; }
+            if (!code) { b.className = 'no'; b.title = 'NO SKIN'; b.innerHTML = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.2 11.8 11.8 4.2" stroke="currentColor" stroke-width="2"/></svg>'; return; }
             const cv = document.createElement('canvas'); avPill(cv, { bg: '#1a3a2e', skin: code }, 48); b.appendChild(cv);
         }, code => (code || null) === (a.skin || null), code => guarda(Object.assign({}, a, { skin: code })));
         av.classList.add('open'); placa($('#ahAv .pnl'), 1);
