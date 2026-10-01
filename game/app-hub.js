@@ -249,6 +249,7 @@ body.hub-on .name-choice .nc-title{font-family:'Russo One',sans-serif!important;
 body.hub-on .name-choice .nc-btn{display:block!important;margin:12px auto!important;background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#cfd8d3!important;
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important;padding:8px 22px!important;width:auto!important}
 body.hub-on .name-choice .nc-close{color:#7d8a82!important}
+body.hub-on .name-choice .nc-field{display:block!important;box-sizing:border-box!important;width:calc(100% - 28px)!important;text-align:center!important}
 body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 `;
     const st = document.createElement('style'); st.textContent = css + cssModales; document.head.appendChild(st);
