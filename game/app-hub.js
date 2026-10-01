@@ -118,7 +118,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-dot{width:.55em;height:.55em;background:#00ff66;animation:ahBl 1s steps(2) infinite}
 @keyframes ahBl{50%{opacity:.2}}
 .ah-bdg{position:absolute;left:2.3em;top:-.2em;background:#e5302f;font-size:.42em;padding:.35em .45em .25em;box-shadow:0 0 0 .2em #000}
-#ahPill{position:absolute;left:28.4em;top:3em;width:13.5em;height:13.5em;cursor:pointer}
+#ahPill{position:absolute;left:24.15em;top:2.65em;width:22em;height:14.2em;cursor:pointer}
 .ah-room{position:absolute;right:15.9em;bottom:.62em;width:5em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.55em}
 .ah-room .med{width:3.8em;height:3.8em}
 .ah-room .sw{position:absolute;right:-.45em;top:-.3em;width:1.35em;height:1.35em;border-radius:50%;background:var(--ac);color:#04150c;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 .12em #000}
@@ -653,87 +653,50 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // La pildora grande del menu se divide de vez en cuando, como el SPLIT de la
     // partida: salen dos mitades en diagonal, se quedan un momento y se vuelven
     // a juntar con un rebote. Asi se ve como queda tu pildora dividida.
-    // Ciclo de la pildora del menu con las MISMAS reglas que el split de la
-    // partida (shared/sim.js): cada division parte la celda mas grande en dos de
-    // igual masa (r / raiz de 2) que salen con un impulso en direccion al azar;
-    // todas van hacia el mismo punto, y entre si solo se empujan lo que se
-    // solapan, a medias (resolveCellCollision). Pasado el tiempo de fusion, la
-    // que toca a otra se la come (la grande absorbe la masa de la chica), asi
-    // que se van uniendo trozo a trozo. 15 s entera entre division y division.
-    const SPLIT_ENTERA = 15000, SPLIT_JUNTOS = 14000, SPLIT_REBOTE = 700;
-    const split = { fase: 'entera', desde: null, cel: [], last: 0, n: 0 };
-    let splitCuenta = 0;
+    // Pildora grande del menu: cada 30 s se divide en 2 a 8 copias, rapido y
+    // vistoso (salen, se quedan un momento y se vuelven a
+    // unir con un rebote). El lienzo es mas ancho que la pildora para que las
+    // copias quepan sin cortarse; la pildora entera se ve igual que antes
+    // (96 px de lienzo = 13.5em, mismo centro).
+    const SPLIT_CICLO = 30000, PILL_W = 157, PILL_H = 101;
     const splitTrozos = c => { const x = Math.sin(c * 12.9898 + 78.233) * 43758.5453; return 2 + Math.floor((x - Math.floor(x)) * 7); };
-    function drawPillSplit(cv, res, t) {
-        const bob = Math.round(Math.sin(t / 380) * 2), mid = res / 2, R0 = 1;
-        const dt = Math.min(3, Math.max(0, t - split.last) / 16.67); split.last = t;
-        if (split.desde === null) split.desde = t;
-        if (split.fase === 'entera') {
-            if (t - split.desde < SPLIT_ENTERA) { drawPill(cv, res, 0.92, bob, true); return; }
-            // Se divide: de la mas grande en dos, hasta tener n trozos.
-            const n = splitTrozos(splitCuenta++), cel = [{ x: mid, y: mid, r: R0, vx: 0, vy: 0, une: 0 }];
-            while (cel.length < n) {
-                const big = cel.reduce((a, b) => b.r > a.r ? b : a);
-                big.r /= Math.SQRT2;
-                const a = Math.random() * Math.PI * 2;
-                cel.push({ x: big.x, y: big.y, r: big.r, vx: Math.cos(a) * 2.2, vy: Math.sin(a) * 2.2, une: 0 });
-            }
-            // Como en partida, cada trozo tiene su propio tiempo de fusion (alli
-            // depende de cuando nacio y de su masa): asi no se unen todos de golpe
-            // sino uno detras de otro.
-            cel.forEach((c, i) => { c.une = t + SPLIT_JUNTOS + i * 650 + Math.random() * 250; });
-            Object.assign(split, { fase: 'dividida', desde: t, cel });
-        }
-        if (split.fase === 'rebote') {
-            const r = (t - split.desde) / SPLIT_REBOTE;
-            if (r >= 1) { Object.assign(split, { fase: 'entera', desde: t }); drawPill(cv, res, 0.92, bob, true); return; }
-            drawPill(cv, res, 0.92 * (1 + .07 * Math.sin(r * Math.PI) * (1 - r)), bob, true); return;
-        }
-        const W0 = res * 0.92, cel = split.cel;
-        // Radio de choque de un trozo (px): lo grueso de la pildora, como en partida
-        // los trozos se pisan un poco por las puntas.
-        const choque = c => W0 * c.r * 0.27;
-        for (let paso = 0; paso < 2; paso++) {
-            const h = dt / 2;
-            cel.forEach(c => {
-                // Hacia el punto (el centro del dibujo); las chicas van algo mas rapido.
-                const dx = mid - c.x, dy = mid - c.y, d = Math.hypot(dx, dy), v = Math.min(d, 0.55 / Math.sqrt(c.r)) * h;
-                if (d > 0.01) { c.x += dx / d * v; c.y += dy / d * v; }
-                c.x += c.vx * h; c.y += c.vy * h;
-                c.vx *= Math.pow(0.88, h); c.vy *= Math.pow(0.88, h);
-            });
-            for (let a = 0; a < cel.length; a++) for (let b = a + 1; b < cel.length; b++) {
-                const A = cel[a], B = cel[b]; if (!A.r || !B.r) continue;
-                const dx = A.x - B.x, dy = A.y - B.y, dist = Math.hypot(dx, dy), min = choque(A) + choque(B);
-                if (dist >= min || dist < 0.001) continue;
-                if (t > A.une && t > B.une) {
-                    // La grande se come a la chica: suma la masa (r^2) y la otra desaparece.
-                    const [g, ch] = A.r >= B.r ? [A, B] : [B, A];
-                    g.r = Math.sqrt(g.r * g.r + ch.r * ch.r); g.une = Math.max(g.une, ch.une); ch.r = 0;
-                } else {
-                    const f = (min - dist) / dist * 0.5, tx = dx * f, ty = dy * f;
-                    A.x += tx; A.y += ty; B.x -= tx; B.y -= ty;
-                }
-            }
-            for (let k = cel.length - 1; k >= 0; k--) if (!cel[k].r) cel.splice(k, 1);
-        }
-        // Ya es una sola y ha llegado al centro: rebote y vuelta a entera.
-        if (cel.length === 1 && Math.hypot(cel[0].x - mid, cel[0].y - mid) < 1.5) Object.assign(split, { fase: 'rebote', desde: t });
-        cv.width = res; cv.height = res;
+    // El corro se abre a lo ancho (sobra sitio a los lados; arriba esta la barra).
+    const sale = x => 1 - Math.pow(1 - x, 3), suave = x => x * x * (3 - 2 * x);
+    function splitEstado(t) {
+        const s = (t % SPLIT_CICLO) / 1000;
+        if (s < 27) return { d: 0, k: 1 };
+        if (s < 27.35) return { d: sale((s - 27) / .35), k: 1 };
+        if (s < 28.9) return { d: 1, k: 1 };
+        if (s < 29.3) return { d: 1 - suave((s - 28.9) / .4), k: 1 };
+        const r = (s - 29.3) / .7;
+        return { d: 0, k: 1 + .07 * Math.sin(r * Math.PI) * (1 - r) };
+    }
+    // Donde va cada copia (en px de una pildora de 96): con dos, de lado; hasta
+    // 6, en corro; con 7 u 8, una en medio y el resto alrededor.
+    function splitSitios(n, w) {
+        const paso = w * 0.62;
+        if (n === 2) return [[paso * .6, Math.PI * 3 / 4], [paso * .6, -Math.PI / 4]];
+        const corro = n >= 7 ? n - 1 : n, r = Math.max(paso, paso / (2 * Math.sin(Math.PI / corro)));
+        const out = []; if (n >= 7) out.push([0, 0]);
+        for (let i = 0; i < corro; i++) out.push([r, Math.PI * 3 / 4 + i * 2 * Math.PI / corro]);
+        return out;
+    }
+    function drawPillSplit(cv, t) {
+        cv.width = PILL_W; cv.height = PILL_H;
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const o = pillSprite(48); if (!o) return;
-        const sw = o.S || o.cv.width, sh = o.S || o.cv.height;
-        // Las grandes debajo: en partida se ve la chica por encima al pisarse.
-        cel.slice().sort((a, b) => b.r - a.r).forEach(c => {
-            const w = W0 * c.r;
-            g.drawImage(o.cv, 0, 0, sw, sh, Math.round(c.x - w / 2), Math.round(c.y + bob - w * sh / sw / 2), w, w * sh / sw);
-        });
+        const sw = o.S || o.cv.width, sh = o.S || o.cv.height, cx0 = PILL_W / 2, cy0 = PILL_H / 2;
+        const e = splitEstado(t), bob = Math.round(Math.sin(t / 380) * 2);
+        const pinta = (x, y, w) => g.drawImage(o.cv, 0, 0, sw, sh, Math.round(x - w / 2), Math.round(y - w * sh / sw / 2), w, w * sh / sw);
+        if (e.d <= 0) { pinta(cx0, cy0 + bob, 96 * 0.92 * e.k); return; }
+        const n = splitTrozos(Math.floor(t / SPLIT_CICLO));
+        const chico = Math.min(0.6, 0.92 / Math.sqrt(n) * 1.15), w = 96 * (0.92 + (chico - 0.92) * e.d);
+        splitSitios(n, 96 * chico).forEach(([r, a]) => pinta(cx0 + Math.cos(a) * r * e.d * 1.25, cy0 + Math.sin(a) * r * e.d * 0.78 + bob, w));
     }
-    window._hubSplit = (cv, t) => drawPillSplit(cv, 96, t);   // pruebas
-    window._hubSplitEstado = () => ({ fase: split.fase, n: split.cel.length });   // pruebas
+    window._hubSplit = (cv, t) => drawPillSplit(cv, t);   // pruebas
     function loop(t) {
         if (!hub.classList.contains('on')) return;
-        paintBg(); drawPillSplit($('#ahPill'), 96, t);
+        paintBg(); drawPillSplit($('#ahPill'), t);
         requestAnimationFrame(loop);
     }
 
