@@ -14638,7 +14638,7 @@
         // App: TODOS los avisos con el mismo marco gris (el de DEPOSIT FAILED);
         // mezclar el verde y el gris quedaba como dos juegos distintos.
         if (box) { box.classList.toggle('sys-green', green && !EN_APP); box.classList.toggle('sys-gray', gray || EN_APP); }
-        if (pixelMode && sysArt && cartelUsesAtlas(sysArt)) {
+        if (pixelMode && sysArt && cartelUsesAtlas(sysArt) && !EN_APP) {
             ensurePixPanelCss();
             titleEl.innerHTML = '';
             const img = document.createElement('img');
@@ -14653,14 +14653,14 @@
             img.style.cssText = 'display:block;margin:0 auto;width:' + w + ';height:auto;image-rendering:pixelated;';
             titleEl.appendChild(img);
         } else if (pixelMode && EN_APP) {
-            // App, aviso sin PNG horneado: titulo en letra pixel, en mayusculas y
-            // grande, centrado (como los demas carteles con titulo de texto).
+            // App: TODOS los avisos con el titulo en letra pixel blanca, en
+            // mayusculas y grande (los PNG horneados quedaban de otro estilo).
             ensurePixPanelCss();
             titleEl.innerHTML = '';
             titleEl.textContent = t.toUpperCase();
             titleEl.style.cssText = "font-family:'Press Start 2P',monospace;font-size:20px;line-height:1.3;letter-spacing:1px;text-align:center;text-shadow:3px 3px 0 #000;margin:0 auto 12px;";
             titleEl.style.setProperty('color', '#fff', 'important');
-            titleEl.style.setProperty('font-size', '20px', 'important');
+            titleEl.style.setProperty('font-size', '18px', 'important');
             titleEl.style.setProperty('margin-bottom', '12px', 'important');
         } else if (pixelMode && SYS_TITULO_TEXTO.includes(t)) {
             // Sin la letra generada por canvas: estos avisos escriben su titulo
@@ -14697,11 +14697,18 @@
         // poner el espaciado afinado (carteles-layout.json) que se acaba de
         // limpiar con la linea de arriba. Va por AVISO ('sysModal#KICKED'), no
         // por modal: cada uno se afina por separado aunque compartan el DOM.
-        // En la app, el ajuste guardado por aviso solo vale para los de titulo PNG:
-        // los generados van todos a la misma medida.
-        const conArte = pixelMode && sysArt && cartelUsesAtlas(sysArt);
-        applyCartelSurface('sysModal', ((!EN_APP || conArte) && CARTEL_LAYOUT['sysModal#' + t]) || CARTEL_LAYOUT.sysModal);
+        // En la app todos van a la medida de DEPOSIT FAILED (la que David da por
+        // buena): mismos margenes de titulo y OK en todos los avisos.
+        applyCartelSurface('sysModal', (EN_APP ? CARTEL_LAYOUT['sysModal#DEPOSIT FAILED'] : CARTEL_LAYOUT['sysModal#' + t]) || CARTEL_LAYOUT.sysModal);
+        descEl.style.removeProperty('white-space');
         m.style.display = 'flex';
+        // App: titulo y texto en UNA fila; si no caben, se encoge la letra.
+        if (EN_APP) [titleEl, descEl].forEach(el => {
+            el.style.setProperty('white-space', 'nowrap', 'important');
+            let px = parseFloat(getComputedStyle(el).fontSize);
+            while (el.scrollWidth > el.clientWidth + 1 && px > 6) { px -= 0.5; el.style.setProperty('font-size', px + 'px', 'important'); }
+            if (el.scrollWidth > el.clientWidth + 1) el.style.removeProperty('white-space');
+        });
         // 'little' es el sonido de AVISO y valia para todos los carteles, pero
         // un deposito o una retirada que salen bien no son un aviso: sonaban
         // igual que INSUFFICIENT BALANCE o CONNECTION FAILED. Los dos exitos

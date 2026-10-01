@@ -277,7 +277,7 @@ body.hub-on .pw-modal{background:rgba(3,6,4,.9)!important}
    en horizontal va girado: se gira su contenedor igual que los carteles. */
 body > .mwa-host{display:none!important}
 /* Avisos del juego (sysModal) en la app: un 20 % mas grandes y legibles. */
-html:not([data-hero]) body.mobile-allowed #sysModal .exit-box{transform:scale(1.2)!important;transform-origin:center!important}
+html:not([data-hero]) body.mobile-allowed #sysModal .exit-box{transform:scale(1.2)!important;transform-origin:center!important;width:460px!important;min-width:460px!important;max-width:none!important;box-sizing:border-box!important}
 html:not([data-hero]) body.mobile-allowed #sysModal .exit-desc{font-size:9px!important;line-height:2!important;margin-bottom:14px!important}
 html:not([data-hero]) body.mobile-allowed #sysModal .btn-sys{font-size:11px!important;padding:9px 18px!important}
 html:not([data-hero]) body.mobile-allowed > .mwa-host{position:fixed!important;z-index:30000!important;width:var(--pw-largo,100dvh);height:var(--pw-corto,100dvw);
