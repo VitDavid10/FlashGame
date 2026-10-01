@@ -102,16 +102,16 @@ function createAirdrop(opts) {
         try { const u = new URL(ref); return u.origin === originOf(req) ? u.pathname : null; } catch (e) { return null; }
     };
 
-    // The airdrop page with its link preview: an invite link (?ref=) shows that
-    // player's latest points card; anything else the generic card.
+    // The airdrop page with its link preview: always the generic card. Invite
+    // links (?ref=, also in the daily post) used to show the player's points card,
+    // and with few points that made the post look poor (David, 2-oct-2026).
     function sendHome(req, res, query) {
         fs.readFile(path.join(ROOT, 'airdrop.html'), 'utf8', (err, html) => {
             if (err) { res.writeHead(500); res.end(); return; }
             const origin = originOf(req);
             const ref = String(query.get('ref') || '').toLowerCase();
-            const card = /^[a-z2-9]{7}$/.test(ref) ? store.cardOfCode(ref) : null;
-            const img = card ? origin + '/c/' + card + '.png' : origin + '/img/airdrop-og.png?v=2';   // ?v: X caches previews by URL
-            const url = origin + (HOME === '/' ? '/' : HOME) + (card ? '?ref=' + ref : '');
+            const img = origin + '/img/airdrop-og.png?v=2';   // ?v: X caches previews by URL
+            const url = origin + (HOME === '/' ? '/' : HOME) + (/^[a-z2-9]{7}$/.test(ref) ? '?ref=' + ref : '');
             const desc = 'Eat, grow and outplay rival pills. Play the Daily Arena, climb the ranking and earn airdrop points.';
             const og = `<meta property="og:type" content="website"><meta property="og:site_name" content="PillWars">
 <meta property="og:title" content="PillWars"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(url)}">

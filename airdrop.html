@@ -1292,8 +1292,6 @@ $('#view-me').addEventListener('click', e => {
   if (t.open) { t.open(); return; }
   if (!pendingTasks.has(t.key)) {
     window.open(t.url(), '_blank', 'noopener');
-    // The daily post carries the invite link: its preview on X is the points card, so upload a fresh one.
-    if (t.key === 'daily:post') refreshInviteCard();
     pendingTasks.add(t.key); renderTasks();
     return;
   }
@@ -2072,19 +2070,9 @@ document.querySelectorAll('.wopt').forEach(b => b.onclick = async () => {
 
 // The invite link's preview on X is the player's latest points card, so copying
 // the link also refreshes that card on the server.
-async function refreshInviteCard() {
-  const prev = { variants: share.variants, idx: share.idx, seed: share.seed };
-  Object.assign(share, { variants: [cardRank], idx: 0, seed: Math.floor(Math.random() * 1e9) });
-  await Promise.all([fontsReady(), loadAvatar(), brandReady]);
-  const blob = xBlob();
-  Object.assign(share, prev);
-  const png = await blob;
-  if (png) fetch('/api/airdrop/card', { method: 'POST', body: png, headers: { 'Content-Type': 'image/png', 'X-Airdrop-Kind': 'card' } }).catch(() => {});
-}
 $('#refCopy').onclick = async () => {
   if (!refCode()) { toast('CONNECT X OR YOUR WALLET FIRST'); return; }
   try { await navigator.clipboard.writeText(refUrl()); toast('LINK COPIED'); } catch (e) { $('#refLink').select(); }
-  refreshInviteCard();
 };
 
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
