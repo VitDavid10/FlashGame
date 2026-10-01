@@ -197,7 +197,20 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
 #ahSv{z-index:7}
-#ahAv{z-index:7}#ahUn{z-index:8}
+#ahAv{z-index:7}#ahUn{z-index:8}#ahIc{z-index:9}
+/* ICON UNLOCKED: el icono de perfil nuevo en una tarjeta cuadrada que entra
+   girando sobre si misma, flota y le pasa un brillo de vez en cuando. */
+.ic-card{position:relative;width:8em;height:8em;padding:.35em;margin:1.2em 0 .5em;background:var(--ac);box-shadow:.25em .25em 0 #000;
+  animation:icFlip .7s steps(7) both,icFloat 2.4s steps(6) .7s infinite}
+.ic-card:before{content:"";position:absolute;inset:.35em;border:.14em solid #000;z-index:2;pointer-events:none}
+.ic-card canvas{width:100%;height:100%;display:block}
+.ic-card i{position:absolute;inset:.35em;overflow:hidden;z-index:3;pointer-events:none}
+.ic-card i:after{content:"";position:absolute;top:-20%;bottom:-20%;width:35%;left:-60%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  transform:skewX(-20deg);animation:icShine 2.6s steps(10) 1s infinite}
+.ic-s{font-size:.42em;letter-spacing:.08em;color:var(--mut)}
+@keyframes icFlip{0%{transform:perspective(40em) rotateY(90deg) scale(.6)}60%{transform:perspective(40em) rotateY(-12deg) scale(1.08)}100%{transform:perspective(40em) rotateY(0) scale(1)}}
+@keyframes icFloat{50%{transform:translateY(-.3em)}}
+@keyframes icShine{0%{left:-60%}40%,100%{left:130%}}
 .av-big{width:8em;height:8em}
 .av-r{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.55em}
 .av-l{display:flex;align-items:center;gap:.6em}
@@ -548,8 +561,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="av-r"><div class="av-l"><span>STYLE</span><div id="ahAvT"></div></div><div class="av-l"><span>BACKGROUND</span><div id="ahAvBg"></div></div>
   <div class="av-l av-p"><span>PILL TOP</span><div id="ahAvTop"></div></div><div class="av-l av-p"><span>PILL BOTTOM</span><div id="ahAvBot"></div></div><div class="av-l av-p"><span>SKIN</span><div id="ahAvSk"></div></div></div></div>
   <div class="foot">Your avatar shows on your profile</div></div></div></div>
+<div class="ov" id="ahIc"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin un-b">
+  <div class="un-t">ICON UNLOCKED!</div><div class="ic-card"><canvas id="ahIcCv"></canvas><i></i></div>
+  <div class="ic-s">NEW PICTURE FOR YOUR PROFILE</div><div class="sv-bt"><button class="tb" id="ahIcClose">CLOSE</button><button class="tb on" id="ahIcUse">USE IT</button></div></div></div></div>
 <div class="ov" id="ahUn"><div class="pnl" style="width:24em"><canvas></canvas><div class="pin un-b">
-  <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><i class="un-ray"></i><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
+  <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
   <div class="un-n" id="ahUnN"></div><div class="sv-bt"><button class="tb" id="ahUnClose">CLOSE</button><button class="tb on" id="ahUnWear">WEAR IT</button></div></div></div></div>
 <div class="ov" id="ahSv"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin">
   <div class="sv-b"><canvas id="ahSvPill"></canvas><div class="sv-n" id="ahSvN"></div><div class="sv-p" id="ahSvP"></div>
@@ -634,9 +650,45 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             drawMenuDeco(g, W, H, true);
         } catch (e) { g.fillStyle = THEME[mode].bg; g.fillRect(0, 0, W, H); }
     }
+    // La pildora grande del menu se divide de vez en cuando, como el SPLIT de la
+    // partida: salen dos mitades en diagonal, se quedan un momento y se vuelven
+    // a juntar con un rebote. Asi se ve como queda tu pildora dividida.
+    const SPLIT_CICLO = 15000;
+    function splitEstado(t) {
+        const s = (t % SPLIT_CICLO) / 1000;          // segundos dentro del ciclo
+        const sale = x => 1 - Math.pow(1 - x, 3), entra = x => x * x * x;
+        if (s < 12.2) return { d: 0, k: 1 };
+        if (s < 12.6) return { d: sale((s - 12.2) / .4), k: 1 };
+        if (s < 13.9) return { d: 1, k: 1 };
+        if (s < 14.3) return { d: 1 - entra((s - 13.9) / .4), k: 1 };
+        const r = (s - 14.3) / .7;                    // rebote al juntarse
+        return { d: 0, k: 1 + .07 * Math.sin(r * Math.PI) * (1 - r) };
+    }
+    // Cuantos trozos en cada division: 2, 3 o 4, al azar pero fijo durante
+    // toda esa division (sale del numero de ciclo, no cambia a mitad).
+    const splitTrozos = t => { const c = Math.floor(t / SPLIT_CICLO), x = Math.sin(c * 12.9898 + 78.233) * 43758.5453; return 2 + Math.floor((x - Math.floor(x)) * 3); };
+    function drawPillSplit(cv, res, t) {
+        const { d, k } = splitEstado(t), bob = Math.round(Math.sin(t / 380) * 2);
+        if (d <= 0) { drawPill(cv, res, 0.92 * k, bob, true); return; }
+        cv.width = res; cv.height = res;
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+        const o = pillSprite(48); if (!o) return;
+        const sw = o.S || o.cv.width, sh = o.S || o.cv.height, n = splitTrozos(t);
+        // Cada trozo mas pequeno cuantos mas haya (como en la partida, la masa se reparte).
+        const chico = { 2: 0.6, 3: 0.5, 4: 0.44 }[n], radio = { 2: 0.17, 3: 0.22, 4: 0.24 }[n];
+        const fill = 0.92 + (chico - 0.92) * d, w = res * fill, off = res * radio * d;
+        // Repartidos en circulo; con dos, de lado (perpendicular al eje de la
+        // pildora) para que se vean dos y no una cadena.
+        for (let i = 0; i < n; i++) {
+            const a = Math.PI * 3 / 4 + i * 2 * Math.PI / n;
+            const cx = res / 2 + Math.cos(a) * off, cy = res / 2 + Math.sin(a) * off + (i % 2 ? -bob : bob);
+            g.drawImage(o.cv, 0, 0, sw, sh, Math.round(cx - w / 2), Math.round(cy - w * sh / sw / 2), w, w * sh / sw);
+        }
+    }
+    window._hubSplit = (cv, t) => drawPillSplit(cv, 96, t);   // pruebas
     function loop(t) {
         if (!hub.classList.contains('on')) return;
-        paintBg(); drawPill($('#ahPill'), 96, 0.92, Math.round(Math.sin(t / 380) * 2), true);
+        paintBg(); drawPillSplit($('#ahPill'), 96, t);
         requestAnimationFrame(loop);
     }
 
@@ -839,15 +891,34 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         };
         sv.classList.add('open'); placa($('#ahSv .pnl'), 1);
     }
-    // Cartel de skin desbloqueada: la pildora rebotando con destellos y un halo girando.
+    // Con cada skin llega tambien su icono de perfil (la pildora con esa skin):
+    // se ensena en una tarjeta y se puede poner ya como foto.
+    function iconoNuevo(code) {
+        const ic = $('#ahIc'), a = avatar();
+        const nuevo = { t: 'pill', skin: code, bg: a.t === 'pill' && a.bg ? a.bg : '#ffd23a' };
+        const card = ic.querySelector('.ic-card'), cv = $('#ahIcCv');
+        avPill(cv, nuevo, 96);
+        // La animacion de entrada vuelve a empezar cada vez que se abre.
+        card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+        $('#ahIcClose').onclick = () => ic.classList.remove('open');
+        $('#ahIcUse').onclick = () => {
+            try { localStorage.setItem('pw_avatar', JSON.stringify(nuevo)); } catch (e) {}
+            try { SoundManager.play('simpleselect'); } catch (e) {}
+            ic.classList.remove('open'); pintaX(); paintStatic();
+        };
+        ic.classList.add('open'); placa($('#ahIc .pnl'), 1);
+        try { SoundManager.play('select'); } catch (e) {}
+    }
+    window._hubIcon = iconoNuevo;   // pruebas
+    // Cartel de skin desbloqueada: la pildora rebotando con destellos.
     function desbloqueada(code) {
         const un = $('#ahUn');
         const cv = $('#ahUnPill'); cv.width = cv.height = 128;
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         try { const o = paisPillRot(48, code, -Math.PI / 4), k = 120 / o.cv.width; g.drawImage(o.cv, 64 - o.cv.width * k / 2, 64 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); } catch (e) {}
         try { $('#ahUnN').textContent = skinNombreCelda(code); } catch (e) { $('#ahUnN').textContent = code; }
-        $('#ahUnClose').onclick = () => un.classList.remove('open');
-        $('#ahUnWear').onclick = async () => { try { await paisPoner(code); renderMenuPill(); } catch (e) {} un.classList.remove('open'); renderStore(); paintStatic(); };
+        $('#ahUnClose').onclick = () => { un.classList.remove('open'); iconoNuevo(code); };
+        $('#ahUnWear').onclick = async () => { try { await paisPoner(code); renderMenuPill(); } catch (e) {} un.classList.remove('open'); renderStore(); paintStatic(); iconoNuevo(code); };
         un.classList.add('open'); placa($('#ahUn .pnl'), 1);
         try { SoundManager.play('money'); } catch (e) {}
     }
