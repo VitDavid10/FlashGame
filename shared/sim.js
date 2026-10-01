@@ -25,10 +25,13 @@
      * a quien pille, nunca mata).
      */
     // min = el mapa de 4 jugadores, que es lo minimo para arrancar una classic.
+    // Cuanto frena el tamano: velocidad = base x 10 x radio^VELOC_EXP (antes -0.46:
+    // con 1M de masa ibas a 1/6 de una recien nacida).
+    const VELOC_EXP = -0.35;
     const MAPA_VIVO = { porJugador: 700, min: 1400, velocidad: 100, esperaMs: 10000, avisoMs: 5000, cadaMs: 200 };
     const BASE_MERGE_TIME = 15000, MERGE_MASS_FACTOR = 0.225, SPLIT_COOLDOWN_MS = 1000, GLOBAL_CD_MS = 1000;
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
-    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 2.1,   // x1.5 desde el 2-oct-2026 (antes 1.4; x2 era demasiado)
+    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 1.51,   // 2-oct-2026: con VELOC_EXP -0.35 una recien nacida va igual que con x1.5 y la grande no se arrastra
     SPLIT_FORCE = 65, PILL_RATIO = 2.0;
     const COLORS = ['#F44336', '#9C27B0', '#3F51B5', '#03A9F4', '#009688', '#8BC34A', '#FFC107', '#FF5722'];
     // Generador de nombres realistas: ~350 raíces × ~80 tags × ~40 prefijos ≈ 1.1M combinaciones
@@ -245,7 +248,7 @@
             for (let i = this.particles.length - 1; i >= 0; i--) { let p = this.particles[i]; p.life -= (p.type === 'BOLT' ? 0.05 : 0.03) * timeScale; p.y += p.vy * timeScale; p.x += p.vx * timeScale; if (p.life <= 0) this.particles.splice(i, 1); }
             let effectiveR = Math.max(this.groupMaxR, this.r, 20);
             let baseSpeed = VELOC_BASE * (sim.config.worldSettings.speed || 1);
-            let speedMult = baseSpeed * 10.0 * Math.pow(effectiveR, -0.46);
+            let speedMult = baseSpeed * 10.0 * Math.pow(effectiveR, VELOC_EXP);
             let isSprinting = this.sprintTime > 0;
             if (isSprinting) speedMult *= SKILL_PARAMS.sprintSpeedMult;
 
@@ -479,14 +482,20 @@
         // el área de spawn inicial usa mapSize * multiplicador de mapa.
         populate() {
             const ws = this.config.worldSettings;
-            if (this.mapaVivo) this.mapSize = this.mapaObjetivo(this.players.size + (this.config.botConfig.enabled ? (this.config.botConfig.count | 0) : 0));
+            const entIni = this.config.botConfig.entrada ? Math.min(this.config.botConfig.count | 0, this.config.botConfig.entrada.inicial | 0) : (this.config.botConfig.count | 0);
+            if (this.mapaVivo) this.mapSize = this.mapaObjetivo(this.players.size + (this.config.botConfig.enabled ? entIni : 0));
             let currentMapSize = this.mapSize * (this.mapaVivo ? 1 : (ws.map || 1));
             let areaMillions = Math.pow(currentMapSize * 2, 2) / 1000000;
             let foodCount = Math.floor(areaMillions * WORLD_CONFIG.foodDensity);
             let virusCount = Math.floor(areaMillions * WORLD_CONFIG.virusDensity * (ws.virus || 1));
             for (let i = 0; i < foodCount; i++) this.spawnFoodSafe(this.foods, currentMapSize);
             for (let i = 0; i < virusCount; i++) this.spawnVirusSafe(this.viruses, currentMapSize);
-            if (this.config.botConfig.enabled) { for (let i = 0; i < this.config.botConfig.count; i++) this.spawnBot(currentMapSize); }
+            // botConfig.entrada: arrancan unos pocos y el resto va entrando de uno en
+            // uno (para probar classic como una sala que se va llenando).
+            const ent = this.config.botConfig.entrada;
+            const iniciales = ent ? Math.min(this.config.botConfig.count, ent.inicial | 0) : this.config.botConfig.count;
+            if (this.config.botConfig.enabled) { for (let i = 0; i < iniciales; i++) this.spawnBot(currentMapSize); }
+            this._botEntraAt = ent ? this.now + (ent.cadaMs | 0) : null;
         }
 
         spawnFoodSafe(foodArray, limit) {
@@ -1127,6 +1136,13 @@
                         this.emit({ type: 'foodRespawn', index: i, food: { x: r1f(nf.x), y: r1f(nf.y), r: r1f(nf.r), c1: nf.c1 } });
                     }
                 }
+            }
+
+            // Bots que van entrando (botConfig.entrada) hasta llegar a count.
+            if (this._botEntraAt != null && this.now >= this._botEntraAt && this.config.botConfig.enabled) {
+                const grupos = new Set(); for (const e of this.enemies) grupos.add(e.id);
+                if (grupos.size < this.config.botConfig.count) { this.spawnBot(); this._botEntraAt = this.now + (this.config.botConfig.entrada.cadaMs | 0); }
+                else this._botEntraAt = null;
             }
 
             // Respawn de bots pendientes

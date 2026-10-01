@@ -11112,7 +11112,9 @@
         let entry = roomStates[roomKey];
         if (!entry) {
             sim = new PillSim.Simulation({
-                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn }, maxBotCells: MAX_BOT_CELLS,
+                // Classic offline: arranca con 4 (tu + 3 bots) y entra un bot cada 2 s,
+                // como una sala que se va llenando (asi se ve crecer el mapa vivo).
+                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : null }, maxBotCells: MAX_BOT_CELLS,
                 botLifeMs: currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
                 // Mismo calentamiento que startPracticeGame: sin el, una partida
                 // offline recien entrada podia acabar en 1s con los bots ya encima.

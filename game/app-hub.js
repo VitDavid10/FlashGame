@@ -197,6 +197,19 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
 #ahSv{z-index:7}
+/* Contadores junto al selector de sala: gente en el modo normal y en ARENAS. */
+.ah-cnt{position:absolute;right:21.5em;bottom:1.6em;display:flex;flex-direction:column;align-items:flex-end;gap:.35em}
+.ah-cnt span{display:flex;align-items:center;gap:.6em;font-size:.4em;letter-spacing:.06em;text-shadow:.16em .16em 0 #000;white-space:nowrap}
+.ah-cnt i{width:.8em;height:.8em;background:var(--ac);box-shadow:0 0 0 .15em #000}
+.ah-cnt .ar i{background:#8a948f}
+.ah-cnt b{font-weight:400;color:var(--ac)} .ah-cnt .ar b{color:#cfd8d3}
+#ahAr{z-index:7}
+.ar-b{display:flex;flex-direction:column;align-items:center;gap:.7em;text-align:center}
+.ar-t{font-size:.95em;color:var(--ac);text-shadow:.12em .12em 0 #000}
+.ar-m{display:flex;gap:.6em}
+.ar-m span{font-size:.5em;padding:.6em .9em;border:.14em solid var(--ac);color:#fff}
+.ar-p{font-size:.4em;line-height:1.9;color:#cfd8d3;max-width:34em}
+.ar-s{font-size:.5em;color:#ffd23a;letter-spacing:.12em}
 #ahAv{z-index:7}#ahUn{z-index:8}#ahIc{z-index:9}
 /* ICON UNLOCKED: el icono de perfil nuevo en una tarjeta cuadrada que entra
    girando sobre si misma, flota y le pasa un brillo de vez en cuando. */
@@ -548,10 +561,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
   <div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.4em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
-<div class="ah-it" data-a="rooms" style="top:8.9em"><div class="med">${svg('rooms')}</div><div><div class="t">ROOMS</div><div class="s"><span class="ah-dot"></span><span id="ahOnline">0 ONLINE</span></div></div></div>
+<div class="ah-it" data-a="arenas" style="top:8.9em"><div class="med">${svg('rooms')}</div><div><div class="t">ARENAS</div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="store" style="top:13.4em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:17.9em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
+<div class="ah-cnt"><span><i></i><b id="ahOnline">0</b>&nbsp;PLAYING</span><span class="ar"><i></i><b id="ahArOn">0</b>&nbsp;IN ARENAS</span></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('swords')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
@@ -569,6 +583,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ov" id="ahUn"><div class="pnl" style="width:24em"><canvas></canvas><div class="pin un-b">
   <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
   <div class="un-n" id="ahUnN"></div><div class="sv-bt"><button class="tb" id="ahUnClose">CLOSE</button><button class="tb on" id="ahUnWear">WEAR IT</button></div></div></div></div>
+<div class="ov" id="ahAr"><div class="pnl" style="width:26em"><canvas></canvas><div class="pin ar-b">
+  <div class="ar-t">ARENAS</div><div class="ar-m"><span>1V1</span><span>2V2</span><span>3V3</span></div>
+  <div class="ar-p">Team battles in small arenas. Short rounds: the last team standing wins the pot. If there aren't enough players, bots fill the empty spots so you never wait.</div>
+  <div class="ar-s">COMING SOON</div><div class="sv-bt"><button class="tb" id="ahArClose">CLOSE</button></div></div></div></div>
 <div class="ov" id="ahSv"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin">
   <div class="sv-b"><canvas id="ahSvPill"></canvas><div class="sv-n" id="ahSvN"></div><div class="sv-p" id="ahSvP"></div>
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
@@ -706,7 +724,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     async function pullRooms() {
         try { rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || []; } catch (e) {}
         const mine = rooms.filter(r => r.mode === mode);
-        $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0) + ' ONLINE';
+        $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0);
+        // ARENAS aun no existe: 0 hasta que salga el modo.
+        $('#ahArOn').textContent = rooms.filter(r => r.mode === 'arena').reduce((a, r) => a + (r.players || 0), 0);
         if ($('#ahRooms').classList.contains('open')) renderRooms();
     }
     function renderRooms() {
@@ -1188,6 +1208,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try { SoundManager.play('simpleselect'); } catch (x) {}
         if (a === 'x') { conectaX(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
+        if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); placa($('#ahAr .pnl'), 1); $('#ahArClose').onclick = () => ar.classList.remove('open'); }
         else if (a === 'store') openStore('shop');
         else if (a === 'quests') openQuests();
         else if (a === 'pill') {
