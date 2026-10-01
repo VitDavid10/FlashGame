@@ -879,8 +879,13 @@
             }
             // Mismo diff posicional que foodRespawn: f[i]=f[ultimo]; f.pop(), en este orden.
             if (borrados.length && this.config.emitFoodEvents) this.emit({ type: 'foodDel', idx: borrados });
+            // Los virus que se quedan fuera van a un sitio al azar dentro (pegarlos
+            // al borde dejaba una hilera de virus en cada linea por la que pasaba).
             const L = Math.max(0, M - VIRUS_RADIUS);
-            for (const v of this.viruses) { if (v.x > L) v.x = L; if (v.x < -L) v.x = -L; if (v.y > L) v.y = L; if (v.y < -L) v.y = -L; }
+            for (const v of this.viruses) {
+                if (Math.abs(v.x) <= L && Math.abs(v.y) <= L) continue;
+                v.x = (Math.random() * 2 - 1) * L * 0.9; v.y = (Math.random() * 2 - 1) * L * 0.9; v.vx = 0; v.vy = 0;
+            }
         }
         // Comida y virus por area: al crecer el mapa se van anadiendo (unos pocos
         // por tick, para no soltar miles de golpe), con la densidad de siempre.
