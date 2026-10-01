@@ -10804,7 +10804,6 @@
             // Hueco de SHOOT: classic lo lleva siempre en la 1; arcade, el primer
             // hueco de la barra con SHOOT (id 2) y usos. 0 = no hay.
             function tcSlotShoot() {
-                if (currentGameMode === 'classic') return 1;
                 const p = me(), slots = p && p.skillSlots; if (!slots) return 0;
                 for (let i = 0; i < slots.length; i++) if (slots[i] && slots[i].id === 2 && (slots[i].uses > 0 || isGodMode)) return i + 1;
                 return 0;
@@ -10961,7 +10960,7 @@
                 const sync = () => {
                     const enPartida = !!ui.style.display && ui.style.display !== 'none';
                     caja.classList.toggle('on', enPartida);
-                    if (shoot) shoot.style.display = currentGameMode === 'classic' ? '' : 'none';
+                    if (shoot) shoot.style.display = 'none';   // sin SHOOT fijo: classic ya va con skills
                     if (!enPartida) { TC.dedo = null; TC.otros.clear(); pwStickOculta(); }
                 };
                 new MutationObserver(sync).observe(ui, { attributes: true, attributeFilter: ['style'] });
@@ -10981,11 +10980,11 @@
         loop(); 
     }
 
-    function dragStart(ev, idx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; draggedIdx = idx; ev.dataTransfer.effectAllowed = "move"; }
-    function allowDrop(ev) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; ev.preventDefault(); }
-    function drop(ev, dropIdx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return; ev.preventDefault(); if(draggedIdx === -1 || draggedIdx === dropIdx) return; if (sim && sim.isRemote) { sim.sendReorder(draggedIdx, dropIdx); draggedIdx = -1; return; } const slots = me() ? me().skillSlots : null; if(!slots) return; let temp = slots[draggedIdx]; slots[draggedIdx] = slots[dropIdx]; slots[dropIdx] = temp; updateSkillsUI_Arcade(); draggedIdx = -1; }
+    function dragStart(ev, idx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills' && currentGameMode !== 'classic') return; draggedIdx = idx; ev.dataTransfer.effectAllowed = "move"; }
+    function allowDrop(ev) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills' && currentGameMode !== 'classic') return; ev.preventDefault(); }
+    function drop(ev, dropIdx) { if(currentGameMode !== 'arcade' && currentGameMode !== 'skills' && currentGameMode !== 'classic') return; ev.preventDefault(); if(draggedIdx === -1 || draggedIdx === dropIdx) return; if (sim && sim.isRemote) { sim.sendReorder(draggedIdx, dropIdx); draggedIdx = -1; return; } const slots = me() ? me().skillSlots : null; if(!slots) return; let temp = slots[draggedIdx]; slots[draggedIdx] = slots[dropIdx]; slots[dropIdx] = temp; updateSkillsUI_Arcade(); draggedIdx = -1; }
     function removeSkill(slotIdx) { let idx = slotIdx - 1; const slots = me() ? me().skillSlots : null; if(slots && slots[idx] && !isGodMode && slots[idx].uses <= 0) { slots[idx] = null; updateSkillsUI_Arcade(); } }
-    function activateSkillTouch(slotIdx, event) { if(currentGameMode === 'classic' && slotIdx !== 1) return; event.preventDefault(); event.stopPropagation(); if(uiSlots[slotIdx]) { uiSlots[slotIdx].classList.add('active'); setTimeout(() => uiSlots[slotIdx].classList.remove('active'), 150); } useSkill(slotIdx); }
+    function activateSkillTouch(slotIdx, event) { event.preventDefault(); event.stopPropagation(); if(uiSlots[slotIdx]) { uiSlots[slotIdx].classList.add('active'); setTimeout(() => uiSlots[slotIdx].classList.remove('active'), 150); } useSkill(slotIdx); }
 
     // La lógica de skills vive en la sim; aquí solo se encola la acción con el
     // objetivo del ratón en coordenadas de mundo. El feedback vuelve por eventos.
@@ -10998,7 +10997,7 @@
     }
 
     function updateSkillsUI_Arcade() {
-        if(currentGameMode !== 'arcade' && currentGameMode !== 'skills') return;
+        if(currentGameMode !== 'arcade' && currentGameMode !== 'skills' && currentGameMode !== 'classic') return;
         const slots = me() ? me().skillSlots : [];
         for(let i=0; i<10; i++) {
             let slotNum = i+1, divSlot = uiSlots[slotNum]; if (i >= slots.length) { if(divSlot) divSlot.style.display = 'none'; continue; } else { if(divSlot) divSlot.style.display = 'flex'; }
@@ -11095,7 +11094,8 @@
         let currentBotConfig = { botEnabled: true, botCount: nBots, botRespawn: true, chaosMode: false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
         enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
         isGodMode = false; isSpectating = false;
-        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; els.actionBar.style.display = 'none'; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; els.actionBar.style.display = 'flex'; }
+        // Classic tambien con barra de skills (2-oct-2026).
+        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; } els.actionBar.style.display = 'flex';
         MAP_SIZE *= worldSettings.map;
         botConfig.enabled = true; botConfig.count = nBots; botConfig.respawn = true;
         let roomKey = currentGameMode + '_' + currentServer;
@@ -11137,7 +11137,7 @@
         if (!me()) sim.addPlayer('me');
         const p = me(); p.name = playerName; p.godMode = isGodMode; p.colorBot = colBot; p.colorTop = colTop; p.skinUrl = useSkin ? skinUrlVal : null; p.killStreak = 0;
 
-        if (currentGameMode !== 'classic') {
+        {   // arcade y classic: los dos van con skills
             p.skillSlots = isGodMode ? Array(10).fill().map((_,k)=>(k<8?{id:k+1,uses:999}:null)) : [null, null, null, null];
             massMilestoneReached = false;
             // Sincronizar la próxima elección de skill con el tiempo de sala
@@ -11171,7 +11171,7 @@
             const startCell = sim.spawnPlayer('me');
             camera.x = startCell.x; camera.y = startCell.y;
             // Arcade: las 2 skills de salida elegidas en THE PILL (sin god, que ya las tiene todas).
-            if (currentGameMode !== 'classic' && !isGodMode) { sim.giveStartSkills('me', skillsDeSalida()); updateSkillsUI_Arcade(); }
+            if (!isGodMode) { sim.giveStartSkills('me', skillsDeSalida()); updateSkillsUI_Arcade(); }
         }
         cerrarUIColores();
         els.room.innerText = currentServer; els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
@@ -15717,7 +15717,7 @@
         // Arcade siempre lleva reloj. Classic tambien desde que las partidas
         // duran 15 min — pero SOLO online: la practica offline de classic no
         // tiene fin, y ahi un reloj no significaria nada.
-        const _modoConSkills = (currentGameMode === 'arcade' || currentGameMode === 'skills');
+        const _modoConSkills = (currentGameMode === 'arcade' || currentGameMode === 'skills' || currentGameMode === 'classic');
         const _conReloj = true;   // todos los modos llevan reloj: classic tambien en offline
         if (_conReloj) {
             // Tiempo de sala: local (roomTimers) u online (el servidor lo manda en cada snapshot)
@@ -15757,7 +15757,7 @@
         } else { els.timer.innerText = ""; }
 
         if (isGodMode) { els.debugHud.style.display = 'block'; } else { els.debugHud.style.display = 'none'; }
-        if ((currentGameMode === 'arcade' || currentGameMode === 'skills') && p) { updateSkillsUI_Arcade(); }
+        if ((currentGameMode === 'arcade' || currentGameMode === 'skills' || currentGameMode === 'classic') && p) { updateSkillsUI_Arcade(); }
 
         els.score.innerText = Math.floor(totalM);
 
@@ -15862,7 +15862,7 @@
                     } else { Quests.reportDeath(); Quests.endMatch('death'); stopGame(); }
                     break;
                 }
-                case 'virusFedSplit': if ((currentGameMode === 'arcade' || currentGameMode === 'skills') && !isGodMode && !isSpectating) showSkillChoice(); break;
+                case 'virusFedSplit': if ((currentGameMode === 'arcade' || currentGameMode === 'skills' || currentGameMode === 'classic') && !isGodMode && !isSpectating) showSkillChoice(); break;
                 case 'skillUsed': {
                     if (ev.playerId !== 'me') break;
                     Quests.reportSkill(ev.id);

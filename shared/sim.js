@@ -18,7 +18,8 @@
     const VIRUS_RADIUS = 70, VIRUS_GAIN_LOW = 5000, VIRUS_GAIN_HIGH = 10000, VIRUS_GAIN_THRESHOLD = 100000;
     const BASE_MERGE_TIME = 15000, MERGE_MASS_FACTOR = 0.225, SPLIT_COOLDOWN_MS = 1000, GLOBAL_CD_MS = 1000;
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
-    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 1.4, SPLIT_FORCE = 65, PILL_RATIO = 2.0;
+    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 2.8,   // x2 desde el 2-oct-2026 (antes 1.4)
+    SPLIT_FORCE = 65, PILL_RATIO = 2.0;
     const COLORS = ['#F44336', '#9C27B0', '#3F51B5', '#03A9F4', '#009688', '#8BC34A', '#FFC107', '#FF5722'];
     // Generador de nombres realistas: ~350 raíces × ~80 tags × ~40 prefijos ≈ 1.1M combinaciones
     const NAME_ROOTS = [
@@ -308,7 +309,7 @@
 
             if (sim.config.mode === 'skills') {
                 if (sim.now > this.botNextSkillTime) { let nextTime = sim.now + 3000; siblings.forEach(s => s.botNextSkillTime = nextTime); sim.grantBotSkill(this); }
-            } else if (sim.config.mode === 'arcade') {
+            } else if (sim.config.mode === 'arcade' || sim.config.mode === 'classic') {   // classic con skills desde el 2-oct-2026
                 if (!this.massMilestoneMet && this.mass >= 3500) { let nextTime = sim.now + 30000; siblings.forEach(s => { s.massMilestoneMet = true; s.botNextSkillTime = nextTime; }); sim.grantBotSkill(this); }
                 if (this.massMilestoneMet && sim.now > this.botNextSkillTime) { let nextTime = sim.now + 30000; siblings.forEach(s => s.botNextSkillTime = nextTime); sim.grantBotSkill(this); }
             }
@@ -711,9 +712,9 @@
             if (name === 'god') {
                 if (!p) return;
                 p.godMode = !p.godMode;
-                // En arcade/skills, god también da TODAS las skills (999 usos);
-                // al quitarlo, la barra vuelve a los 4 huecos vacíos.
-                if (this.config.mode !== 'classic') {
+                // God da TODAS las skills (999 usos), en classic tambien (ya va
+                // con skills); al quitarlo, la barra vuelve a los 4 huecos vacios.
+                {
                     p.skillSlots = p.godMode
                         ? Array(10).fill().map((_, k) => (k < 8 ? { id: k + 1, uses: 999 } : null))
                         : [null, null, null, null];
@@ -762,7 +763,7 @@
         // (THE PILL). Se validan aqui para que online el servidor no se fie del
         // cliente: solo ids que existen, sin repetir y como mucho 2.
         giveStartSkills(id, ids) {
-            if (this.config.mode === 'classic' || !Array.isArray(ids)) return;
+            if (!Array.isArray(ids)) return;
             const vistos = new Set();
             for (const v of ids.slice(0, 2)) {
                 const k = v | 0;
@@ -774,11 +775,8 @@
 
         useSkill(p, slotIndex, tx, ty) {
             if (p.globalCD > 0) return;
-            if (this.config.mode === 'classic') {
-                if (slotIndex === 1) { if (p.cells.some(c => c.mass > SKILL_PARAMS.shootCost + 314) || p.godMode) { this.emitProjectile(p, 'shoot', SKILL_PARAMS.shootCost, tx, ty); p.globalCD = GLOBAL_CD_MS; } }
-                else if (slotIndex === 2 && p.godMode) { let totalGain = 10000; let gainPerCell = (p.cells.length > 0) ? (totalGain / p.cells.length) : totalGain; p.cells.forEach(c => { c.r = Math.sqrt((c.mass + gainPerCell) / (Math.PI * PILL_RATIO)); c.flashColor = '#00ff00'; c.flashTime = 1000; c.spawnParticles(this, 'PLUS'); }); this.emit({ type: 'skillUsed', playerId: p.id, id: 'godmass' }); p.globalCD = 200; }
-                return;
-            }
+            // Classic tambien va con skills desde el 2-oct-2026 (antes llevaba un
+            // SHOOT fijo en la 1 y nada mas): mismas reglas que arcade.
             if (slotIndex > p.skillSlots.length) return;
             let skillObj = p.skillSlots[slotIndex - 1];
             if (skillObj && skillObj.uses <= 0 && !p.godMode) { p.skillSlots[slotIndex - 1] = null; this.emit({ type: 'skillsUI', playerId: p.id }); return; }
