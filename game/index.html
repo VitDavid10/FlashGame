@@ -11672,22 +11672,32 @@
         });
         let cuenta = null;
         const pk = a => ({ toString: () => a, toBase58: () => a });
+        // Si el jugador vuelve de la wallet sin firmar, la promesa de MWA puede no
+        // resolverse nunca y el juego se quedaba esperando (ni CLOSE iba). Al volver
+        // a la app se le dan 5 s; si la wallet no contesto, se da por cancelado.
+        const conVuelta = p => new Promise((ok, ko) => {
+            let hecho = false, t = 0;
+            const fin = (f, v) => { if (hecho) return; hecho = true; clearTimeout(t); document.removeEventListener('visibilitychange', vis); f(v); };
+            const vis = () => { if (document.visibilityState === 'visible') { clearTimeout(t); t = setTimeout(() => fin(ko, new Error('cancelled in the wallet')), 5000); } };
+            document.addEventListener('visibilitychange', vis);
+            p.then(v => fin(ok, v), e => fin(ko, e));
+        });
         _mwa = {
             isMwa: true, publicKey: null,
             // onlyIfTrusted = reconexion silenciosa con la autorizacion guardada.
             async connect(opts) {
-                const r = await w.features['standard:connect'].connect(opts && opts.onlyIfTrusted ? { silent: true } : undefined);
+                const r = await conVuelta(w.features['standard:connect'].connect(opts && opts.onlyIfTrusted ? { silent: true } : undefined));
                 cuenta = r && r.accounts && r.accounts[0];
                 if (!cuenta) throw new Error('no account');
                 this.publicKey = pk(cuenta.address);
                 return { publicKey: this.publicKey };
             },
             async signMessage(bytes) {
-                const [o] = await w.features['solana:signMessage'].signMessage({ account: cuenta, message: bytes });
+                const [o] = await conVuelta(w.features['solana:signMessage'].signMessage({ account: cuenta, message: bytes }));
                 return { signature: o.signature };
             },
             async signTransaction(tx) {
-                const [o] = await w.features['solana:signTransaction'].signTransaction({ account: cuenta, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }) });
+                const [o] = await conVuelta(w.features['solana:signTransaction'].signTransaction({ account: cuenta, transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }) }));
                 return { serialize: () => o.signedTransaction };
             },
             async disconnect() { try { await w.features['standard:disconnect'].disconnect(); } catch (e) {} cuenta = null; this.publicKey = null; },
@@ -11905,10 +11915,14 @@
                 if (!r.ok) throw new Error(r.reason || 'deposit not credited');
                 document.getElementById('gameTopUpModal').style.display = 'none';
                 this.refresh();
-                const resolver = this._topUp.resolve; this._topUp = null;
-                resolver(true);
+                // Pudo cerrarse el cartel mientras se firmaba: entonces ya no hay a quien avisar.
+                const t = this._topUp; this._topUp = null;
+                if (t) t.resolve(true);
             } catch (e) {
                 showSystemMsg(walletErrText(e), 'DEPOSIT FAILED');
+                // El aviso cierra este cartel: que PLAY no se quede esperando.
+                const t = this._topUp; this._topUp = null;
+                if (t) t.resolve(false);
             }
             btn.disabled = false; btn.innerText = old;
         },

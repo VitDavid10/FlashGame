@@ -35,6 +35,8 @@
         bolt: '<path d="M13.5 2.5L5 13.5h6l-1 8 8.5-11h-6z"/>',
         star: '<path d="M12 2.8l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 17l-5.8 3.3 1.4-6.4-4.9-4.4 6.5-.7z"/>',
         crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-1.8 10.5H4.8z"/>',
+        spook: '<path d="M12 3.2c-4.7 0-8.3 3.8-8.3 8.6 0 3.3 1.4 6.6 3.9 8.4.9.7 2 .2 2.3-.8.3-.8 1.1-1.2 2-1.2s1.7.4 2 1.2c.3 1 1.4 1.5 2.3.8 2.5-1.8 3.9-5.1 3.9-8.4 0-4.8-3.6-8.6-8.1-8.6z"/><ellipse cx="10.4" cy="11" rx="1.15" ry="1.6" fill="#ab9ff2"/><ellipse cx="14.4" cy="11" rx="1.15" ry="1.6" fill="#ab9ff2"/>',
+        bag: '<path d="M9 3.6h6c.6 0 1 .5.8 1.1-.2.6-.7 1-1.3 1H9.5c-.6 0-1.1-.4-1.3-1-.2-.6.2-1.1.8-1.1z"/><path d="M6.2 9.6c0-1.9 1.6-3.4 3.5-3.4h4.6c1.9 0 3.5 1.5 3.5 3.4v4.2H6.2z"/><circle cx="12" cy="9.8" r="1.7" fill="#000"/><rect x="6.2" y="14.9" width="11.6" height="5.6" rx="1.4"/>',
         ghost: '<path d="M12 2.8a7.2 7.2 0 00-7.2 7.2v11l2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8V10A7.2 7.2 0 0012 2.8z"/><circle cx="9.3" cy="10.2" r="1.4" fill="#07140f"/><circle cx="14.7" cy="10.2" r="1.4" fill="#07140f"/>',
         back: '<path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>',
         music: '<path d="M9 17.5V5.2l10-2v11.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.6" cy="17.6" r="2.6"/><circle cx="16.6" cy="15" r="2.6"/>',
@@ -194,6 +196,29 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
 #ahSv{z-index:7}
+#ahAv{z-index:7}#ahUn{z-index:8}
+.av-big{width:8em;height:8em}
+.av-r{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.55em}
+.av-l{display:flex;align-items:center;gap:.6em}
+.av-l>span{width:11.5em;flex:none;font-size:.36em;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
+.av-l>div{display:flex;gap:.3em;flex-wrap:wrap}
+.av-l b{width:1.35em;height:1.35em;cursor:pointer;box-shadow:0 0 0 .1em #000;display:flex;align-items:center;justify-content:center}
+.av-l b.on{outline:.14em solid #fff;outline-offset:.08em}
+.av-l b svg{width:.95em;height:.95em}
+.av-l b canvas{width:100%;height:100%}
+.av-l b.no{background:var(--in2);font-size:.36em;color:var(--mut)}
+.av-p{display:none}#ahAv.pill .av-p{display:flex}
+.un-b{display:flex;flex-direction:column;align-items:center;gap:.5em;overflow:hidden}
+.un-t{font-size:.95em;color:var(--ac);text-shadow:.12em .12em 0 #000,0 0 .01em #fff;animation:unPop .5s steps(5) both}
+.un-st{position:relative;width:10em;height:10em;display:flex;align-items:center;justify-content:center}
+.un-st canvas{width:8em;height:8em;position:relative;z-index:1;animation:unBob 1.2s steps(4) infinite}
+.un-ray{position:absolute;inset:-2em;background:repeating-conic-gradient(var(--ac) 0 10deg,transparent 10deg 30deg);opacity:.16;border-radius:50%;animation:unSpin 8s linear infinite}
+.un-st b{position:absolute;width:.5em;height:.5em;background:#fff;box-shadow:0 0 0 .12em var(--ac);animation:unTw 1.4s steps(3) infinite;z-index:2}
+.un-n{font-size:.55em;letter-spacing:.08em}
+@keyframes unSpin{to{transform:rotate(360deg)}}
+@keyframes unBob{50%{transform:translateY(-.3em)}}
+@keyframes unTw{0%,100%{opacity:0;transform:scale(.4)}50%{opacity:1;transform:scale(1)}}
+@keyframes unPop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 .sv-b{display:flex;flex-direction:column;align-items:center;gap:.6em;padding:.4em 0 .2em}
 .sv-b canvas{width:9em;height:9em}
 .sv-n{font-size:.6em;letter-spacing:.06em;text-shadow:.15em .15em 0 #000}
@@ -211,7 +236,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cn-o .i svg{width:1.4em;height:1.4em}
 .cn-o:active{border-color:var(--ac)}
 .pr-me{justify-content:center!important;gap:.6em!important}
-.pr-pic{width:4.2em;height:4.2em;flex:none;border-radius:50%;overflow:hidden;box-shadow:0 0 0 .22em var(--ac),0 0 0 .38em #000}
+.pr-pic canvas,.av-big canvas{width:100%;height:100%;border-radius:50%;image-rendering:pixelated}
+.ah-ava canvas{width:100%;height:100%;border-radius:50%;image-rendering:pixelated}
+.pr-pic{width:5em;height:5em;flex:none;border-radius:50%;overflow:hidden;box-shadow:0 0 0 .22em var(--ac),0 0 0 .38em #000}
 .pr-pic img{width:100%;height:100%;object-fit:cover}
 .pr-pic .npc{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--in2);color:var(--ac)}.pr-pic .npc svg{width:3.2em;height:3.2em}
 .pr-at{font-size:.46em;color:var(--ac);letter-spacing:.06em}
@@ -248,6 +275,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 body.hub-on .pw-modal{background:rgba(3,6,4,.9)!important}
 /* Los avisos propios de la wallet (Mobile Wallet Adapter) cuelgan de <body>, que
    en horizontal va girado: se gira su contenedor igual que los carteles. */
+body > .mwa-host{display:none!important}
 html:not([data-hero]) body.mobile-allowed > .mwa-host{position:fixed!important;z-index:30000!important;width:var(--pw-largo,100dvh);height:var(--pw-corto,100dvw);
   top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center;pointer-events:auto}
 body.hub-on .pw-modal-box{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;outline:none!important;min-width:20em}
@@ -260,44 +288,37 @@ body.hub-on .room-info .pw-modal-title{font-size:15px!important}
 body.hub-on #riBody,body.hub-on #riBody *{font-size:12px!important;line-height:1.7!important}
 body.hub-on .room-info .pw-big-btn{font-size:12px!important;padding:11px 8px!important}
 body.hub-on .room-info .pw-modal-cancel{font-size:11px!important}
-body.hub-on .gameModalBox .close{display:none!important}
-body.hub-on .gameModalBox>button.hub-close{display:block;margin:0 auto 12px!important;background:none;border:2px solid #2c3630;color:#cfd8d3;font-family:'Russo One',sans-serif;letter-spacing:.12em;padding:7px 22px;cursor:pointer}
-body.hub-on #sysModal .exit-box{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;padding:22px 26px!important}
-body.hub-on #sysModal .exit-box>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
-body.hub-on #sysModal .exit-box>*:not(.hub-placa){position:relative;z-index:1}
-body.hub-on #sysModal .exit-box{min-width:320px!important;max-width:420px!important}
-body.hub-on #sysModalTitle canvas{height:22px!important;width:auto!important}
-body.hub-on #sysModalTitle canvas:first-child:not(:only-child),body.hub-on #sysModalTitle canvas:last-child:not(:only-child){display:none!important}
-body.hub-on #sysModal .exit-actions{display:flex!important;justify-content:center!important}
-body.hub-on #sysModal .exit-desc{font-size:11px!important;line-height:1.8!important;font-family:'Russo One',sans-serif!important;letter-spacing:.06em!important;color:#cfd8d3!important}
-body.hub-on #sysModal .btn-sys{background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#cfd8d3!important;
-  font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important;padding:7px 26px!important;width:auto!important;min-width:0!important;flex:0 0 auto!important;max-width:none!important}
 body.hub-on .pw-modal-title{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important}
 body.hub-on .pw-big-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;border-image:none!important;box-shadow:none!important;color:#04150c!important;
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;border-radius:0!important}
 body.hub-on .pw-modal-cancel{background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#7d8a82!important;
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important}
-body.hub-on .gameModal{background:rgba(3,6,4,.9)!important}
-body.hub-on .gameModalBox{position:relative;background:none!important;border:none!important;box-shadow:none!important;min-width:20em}
-body.hub-on .gameModalBox>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
-body.hub-on .gameModalBox>*:not(.hub-placa){position:relative;z-index:1;margin-left:14px!important;margin-right:14px!important}
-body.hub-on .gameModalBox h3{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin-top:10px!important}
-body.hub-on .gameModalBox .gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;color:#04150c!important;font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;border-radius:0!important;box-shadow:none!important;margin-bottom:12px!important}
-body.hub-on .gameModalBox .close{color:#7d8a82!important}
-body.hub-on .gameModalBox .gm-btn,body.hub-on .gameModalBox .gm-body{box-sizing:border-box!important;width:calc(100% - 28px)!important;display:block!important}
-body.hub-on .gameModal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 body.hub-on .name-choice .nc-title{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;text-align:center;margin-top:10px!important}
 body.hub-on .name-choice .nc-btn{display:block!important;margin:12px auto!important;background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#cfd8d3!important;
   font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;text-shadow:none!important;box-shadow:none!important;border-radius:0!important;padding:8px 22px!important;width:auto!important}
 body.hub-on .name-choice .nc-close{color:#7d8a82!important}
 body.hub-on .name-choice .nc-field{display:block!important;box-sizing:border-box!important;width:calc(100% - 28px)!important;text-align:center!important}
+body.hub-on #gameTopUpModal{background:rgba(3,6,4,.9)!important}
+body.hub-on #gameTopUpModal .gameModalBox{position:relative;background:none!important;border:none!important;box-shadow:none!important;transform:none!important;width:380px!important;max-width:none!important;padding:18px 24px 14px!important;text-align:center}
+body.hub-on #gameTopUpModal .gameModalBox>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
+body.hub-on #gameTopUpModal .gameModalBox>*:not(.hub-placa){position:relative;z-index:1}
+body.hub-on #gameTopUpModal .close{display:none!important}
+body.hub-on #gameTopUpModal h3{font-family:'Russo One',sans-serif!important;font-size:15px!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin:4px 0 14px!important}
+body.hub-on #gameTopUpModal .gm-row{font-family:'Russo One',sans-serif!important;font-size:12px!important;line-height:1.7!important;color:#cfd8d3!important;display:flex;justify-content:space-between}
+body.hub-on #gameTopUpModal label{font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.1em;color:var(--hub-ac)!important;display:block;text-align:left;margin-top:4px}
+body.hub-on #gameTopUpModal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important;font-size:13px!important}
+body.hub-on #gameTopUpModal #tuWallet{font-size:11px!important}
+body.hub-on #gameTopUpModal .gm-btn{width:100%!important;background:var(--hub-ac)!important;background-image:none!important;border:none!important;border-radius:0!important;box-shadow:none!important;color:#04150c!important;
+  font-family:'Russo One',sans-serif!important;font-size:12px!important;letter-spacing:.12em!important;padding:11px 8px!important;margin-top:12px!important}
+body.hub-on #gameTopUpModal .hub-close{display:block;margin:10px auto 0;background:none;border:2px solid #2c3630;color:#7d8a82;font-family:'Russo One',sans-serif;font-size:11px;letter-spacing:.12em;padding:6px 18px;cursor:pointer}
 body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 `;
     const st = document.createElement('style'); st.textContent = css + cssModales; document.head.appendChild(st);
     // Cuando sale un cartel del juego con el hub puesto, se le pinta el marco placa del modo.
     function visteModal(m) {
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
-        const box = m.querySelector('.pw-modal-box, .gameModalBox, .exit-box'); if (!box || typeof drawPlacaCaja !== 'function') return;
+        if (m.classList.contains('gameModal') && m.id !== 'gameTopUpModal') return;
+        const box = m.querySelector('.pw-modal-box, .gameModalBox'); if (!box || typeof drawPlacaCaja !== 'function') return;
         // CLOSE en vez de la x de la esquina (se montaba encima del titulo).
         const x = box.querySelector(':scope>.close');
         if (x && !box.querySelector(':scope>.hub-close')) { const b = document.createElement('button'); b.className = 'hub-close'; b.textContent = 'CLOSE'; b.onclick = () => x.click(); box.appendChild(b); }
@@ -305,7 +326,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
         requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1); });
     }
-    new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal') || r.target.id === 'sysModal')) visteModal(r.target); }))
+    new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal'))) visteModal(r.target); }))
         .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['style'] });
 
     const hub = document.createElement('div'); hub.id = 'appHub';
@@ -326,6 +347,15 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
   <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILLY</div></div></div></div>
+<div class="ov" id="ahAv"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><button class="tb on">AVATAR</button><span class="cnt"></span><button class="px">DONE</button></div>
+  <div class="sk-b"><div class="sk-pill"><div class="av-big" id="ahAvBig"></div></div>
+  <div class="av-r"><div class="av-l"><span>STYLE</span><div id="ahAvT"></div></div><div class="av-l"><span>BACKGROUND</span><div id="ahAvBg"></div></div>
+  <div class="av-l av-p"><span>PILL TOP</span><div id="ahAvTop"></div></div><div class="av-l av-p"><span>PILL BOTTOM</span><div id="ahAvBot"></div></div><div class="av-l av-p"><span>SKIN</span><div id="ahAvSk"></div></div></div></div>
+  <div class="foot">Your avatar shows on your profile</div></div></div></div>
+<div class="ov" id="ahUn"><div class="pnl" style="width:24em"><canvas></canvas><div class="pin un-b">
+  <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><i class="un-ray"></i><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
+  <div class="un-n" id="ahUnN"></div><div class="sv-bt"><button class="tb" id="ahUnClose">CLOSE</button><button class="tb on" id="ahUnWear">WEAR IT</button></div></div></div></div>
 <div class="ov" id="ahSv"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin">
   <div class="sv-b"><canvas id="ahSvPill"></canvas><div class="sv-n" id="ahSvN"></div><div class="sv-p" id="ahSvP"></div>
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
@@ -338,7 +368,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
       <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
-  <div class="foot">Tap an icon and a color to change your avatar</div></div></div></div>
+  <div class="foot">Tap EDIT AVATAR to change your picture</div></div></div></div>
 <div class="ov" id="ahSt"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb" data-s="shop">STORE</button><button class="tb" data-s="mine">MY SKINS</button><button class="tb" data-s="conv">CONVERT</button><span class="cnt" id="ahStSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sn" id="ahStG" style="grid-template-columns:repeat(4,1fr)"></div><div class="cv-b" id="ahCv"></div></div>
@@ -609,8 +639,21 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
             try { SoundManager.play('select'); } catch (e) {}
             try { renderMenuPill(); } catch (e) {}
             sv.classList.remove('open'); renderStore(); paintStatic();
+            if (!tengo) desbloqueada(code);
         };
         sv.classList.add('open'); placa($('#ahSv .pnl'), 1);
+    }
+    // Cartel de skin desbloqueada: la pildora rebotando con destellos y un halo girando.
+    function desbloqueada(code) {
+        const un = $('#ahUn');
+        const cv = $('#ahUnPill'); cv.width = cv.height = 128;
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+        try { const o = paisPillRot(48, code, -Math.PI / 4), k = 120 / o.cv.width; g.drawImage(o.cv, 64 - o.cv.width * k / 2, 64 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); } catch (e) {}
+        try { $('#ahUnN').textContent = skinNombreCelda(code); } catch (e) { $('#ahUnN').textContent = code; }
+        $('#ahUnClose').onclick = () => un.classList.remove('open');
+        $('#ahUnWear').onclick = async () => { try { await paisPoner(code); renderMenuPill(); } catch (e) {} un.classList.remove('open'); renderStore(); paintStatic(); };
+        un.classList.add('open'); placa($('#ahUn .pnl'), 1);
+        try { SoundManager.play('money'); } catch (e) {}
     }
     // CONVERT: $PILLY del saldo del juego -> SP (100 $PILLY = 1 SP), firmado con la wallet.
     async function renderConvert() {
@@ -723,19 +766,39 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
 
     // ---------- cuenta: la wallet del movil; avatar elegido por el jugador ----------
     const cidLocal = () => { try { return localStorage.getItem('pw_cid') || ''; } catch (e) { return ''; } };
-    const AV_ICONS = ['npc', 'wallet', 'bolt', 'star', 'crown', 'ghost'];
-    const AV_COLS = ['#8a948f', '#ab9ff2', '#00ffaa', '#ccff00', '#ffd23a', '#ff6a5a'];
+    const AV_STYLES = ['pill', 'spook', 'bag', 'npc', 'bolt', 'star', 'crown'];
+    const AV_BG = ['#ab9ff2', '#0a0a0a', '#ccff00', '#00ffaa', '#1e6bff', '#ff2a55', '#ffd23a', '#8a948f', '#ffffff', '#b000ff'];
+    const AV_FG = { bag: '#e5463f', spook: '#fbf7ef' };
     let xWallet = null;
     function avatar() {
         let a = null; try { a = JSON.parse(localStorage.getItem('pw_avatar')); } catch (e) {}
-        // Sin elegir: gris de jugador sin conectar; con wallet, el icono de wallet en el morado de Phantom.
-        if (!a || AV_ICONS.indexOf(a.i) === -1) a = (xWallet || (window.GameWallet && GameWallet.address)) ? { i: 'wallet', c: '#ab9ff2' } : { i: 'npc', c: '#8a948f' };
+        // Sin elegir: gris de jugador sin conectar; con wallet, el fantasma en morado.
+        if (!a || AV_STYLES.indexOf(a.t) === -1) a = (xWallet || (window.GameWallet && GameWallet.address)) ? { t: 'spook', bg: '#ab9ff2' } : { t: 'npc', bg: '#8a948f' };
         return a;
     }
-    const avHtml = a => '<span class="av" style="background:' + a.c + '">' + svg(a.i) + '</span>';
+    // La pildora del avatar: sprite del juego (tus colores o la skin) sobre el fondo con su cuadricula.
+    function avPill(cv, a, px) {
+        cv.width = cv.height = px;
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+        g.fillStyle = a.bg; g.fillRect(0, 0, px, px);
+        g.fillStyle = 'rgba(0,0,0,.14)';
+        const paso = px / 4; for (let i = 1; i < 4; i++) { g.fillRect(Math.round(i * paso), 0, Math.max(1, px / 100), px); g.fillRect(0, Math.round(i * paso), px, Math.max(1, px / 100)); }
+        const top = a.top || ((document.getElementById('colTop') || {}).value) || '#c8ccd2';
+        const bot = a.bot || ((document.getElementById('colBot') || {}).value) || '#00e05a';
+        let o = null;
+        try { o = a.skin ? paisPillRot(40, a.skin, -Math.PI / 4) : pixPillSpriteRot(40, top, bot, -Math.PI / 4, true); } catch (e) {}
+        if (o) { const sw = o.S || o.cv.width, k = px * 0.86 / sw; g.drawImage(o.cv, 0, 0, sw, sw, px / 2 - sw * k / 2, px / 2 - sw * k / 2, sw * k, sw * k); }
+    }
+    function avEl(a, px) {
+        if (a.t === 'pill') { const cv = document.createElement('canvas'); avPill(cv, a, px || 96); cv.className = 'av-cv'; return cv; }
+        const sp = document.createElement('span'); sp.className = 'av';
+        sp.style.background = a.bg; sp.style.color = AV_FG[a.t] || '#07140f';
+        sp.innerHTML = svg(a.t); return sp;
+    }
+    const avPon = (host, a, px) => { host.innerHTML = ''; host.appendChild(avEl(a, px)); };
     function pintaX() {
         const w = xWallet || (window.GameWallet && GameWallet.address);
-        $('.ah-ava').innerHTML = avHtml(avatar());
+        avPon($('.ah-ava'), avatar(), 64);
         $('#ahX').textContent = w ? 'WALLET ' + w.slice(0, 4) + '...' + w.slice(-4) : 'TAP TO CONNECT';
     }
     // Sesion del juego (la firma de wallet del airdrop): este movil pasa a esa cuenta.
@@ -751,13 +814,32 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         pintaX(); paintStatic();
     }
     function pintaAvatarEditor() {
-        const a = avatar();
-        $('#ahPrPic').innerHTML = avHtml(a);
-        $('#ahPrIc').innerHTML = AV_ICONS.map(i => '<b data-i="' + i + '" class="' + (i === a.i ? 'on' : '') + '">' + svg(i) + '</b>').join('');
-        $('#ahPrCl').innerHTML = AV_COLS.map(c => '<b data-c="' + c + '" class="' + (c === a.c ? 'on' : '') + '" style="background:' + c + '"></b>').join('');
-        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} pintaAvatarEditor(); pintaX(); };
-        $('#ahPrIc').querySelectorAll('b').forEach(b => b.onclick = () => guarda({ i: b.dataset.i, c: a.c }));
-        $('#ahPrCl').querySelectorAll('b').forEach(b => b.onclick = () => guarda({ i: a.i, c: b.dataset.c }));
+        avPon($('#ahPrPic'), avatar(), 96);
+        $('#ahPrIc').innerHTML = '<button class="tb" id="ahPrEdit" style="width:auto;padding:.5em 1.2em">EDIT AVATAR</button>';
+        $('#ahPrCl').innerHTML = '';
+        $('#ahPrEdit').onclick = openAvatar;
+    }
+    // Editor del avatar: estilo, fondo y, con la pildora, sus colores o una skin tuya.
+    function openAvatar() {
+        const av = $('#ahAv'), a = avatar();
+        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); };
+        av.classList.toggle('pill', a.t === 'pill');
+        avPon($('#ahAvBig'), a, 160);
+        const fila = (id, items, pinta, on, elige) => {
+            const box = $(id); box.innerHTML = '';
+            items.forEach(v => { const b = document.createElement('b'); pinta(b, v); if (on(v)) b.className = (b.className + ' on').trim(); b.onclick = () => elige(v); box.appendChild(b); });
+        };
+        fila('#ahAvT', AV_STYLES, (b, t) => { if (t === 'pill') { const cv = document.createElement('canvas'); avPill(cv, Object.assign({}, a, { bg: '#1a3a2e' }), 48); b.appendChild(cv); } else { b.style.background = '#1a3a2e'; b.style.color = AV_FG[t] || '#eaf5ef'; b.innerHTML = svg(t); } },
+            t => t === a.t, t => guarda(Object.assign({}, a, { t })));
+        fila('#ahAvBg', AV_BG, (b, c) => { b.style.background = c; }, c => c === a.bg, c => guarda(Object.assign({}, a, { bg: c })));
+        fila('#ahAvTop', SWATCH, (b, c) => { b.style.background = c; }, c => !a.skin && c === a.top, c => guarda(Object.assign({}, a, { top: c, skin: null })));
+        fila('#ahAvBot', SWATCH, (b, c) => { b.style.background = c; }, c => !a.skin && c === a.bot, c => guarda(Object.assign({}, a, { bot: c, skin: null })));
+        let mias = []; try { mias = skinMiasOrdenadas(); } catch (e) {}
+        fila('#ahAvSk', [null].concat(mias.slice(0, 9)), (b, code) => {
+            if (!code) { b.className = 'no'; b.textContent = 'NO'; return; }
+            const cv = document.createElement('canvas'); avPill(cv, { bg: '#1a3a2e', skin: code }, 48); b.appendChild(cv);
+        }, code => (code || null) === (a.skin || null), code => guarda(Object.assign({}, a, { skin: code })));
+        av.classList.add('open'); placa($('#ahAv .pnl'), 1);
     }
     async function openProfile() {
         const pr = $('#ahPr'), w = xWallet || (window.GameWallet && GameWallet.address);
@@ -892,7 +974,7 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
-        window._hubShow = show; window._hubSyncX = syncX;
+        window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada;
         // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
         // cuelga de <body> (con shadow DOM cerrado): se marca para poder girarlo.
         new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
