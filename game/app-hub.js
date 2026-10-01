@@ -338,6 +338,7 @@ html.pw-app #btnTryAgainOnline,html.pw-app #prizeContinue{--plate:var(--ah-placa
 html.pw-app #resultOverlay .btn-spectate,html.pw-app #prizeShare{--plate:var(--ah-placa-blue)!important}
 html.pw-app #btnBackToMenu{--plate:var(--ah-placa-grey)!important}
 html.pw-app #ahResShare{--plate:var(--ah-placa-gold)!important}
+html.pw-app #resultOverlay .btn-spectate{display:none!important}
 /* Las dos lineas bajo el titulo (kills y $PILLY): una sola letra y tamano. */
 html.pw-app .ah-l{font-family:'Press Start 2P',monospace;font-size:12px;line-height:2.1;color:#fff;white-space:nowrap}
 html.pw-app .ah-l .ah-w{color:#fff} html.pw-app .ah-l .ah-v{color:#ffce3d} html.pw-app .ah-l .ah-g{color:#00ff88}
