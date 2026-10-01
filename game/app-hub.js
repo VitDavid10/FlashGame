@@ -653,58 +653,84 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // La pildora grande del menu se divide de vez en cuando, como el SPLIT de la
     // partida: salen dos mitades en diagonal, se quedan un momento y se vuelven
     // a juntar con un rebote. Asi se ve como queda tu pildora dividida.
-    // Ciclo de la pildora del menu, como un SPLIT de la partida: 15 s entera,
-    // se divide en 2 a 8 trozos que salen disparados, se atraen entre si y
-    // chocan (la misma idea que las celulas en partida), asi que acaban pegados
-    // y moviendose como un todo; a los 14 s se vuelven a unir y vuelta a empezar.
-    const SPLIT_ENTERA = 15000, SPLIT_JUNTOS = 14000, SPLIT_UNE = 450, SPLIT_REBOTE = 700;
-    const SPLIT_CICLO = SPLIT_ENTERA + SPLIT_JUNTOS + SPLIT_UNE + SPLIT_REBOTE;
-    const split = { ciclo: -1, n: 0, cel: [], last: 0 };
-    // Cuantos trozos en cada division: de 2 a 8, al azar pero fijo durante esa division.
+    // Ciclo de la pildora del menu con las MISMAS reglas que el split de la
+    // partida (shared/sim.js): cada division parte la celda mas grande en dos de
+    // igual masa (r / raiz de 2) que salen con un impulso en direccion al azar;
+    // todas van hacia el mismo punto, y entre si solo se empujan lo que se
+    // solapan, a medias (resolveCellCollision). Pasado el tiempo de fusion, la
+    // que toca a otra se la come (la grande absorbe la masa de la chica), asi
+    // que se van uniendo trozo a trozo. 15 s entera entre division y division.
+    const SPLIT_ENTERA = 15000, SPLIT_JUNTOS = 14000, SPLIT_REBOTE = 700;
+    const split = { fase: 'entera', desde: null, cel: [], last: 0, n: 0 };
+    let splitCuenta = 0;
     const splitTrozos = c => { const x = Math.sin(c * 12.9898 + 78.233) * 43758.5453; return 2 + Math.floor((x - Math.floor(x)) * 7); };
     function drawPillSplit(cv, res, t) {
-        const s = t % SPLIT_CICLO, c = Math.floor(t / SPLIT_CICLO), bob = Math.round(Math.sin(t / 380) * 2);
-        const dt = Math.min(50, Math.max(0, t - split.last)) / 16.67; split.last = t;
-        if (s < SPLIT_ENTERA) { split.ciclo = -1; drawPill(cv, res, 0.92, bob, true); return; }
-        if (s >= SPLIT_ENTERA + SPLIT_JUNTOS + SPLIT_UNE) {          // rebote al juntarse
-            const r = (s - SPLIT_ENTERA - SPLIT_JUNTOS - SPLIT_UNE) / SPLIT_REBOTE;
+        const bob = Math.round(Math.sin(t / 380) * 2), mid = res / 2, R0 = 1;
+        const dt = Math.min(3, Math.max(0, t - split.last) / 16.67); split.last = t;
+        if (split.desde === null) split.desde = t;
+        if (split.fase === 'entera') {
+            if (t - split.desde < SPLIT_ENTERA) { drawPill(cv, res, 0.92, bob, true); return; }
+            // Se divide: de la mas grande en dos, hasta tener n trozos.
+            const n = splitTrozos(splitCuenta++), cel = [{ x: mid, y: mid, r: R0, vx: 0, vy: 0, une: 0 }];
+            while (cel.length < n) {
+                const big = cel.reduce((a, b) => b.r > a.r ? b : a);
+                big.r /= Math.SQRT2;
+                const a = Math.random() * Math.PI * 2;
+                cel.push({ x: big.x, y: big.y, r: big.r, vx: Math.cos(a) * 2.2, vy: Math.sin(a) * 2.2, une: 0 });
+            }
+            // Como en partida, cada trozo tiene su propio tiempo de fusion (alli
+            // depende de cuando nacio y de su masa): asi no se unen todos de golpe
+            // sino uno detras de otro.
+            cel.forEach((c, i) => { c.une = t + SPLIT_JUNTOS + i * 650 + Math.random() * 250; });
+            Object.assign(split, { fase: 'dividida', desde: t, cel });
+        }
+        if (split.fase === 'rebote') {
+            const r = (t - split.desde) / SPLIT_REBOTE;
+            if (r >= 1) { Object.assign(split, { fase: 'entera', desde: t }); drawPill(cv, res, 0.92, bob, true); return; }
             drawPill(cv, res, 0.92 * (1 + .07 * Math.sin(r * Math.PI) * (1 - r)), bob, true); return;
         }
-        const n = splitTrozos(c), chico = Math.min(0.54, 0.92 / Math.sqrt(n) * 1.05);
-        const w = res * chico, rad = w * 0.3, mid = res / 2;
-        if (split.ciclo !== c) {                                      // empieza la division: salen disparados
-            split.ciclo = c; split.n = n; split.cel = [];
-            for (let i = 0; i < n; i++) {
-                const a = Math.PI * 3 / 4 + i * 2 * Math.PI / n + (n === 2 ? 0 : .3);
-                split.cel.push({ x: mid + Math.cos(a) * 2, y: mid + Math.sin(a) * 2, vx: Math.cos(a) * 4.2, vy: Math.sin(a) * 4.2 });
-            }
-        }
-        const une = s >= SPLIT_ENTERA + SPLIT_JUNTOS, u = une ? (s - SPLIT_ENTERA - SPLIT_JUNTOS) / SPLIT_UNE : 0;
-        const cel = split.cel;
+        const W0 = res * 0.92, cel = split.cel;
+        // Radio de choque de un trozo (px): lo grueso de la pildora, como en partida
+        // los trozos se pisan un poco por las puntas.
+        const choque = c => W0 * c.r * 0.27;
         for (let paso = 0; paso < 2; paso++) {
             const h = dt / 2;
-            // Atraccion hacia el centro del grupo (y el grupo hacia el centro del dibujo).
-            let gx = 0, gy = 0; cel.forEach(p => { gx += p.x; gy += p.y; }); gx /= cel.length; gy /= cel.length;
-            cel.forEach(p => {
-                const k = une ? 0.35 : 0.045;
-                p.vx += ((gx - p.x) * k + (mid - gx) * 0.03) * h; p.vy += ((gy - p.y) * k + (mid - gy) * 0.03) * h;
+            cel.forEach(c => {
+                // Hacia el punto (el centro del dibujo); las chicas van algo mas rapido.
+                const dx = mid - c.x, dy = mid - c.y, d = Math.hypot(dx, dy), v = Math.min(d, 0.55 / Math.sqrt(c.r)) * h;
+                if (d > 0.01) { c.x += dx / d * v; c.y += dy / d * v; }
+                c.x += c.vx * h; c.y += c.vy * h;
+                c.vx *= Math.pow(0.88, h); c.vy *= Math.pow(0.88, h);
             });
-            // Choques: los trozos no se pisan, se empujan hasta quedar tocandose.
-            if (!une) for (let a = 0; a < cel.length; a++) for (let b = a + 1; b < cel.length; b++) {
-                const A = cel[a], B = cel[b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.01, min = rad * 2;
-                if (d < min) { const e = (min - d) / 2, nx = dx / d, ny = dy / d; A.x -= nx * e; A.y -= ny * e; B.x += nx * e; B.y += ny * e; }
+            for (let a = 0; a < cel.length; a++) for (let b = a + 1; b < cel.length; b++) {
+                const A = cel[a], B = cel[b]; if (!A.r || !B.r) continue;
+                const dx = A.x - B.x, dy = A.y - B.y, dist = Math.hypot(dx, dy), min = choque(A) + choque(B);
+                if (dist >= min || dist < 0.001) continue;
+                if (t > A.une && t > B.une) {
+                    // La grande se come a la chica: suma la masa (r^2) y la otra desaparece.
+                    const [g, ch] = A.r >= B.r ? [A, B] : [B, A];
+                    g.r = Math.sqrt(g.r * g.r + ch.r * ch.r); g.une = Math.max(g.une, ch.une); ch.r = 0;
+                } else {
+                    const f = (min - dist) / dist * 0.5, tx = dx * f, ty = dy * f;
+                    A.x += tx; A.y += ty; B.x -= tx; B.y -= ty;
+                }
             }
-            cel.forEach(p => { p.vx *= Math.pow(0.86, h); p.vy *= Math.pow(0.86, h); p.x += p.vx * h; p.y += p.vy * h; });
+            for (let k = cel.length - 1; k >= 0; k--) if (!cel[k].r) cel.splice(k, 1);
         }
+        // Ya es una sola y ha llegado al centro: rebote y vuelta a entera.
+        if (cel.length === 1 && Math.hypot(cel[0].x - mid, cel[0].y - mid) < 1.5) Object.assign(split, { fase: 'rebote', desde: t });
         cv.width = res; cv.height = res;
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const o = pillSprite(48); if (!o) return;
         const sw = o.S || o.cv.width, sh = o.S || o.cv.height;
-        // Al unirse, los trozos crecen hacia el tamano entero mientras se juntan.
-        const ww = une ? w + (res * 0.92 - w) * u * u : w;
-        cel.forEach(p => g.drawImage(o.cv, 0, 0, sw, sh, Math.round(p.x - ww / 2), Math.round(p.y + bob - ww * sh / sw / 2), ww, ww * sh / sw));
+        // Las grandes debajo: en partida se ve la chica por encima al pisarse.
+        cel.slice().sort((a, b) => b.r - a.r).forEach(c => {
+            const w = W0 * c.r;
+            g.drawImage(o.cv, 0, 0, sw, sh, Math.round(c.x - w / 2), Math.round(c.y + bob - w * sh / sw / 2), w, w * sh / sw);
+        });
     }
     window._hubSplit = (cv, t) => drawPillSplit(cv, 96, t);   // pruebas
+    window._hubSplitEstado = () => ({ fase: split.fase, n: split.cel.length });   // pruebas
     function loop(t) {
         if (!hub.classList.contains('on')) return;
         paintBg(); drawPillSplit($('#ahPill'), 96, t);
