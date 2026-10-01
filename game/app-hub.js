@@ -654,49 +654,55 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // partida: salen dos mitades en diagonal, se quedan un momento y se vuelven
     // a juntar con un rebote. Asi se ve como queda tu pildora dividida.
     // Ciclo de la pildora del menu, como un SPLIT de la partida: 15 s entera,
-    // se divide (los trozos salen disparados y vuelven a quedarse juntitos,
-    // pegados unos a otros), 14 s asi temblando un poco, y se vuelven a unir.
-    const SPLIT_CICLO = 31300;
-    const sale = x => 1 - Math.pow(1 - x, 3), suave = x => x * x * (3 - 2 * x);
-    function splitEstado(t) {
-        const s = (t % SPLIT_CICLO) / 1000;          // segundos dentro del ciclo
-        if (s < 15) return { d: 0, R: 0, k: 1 };
-        if (s < 15.35) { const x = sale((s - 15) / .35); return { d: x, R: 1.35 * x, k: 1 }; }   // salen disparados
-        if (s < 16.2) return { d: 1, R: 1.35 - .35 * suave((s - 15.35) / .85), k: 1 };            // se juntan
-        if (s < 30.2) return { d: 1, R: 1, k: 1, tiembla: true };                                // juntitos
-        if (s < 30.6) { const x = suave((s - 30.2) / .4); return { d: 1 - x, R: 1 - x, k: 1 }; } // se unen
-        const r = (s - 30.6) / .7;                    // rebote al juntarse
-        return { d: 0, R: 0, k: 1 + .07 * Math.sin(r * Math.PI) * (1 - r) };
-    }
-    // Cuantos trozos en cada division: de 2 a 8, al azar pero fijo durante toda
-    // esa division (sale del numero de ciclo, no cambia a mitad).
-    const splitTrozos = t => { const c = Math.floor(t / SPLIT_CICLO), x = Math.sin(c * 12.9898 + 78.233) * 43758.5453; return 2 + Math.floor((x - Math.floor(x)) * 7); };
-    // Donde va cada trozo cuando estan juntitos (radio en px y angulo): con dos,
-    // de lado; hasta 6, en corro; con 7 u 8, uno en medio y el resto alrededor.
-    function splitSitios(n, w) {
-        const paso = w * 0.56;
-        if (n === 2) return [[paso * .55, Math.PI * 3 / 4], [paso * .55, -Math.PI / 4]];
-        const corro = n >= 7 ? n - 1 : n, r = Math.max(paso, paso / (2 * Math.sin(Math.PI / corro)));
-        const out = []; if (n >= 7) out.push([0, 0]);
-        for (let i = 0; i < corro; i++) out.push([r, Math.PI * 3 / 4 + i * 2 * Math.PI / corro]);
-        return out;
-    }
+    // se divide en 2 a 8 trozos que salen disparados, se atraen entre si y
+    // chocan (la misma idea que las celulas en partida), asi que acaban pegados
+    // y moviendose como un todo; a los 14 s se vuelven a unir y vuelta a empezar.
+    const SPLIT_ENTERA = 15000, SPLIT_JUNTOS = 14000, SPLIT_UNE = 450, SPLIT_REBOTE = 700;
+    const SPLIT_CICLO = SPLIT_ENTERA + SPLIT_JUNTOS + SPLIT_UNE + SPLIT_REBOTE;
+    const split = { ciclo: -1, n: 0, cel: [], last: 0 };
+    // Cuantos trozos en cada division: de 2 a 8, al azar pero fijo durante esa division.
+    const splitTrozos = c => { const x = Math.sin(c * 12.9898 + 78.233) * 43758.5453; return 2 + Math.floor((x - Math.floor(x)) * 7); };
     function drawPillSplit(cv, res, t) {
-        const e = splitEstado(t), bob = Math.round(Math.sin(t / 380) * 2);
-        if (e.d <= 0 && e.R <= 0) { drawPill(cv, res, 0.92 * e.k, bob, true); return; }
+        const s = t % SPLIT_CICLO, c = Math.floor(t / SPLIT_CICLO), bob = Math.round(Math.sin(t / 380) * 2);
+        const dt = Math.min(50, Math.max(0, t - split.last)) / 16.67; split.last = t;
+        if (s < SPLIT_ENTERA) { split.ciclo = -1; drawPill(cv, res, 0.92, bob, true); return; }
+        if (s >= SPLIT_ENTERA + SPLIT_JUNTOS + SPLIT_UNE) {          // rebote al juntarse
+            const r = (s - SPLIT_ENTERA - SPLIT_JUNTOS - SPLIT_UNE) / SPLIT_REBOTE;
+            drawPill(cv, res, 0.92 * (1 + .07 * Math.sin(r * Math.PI) * (1 - r)), bob, true); return;
+        }
+        const n = splitTrozos(c), chico = Math.min(0.54, 0.92 / Math.sqrt(n) * 1.05);
+        const w = res * chico, rad = w * 0.3, mid = res / 2;
+        if (split.ciclo !== c) {                                      // empieza la division: salen disparados
+            split.ciclo = c; split.n = n; split.cel = [];
+            for (let i = 0; i < n; i++) {
+                const a = Math.PI * 3 / 4 + i * 2 * Math.PI / n + (n === 2 ? 0 : .3);
+                split.cel.push({ x: mid + Math.cos(a) * 2, y: mid + Math.sin(a) * 2, vx: Math.cos(a) * 4.2, vy: Math.sin(a) * 4.2 });
+            }
+        }
+        const une = s >= SPLIT_ENTERA + SPLIT_JUNTOS, u = une ? (s - SPLIT_ENTERA - SPLIT_JUNTOS) / SPLIT_UNE : 0;
+        const cel = split.cel;
+        for (let paso = 0; paso < 2; paso++) {
+            const h = dt / 2;
+            // Atraccion hacia el centro del grupo (y el grupo hacia el centro del dibujo).
+            let gx = 0, gy = 0; cel.forEach(p => { gx += p.x; gy += p.y; }); gx /= cel.length; gy /= cel.length;
+            cel.forEach(p => {
+                const k = une ? 0.35 : 0.045;
+                p.vx += ((gx - p.x) * k + (mid - gx) * 0.03) * h; p.vy += ((gy - p.y) * k + (mid - gy) * 0.03) * h;
+            });
+            // Choques: los trozos no se pisan, se empujan hasta quedar tocandose.
+            if (!une) for (let a = 0; a < cel.length; a++) for (let b = a + 1; b < cel.length; b++) {
+                const A = cel[a], B = cel[b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.01, min = rad * 2;
+                if (d < min) { const e = (min - d) / 2, nx = dx / d, ny = dy / d; A.x -= nx * e; A.y -= ny * e; B.x += nx * e; B.y += ny * e; }
+            }
+            cel.forEach(p => { p.vx *= Math.pow(0.86, h); p.vy *= Math.pow(0.86, h); p.x += p.vx * h; p.y += p.vy * h; });
+        }
         cv.width = res; cv.height = res;
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const o = pillSprite(48); if (!o) return;
-        const sw = o.S || o.cv.width, sh = o.S || o.cv.height, n = splitTrozos(t);
-        // Cada trozo mas pequeno cuantos mas haya (la masa se reparte, como en la partida).
-        const chico = Math.min(0.54, 0.92 / Math.sqrt(n) * 1.05);
-        const fill = 0.92 + (chico - 0.92) * e.d, w = res * fill;
-        splitSitios(n, res * chico).forEach(([r, a], i) => {
-            // Juntitos, cada uno tiembla un poco a su ritmo, como las celulas en partida.
-            const tx = e.tiembla ? Math.sin(t / 260 + i * 1.7) * 1.2 : 0, ty = e.tiembla ? Math.cos(t / 310 + i * 2.3) * 1.2 : 0;
-            const cx = res / 2 + Math.cos(a) * r * e.R + tx, cy = res / 2 + Math.sin(a) * r * e.R + ty + (e.tiembla ? 0 : bob);
-            g.drawImage(o.cv, 0, 0, sw, sh, Math.round(cx - w / 2), Math.round(cy - w * sh / sw / 2), w, w * sh / sw);
-        });
+        const sw = o.S || o.cv.width, sh = o.S || o.cv.height;
+        // Al unirse, los trozos crecen hacia el tamano entero mientras se juntan.
+        const ww = une ? w + (res * 0.92 - w) * u * u : w;
+        cel.forEach(p => g.drawImage(o.cv, 0, 0, sw, sh, Math.round(p.x - ww / 2), Math.round(p.y + bob - ww * sh / sw / 2), ww, ww * sh / sw));
     }
     window._hubSplit = (cv, t) => drawPillSplit(cv, 96, t);   // pruebas
     function loop(t) {

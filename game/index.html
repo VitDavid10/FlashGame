@@ -8755,7 +8755,18 @@
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // CONNECT solo dentro de un modo (ahi es donde se paga y se compran skins)
         els.modeScreen.style.display = 'flex'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); 
         document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1'; 
-        if(currentGameMode === 'classic') setHoverMode('classic'); else setHoverMode('arcade'); currentGameMode = null; 
+        if(currentGameMode === 'classic') setHoverMode('classic'); else setHoverMode('arcade');
+        // Rueda (movil): al volver se queda en cuadro el modo del que vienes, sin
+        // animar. Las clases wheel-in/out del ultimo giro seguian puestas y, al
+        // volver a mostrarse la pantalla, la animacion se repetia (se veia pasar
+        // de ARCADE a CLASSIC o al reves).
+        const _cla = document.getElementById('panelClassic'), _arc = document.getElementById('panelArcade'), _wh = document.getElementById('modeWheel');
+        if (_cla && _arc && _wh) {
+            [_cla, _arc].forEach(p => p.classList.remove('wheel-in', 'wheel-out', 'wheel-on'));
+            (currentGameMode === 'classic' ? _cla : _arc).classList.add('wheel-on');
+            _wh.classList.toggle('flip', currentGameMode === 'classic');
+        }
+        currentGameMode = null; 
     }
     function toggleStyleUI() { const m = document.querySelector('input[name="styleMode"]:checked').value; document.getElementById('colorPickersContainer').style.display = (m === 'color') ? 'flex' : 'none'; document.getElementById('skinInputContainer').style.display = (m === 'skin') ? 'block' : 'none'; }
     function toggleBotOptions() { const isChecked = document.getElementById('botsToggle').checked; document.getElementById('botOptionsGroup').style.opacity = isChecked ? "1" : "0.3"; document.getElementById('botOptionsGroup').style.pointerEvents = isChecked ? "auto" : "none"; }
