@@ -40,6 +40,7 @@ Generado el 21-sep-2026 con `npx solana-mobile@0.5.0 webshell init android --man
 
 - `AndroidManifest.xml`: `screenOrientation="sensorLandscape"`. `configChanges` lleva además `screenLayout|smallestScreenSize|keyboard|uiMode`, para que la partida no se recargue con esos cambios.
   - Horizontal de verdad desde el 30-sep-2026 (antes `portrait` y el juego se giraba solo por CSS). `sensorLandscape` fuerza horizontal aunque el usuario tenga la rotación bloqueada, y las capturas salen horizontales. El viewport pasa a ser apaisado y entra el bloque «TUMBADO» de `game/index.html` (body -90° + pantallas +90°, se anulan). Probado en la Saga: splash, selector de modo, menú y partida se ven bien. Con el teclado en horizontal, el botón PLAY NOW del nombre queda tapado: se envía con Enter.
+- `WebShellViewClient.kt`: el login de X (`x.com/i/...`, `twitter.com/i/...`) se abre DENTRO del WebView para que la cookie de sesión vuelva a la app (fuera se quedaba en el navegador). El resto de enlaces de X se siguen abriendo fuera.
 - `SolanaSplash.kt`: pantalla de carga «BUILT ON SOLANA» (misma que abre el vídeo, `tools/origin-video/src/Mobile.tsx`). Se muestra `SPLASH_MIN_MS` (1,8 s) como mínimo y hasta que la página empieza a pintar.
 - `MainActivity.kt`:
   - pantalla completa inmersiva (`hideSystemBars`, también al recuperar el foco) y `FLAG_KEEP_SCREEN_ON`;

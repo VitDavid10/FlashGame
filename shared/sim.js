@@ -119,7 +119,7 @@
         1: { id: 1, name: 'CLON', uses: 4, maxActive: SKILL_PARAMS.clonCooldown },
         2: { id: 2, name: 'SHOOT', uses: 4, maxActive: 15 },
         3: { id: 3, name: 'SPRINT', uses: 1, maxActive: SKILL_PARAMS.sprintDuration },
-        4: { id: 4, name: 'TELEPORT', uses: 1, maxActive: 20 },
+        4: { id: 4, name: 'BLINK', uses: 1, maxActive: 20 },
         5: { id: 5, name: 'MAGNET', uses: 1, maxActive: SKILL_PARAMS.magnetDuration },
         6: { id: 6, name: 'SHIELD', uses: 1, maxActive: SKILL_PARAMS.shieldDuration },
         7: { id: 7, name: 'PLUS', uses: 1, maxActive: 20 },
@@ -756,6 +756,20 @@
             if (idx !== -1) { p.skillSlots[idx].uses += SKILL_DEFS[skillId].uses; }
             else { let slot = p.skillSlots.indexOf(null); if (slot === -1) slot = 3; p.skillSlots[slot] = { id: skillId, uses: SKILL_DEFS[skillId].uses }; }
             this.emit({ type: 'skillsUI', playerId: id });
+        }
+
+        // Skills de salida del arcade: las 2 que el jugador elige en el menu
+        // (THE PILL). Se validan aqui para que online el servidor no se fie del
+        // cliente: solo ids que existen, sin repetir y como mucho 2.
+        giveStartSkills(id, ids) {
+            if (this.config.mode === 'classic' || !Array.isArray(ids)) return;
+            const vistos = new Set();
+            for (const v of ids.slice(0, 2)) {
+                const k = v | 0;
+                if (!SKILL_DEFS[k] || vistos.has(k)) continue;
+                vistos.add(k);
+                this.grantSkillToPlayer(id, k);
+            }
         }
 
         useSkill(p, slotIndex, tx, ty) {

@@ -5631,12 +5631,19 @@
         textEl.innerHTML = `<span style="color:#00ffaa; font-weight:bold;">${slide.title}</span><br>${slide.desc}`;
     }
 
+    // Skills de salida del arcade: las 2 que se eligen en THE PILL (menu de la
+    // app), guardadas por nombre de icono. Aqui se pasan a ids de skill.
+    const SKILL_ID_POR_ICONO = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
+    function skillsDeSalida() {
+        let v = null; try { v = JSON.parse(localStorage.getItem('pw_start_skills')); } catch (e) {}
+        return Array.isArray(v) ? v.map(k => SKILL_ID_POR_ICONO[k]).filter(Boolean).slice(0, 2) : [];
+    }
     // CORREGIDO: Rutas a videos e imágenes con ../
     const SKILL_DESCRIPTIONS = {
         1: { name: "CLON", desc: "THE FARMER. Shoots a mass projectile. IMPORTANT: If it hits a VIRUS, it clones it and grants you a NEW SKILL card. Cooldown: 1s.", video: "../video/Clon.mp4", icon: "../img/clon.png" },
         2: { name: "SHOOT", desc: "OFFENSIVE. Fires mass projectiles to damage enemies or push viruses. Does not grant skills. Cost: 2500 Mass.", video: "../video/Shoot.mp4", icon: "../img/shoot.png" },
         3: { name: "SPRINT", desc: "MOBILITY. Boosts movement speed by 50% for 10 seconds. Great for chasing or escaping. Passive effect: Gold aura.", video: "../video/Sprint.mp4", icon: "../img/sprint.png" },
-        4: { name: "TELEPORT", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks.", video: "../video/Tp.mp4", icon: "../img/tp.png" },
+        4: { name: "BLINK", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks.", video: "../video/Tp.mp4", icon: "../img/tp.png" },
         5: { name: "MAGNET", desc: "UTILITY. Automatically pulls nearby food pellets towards your cells for 8 seconds. Radius: 200px.", video: "../video/Magnet.mp4", icon: "../img/iman.png" },
         6: { name: "SHIELD", desc: "DEFENSE. Grants total immunity to viruses and being eaten by larger players for 3 seconds. Visual: Purple forcefield.", video: "../video/Inmune.mp4", icon: "../img/inmune.png" },
         7: { name: "PLUS", desc: "GROWTH. Instantly grants a large amount of mass (5k - 12k) distributed among your cells.", video: "../video/Plus.mp4", icon: "../img/big.png" },
@@ -10783,7 +10790,16 @@
                 if (!knob) { knob = document.createElement('div'); knob.id = 'pwStickKnob'; document.body.appendChild(knob); }
                 return { base, knob };
             }
-            function pwStickMuestra(x, y) {
+            // Tumbado de verdad (la app en sensorLandscape) el <body> va girado
+            // -90 grados (ver "TUMBADO" en el CSS) y el aro cuelga de el, asi que
+            // su left/top van en los ejes del body: el punto de pantalla (x, y)
+            // cae en (alto - y, x). Sin esto el aro salia lejos del dedo.
+            function pwStickPt(x, y) {
+                if (juegoGirado() && window.matchMedia('(orientation: landscape)').matches) return { x: window.innerHeight - y, y: x };
+                return { x, y };
+            }
+            function pwStickMuestra(sx, sy) {
+                const { x, y } = pwStickPt(sx, sy);
                 const { base, knob } = pwStickEls();
                 base.dataset.x = x; base.dataset.y = y;
                 base.style.left = knob.style.left = x + 'px';
@@ -10791,7 +10807,8 @@
                 base.style.display = knob.style.display = 'block';
             }
             const PW_STICK_R = 46;   // radio del aro: el knob no sale de ahi
-            function pwStickMueve(x, y) {
+            function pwStickMueve(sx, sy) {
+                const { x, y } = pwStickPt(sx, sy);
                 const base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
                 if (!base || base.style.display !== 'block') return;
                 const bx = parseFloat(base.dataset.x), by = parseFloat(base.dataset.y);
@@ -11116,6 +11133,8 @@
         if (!loadedSave) {
             const startCell = sim.spawnPlayer('me');
             camera.x = startCell.x; camera.y = startCell.y;
+            // Arcade: las 2 skills de salida elegidas en THE PILL (sin god, que ya las tiene todas).
+            if (currentGameMode !== 'classic' && !isGodMode) { sim.giveStartSkills('me', skillsDeSalida()); updateSkillsUI_Arcade(); }
         }
         cerrarUIColores();
         els.room.innerText = currentServer; els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
@@ -13867,7 +13886,7 @@
                 }
             }
         } catch (e) { /* sin /match: seguir con la URL base (compat mono) */ }
-        netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect } };
+        netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect, startSkills: skillsDeSalida() } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.
@@ -16877,6 +16896,8 @@
     window.PillChain = { deposit, creditDeposit, claim, firmarRetiro, stakeTx };
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
+<!-- Menu de la app (dApp Store): solo en la APK, ver app-hub.js -->
+<script src="app-hub.js"></script>
 
 </body>
 </html>

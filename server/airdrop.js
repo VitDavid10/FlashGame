@@ -338,6 +338,10 @@ function createAirdrop(opts) {
             pic: d.profile_image_url || '',
         };
     }
+    // Vuelta tras el login de X: por defecto la pagina del airdrop; el juego de la
+    // app pasa su propia ruta (?ret=). Solo rutas locales simples, sin query ni
+    // dominio ("//x" o "https:" se rechazan): nada de redirecciones abiertas.
+    const retOk = r => (typeof r === 'string' && /^\/(?!\/)[A-Za-z0-9_\-\/]{0,120}$/.test(r)) ? r : null;
     async function handleX(req, res, urlPath, query) {
         const now = Date.now();
         for (const [k, v] of xPending) if (now - v.t > X_PENDING_TTL_MS) xPending.delete(k);
@@ -348,7 +352,7 @@ function createAirdrop(opts) {
             if (!hitOk('xlogin:' + clientIp(req), X_LOGIN_PER_MIN) || xPending.size >= X_PENDING_MAX) return redirect(res, HOME + '#xerr=rate');
             const verifier = b64url(crypto.randomBytes(32)), state = b64url(crypto.randomBytes(16));
             const redirectUri = originOf(req) + '/airdrop-auth/x/callback';
-            xPending.set(state, { verifier, redirectUri, t: now });
+            xPending.set(state, { verifier, redirectUri, t: now, ret: retOk(query.get('ret')) });
             const q = new URLSearchParams({
                 response_type: 'code', client_id: X_CLIENT_ID, redirect_uri: redirectUri, scope: X_SCOPES, state,
                 code_challenge: b64url(crypto.createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256',
@@ -360,16 +364,17 @@ function createAirdrop(opts) {
             if (!p) { log('[airdrop] X callback: unknown or expired state'); return redirect(res, HOME + '#xerr=state'); }
             xPending.delete(state);
             const code = query.get('code');
-            if (!code) { log('[airdrop] X callback: no code (' + (query.get('error') || 'denied') + ')'); return redirect(res, HOME + '#xerr=denied'); }
+            const vuelta = p.ret || HOME;
+            if (!code) { log('[airdrop] X callback: no code (' + (query.get('error') || 'denied') + ')'); return redirect(res, vuelta + '#xerr=denied'); }
             try {
                 const profile = await xExchange(code, p.verifier, p.redirectUri);
                 const r = store.linkX(sessionToken(req), profile);
                 log('[airdrop] X linked @' + profile.username + (sessionToken(req) ? ' (existing session)' : ' (new session)'));
                 setSession(req, res, r.token);
-                return redirect(res, HOME + '#x=ok');
+                return redirect(res, vuelta + '#x=ok');
             } catch (e) {
                 log('[airdrop] X sign-in failed: ' + e.message);
-                return redirect(res, HOME + '#xerr=api');
+                return redirect(res, vuelta + '#xerr=api');
             }
         }
         return notFound(req, res);
@@ -596,7 +601,13 @@ function createAirdrop(opts) {
         return { ok: true };
     }
 
-    return { handle, only: ONLY, closed: CLOSED, claimDiscord, flush: store.flush };
+    // La cuenta de X de esta peticion (cookie de sesion del airdrop), para que el
+    // juego guarde los SP en ella. null sin sesion o sin X enlazada.
+    function xAccountOf(req) {
+        const u = store.sessionUser(sessionToken(req));
+        return u && u.x && u.x.id ? { id: 'x_' + u.x.id, x: u.x } : null;
+    }
+    return { handle, only: ONLY, closed: CLOSED, claimDiscord, flush: store.flush, xAccountOf };
 }
 
 module.exports = { createAirdrop };

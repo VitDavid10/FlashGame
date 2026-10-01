@@ -224,6 +224,7 @@ function createGameHost(deps) {
                 cli._spawned = true;
                 if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {});
                 room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS);
+                room.sim.giveStartSkills(playerId, (cli.opts || {}).startSkills);
                 refillBots(room);
             }
             return;
@@ -370,7 +371,9 @@ function createGameHost(deps) {
         const opts = {
             name,
             colorBot: typeof msg.colorBot === 'string' ? msg.colorBot.slice(0, 9) : undefined,
-            colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined
+            colorTop: typeof msg.colorTop === 'string' ? msg.colorTop.slice(0, 9) : undefined,
+            // Skills de salida del arcade (la sim las valida en giveStartSkills).
+            startSkills: Array.isArray(msg.startSkills) ? msg.startSkills.slice(0, 2).map(n => n | 0) : undefined
         };
         room.sim.addPlayer(playerId, opts);
         const token = nuevoResumeToken();

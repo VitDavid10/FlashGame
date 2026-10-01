@@ -2816,6 +2816,19 @@ const httpServer = http.createServer(async (req, res) => {
      * saldo a cualquiera — el endpoint no tiene sesión ni cookie que lo impida.
      * Los SP no llevan firma porque van por clientId y no valen dinero real.
      */
+    // Enlaza este movil (x-client-id) a la cuenta de X de la sesion del airdrop:
+    // desde ahi SP y skins se guardan en la cuenta (ver skinpoints.linkCid). Lo
+    // del movil se SUMA a la cuenta; nunca se pierde nada.
+    if (urlPath === '/api/account/link' && req.method === 'POST') {
+        const cid = String(req.headers['x-client-id'] || '').trim();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+        const acc = airdrop.xAccountOf(req);
+        if (!acc) { res.end(JSON.stringify({ ok: false, error: 'connect X first' })); return; }
+        if (!isValidClientId(cid)) { res.end(JSON.stringify({ ok: false, error: 'no session' })); return; }
+        const r = skinshop.vincular(cid, acc.id, null);
+        res.end(JSON.stringify(Object.assign(r, { x: { username: acc.x.username, name: acc.x.name, pic: acc.x.pic || '' } })));
+        return;
+    }
     if (urlPath === '/api/skins' && req.method === 'GET') {
         const cid = String(req.headers['x-client-id'] || '').trim();
         // El handler no tiene objeto URL: la ruta se saca con split('?'), asi que

@@ -89,7 +89,7 @@ function estado(cid, wallet) {
         sp: skinpoints.getPoints(cid),
         pill: wallet ? warbank.getBalance(wallet) : 0,
         owned: skinpoints.ownedOf(cid),
-        equipped: data.equipped[cid] || null,
+        equipped: data.equipped[skinpoints.cuenta(cid)] || null,
         precioSp: PRECIO_SP, precioPill: PRECIO_PILL, pillPorSp: PILL_POR_SP,
     };
 }
@@ -119,7 +119,8 @@ function comprar({ cid, wallet, code, moneda, nonce }) {
     skinpoints.addOwned(cid, code);
     // Primera skin: se pone sola. Si no, el jugador compra y no ve ningun cambio
     // hasta que ademas acierta a pulsar ASSIGN.
-    if (!data.equipped[cid]) data.equipped[cid] = code;
+    const k = skinpoints.cuenta(cid);
+    if (!data.equipped[k]) data.equipped[k] = code;
     if (nonce) data.nonces[clave] = { t: Date.now() };
     dirty = true;
     return { ok: true, estado: estado(cid, wallet) };
@@ -130,8 +131,23 @@ function equipar({ cid, wallet, code }) {
     if (!cid) return { ok: false, error: 'no session' };
     if (code !== null && !ES_CODIGO(code)) return { ok: false, error: 'unknown skin' };
     if (code !== null && skinpoints.ownedOf(cid).indexOf(code) === -1) return { ok: false, error: "you don't own it" };
-    if (code === null) delete data.equipped[cid]; else data.equipped[cid] = code;
+    const k = skinpoints.cuenta(cid);
+    if (code === null) delete data.equipped[k]; else data.equipped[k] = code;
     dirty = true;
+    return { ok: true, estado: estado(cid, wallet) };
+}
+
+/* ===== ENLAZAR A UNA CUENTA DE X ===== */
+// El cid (este movil) pasa a la cuenta 'x_<id>': SP y skins se suman alli y la
+// skin puesta, si la cuenta aun no llevaba ninguna, se queda la del movil.
+function vincular(cid, acct, wallet) {
+    if (!cid) return { ok: false, error: 'no session' };
+    const antes = data.equipped[cid] || null;
+    if (skinpoints.linkCid(cid, acct)) {
+        if (antes && !data.equipped[acct]) data.equipped[acct] = antes;
+        delete data.equipped[cid];
+        dirty = true;
+    }
     return { ok: true, estado: estado(cid, wallet) };
 }
 
@@ -320,6 +336,7 @@ function arrancaQuemaPeriodica(solana, log, treasuryClient, programId) {
 }
 
 module.exports = {
+    vincular,
     estado, comprar, equipar, convertir,
     estadoQuema, quemarPendiente, barrerPendiente, arrancaQuemaPeriodica, repartoSalida,
     PRECIO_SP, PRECIO_PILL, PILL_POR_SP, CODIGOS, TESORERIA_PCT,
