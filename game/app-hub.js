@@ -225,6 +225,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 `;
     const cssModales = `
 body.hub-on .pw-modal{background:rgba(3,6,4,.9)!important}
+/* Los avisos propios de la wallet (Mobile Wallet Adapter) cuelgan de <body>, que
+   en horizontal va girado: se gira su contenedor igual que los carteles. */
+html:not([data-hero]) body.mobile-allowed > .mwa-host{position:fixed!important;z-index:30000!important;width:var(--pw-largo,100dvh);height:var(--pw-corto,100dvw);
+  top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center;pointer-events:auto}
 body.hub-on .pw-modal-box{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;outline:none!important;min-width:20em}
 body.hub-on .pw-modal-box:before,body.hub-on .pw-modal-box:after{display:none!important}
 body.hub-on .pw-modal-box>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
@@ -244,6 +248,7 @@ body.hub-on .gameModalBox>*:not(.hub-placa){position:relative;z-index:1;margin-l
 body.hub-on .gameModalBox h3{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin-top:10px!important}
 body.hub-on .gameModalBox .gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;color:#04150c!important;font-family:'Russo One',sans-serif!important;letter-spacing:.12em!important;border-radius:0!important;box-shadow:none!important;margin-bottom:12px!important}
 body.hub-on .gameModalBox .close{color:#7d8a82!important}
+body.hub-on .gameModalBox .gm-btn,body.hub-on .gameModalBox .gm-body{box-sizing:border-box!important;width:calc(100% - 28px)!important;display:block!important}
 body.hub-on .gameModal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
 body.hub-on .name-choice .nc-title{font-family:'Russo One',sans-serif!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;text-align:center;margin-top:10px!important}
 body.hub-on .name-choice .nc-btn{display:block!important;margin:12px auto!important;background:none!important;background-image:none!important;border:2px solid #2c3630!important;border-image:none!important;color:#cfd8d3!important;
@@ -692,17 +697,6 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         if (xUser || xWallet) { openProfile(); return; }
         $('#ahCn').classList.add('open'); placa($('#ahCn .pnl'), 1);
     }
-    const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    // Login de X por el NAVEGADOR del movil (dentro del WebView X acababa en su
-    // propia app y no volvia). Antes de salir se guarda un secreto; el servidor
-    // devuelve a la app por pillwars://xlogin y solo con ese secreto se canjea.
-    async function loginX() {
-        const sec = b64u(crypto.getRandomValues(new Uint8Array(32)));
-        try { localStorage.setItem('pw_xs', sec); } catch (e) {}
-        const h = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sec)));
-        const url = location.host + '/airdrop-auth/x/login?app=1&h=' + h + '&ret=' + encodeURIComponent(location.pathname);
-        location.href = 'intent://' + url + '#Intent;scheme=' + location.protocol.replace(':', '') + ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
-    }
     // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
     async function loginWallet() {
         const p = window.GameWallet && GameWallet.getProvider('mwa');
@@ -744,9 +738,12 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         hub.querySelectorAll('.px').forEach(b => b.onclick = () => cerrar(b.closest('.ov')));
         hub.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) cerrar(o); }));
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.onclick = () => { storeTab = b.dataset.s; buying = null; skinPage = 0; try { SoundManager.play('simpleselect'); } catch (x) {} renderStore(); });
-        $('#ahCnX').onclick = () => loginX();
+        // X dentro de la app: el WebView mantiene a X dentro durante el login
+        // (ver WebShellViewClient.kt) y vuelve aqui con la cookie puesta.
+        const xEnApp = () => { location.href = '/airdrop-auth/x/login?ret=' + encodeURIComponent(location.pathname); };
+        $('#ahCnX').onclick = xEnApp;
         $('#ahCnW').onclick = () => loginWallet();
-        $('#ahPrAddX').onclick = () => loginX();
+        $('#ahPrAddX').onclick = xEnApp;
         $('#ahPrCon').onclick = async () => { try { await GameWalletUI.connectWith('mwa'); } catch (e) {} pintaWallet(); };
         $('#ahPrDep').onclick = () => { try { GameWalletUI.openDeposit(); } catch (e) {} };
         $('#ahPrWd').onclick = () => { try { GameWalletUI.openWithdraw(); } catch (e) {} };
@@ -791,6 +788,11 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
         window._hubShow = show; window._hubSyncX = syncX;
+        // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
+        // cuelga de <body> (con shadow DOM cerrado): se marca para poder girarlo.
+        new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+            if (n.nodeType === 1 && n.tagName === 'DIV' && !n.id && !n.className && n.parentElement === document.body) n.classList.add('mwa-host');
+        }))).observe(document.body, { childList: true });
         // La partida tapa al hub: se esconde al empezar y vuelve al volver al menu.
         ['startGame', 'startOnlineGame'].forEach(fn => {
             const o = window[fn];

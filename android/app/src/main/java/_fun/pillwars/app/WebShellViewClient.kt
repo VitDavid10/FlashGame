@@ -48,7 +48,17 @@ open class WebShellViewClient(
 
             "http", "https" -> {
                 if (url.host.equals(scopeHostProvider.invoke(), ignoreCase = true)) {
+                    // Login con X: desde /airdrop-auth/x/login hasta volver a
+                    // nuestras paginas, X se queda DENTRO del WebView (fuera, X
+                    // abria su app y no volvia; asi la cookie queda en la app).
+                    val path = url.path.orEmpty()
+                    if (path.startsWith("/airdrop-auth/x/login")) { xLoginUrl = url.toString() }
+                    else if (!path.startsWith("/airdrop-auth/")) { xLoginUrl = null }
                     false
+                } else if (xLoginUrl != null && esX(url)) {
+                    // Tras iniciar sesion X manda a su inicio y se pierde la
+                    // autorizacion: se relanza (ya logueado, sale directa).
+                    if (esInicioX(url)) { view.loadUrl(xLoginUrl!!); true } else false
                 } else {
                     launchExternal(Intent(Intent.ACTION_VIEW, url))
                     true
@@ -60,6 +70,27 @@ open class WebShellViewClient(
                 true
             }
         }
+    }
+
+    // Login de X en curso (la URL con la que empezo) o null.
+    private var xLoginUrl: String? = null
+
+    private fun esX(url: android.net.Uri): Boolean {
+        val h = url.host?.lowercase() ?: return false
+        return h == "x.com" || h == "twitter.com" || h.endsWith(".x.com") || h.endsWith(".twitter.com")
+    }
+
+    private fun esInicioX(url: android.net.Uri): Boolean {
+        val p = url.path.orEmpty().trimEnd('/')
+        return p == "" || p == "/home"
+    }
+
+    // X cambia de pagina con pushState (sin cargar): tambien se mira aqui.
+    override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) {
+        super.doUpdateVisitedHistory(view, url, isReload)
+        val u = url?.toUri() ?: return
+        val start = xLoginUrl
+        if (start != null && esX(u) && esInicioX(u)) view.post { view.loadUrl(start) }
     }
 
     private fun handleIntentScheme(url: String) {

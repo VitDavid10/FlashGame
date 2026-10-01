@@ -625,6 +625,16 @@
                 top: 50%; left: 50%; right: auto; bottom: auto;
                 transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
             }
+            /* Los carteles de la wallet (DEPOSIT, WITHDRAW, NOT ENOUGH $PILL,
+               STAKE...) son .gameModal y no .pw-modal: se quedaban sin girar y
+               salian tumbados. Mismo giro, y la caja algo mas pequeña para que
+               quepa en el lado corto. */
+            html:not([data-hero]) body.mobile-allowed .gameModal {
+                width: var(--pw-largo, 100dvh); height: var(--pw-corto, 100dvw);
+                top: 50%; left: 50%; right: auto; bottom: auto;
+                transform: translate(-50%, -50%) rotate(90deg); transform-origin: center;
+            }
+            html:not([data-hero]) body.mobile-allowed .gameModal:not(#prizeModal) .gameModalBox { transform: scale(0.8); transform-origin: center; }
             /* Catalogo de skins (YOUR SKINS/SKINS STORE): mismo truco de giro
                que .pw-modal. drawPlacaPopup() ya mide con ancho/alto
                intercambiados en movil (ver juegoGirado() ahi), asi que el
