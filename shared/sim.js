@@ -16,6 +16,16 @@
     const WORLD_CONFIG = { arcade: { size: 3500 }, classic: { size: 7000 }, foodDensity: 40, virusDensity: 1 };
     const SKILL_PARAMS = { clonCost: 2000, clonCooldown: 1000, clonSpeed: 40, shootCost: 2500, shootBulletSpeed: 20, shootVirusSpeed: 20, shootDmgThreshold: 15000, sprintSpeedMult: 1.5, sprintDuration: 10000, magnetForce: 3, magnetRange: 200, magnetDuration: 8000, shieldDuration: 3000, bigMin: 5000, bigMax: 12000 };
     const VIRUS_RADIUS = 70, VIRUS_GAIN_LOW = 5000, VIRUS_GAIN_HIGH = 10000, VIRUS_GAIN_THRESHOLD = 100000;
+    /*
+     * MAPA VIVO (classic, desde el 2-oct-2026): el mapa mide lo justo para que
+     * haya la misma densidad de gente que en un arcade lleno (25 jugadores en
+     * 7000x7000 = ~1400x1400 por pildora). Lado = 1400 x raiz(jugadores), con un
+     * minimo y sin pasar del tamano de siempre. Crece despacio cuando entra
+     * gente; cuando sobra mapa espera, avisa y encoge despacio (el borde empuja
+     * a quien pille, nunca mata).
+     */
+    // min = el mapa de 4 jugadores, que es lo minimo para arrancar una classic.
+    const MAPA_VIVO = { porJugador: 700, min: 1400, velocidad: 100, esperaMs: 10000, avisoMs: 5000, cadaMs: 200 };
     const BASE_MERGE_TIME = 15000, MERGE_MASS_FACTOR = 0.225, SPLIT_COOLDOWN_MS = 1000, GLOBAL_CD_MS = 1000;
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
     const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 2.8,   // x2 desde el 2-oct-2026 (antes 1.4)
@@ -397,6 +407,10 @@
                 emitFoodEvents: false                              // el servidor lo activa para publicar diffs de comida
             }, config);
             this.mapSize = this.config.mapSize;
+            // Mapa vivo: classic salvo que se diga lo contrario (config.mapaVivo).
+            this.mapaVivo = this.config.mapaVivo != null ? !!this.config.mapaVivo : this.config.mode === 'classic';
+            this.mapaMax = this.config.mapSize;
+            this._mapa = { bajaDesde: null, estado: 'estable', emitidoAt: -1e9, emitidoSize: -1 };
             this.now = 0;
             this.timeScale = 1.0;
             this.foods = []; this.viruses = []; this.enemies = [];
@@ -465,7 +479,8 @@
         // el área de spawn inicial usa mapSize * multiplicador de mapa.
         populate() {
             const ws = this.config.worldSettings;
-            let currentMapSize = this.mapSize * (ws.map || 1);
+            if (this.mapaVivo) this.mapSize = this.mapaObjetivo(this.players.size + (this.config.botConfig.enabled ? (this.config.botConfig.count | 0) : 0));
+            let currentMapSize = this.mapSize * (this.mapaVivo ? 1 : (ws.map || 1));
             let areaMillions = Math.pow(currentMapSize * 2, 2) / 1000000;
             let foodCount = Math.floor(areaMillions * WORLD_CONFIG.foodDensity);
             let virusCount = Math.floor(areaMillions * WORLD_CONFIG.virusDensity * (ws.virus || 1));
@@ -555,7 +570,9 @@
             let attempts = 0;
             const allEntities = this.livingCells();
             while (attempts < 100) {
-                let x = Math.random() * limit * 0.9 - limit * 0.45; let y = Math.random() * limit * 0.9 - limit * 0.45; let isSafe = true;
+                // Mapa vivo: se nace en todo el mapa (sin el, solo en el 45% central).
+                const f = this.mapaVivo ? 0.9 : 0.45;
+                let x = (Math.random() * 2 - 1) * limit * f; let y = (Math.random() * 2 - 1) * limit * f; let isSafe = true;
                 for (let e of allEntities) { if (e.mass === 0) continue; let dist = Math.hypot(x - e.x, y - e.y); if (dist < 600 + (e.r * 4)) { isSafe = false; break; } }
                 if (isSafe) return { x: x, y: y };
                 attempts++;
@@ -803,11 +820,89 @@
             }
         }
 
+        // Lado/2 del mapa para n jugadores (con el multiplicador de mapa de la sala).
+        mapaObjetivo(n) {
+            const ws = this.config.worldSettings || {};
+            const t = MAPA_VIVO.porJugador * Math.sqrt(Math.max(1, n)) * (ws.map || 1);
+            return Math.round(Math.max(MAPA_VIVO.min, Math.min(this.mapaMax, t)));
+        }
+        // Jugadores vivos + grupos de bots (offline los bots hacen de gente).
+        mapaGente() {
+            let n = 0; for (const p of this.players.values()) if (p.alive && p.cells.length) n++;
+            const bots = new Set(); for (const e of this.enemies) bots.add(e.id);
+            return n + bots.size;
+        }
+        // Un paso del mapa vivo. Emite 'mapa' (tamano y estado) al cambiar de
+        // estado y cada cadaMs mientras se mueve; el cliente lo usa para pintar
+        // el borde y el aviso. La comida que se queda fuera se quita ('foodDel').
+        pasoMapa(delta) {
+            const m = this._mapa, obj = this.mapaObjetivo(this.mapaGente()), antes = this.mapSize, paso = MAPA_VIVO.velocidad * delta / 1000;
+            let estado = 'estable';
+            if (obj > this.mapSize + 0.5) { m.bajaDesde = null; this.mapSize = Math.min(obj, this.mapSize + paso); estado = 'crece'; }
+            else if (obj < this.mapSize - 0.5) {
+                if (m.bajaDesde == null) m.bajaDesde = this.now;
+                const t = this.now - m.bajaDesde;
+                if (t >= MAPA_VIVO.esperaMs + MAPA_VIVO.avisoMs) { this.mapSize = Math.max(obj, this.mapSize - paso); estado = 'encoge'; }
+                else if (t >= MAPA_VIVO.esperaMs) estado = 'aviso';
+            } else m.bajaDesde = null;
+            if (this.mapSize < antes) this.mapaRecorta();
+            const cambia = estado !== m.estado, mueve = Math.abs(this.mapSize - m.emitidoSize) >= 1 && this.now - m.emitidoAt >= MAPA_VIVO.cadaMs;
+            if (cambia || mueve) {
+                m.estado = estado; m.emitidoAt = this.now; m.emitidoSize = this.mapSize;
+                this.emit({ type: 'mapa', size: Math.round(this.mapSize), estado, obj });
+            }
+        }
+        // Al encoger: fuera la comida que queda al otro lado del borde y los virus
+        // se meten dentro (empujados por el borde, como las celulas).
+        mapaRecorta() {
+            const M = this.mapSize, borrados = [];
+            for (let i = this.foods.length - 1; i >= 0; i--) {
+                const f = this.foods[i];
+                if (Math.abs(f.x) <= M && Math.abs(f.y) <= M) continue;
+                this.foodGrid.remove(f);
+                this.foodPool.free(f);
+                this.foods[i] = this.foods[this.foods.length - 1];
+                this.foods.pop();
+                borrados.push(i);
+            }
+            // Mismo diff posicional que foodRespawn: f[i]=f[ultimo]; f.pop(), en este orden.
+            if (borrados.length && this.config.emitFoodEvents) this.emit({ type: 'foodDel', idx: borrados });
+            const L = Math.max(0, M - VIRUS_RADIUS);
+            for (const v of this.viruses) { if (v.x > L) v.x = L; if (v.x < -L) v.x = -L; if (v.y > L) v.y = L; if (v.y < -L) v.y = -L; }
+        }
+        // Comida y virus por area: al crecer el mapa se van anadiendo (unos pocos
+        // por tick, para no soltar miles de golpe), con la densidad de siempre.
+        mapaRellena() {
+            const ws = this.config.worldSettings || {}, area = Math.pow(this.mapSize * 2, 2) / 1000000;
+            const quiereF = Math.floor(area * WORLD_CONFIG.foodDensity * (ws.food || 1)), quiereV = Math.floor(area * WORLD_CONFIG.virusDensity * (ws.virus || 1));
+            const nuevas = [];
+            for (let k = 0; k < 25 && this.foods.length < quiereF; k++) {
+                this.spawnFoodSafe(this.foods, this.mapSize);
+                const nf = this.foods[this.foods.length - 1], r1 = v => Math.round(v * 10) / 10;
+                nuevas.push({ x: r1(nf.x), y: r1(nf.y), r: r1(nf.r), c1: nf.c1 });
+            }
+            if (nuevas.length && this.config.emitFoodEvents) this.emit({ type: 'foodAdd', foods: nuevas });
+            // Sobra comida (el mapa ha encogido): se quitan unas pocas por tick.
+            if (this.foods.length > quiereF + 25) {
+                const quita = [];
+                for (let k = 0; k < 25 && this.foods.length > quiereF; k++) {
+                    const i = (Math.random() * this.foods.length) | 0, f = this.foods[i];
+                    this.foodGrid.remove(f); this.foodPool.free(f);
+                    this.foods[i] = this.foods[this.foods.length - 1]; this.foods.pop();
+                    quita.push(i);
+                }
+                if (this.config.emitFoodEvents) this.emit({ type: 'foodDel', idx: quita });
+            }
+            if (this.viruses.length < quiereV) this.spawnVirus();
+            else if (this.viruses.length > quiereV + 2) this.virusPool.free(this.viruses.pop());   // al encoger sobran
+        }
+
         step(deltaMs) {
             const delta = deltaMs;
             this.timeScale = delta / (1000 / 60); if (this.timeScale > 3) this.timeScale = 3;
             this.now += delta;
             const timeScale = this.timeScale;
+            if (this.mapaVivo) { this.pasoMapa(delta); this.mapaRellena(); }
 
             // Timers por jugador + acciones encoladas (split / skills)
             for (const p of this.players.values()) {
