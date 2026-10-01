@@ -343,6 +343,8 @@ html.pw-app #ahResShare{--plate:var(--ah-placa-gold)!important}
    transform y durante sus 0,2 s pisaba el giro del cartel, que asomaba un
    instante como un recuadro oscuro sin girar. */
 html.pw-app body.mobile-allowed .gameModal{animation:none!important}
+/* CHOOSE SKILL y los carteles de salir de partida, un 15 % mas grandes. */
+html.pw-app .skill-choice-card,html.pw-app #exitModal .exit-box{scale:1.15}
 html.pw-app #resultOverlay .btn-spectate{display:none!important}
 /* Las dos lineas bajo el titulo (kills y $PILLY): una sola letra y tamano. */
 html.pw-app .ah-l{font-family:'Press Start 2P',monospace;font-size:12px;line-height:2.1;color:#fff;white-space:nowrap}
