@@ -117,12 +117,6 @@
             g.drawImage(shot, h.x + (h.w - dw) / 2, h.y + (h.h - dh) / 2, dw, dh);
             g.restore();
         }
-        // Marca arriba a la izquierda: pildora + PILLWARS, sobre una placa oscura
-        // para que se lea encima de lo que haya en la foto.
-        g.fillStyle = 'rgba(3,12,7,.86)'; g.fillRect(h.x + 14, h.y + 14, 330, 66);
-        g.fillStyle = '#1d5a3c'; g.fillRect(h.x + 14, h.y + 77, 330, 3);
-        try { const p = pixPillSpriteRot(11, '#c0c8d0', '#00ff44', Math.PI / 5, true); g.imageSmoothingEnabled = false; g.drawImage(p, h.x + 22, h.y + 14, p.width * 3, p.height * 3); } catch (e) {}
-        text(g, 'PILLWARS', h.x + 104, h.y + 62, 30, '#ffffff', 'left', '#000');
         // MATCH ENDED: el top 5 del reparto en una caja a la derecha.
         if (d.tipo === 'matchEnded' && d.top && d.top.length) {
             const bw = 400, bx = h.x + h.w - bw - 24, by = h.y + 24, rows = d.top.slice(0, 5), bh = 56 + rows.length * 40;

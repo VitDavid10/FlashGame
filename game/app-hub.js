@@ -105,6 +105,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-btn.off:after{content:"";position:absolute;left:18%;right:18%;top:50%;height:.16em;background:#ff4a4a;transform:rotate(-45deg);box-shadow:0 0 0 .06em #000}
 .ah-sp{display:flex;align-items:center;gap:.5em;margin-right:.5em;font-size:.62em;letter-spacing:.06em;text-shadow:.15em .15em 0 #000}
 .ah-sp .u{color:var(--ac)}
+.ah-sp[hidden]{display:none}
 .ah-it{position:absolute;left:3.6em;display:flex;align-items:center;gap:.9em;cursor:pointer}
 .ah-it .t{font-size:.78em;letter-spacing:.06em;text-shadow:.16em .16em 0 #000}
 .ah-it .s{font-size:.44em;color:var(--mut);margin-top:.9em;display:flex;align-items:center;gap:.5em;text-shadow:.16em .16em 0 #000}
@@ -338,6 +339,10 @@ html.pw-app #btnTryAgainOnline,html.pw-app #prizeContinue{--plate:var(--ah-placa
 html.pw-app #resultOverlay .btn-spectate,html.pw-app #prizeShare{--plate:var(--ah-placa-blue)!important}
 html.pw-app #btnBackToMenu{--plate:var(--ah-placa-grey)!important}
 html.pw-app #ahResShare{--plate:var(--ah-placa-gold)!important}
+/* DEPOSIT, NOT ENOUGH $PILLY...: la animacion de entrada (fadeIn) mueve con
+   transform y durante sus 0,2 s pisaba el giro del cartel, que asomaba un
+   instante como un recuadro oscuro sin girar. */
+html.pw-app body.mobile-allowed .gameModal{animation:none!important}
 html.pw-app #resultOverlay .btn-spectate{display:none!important}
 /* Las dos lineas bajo el titulo (kills y $PILLY): una sola letra y tamano. */
 html.pw-app .ah-l{font-family:'Press Start 2P',monospace;font-size:12px;line-height:2.1;color:#fff;white-space:nowrap}
@@ -423,13 +428,32 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal'))) visteModal(r.target); }))
         .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['style'] });
 
+    // Cifra corta, como mucho 4 digitos y sin redondear hacia arriba:
+    // 12345 -> 12.34K, 230000 -> 230K, 1542000 -> 1.542M.
+    function corto(n) {
+        n = Math.max(0, Math.floor(Number(n) || 0));
+        if (n < 1000) return String(n);
+        const u = ['K', 'M', 'B', 'T']; let i = -1, v = n;
+        while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+        const dec = Math.max(0, 4 - String(Math.floor(v)).length), f = Math.pow(10, dec);
+        return String(Math.floor(v * f) / f) + u[i];
+    }
+    // Tu $PILLY dentro del juego, al lado de los SP (solo con wallet conectada).
+    function pintaPilly() {
+        const box = document.querySelector('#appHub .ah-py'); if (!box) return;
+        const w = typeof GameWallet !== 'undefined' && GameWallet.address;
+        box.hidden = !w;
+        if (w) document.getElementById('ahPy').textContent = corto(GameWalletUI.gameBalance);
+    }
+    setInterval(pintaPilly, 3000);
+    window._hubCorto = corto;   // pruebas
     const hub = document.createElement('div'); hub.id = 'appHub';
     hub.innerHTML = `
 <canvas id="ahBg"></canvas><div id="ahShade"></div>
 <div class="ah-top"></div><div class="ah-line"></div>
 <div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
-<div class="ah-ico"><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
+<div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
   <div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.4em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="rooms" style="top:8.9em"><div class="med">${svg('rooms')}</div><div><div class="t">ROOMS</div><div class="s"><span class="ah-dot"></span><span id="ahOnline">0 ONLINE</span></div></div></div>
@@ -504,6 +528,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             $('#ahQBdg').textContent = faltan; $('#ahQBdg').style.display = faltan ? '' : 'none';
         } catch (e) {}
         try { $('#ahSp').textContent = typeof paisSp === 'function' ? paisSp() : '0'; } catch (e) {}
+        pintaPilly();
         const n = (document.getElementById('playerNameInput') || {}).value; if (n) $('.ah-name').textContent = n.toUpperCase().slice(0, 12);
         try {
             $('[data-a=music]').classList.toggle('off', !!SoundManager.menuMusicMuted);
