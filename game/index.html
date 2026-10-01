@@ -11171,7 +11171,7 @@
             const startCell = sim.spawnPlayer('me');
             camera.x = startCell.x; camera.y = startCell.y;
             // Arcade: las 2 skills de salida elegidas en THE PILL (sin god, que ya las tiene todas).
-            if (!isGodMode) { sim.giveStartSkills('me', skillsDeSalida()); updateSkillsUI_Arcade(); }
+            if (currentGameMode !== 'classic' && !isGodMode) { sim.giveStartSkills('me', skillsDeSalida()); updateSkillsUI_Arcade(); }
         }
         cerrarUIColores();
         els.room.innerText = currentServer; els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';

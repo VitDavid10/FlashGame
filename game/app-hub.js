@@ -745,9 +745,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     function renderPill() {
         const arc = mode === 'arcade';
-        // Classic tambien elige sus 2 skills de salida (va con skills desde el 2-oct-2026).
-        hub.querySelectorAll('#ahSk .tb').forEach(b => { b.classList.toggle('on', b.dataset.t === pillTab); b.style.display = ''; });
-        $('#ahSk .sk-slots').style.display = $('#ahSk .sk-lab').style.display = '';
+        // Las 2 skills de salida son solo de arcade (classic las va eligiendo en partida).
+        hub.querySelectorAll('#ahSk .tb').forEach(b => { b.classList.toggle('on', b.dataset.t === pillTab); b.style.display = b.dataset.t === 'skills' && !arc ? 'none' : ''; });
+        $('#ahSk .sk-slots').style.display = $('#ahSk .sk-lab').style.display = arc ? '' : 'none';
         $('#ahSkG').style.display = pillTab === 'skills' ? '' : 'none';
         $('#ahCo').style.display = pillTab === 'color' ? '' : 'none';
         $('#ahSn').style.display = pillTab === 'skins' ? '' : 'none';

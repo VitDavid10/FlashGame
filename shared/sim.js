@@ -763,7 +763,8 @@
         // (THE PILL). Se validan aqui para que online el servidor no se fie del
         // cliente: solo ids que existen, sin repetir y como mucho 2.
         giveStartSkills(id, ids) {
-            if (!Array.isArray(ids)) return;
+            // Solo arcade: classic va con skills pero sin las 2 de salida.
+            if (this.config.mode === 'classic' || !Array.isArray(ids)) return;
             const vistos = new Set();
             for (const v of ids.slice(0, 2)) {
                 const k = v | 0;
