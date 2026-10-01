@@ -10773,7 +10773,14 @@
             const TC_NO_JUEGO = TC_PULSABLE + ', .ab-slot, #loginOverlay, #resultOverlay, #skillChoiceOverlay, #exitGameBtn, #exitModal, .nav-btn, #touchBtns, .pw-modal, [id$="Modal"]';
             // Zona del stick: el cuarto de abajo a la izquierda de lo que ve el
             // jugador (coordenadas del canvas: ptJuego ya deshace el giro).
-            function tcZonaStick(sx, sy) { const p = ptJuego(sx, sy); return p.x < width / 2 && p.y > height / 2; }
+            // (Desde el 2-oct: toda la mitad izquierda. El stick se dibuja siempre
+            // en el mismo sitio, tcStickFijo, aunque el dedo caiga en otro.)
+            function tcZonaStick(sx, sy) { const p = ptJuego(sx, sy); return p.x < width / 2; }
+            // Sitio fijo del stick en PANTALLA: abajo a la izquierda de lo que ve el jugador.
+            function tcStickFijo() {
+                const w = window.innerWidth, h = window.innerHeight;
+                return w >= h ? { x: Math.max(90, w * 0.12), y: h - Math.max(90, h * 0.26) } : { x: w - Math.max(90, w * 0.26), y: h - Math.max(90, h * 0.12) };
+            }
             // Punto de PANTALLA -> objetivo en el canvas (girado o no).
             function tcApuntaPunto(sx, sy) { const p = ptJuego(sx, sy); mouse.x = p.x; mouse.y = p.y; inputMode = 'MOUSE'; }
             // Direccion de PANTALLA -> objetivo lejos en esa direccion, desde el
@@ -10791,7 +10798,8 @@
             function tcHaciaPunto(sx, sy, accion) {
                 const antes = { x: mouse.x, y: mouse.y };
                 tcApuntaPunto(sx, sy); accion();
-                if (TC.dedo) { mouse.x = antes.x; mouse.y = antes.y; }
+                // Solo el stick mueve la pildora: el rumbo vuelve siempre al de antes.
+                mouse.x = antes.x; mouse.y = antes.y;
             }
             // Hueco de SHOOT: classic lo lleva siempre en la 1; arcade, el primer
             // hueco de la barra con SHOOT (id 2) y usos. 0 = no hay.
@@ -10842,6 +10850,12 @@
                 knob.style.left = (bx + dx * f) + 'px';
                 knob.style.top = (by + dy * f) + 'px';
             }
+            // El knob se mueve lo que se ha movido el dedo desde que toco (dx, dy en
+            // pantalla), sobre el aro que esta fijo en su sitio.
+            function pwStickMueveDelta(dx, dy) {
+                const f = tcStickFijo();
+                pwStickMueve(f.x + dx, f.y + dy);
+            }
             function pwStickOculta() {
                 const base = document.getElementById('pwStickBase'), knob = document.getElementById('pwStickKnob');
                 if (base) base.style.display = 'none';
@@ -10856,15 +10870,12 @@
                     const doble = now - TC.toque.t < TC_DOBLE_MS && Math.hypot(t.clientX - TC.toque.x, t.clientY - TC.toque.y) < TC_DOBLE_DIST;
                     if (doble) { TC.toque.t = 0; e.preventDefault(); tcHaciaPunto(t.clientX, t.clientY, splitPlayer); }
                     const stick = !doble && tcZonaStick(t.clientX, t.clientY);
-                    // El dedo que solo seguia se queda como dedo de gestos ya gastado.
-                    if (stick && TC.dedo && !TC.dedo.stick) {
-                        TC.otros.set(TC.dedo.id, { x0: TC.dedo.bx, y0: TC.dedo.by, t0: TC.dedo.t0, usado: true });
-                        TC.dedo = null;
-                    }
-                    if (!TC.dedo && !doble) {
-                        TC.dedo = { id: t.identifier, bx: t.clientX, by: t.clientY, t0: now, stick, joy: false, antes: { x: mouse.x, y: mouse.y } };
-                        tcApuntaPunto(t.clientX, t.clientY);
-                        if (stick) pwStickMuestra(t.clientX, t.clientY);
+                    // Solo el stick mueve la pildora: tocar la pantalla ya no la
+                    // manda a ese punto (al retomar el stick daba un tiron). El aro
+                    // sale siempre en su sitio fijo, caiga donde caiga el dedo.
+                    if (!TC.dedo && stick) {
+                        TC.dedo = { id: t.identifier, bx: t.clientX, by: t.clientY, t0: now, stick: true, joy: false, antes: { x: mouse.x, y: mouse.y } };
+                        const f = tcStickFijo(); pwStickMuestra(f.x, f.y);
                     } else {
                         TC.otros.set(t.identifier, { x0: t.clientX, y0: t.clientY, t0: now, usado: doble });
                     }
@@ -10881,7 +10892,7 @@
                     if (!s.joy && d > TC_ZONA_MUERTA) s.joy = true;
                     // Con el knob de vuelta en el centro se mantiene el ultimo rumbo.
                     if (s.joy && d > 4) tcApuntaDir(dx, dy);
-                    pwStickMueve(t.clientX, t.clientY);
+                    pwStickMueveDelta(dx, dy);
                 }
             }, {passive: false});
             const tcSuelta = e => {
@@ -10892,7 +10903,7 @@
                     if (!o) continue;   // empezo en un boton: no es nuestro, que siga su click
                     if (esDedo) { TC.dedo = null; pwStickOculta(); } else TC.otros.delete(t.identifier);
                     e.preventDefault();   // sin clicks ni ratones de compatibilidad que pisen el rumbo
-                    if (e.type !== 'touchend' || o.usado) continue;
+                    if (e.type !== 'touchend' || o.usado || esDedo) continue;
                     const x0 = esDedo ? s.bx : o.x0, y0 = esDedo ? s.by : o.y0;
                     const dx = t.clientX - x0, dy = t.clientY - y0, d = Math.hypot(dx, dy), dt = now - o.t0;
                     if (dt < TC_DESLIZ_MS && d > TC_DESLIZ_MIN) {
