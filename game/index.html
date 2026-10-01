@@ -11216,6 +11216,7 @@
         const colorApp = { gameOver: '#f62a2d', matchFinished: '#ccff00', roomRestarted: '#ffce3d',
             victory: '#ffce3d', cashout: '#00ff88' }[id] || defColor;
         if (EN_APP) {
+            window._finTitulo = { texto: defText, color: colorApp };
             el.textContent = defText;
             el.className = 'ah-go';
             el.style.setProperty('color', colorApp, 'important');
@@ -11306,6 +11307,33 @@
         }
         return lineaKills(kills);   // matchFinished
     }
+    // App: debajo del titulo SIEMPRE dos lineas cortas, con la misma letra:
+    // 1) las kills, 2) lo que pasa con tu $PILLY. Cada linea es una lista de
+    // trozos [texto, tono] para pintarla igual en el cartel y en la card de SHARE.
+    // Tonos: '' blanco, v dorado, g verde, r rojo, d gris.
+    function finLineasApp(tipo, extra) {
+        const kills = parseInt(document.getElementById('killsVal').innerText, 10) || 0;
+        const k = n => [[String(n), 'v'], [n === 1 ? ' KILL' : ' KILLS', '']];
+        const pill = n => fmtPillShort(n) + ' $PILLY';
+        const dePago = currentServer && currentServer !== 'Free';
+        const esArcade = currentGameMode === 'arcade' || currentGameMode === 'skills';
+        const gratis = [['FREE MATCH: YOUR $PILLY IS SAFE', 'd']];
+        const x = extra || {};
+        let l1 = k(kills), l2;
+        if (tipo === 'victory') { l1 = k(Math.max(kills, 5)); l2 = [['+' + pill(x.amount), 'g']]; }
+        else if (tipo === 'cashout') { l1 = k(x.kills | 0); l2 = [['+' + pill(x.amount), 'g'], [' · ' + x.feePct + '% EXIT FEE', 'd']]; }
+        else if (tipo === 'matchEnded') { l2 = x.myAmount > 0 ? [['+' + pill(x.myAmount), 'g']] : [['OUT OF TOP 10', 'd']]; }
+        else if (tipo === 'roomRestarted') { const dev = x.refunded | 0; l2 = dev > 0 ? [['REFUNDED ' + pill(dev), '']] : (dePago ? [['NO $PILLY LOST', 'd']] : gratis); }
+        else if (!dePago) l2 = gratis;
+        else {
+            const perdido = (typeof EconHUD !== 'undefined' && (esArcade ? EconHUD.entry : EconHUD.carry)) | 0;
+            const fuera = tipo === 'matchFinished' && esArcade ? [['OUT OF TOP 10 · ', 'd']] : [];
+            l2 = perdido > 0 ? fuera.concat([['LOST ', ''], [pill(perdido), 'r']]) : fuera.concat([['NO $PILLY LOST', 'd']]);
+        }
+        window._finData = Object.assign({ tipo, l1, l2 }, window._finTitulo || {}, tipo === 'matchEnded' ? { top: x.top || [], pot: x.pot } : {});
+        const linea = l => '<div class="ah-l">' + l.map(([t, c]) => '<span class="ah-' + (c || 'w') + '">' + esc(t) + '</span>').join('') + '</div>';
+        return linea(l1) + linea(l2);
+    }
     function showResultsUI(tipo, extra) {
         // 1a muerte de la partida disparada desde PLAY NOW del hero: nada de
         // TRY AGAIN, vuelta directa al menu (ver heroQuickPlay). Solo aplica a
@@ -11325,7 +11353,7 @@
         // los mismos ajustes (ver tryAgainOnline).
         document.getElementById('btnTryAgainOnline').style.display = 'block';
         document.getElementById('exitGameBtn').style.display = 'none';
-        els.myResult.innerHTML = textoResultado(tipo, extra);
+        els.myResult.innerHTML = EN_APP ? finLineasApp(tipo, extra) : textoResultado(tipo, extra);
         els.myResult.style.color = '';
         els.result.style.display = 'flex';
         hideGameHUD();
@@ -12202,6 +12230,14 @@
                 tbl.innerHTML = (msg.top || []).map(t =>
                     `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtPillShort(t.amount)} <span class="pw-unit">$PILLY</span></span></div>`
                 ).join('');
+            }
+            amt.style.display = '';
+            if (EN_APP) {
+                // App: VICTORY y CASHOUT van con las dos lineas (kills y $PILLY) y
+                // nada mas; MATCH ENDED conserva su cifra, el bote y el top 10.
+                const tipoApp = { victory: 'victory', cashout: 'cashout', arcadeEnd: 'matchEnded' }[msg.reason];
+                const lineas = finLineasApp(tipoApp, msg);
+                if (tipoApp !== 'matchEnded') { amt.style.display = 'none'; sub.innerHTML = lineas; }
             }
             m.style.display = 'flex';
             // Refrescar saldo in GAME
@@ -17005,6 +17041,7 @@
 </script>
 <!-- Menu de la app (dApp Store): solo en la APK, ver app-hub.js -->
 <script src="app-hub.js"></script>
+<script src="app-share.js"></script>
 
 </body>
 </html>

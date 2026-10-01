@@ -337,6 +337,13 @@ html.pw-app #resultOverlay .result-actions>button,html.pw-app #prizeModal .prize
 html.pw-app #btnTryAgainOnline,html.pw-app #prizeContinue{--plate:var(--ah-placa-green)!important}
 html.pw-app #resultOverlay .btn-spectate,html.pw-app #prizeShare{--plate:var(--ah-placa-blue)!important}
 html.pw-app #btnBackToMenu{--plate:var(--ah-placa-grey)!important}
+html.pw-app #ahResShare{--plate:var(--ah-placa-gold)!important}
+/* Las dos lineas bajo el titulo (kills y $PILLY): una sola letra y tamano. */
+html.pw-app .ah-l{font-family:'Press Start 2P',monospace;font-size:12px;line-height:2.1;color:#fff;white-space:nowrap}
+html.pw-app .ah-l .ah-w{color:#fff} html.pw-app .ah-l .ah-v{color:#ffce3d} html.pw-app .ah-l .ah-g{color:#00ff88}
+html.pw-app .ah-l .ah-r{color:#f62a2d} html.pw-app .ah-l .ah-d{color:#9fc2ad}
+html.pw-app #prizeAmount,html.pw-app #prizeAmount *{font-family:'Press Start 2P',monospace!important;font-size:16px!important;text-shadow:3px 3px 0 #000!important}
+html.pw-app #prizeAmount img{width:14px!important;height:auto!important}
 /* MATCH ENDED: el top 10 en dos columnas de cinco para que quepa en horizontal. */
 html.pw-app #prizeTable{grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,auto);grid-auto-flow:column;column-gap:22px;row-gap:2px;margin:0!important;width:640px;max-width:92vw}
 html.pw-app #prizeTable[style*="block"]{display:grid!important}
@@ -383,6 +390,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         s.setProperty('--ah-placa-green', placa([28, 196, 72]));
         s.setProperty('--ah-placa-blue', placa([29, 120, 220]));
         s.setProperty('--ah-placa-grey', placa([88, 100, 104]));
+        s.setProperty('--ah-placa-gold', placa([222, 150, 16]));
     })();
     // Cuando sale un cartel del juego con el hub puesto, se le pinta el marco placa del modo.
     function visteModal(m) {

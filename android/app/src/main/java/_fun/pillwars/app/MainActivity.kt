@@ -169,6 +169,9 @@ fun WebShellScreen(deepLink: String? = null) {
 
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
+                // SHARE de fin de partida: guardar la card y copiar el enlace.
+                addJavascriptInterface(PillBridge(context), "PillAndroid")
+
                 webChromeClient =
                     WebShellChromeClient(
                         onProgressChanged = { newProgress ->
