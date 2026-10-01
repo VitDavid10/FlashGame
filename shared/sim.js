@@ -28,7 +28,7 @@
     const MAPA_VIVO = { porJugador: 700, min: 1400, velocidad: 100, esperaMs: 10000, avisoMs: 5000, cadaMs: 200 };
     const BASE_MERGE_TIME = 15000, MERGE_MASS_FACTOR = 0.225, SPLIT_COOLDOWN_MS = 1000, GLOBAL_CD_MS = 1000;
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
-    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 2.8,   // x2 desde el 2-oct-2026 (antes 1.4)
+    const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 2.1,   // x1.5 desde el 2-oct-2026 (antes 1.4; x2 era demasiado)
     SPLIT_FORCE = 65, PILL_RATIO = 2.0;
     const COLORS = ['#F44336', '#9C27B0', '#3F51B5', '#03A9F4', '#009688', '#8BC34A', '#FFC107', '#FF5722'];
     // Generador de nombres realistas: ~350 raíces × ~80 tags × ~40 prefijos ≈ 1.1M combinaciones
@@ -530,8 +530,20 @@
         caducaBots() {
             if (!this.botExpira.size) return;
             for (const [id, cuando] of this.botExpira) {
-                if (cuando <= this.now && !this._botRetirar.has(id)) this._botRetirar.set(id, 'ttl');
+                if (cuando > this.now || this._botRetirar.has(id)) continue;
+                // Solo se va si no lo esta viendo nadie: antes se esfumaba delante
+                // del jugador y parecia un fallo. Si hay alguien cerca, espera.
+                if (this.botALaVista(id)) continue;
+                this._botRetirar.set(id, 'ttl');
             }
+        }
+        botALaVista(id) {
+            const VISTA = 1500;
+            for (const e of this.enemies) {
+                if (e.id !== id) continue;
+                for (const p of this.players.values()) for (const c of p.cells) if (Math.abs(c.x - e.x) < VISTA + c.r && Math.abs(c.y - e.y) < VISTA + c.r) return true;
+            }
+            return false;
         }
         // Saca del mapa a los bots marcados y encola su relevo. Se llama UNA vez
         // por tick, con el barrido de bots ya terminado.

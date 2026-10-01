@@ -352,6 +352,8 @@ html.pw-app #btnTryAgainOnline,html.pw-app #prizeContinue{--plate:var(--ah-placa
 html.pw-app #resultOverlay .btn-spectate,html.pw-app #prizeShare{--plate:var(--ah-placa-blue)!important}
 html.pw-app #btnBackToMenu{--plate:var(--ah-placa-grey)!important}
 html.pw-app #ahResShare{--plate:var(--ah-placa-gold)!important}
+/* Marcador de KILLS en el HUD: solo en la app (en la web ya estan en el ranking). */
+html.pw-app #hudKills{display:inline-block!important}
 /* DEPOSIT / WITHDRAW en la app: sin la X; el boton de confirmar mas pequeno y
    un CLOSE al lado, los dos en la misma fila. */
 html.pw-app :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox>.close{display:none!important}

@@ -3501,7 +3501,7 @@
         body.pixel-pack .hud-item { font-size: 9px !important; text-shadow: 1px 1px 0 #000 !important; border-radius: 0 !important; line-height: 1.8; }
         /* ROOM/MASS/ALIVE: mismo halo verde neon que el marco de TOP MASS, y el
            valor de cada uno en dorado como los numeros de esa lista. */
-        body.pixel-pack #hudRoom, body.pixel-pack #hudMass, body.pixel-pack #hudAlive {
+        body.pixel-pack #hudRoom, body.pixel-pack #hudMass, body.pixel-pack #hudAlive, body.pixel-pack #hudKills {
             border-color: rgba(0,255,136,.55) !important;
             box-shadow: 0 0 10px rgba(0,255,136,.5), 3px 3px 0 rgba(0,0,0,.6) !important;
             text-shadow: 0 0 6px rgba(0,255,136,.85), 1px 1px 0 #000 !important;
@@ -4905,6 +4905,7 @@
         <div class="hud-item" id="hudRoom">ROOM: <span id="roomName" class="hud-val">5$</span></div>
         <div class="hud-item" id="hudMass">MASS: <span id="score" class="hud-val">0</span></div>
         <div class="hud-item" id="hudAlive">ALIVE: <span id="enemyCount" class="hud-val">0</span></div>
+        <div class="hud-item" id="hudKills" style="display:none">KILLS: <span id="killsHud" class="hud-val">0</span></div>
         <div class="hud-item econ-hud" id="econHud" style="display:none;border-color:rgba(255,206,61,0.5)">
             <span id="econLabel">CARRY</span>: <span id="econVal" class="hud-val" style="color:#ffce3d">0</span> <span id="econUnit" style="color:#888;font-size:11px">$PILLY</span>
         </div>
@@ -5517,7 +5518,6 @@
     const BASE_WIDTH = 1920, BASE_HEIGHT = 1080;
     // roomStates[roomKey] = { sim, config } — una Simulation por sala
     let roomStates = {}, roomTimers = {}, MAP_SIZE = 3500;
-    let _mapaEstado = 'estable';   // mapa vivo de classic: estable | crece | aviso | encoge
     let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000;
     // Classic dura 15 min, igual que online (CLASSIC_MATCH_MS del servidor).
     // Antes la practica offline de classic no tenia fin y por eso tampoco reloj.
@@ -5579,7 +5579,7 @@
         // caminos sin startMatch (rejoin, preview de practica) match era null
         // y reportKill no pintaba nada.
         let hudKills = 0;
-        function _paintKills() { const el = document.getElementById('killsVal'); if (el) el.textContent = hudKills; }
+        function _paintKills() { const el = document.getElementById('killsVal'); if (el) el.textContent = hudKills; const h = document.getElementById('killsHud'); if (h) h.textContent = hudKills; }
         function resetKills() { hudKills = 0; _paintKills(); }
         function startMatch(mode, online) {
             match = { mode, online, kills: 0, skillsUsed: 0, peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false, reportedSkill: false };
@@ -5931,7 +5931,7 @@
         let alto = maxR * 1.71;
         if (playerName) {
             alto = maxR * PILL_RATIO + fSize;                                   // el nombre se apoya en el borde de arriba
-            if (_miPuesto && currentGameMode === 'arcade') alto += fSize + 10;  // y la corona, sobre el nombre
+            if (_miPuesto && (currentGameMode === 'arcade' || currentGameMode === 'classic')) alto += fSize + 10;  // y la corona, sobre el nombre
         }
         return alto;
     }
@@ -11169,6 +11169,9 @@
         }
         if(!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { roomTimers[roomKey] = Date.now() + duracionOffline(currentGameMode); }
         if (!loadedSave) {
+            // Partida nueva: las kills del HUD (y del GAME OVER) empiezan en 0; antes
+            // offline se arrastraban las de las partidas anteriores.
+            Quests.resetKills();
             const startCell = sim.spawnPlayer('me');
             camera.x = startCell.x; camera.y = startCell.y;
             // Arcade: las 2 skills de salida elegidas en THE PILL (sin god, que ya las tiene todas).
@@ -15818,9 +15821,9 @@
                     break;
                 case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); } break;
                 case 'text': if (ev.playerId === 'me') spawnFloatingText(ev.text, ev.color, ev.world); break;
-                // Mapa vivo (classic): el borde se mueve con la gente. Al pasar a
-                // 'aviso' sale el cartel; mientras encoge, el borde late en rojo.
-                case 'mapa': MAP_SIZE = ev.size; if (ev.estado === 'aviso' && _mapaEstado !== 'aviso') spawnFloatingText('MAP SHRINKING', '#ff5555', false); _mapaEstado = ev.estado; break;
+                // Mapa vivo (classic): el borde se mueve con la gente, sin anunciarlo
+                // (decision de David).
+                case 'mapa': MAP_SIZE = ev.size; break;
                 case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
                 // Un bot ha hecho pentakill: se va de la partida (igual que un
                 // jugador que gana) y entra otro. Se avisa o desaparece un bicho
@@ -15917,9 +15920,7 @@
         if (pixelMode) {
             // Zona de peligro translúcida + banda "hazard" de bloques pixel que marchan.
             ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.22)'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
-            // Mapa vivo: avisando o encogiendo, el borde engorda y corre el doble.
-            const _alerta = _mapaEstado === 'aviso' || _mapaEstado === 'encoge';
-            const B = 48, bw = _alerta ? 36 : 20, march = Math.floor(performance.now() / (_alerta ? 80 : 160)) % 2, M = MAP_SIZE;
+            const B = 48, bw = 20, march = Math.floor(performance.now() / 160) % 2, M = MAP_SIZE;
             const blk = (i) => ((Math.floor(i / B) + march) & 1) ? '#5a0000' : '#ff3333';
             if (vT <= -M && vB >= -M || vT <= M && vB >= M) {
                 const sx = Math.max(-M, Math.floor(vL / B) * B), ex = Math.min(M, Math.ceil(vR / B) * B);
@@ -16113,7 +16114,7 @@
             const ny = c.y - (c.r * PILL_RATIO) + 5;
             if (c.name) _pintaNombre(c.name, c.x, ny, fSize, pix);
             const suPuesto = _podio.get(c.id);
-            if (suPuesto && currentGameMode === 'arcade') dibujaRango(ctx, c.x, rangoAncla(ny, fSize), suPuesto, ahora);
+            if (suPuesto && (currentGameMode === 'arcade' || currentGameMode === 'classic')) dibujaRango(ctx, c.x, rangoAncla(ny, fSize), suPuesto, ahora);
         }
 
         // --- El tuyo: normalmente va en tu celula mayor, pero si esa esta tan
@@ -16124,7 +16125,7 @@
         if (!mias.length) return;
         const orden = [...mias].sort((a, b) => b.r - a.r);
         const fSize = tamNombre(orden[0].r, pix ? 14 : 12);
-        const conCorona = !!_miPuesto && currentGameMode === 'arcade';
+        const conCorona = !!_miPuesto && (currentGameMode === 'arcade' || currentGameMode === 'classic');
         const alto = conCorona ? fSize + 10 + 6 * Math.max(2, Math.round(fSize / 6)) : fSize;
         const anclaDe = c => c.y - (c.r * PILL_RATIO) + 5;
         let host = orden[0], ny = anclaDe(host);
@@ -16521,9 +16522,9 @@
          * el ranking bueno en los dos casos: el del servidor en online (con AOI
          * el cliente solo ve su zona y el suyo seria falso) y el local en
          * offline.
-         * Solo arcade: en classic no hay puestos que valgan.
+         * Arcade y classic (en classic tambien desde el 2-oct-2026: queda bien).
          */
-        if (currentGameMode === 'arcade') {
+        if (currentGameMode === 'arcade' || currentGameMode === 'classic') {
             const i = all.findIndex(p => p.isMe);
             _miPuesto = (i >= 0 && i < 10) ? i + 1 : null;
             // Podio ajeno: las coronas de 1o, 2o y 3o se ven tambien sobre los
