@@ -348,6 +348,9 @@ html.pw-app body :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn.a
 /* Variante B (html.ah-wal-hub): DEPOSIT y WITHDRAW con el marco de los menus del
    hub, como NOT ENOUGH $PILLY, en vez del gris de los avisos. */
 html:not(.ah-wal-hub) :is(#gameDepositModal,#gameWithdrawModal) canvas.hub-placa{display:none!important}
+/* DEPOSIT solo dice lo que hay en la wallet; WITHDRAW, lo que hay en el juego. */
+html.pw-app #gameDepositModal .gm-row:has(#gdGame){display:none!important}
+html.pw-app #gameDepositModal .gm-row:has(#gdWallet){margin-bottom:14px!important}
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal){background:rgba(3,6,4,.9)!important}
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;transform:none!important;width:380px!important;max-width:none!important;padding:18px 24px 14px!important;text-align:center}
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox:before,html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox:after{display:none!important}
@@ -477,6 +480,22 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     setInterval(pintaPilly, 3000);
     window._hubCorto = corto;   // pruebas
+    // DEPOSIT y WITHDRAW con el marco de los menus (la variante B que eligio David).
+    document.documentElement.classList.add('ah-wal-hub');
+    // La cantidad empieza vacia (sin 50000 ni texto de ejemplo) y con el campo
+    // vacio el boton no hace nada: antes se depositaba 1 $PILLY.
+    [['gameDepositModal', 'gdAmount', 'gdConfirm'], ['gameWithdrawModal', 'gwdAmount', 'gwdConfirm']].forEach(([mid, iid, bid]) => {
+        const m = document.getElementById(mid), inp = document.getElementById(iid);
+        if (!m || !inp) return;
+        inp.placeholder = ''; inp.value = '';
+        let abierto = false;
+        new MutationObserver(() => { const a = m.style.display === 'flex'; if (a && !abierto) inp.value = ''; abierto = a; })
+            .observe(m, { attributes: true, attributeFilter: ['style'] });
+        document.addEventListener('click', e => {
+            if (e.target.id !== bid || inp.value) return;
+            e.stopImmediatePropagation(); e.preventDefault(); inp.focus();
+        }, true);
+    });
     // DEPOSIT / WITHDRAW: el boton de confirmar y un CLOSE en la misma fila.
     [['gameDepositModal', 'gdConfirm', 'DEPOSIT', () => GameWalletUI.closeDeposit()],
      ['gameWithdrawModal', 'gwdConfirm', 'WITHDRAW', () => GameWalletUI.closeWithdraw()]].forEach(([mid, bid, txt, cerrar]) => {
@@ -943,7 +962,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 
     // ---------- cuenta: la wallet del movil; avatar elegido por el jugador ----------
     const cidLocal = () => { try { return localStorage.getItem('pw_cid') || ''; } catch (e) { return ''; } };
-    const AV_STYLES = ['pill', 'spook', 'bag', 'npc', 'bolt', 'star', 'crown'];
+    const AV_STYLES = ['pill', 'spook', 'bag', 'npc'];
     const AV_BG = ['#ab9ff2', '#0a0a0a', '#ccff00', '#00ffaa', '#1e6bff', '#ff2a55', '#ffd23a', '#8a948f', '#ffffff', '#b000ff'];
     const AV_FG = { bag: '#e5463f', spook: '#fbf7ef' };
     let xWallet = null;
