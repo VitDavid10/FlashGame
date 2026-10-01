@@ -276,8 +276,8 @@ body.hub-on .pw-modal{background:rgba(3,6,4,.9)!important}
 /* Los avisos propios de la wallet (Mobile Wallet Adapter) cuelgan de <body>, que
    en horizontal va girado: se gira su contenedor igual que los carteles. */
 body > .mwa-host{display:none!important}
-/* Avisos del juego (sysModal) en la app: un 20 % mas grandes y legibles. */
-html:not([data-hero]) body.mobile-allowed #sysModal .exit-box{transform:scale(1.2)!important;transform-origin:center!important;width:460px!important;min-width:460px!important;max-width:none!important;box-sizing:border-box!important}
+/* Avisos del juego (sysModal) en la app: la caja es la misma que la de LEAVE LOBBY
+   (#exitModal y #sysModal comparten la regla de ancho de movil). */
 html:not([data-hero]) body.mobile-allowed #sysModal .exit-desc{font-size:9px!important;line-height:2!important;margin-bottom:14px!important}
 html:not([data-hero]) body.mobile-allowed #sysModal .btn-sys{font-size:11px!important;padding:9px 18px!important}
 html:not([data-hero]) body.mobile-allowed > .mwa-host{position:fixed!important;z-index:30000!important;width:var(--pw-largo,100dvh);height:var(--pw-corto,100dvw);
@@ -316,8 +316,74 @@ body.hub-on #gameTopUpModal .gm-btn{width:100%!important;background:var(--hub-ac
   font-family:'Russo One',sans-serif!important;font-size:12px!important;letter-spacing:.12em!important;padding:11px 8px!important;margin-top:12px!important}
 body.hub-on #gameTopUpModal .hub-close{display:block;margin:10px auto 0;background:none;border:2px solid #2c3630;color:#7d8a82;font-family:'Russo One',sans-serif;font-size:11px;letter-spacing:.12em;padding:6px 18px;cursor:pointer}
 body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important}
+/* ---- Fin de partida en la app: estilo de la arena del airdrop (sin marco) ---- */
+html.pw-app #resultOverlay,html.pw-app #prizeModal{background:rgba(0,0,0,.78)!important}
+html.pw-app body #resultOverlay .result-box.result-box.result-box,html.pw-app body #prizeModal .gameModalBox.gameModalBox.gameModalBox{background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;
+  transform:none!important;animation:none!important;width:auto!important;max-width:none!important;min-height:0!important;padding:0!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:12px!important;text-align:center}
+html.pw-app #resultOverlay .result-box:before,html.pw-app #resultOverlay .result-box:after,html.pw-app #prizeModal .gameModalBox:before,html.pw-app #prizeModal .gameModalBox:after{display:none!important}
+html.pw-app .ah-go{font-family:'Press Start 2P',monospace!important;font-size:40px!important;line-height:1.2!important;letter-spacing:0!important;white-space:nowrap;
+  text-shadow:5px 5px 0 #000!important;margin:0!important;filter:none!important}
+html.pw-app #prizeModal .ah-go{font-size:30px!important}
+html.pw-app #myResult,html.pw-app #prizeSubtitle{font-family:'Press Start 2P',monospace!important;font-size:12px!important;line-height:2!important;color:#fff!important;margin:0!important}
+html.pw-app #prizeAmount{margin:0!important}
+html.pw-app #resultOverlay .result-actions,html.pw-app #prizeModal .prize-actions{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:12px!important;
+  justify-content:center!important;align-items:center!important;margin:6px 0 0!important;width:auto!important}
+html.pw-app #resultOverlay .result-actions>button,html.pw-app #prizeModal .prize-actions>button{
+  --plate:var(--ah-placa-red);background:none!important;background-image:none!important;border:9px solid transparent!important;border-image:var(--plate) 3 fill / 9px / 0 stretch!important;
+  border-radius:0!important;clip-path:none!important;box-shadow:none!important;aspect-ratio:auto!important;width:auto!important;min-width:0!important;height:auto!important;
+  min-height:46px!important;padding:2px 18px!important;margin:0!important;font-family:'Press Start 2P',monospace!important;font-size:12px!important;color:#fff!important;
+  text-shadow:2px 2px 0 rgba(0,0,0,.7)!important;white-space:nowrap!important;filter:drop-shadow(3px 3px 0 rgba(0,0,0,.55))!important;transform:none!important;image-rendering:pixelated}
+html.pw-app #btnTryAgainOnline,html.pw-app #prizeContinue{--plate:var(--ah-placa-green)!important}
+html.pw-app #resultOverlay .btn-spectate,html.pw-app #prizeShare{--plate:var(--ah-placa-blue)!important}
+html.pw-app #btnBackToMenu{--plate:var(--ah-placa-grey)!important}
+/* MATCH ENDED: el top 10 en dos columnas de cinco para que quepa en horizontal. */
+html.pw-app #prizeTable{grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,auto);grid-auto-flow:column;column-gap:22px;row-gap:2px;margin:0!important;width:640px;max-width:92vw}
+html.pw-app #prizeTable[style*="block"]{display:grid!important}
+html.pw-app .prizeRow{grid-template-columns:34px 1fr 40px 96px!important;padding:3px 8px!important;font-family:'Press Start 2P',monospace!important;font-size:9px!important;border-bottom:1px solid #1d2420!important;color:#cfd8d3}
+html.pw-app .prizeRow .pos,html.pw-app .prizeRow .amt{font-family:'Press Start 2P',monospace!important}
+html.pw-app .prizeRow .name{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.pw-app .prizeRow .amt .pw-unit{font-size:7px}
+html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border-radius:0!important}
 `;
     const st = document.createElement('style'); st.textContent = css + cssModales; document.head.appendChild(st);
+    // Placas pixel de los botones (el mismo generador que el CONNECT del airdrop).
+    (function () {
+        const W = 48, H = 11, CUT = 2;
+        function placa(RGB) {
+            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const sh = f => RGB.map(v => Math.min(255, Math.round(v * f)));
+            const lit = t => RGB.map(v => Math.round(v + (255 - v) * t));
+            const inside = (x, y) => {
+                if (x < 0 || y < 0 || x >= W || y >= H) return false;
+                const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+                return dx >= CUT || dy >= CUT || dx + dy >= CUT;
+            };
+            const img = g.createImageData(W, H), px = img.data;
+            const C_RIM = sh(0.38), C_LIT = lit(0.32), C_DIM = sh(0.70);
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                if (!inside(x, y)) continue;
+                let ring = 2;
+                for (let r = 1; r <= 2 && ring === 2; r++) {
+                    for (let oy = -1; oy <= 1 && ring === 2; oy++) for (let ox = -1; ox <= 1; ox++) {
+                        if ((!ox && !oy) || inside(x + ox * r, y + oy * r)) continue;
+                        ring = r - 1; break;
+                    }
+                }
+                const col = ring === 0 ? C_RIM : ring === 1 ? (Math.min(y, x) <= Math.min(H - 1 - y, W - 1 - x) ? C_LIT : C_DIM) : RGB;
+                const i = (y * W + x) << 2;
+                px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2]; px[i + 3] = 255;
+            }
+            g.putImageData(img, 0, 0);
+            return 'url(' + cv.toDataURL() + ')';
+        }
+        const s = document.documentElement.style;
+        s.setProperty('--ah-placa-red', placa([246, 42, 45]));
+        s.setProperty('--ah-placa-green', placa([28, 196, 72]));
+        s.setProperty('--ah-placa-blue', placa([29, 120, 220]));
+        s.setProperty('--ah-placa-grey', placa([88, 100, 104]));
+    })();
     // Cuando sale un cartel del juego con el hub puesto, se le pinta el marco placa del modo.
     function visteModal(m) {
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
@@ -330,6 +396,21 @@ body.hub-on .pw-modal input{background:#050c09!important;border:2px solid #2c4a3
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
         requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1); });
     }
+    // Mismo alto de caja en todos los carteles de cada tipo: lo que falte se
+    // le da al hueco del texto (que va centrado), no a los margenes.
+    function igualaAlto(m, descId, alto) {
+        const d = document.getElementById(descId), box = m.querySelector('.exit-box');
+        if (!d || !box || m.style.display !== 'flex') return;
+        d.style.removeProperty('min-height');
+        const falta = alto - box.offsetHeight;
+        if (falta > 0) d.style.setProperty('min-height', (d.offsetHeight + falta) + 'px', 'important');
+    }
+    const sysM = document.getElementById('sysModal');
+    if (sysM) new MutationObserver(() => {
+        const d = document.getElementById('sysModalDesc');
+        if (d) { d.style.setProperty('display', 'flex', 'important'); d.style.setProperty('flex-direction', 'column', 'important'); d.style.setProperty('justify-content', 'center', 'important'); }
+        igualaAlto(sysM, 'sysModalDesc', 163);
+    }).observe(sysM, { attributes: true, attributeFilter: ['style'] });
     new MutationObserver(ms => ms.forEach(r => { if (r.target.classList && (r.target.classList.contains('pw-modal') || r.target.classList.contains('gameModal'))) visteModal(r.target); }))
         .observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['style'] });
 

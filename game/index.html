@@ -10681,7 +10681,7 @@
             btn.onclick = startClassicLogout; btn.innerText = "START CASHOUT (5s)";
         } else {
             setTitle("WARNING: FORFEIT?", 'warning');
-            desc.innerHTML = "You will lose <span style='color:#ff2a2a'>100% of the PILLS</span> used to enter (they go to the prize pot).<br>Are you sure?";
+            desc.innerHTML = "You will lose <span style='color:#ff2a2a'>100% of the $PILLY</span> used to enter (they go to the prize pot).<br>Are you sure?";
             btn.onclick = confirmExit; btn.innerText = "EXIT NOW";
             if (pixelMode && cartelUsesAtlas('exit-now')) btn.classList.add('px-exitnow');
         }
@@ -11211,7 +11211,18 @@
             matchEnded: { art: 'match-ended', w: 78 },
             roomRestarted: { art: 'room-restarted', w: 82 },
         }[id];
-        if (pixelMode && heroArt && cartelUsesAtlas(heroArt.art)) {
+        // App: sin marco, como el GAME OVER de la arena del airdrop: el titulo en
+        // letra pixel grande, de color y con sombra negra dura.
+        const colorApp = { gameOver: '#f62a2d', matchFinished: '#ccff00', roomRestarted: '#ffce3d',
+            victory: '#ffce3d', cashout: '#00ff88' }[id] || defColor;
+        if (EN_APP) {
+            el.textContent = defText;
+            el.className = 'ah-go';
+            el.style.setProperty('color', colorApp, 'important');
+            // Como en el airdrop: MATCH FINISHED y los largos, mas pequenos.
+            if (defText.length > 10) el.style.setProperty('font-size', '30px', 'important');
+            else el.style.removeProperty('font-size');
+        } else if (pixelMode && heroArt && cartelUsesAtlas(heroArt.art)) {
             const img = document.createElement('img');
             img.src = cartelHeroUrl(heroArt.art);
             img.style.cssText = 'display:block;margin:0 auto;width:' + heroArt.w + '%;height:auto;image-rendering:pixelated;';
@@ -11229,7 +11240,7 @@
         // con VICTORY / CASHOUT / MATCH ENDED dentro del modal de premio.
         const supDe = { gameOver: 'resultOverlay', matchFinished: 'resultOverlay', roomRestarted: 'resultOverlay',
             victory: 'prizeModal', cashout: 'prizeModal', matchEnded: 'prizeModal' }[id];
-        if (supDe) applyCartelSurface(supDe, CARTEL_LAYOUT[supDe + '#' + id] || CARTEL_LAYOUT[supDe]);
+        if (supDe) applyCartelSurface(supDe, EN_APP ? {} : (CARTEL_LAYOUT[supDe + '#' + id] || CARTEL_LAYOUT[supDe]));
     }
     // El cartel de GAME OVER sale 1,4s despues de morir (da tiempo a ver la
     // explosion). Ese retardo se quedaba suelto: si en ese hueco salias al menu,
@@ -14660,7 +14671,7 @@
             titleEl.textContent = t.toUpperCase();
             titleEl.style.cssText = "font-family:'Press Start 2P',monospace;font-size:20px;line-height:1.3;letter-spacing:1px;text-align:center;text-shadow:3px 3px 0 #000;margin:0 auto 12px;";
             titleEl.style.setProperty('color', '#fff', 'important');
-            titleEl.style.setProperty('font-size', '18px', 'important');
+            titleEl.style.setProperty('font-size', '13.5px', 'important');
             titleEl.style.setProperty('margin-bottom', '12px', 'important');
         } else if (pixelMode && SYS_TITULO_TEXTO.includes(t)) {
             // Sin la letra generada por canvas: estos avisos escriben su titulo
@@ -14702,8 +14713,9 @@
         applyCartelSurface('sysModal', (EN_APP ? CARTEL_LAYOUT['sysModal#DEPOSIT FAILED'] : CARTEL_LAYOUT['sysModal#' + t]) || CARTEL_LAYOUT.sysModal);
         descEl.style.removeProperty('white-space');
         m.style.display = 'flex';
-        // App: titulo y texto en UNA fila; si no caben, se encoge la letra.
-        if (EN_APP) [titleEl, descEl].forEach(el => {
+        // App: el titulo en UNA fila (si no cabe, se encoge la letra); el texto
+        // puede ocupar varias.
+        if (EN_APP) [titleEl].forEach(el => {
             el.style.setProperty('white-space', 'nowrap', 'important');
             let px = parseFloat(getComputedStyle(el).fontSize);
             while (el.scrollWidth > el.clientWidth + 1 && px > 6) { px -= 0.5; el.style.setProperty('font-size', px + 'px', 'important'); }
