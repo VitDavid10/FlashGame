@@ -513,7 +513,10 @@ function createAirdrop(opts) {
             // Some in-app browsers (older iOS WebViews, like X's) send no Sec-Fetch-* at all:
             // there the same-origin Referer alone decides. A typed URL still has neither.
             const dest = req.headers['sec-fetch-dest'];
-            const ok = (dest === 'iframe' || dest === undefined) && (from === '/' || (from || '').startsWith('/airdrop'));
+            const fromHome = from === '/' || (from || '').startsWith('/airdrop');
+            // Safari / content blockers on iOS can drop the Referer even for same-origin
+            // iframes: an iframe request without one but flagged same-origin by the browser is still the airdrop page asking, not a typed URL.
+            const ok = dest === 'iframe' ? (fromHome || (from === null && req.headers['sec-fetch-site'] === 'same-origin')) : (dest === undefined && fromHome);
             if (!ok) { notFound(req, res); return true; }
             return false;
         }
@@ -523,7 +526,7 @@ function createAirdrop(opts) {
         if (!LOCKDOWN_ALLOW.some(p => p.endsWith('/') ? urlPath.startsWith(p) : urlPath === p)) { notFound(req, res); return true; }
         // Scripts, images, fonts and API calls only for pages already on the site.
         // The generic link preview is the exception: X's crawler sends no Referer.
-        if (sameOriginReferer(req) === null && urlPath !== '/img/airdrop-og.png') { notFound(req, res); return true; }
+        if (sameOriginReferer(req) === null && req.headers['sec-fetch-site'] !== 'same-origin' && urlPath !== '/img/airdrop-og.png') { notFound(req, res); return true; }
         return false;
     }
 
