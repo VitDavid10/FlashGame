@@ -717,8 +717,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
 
     // ---------- ROOMS (solo las del modo) ----------
+    // Sin conexion (no contesta /api/rooms) PLAY entra en offline contra bots.
+    let sinRed = false;
     async function pullRooms() {
-        try { rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || []; } catch (e) {}
+        try { rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || []; sinRed = false; } catch (e) { sinRed = true; }
         const mine = rooms.filter(r => r.mode === mode);
         $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0);
         if ($('#ahRooms').classList.contains('open')) renderRooms();
@@ -1238,7 +1240,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             pillTab = b.dataset.t; renderPill();
         });
         $('.ah-play').onclick = async () => {
-            const kind = room === 'offline' ? 'offline' : 'online';
+            const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
             try { SoundManager.play('select'); } catch (x) {}
             try {
                 if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }

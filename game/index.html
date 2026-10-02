@@ -11174,6 +11174,8 @@
             // Partida nueva: las kills del HUD (y del GAME OVER) empiezan en 0; antes
             // offline se arrastraban las de las partidas anteriores.
             Quests.resetKills();
+            // Las quests las cuenta el servidor: offline no suman (en la app se avisa).
+            if (EN_APP) spawnFloatingText("OFFLINE: QUESTS DON'T COUNT", '#ffd23a', false);
             const startCell = sim.spawnPlayer('me');
             camera.x = startCell.x; camera.y = startCell.y;
             // Arcade: las 2 skills de salida elegidas en THE PILL (sin god, que ya las tiene todas).
@@ -15266,6 +15268,16 @@
     // espera un toque. Es tambien a donde lleva la flecha roja del selector, que
     // en la web vuelve a la landing y dentro de la app no tiene a donde ir.
     const EN_APP = document.documentElement.classList.contains('pw-app');   // la pone el script del head
+    // App sin conexion: app-sw.js guarda lo que carga el juego para que abra y
+    // se pueda jugar offline. Lo ya cargado antes de que existiera el worker se
+    // lo pasamos aqui para que tambien lo guarde.
+    if (EN_APP && 'serviceWorker' in navigator) {
+        const swGuarda = () => navigator.serviceWorker.register('app-sw.js')
+            .then(() => navigator.serviceWorker.ready)
+            .then(r => r.active && r.active.postMessage({ guarda: [location.href, ...performance.getEntriesByType('resource').map(e => e.name)] }))
+            .catch(() => {});
+        if (document.readyState === 'complete') swGuarda(); else window.addEventListener('load', swGuarda);
+    }
     // Con 'click' y no 'pointerdown': si el cartel se quitara al APOYAR el dedo,
     // el click de despues caeria en el selector de modos de debajo y elegiria
     // un modo sin querer.
