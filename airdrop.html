@@ -1197,7 +1197,7 @@ const DAILY_POST_PTS = 100, POINTS_BOOST = 1.5, REPOST_PTS = 150, LIKE_PTS = 50;
 const SHARE_CARD_PTS = 400, SHARE_AGAIN_GROWTH = 1.10;
 const RUN_SHARE_PTS = 30;   // sharing a match card, once a day
 const boosted = () => TASKS.every(t => S.tasks[t.id]);
-const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILLY airdrop.') + '&url=' + encodeURIComponent(refUrl());
+const dailyPostUrl = () => 'https://x.com/intent/post?text=' + encodeURIComponent('Playing @' + X_ACCOUNT + ' today. Eat, grow, kill pills and farm the $PILLY airdrop.') + '&url=' + encodeURIComponent(refUrl() + (refCode() ? '&v=2' : '?v=2'));   // ?v: X guarda la vista previa por URL y la de ?ref= aun era la tarjeta de puntos
 // Every social quest has a key: "daily:*" lives in S.daily, the rest in S.tasks.
 function socialQuests() {
   const daily = [{ key: 'daily:post', t: 'POST ABOUT PILLWARS', d: 'Share a post about PillWars on X. Once a day.', pts: DAILY_POST_PTS, url: dailyPostUrl, needs: true }];
