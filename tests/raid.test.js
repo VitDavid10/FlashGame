@@ -19,6 +19,7 @@ function setup(counts = { likes: 2, retweets: 1 }) {
     return { r, calls, state, c, tick: ms => { clock += ms; } };
 }
 const cmd = (text, id = ADMIN) => ({ message_id: 5, text, from: { id } });
+const anon = (text, chat = GROUP) => ({ message_id: 5, text, from: { id: 1087968824, is_bot: true }, sender_chat: { id: chat } });
 const click = (id, name = 'u' + id, data = 'raid:done:2106221216373817434') => ({ id: 'q' + id, data, from: { id, username: name } });
 const sent = calls => calls.filter(c => c[0] === 'sendMessage');
 
@@ -35,6 +36,16 @@ test('el admin lanza un raid: mensaje con botones y objetivos; los demás no pue
     assert.equal(m.reply_markup.inline_keyboard[0][0].url, URL1);
     assert.equal(m.reply_markup.inline_keyboard[1][0].callback_data, 'raid:done:2106221216373817434');
     assert.equal(s.r.active().msgId, 700);
+});
+
+test('admin anónimo (escribe como el grupo) puede; otro canal o persona, no', async () => {
+    const s = setup();
+    await s.r.onCommand(anon('/raid ' + URL1, -100999));
+    assert.equal(sent(s.calls).length, 0);
+    await s.r.onCommand(anon('/raid ' + URL1));
+    assert.equal(sent(s.calls).length, 1);
+    await s.r.onCommand(anon('/raidend'));
+    assert.equal(s.r.active(), null);
 });
 
 test('mensajes que no son comandos de raid no se tocan; link malo enseña la ayuda; un solo raid a la vez', async () => {

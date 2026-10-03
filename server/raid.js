@@ -7,7 +7,7 @@ const DEFAULTS = { likes: 25, reposts: 10, minutes: 60 };
 const MAX = { likes: 10000, reposts: 10000, minutes: 24 * 60 };
 const HELP = 'To start a raid (admin only):\n/raid <x.com link> [likes] [reposts] [minutes]\n\nExample: /raid https://x.com/pillwarsdotfun/status/123 50 20 60\n/raidend ends the current raid · /raidtop shows the top raiders.';
 
-function createRaid({ tg, fetchImpl, state, save, group, admin, now = Date.now, log = () => {} }) {
+function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = Date.now, log = () => {} }) {
     const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const raid = () => state.raid || (state.raid = { points: {}, active: null });
     const bar = (v, goal) => { const n = Math.max(0, Math.min(10, Math.round(10 * v / goal))); return '▓'.repeat(n) + '░'.repeat(10 - n); };
@@ -81,7 +81,9 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, now = Date.now, 
         if (!mm) return false;
         const cmd = mm[1].toLowerCase(), args = (mm[2] || '').trim().split(/\s+/).filter(Boolean);
         if (cmd === 'raidtop') { await top(m); return true; }
-        if (!m.from || m.from.id !== admin) return true;       // el resto, solo el admin; a los demás no se les contesta
+        // Solo el admin: con su cuenta o como admin anónimo (escribe "como el grupo" o como el canal; solo los admins pueden). Al resto no se les contesta.
+        const isAdmin = (m.from && m.from.id === admin) || (m.sender_chat && (m.sender_chat.id === group || m.sender_chat.id === channel));
+        if (!isAdmin) return true;
         if (cmd === 'raid') await start(m, args);
         else if (raid().active) await finish(raid().active);
         else await reply('There is no raid running.', m.message_id);

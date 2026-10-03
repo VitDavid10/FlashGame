@@ -26,7 +26,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const pin = (id, where = chat) => tg('pinChatMessage', { chat_id: where, message_id: id, disable_notification: true });
 
-    const raid = createRaid({ tg, fetchImpl, state, save, group, admin, log });
+    const raid = createRaid({ tg, fetchImpl, state, save, group, admin, channel: chat, log });
 
     // Canal: fijar los posts y borrar el aviso "X pinned a message".
     // Grupo del chat (conectado al canal): cada anuncio llega como reenvío automático y se fija también ahí.
