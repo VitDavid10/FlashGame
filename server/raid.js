@@ -45,9 +45,13 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
         if (!j.tweet) throw new Error('tweet not found');
         return { likes: j.tweet.likes || 0, reposts: j.tweet.retweets || 0 };
     }
+    // El resultado va en un mensaje nuevo, abajo del todo (si no, se quedaría arriba, enterrado en el chat), y el del raid se borra.
     async function finish(a) {
         raid().active = null; save();
-        await edit(a, true);
+        try {
+            await tg('sendMessage', { chat_id: group, text: render(a, true), parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+            await tg('deleteMessage', { chat_id: group, message_id: a.msgId }).catch(() => {});
+        } catch (e) { log('raid: resultado ' + e.message); await edit(a, true); }
     }
 
     async function start(m, args) {

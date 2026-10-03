@@ -78,10 +78,11 @@ test('tick: refresca el avance y cierra al cumplir los objetivos, con los raider
     assert.match(e1.text, /Raiders {2}1/);
     assert.ok(s.r.active());
     s.c.likes = 5; s.c.retweets = 3; await s.r.tick();
-    const e2 = s.calls.filter(c => c[0] === 'editMessageText').at(-1)[1];
+    // el resultado va en un mensaje nuevo (abajo del todo) y el del raid se borra
+    const e2 = sent(s.calls).at(-1)[1];
     assert.match(e2.text, /RAID COMPLETE/);
     assert.match(e2.text, /@ana/);
-    assert.deepEqual(e2.reply_markup, { inline_keyboard: [] });
+    assert.deepEqual(s.calls.at(-1), ['deleteMessage', { chat_id: GROUP, message_id: 700 }]);
     assert.equal(s.r.active(), null);
     await s.r.onCallback(click(9));
     assert.equal(s.calls.at(-1)[1].text, 'This raid is over 🏁');
@@ -92,10 +93,10 @@ test('tick: al acabarse el tiempo termina sin objetivos; /raidend lo corta antes
     await s.r.onCommand(cmd('/raid ' + URL1 + ' 50 20 10'));
     await s.r.onCallback(click(1, 'ana'));
     s.tick(11 * 60e3); await s.r.tick();
-    assert.match(s.calls.filter(c => c[0] === 'editMessageText').at(-1)[1].text, /RAID ENDED/);
+    assert.match(sent(s.calls).at(-1)[1].text, /RAID ENDED/);
     await s.r.onCommand(cmd('/raid ' + URL1));
     await s.r.onCommand(cmd('/raidend'));
-    assert.match(s.calls.filter(c => c[0] === 'editMessageText').at(-1)[1].text, /RAID ENDED/);
+    assert.match(sent(s.calls).at(-1)[1].text, /RAID ENDED/);
     await s.r.onCommand(cmd('/raidend'));
     assert.match(sent(s.calls).at(-1)[1].text, /no raid running/);
     await s.r.onCommand(cmd('/raidtop', 55));
@@ -141,7 +142,7 @@ test('el usuario del admin cuenta como raider pero nunca se enseña ni sale en e
     await s.r.onCallback({ id: 'qa', data: 'raid:done:2106221216373817434', from: { id: ADMIN, username: 'tarvuu' } });
     await s.r.onCallback(click(1, 'ana'));
     s.c.likes = 5; s.c.retweets = 3; await s.r.tick();
-    const e = s.calls.filter(c => c[0] === 'editMessageText').at(-1)[1].text;
+    const e = sent(s.calls).at(-1)[1].text;
     assert.match(e, /Raiders {2}2/);
     assert.match(e, /@ana/);
     assert.doesNotMatch(e, /tarvuu/);
