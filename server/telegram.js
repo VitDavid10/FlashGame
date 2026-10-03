@@ -5,6 +5,7 @@
 // - Posts nuevos de X (@pillwarsdotfun, sin respuestas ni reposts): el bot los publica y los fija.
 // Se activa con TELEGRAM_BOT_TOKEN. Solo corre en el proceso director/mono.
 const fs = require('fs');
+const { createRaid } = require('./raid.js');
 
 // Llamada a la acción debajo de cada post de X reenviado (Telegram y #x-feed del Discord).
 const X_CTA = '❤️ Like · 🔁 RT · 💬 Reply';
@@ -25,9 +26,12 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const pin = (id, where = chat) => tg('pinChatMessage', { chat_id: where, message_id: id, disable_notification: true });
 
+    const raid = createRaid({ tg, fetchImpl, state, save, group, admin, log });
+
     // Canal: fijar los posts y borrar el aviso "X pinned a message".
     // Grupo del chat (conectado al canal): cada anuncio llega como reenvío automático y se fija también ahí.
     async function onUpdate(u) {
+        if (u.callback_query) return raid.onCallback(u.callback_query);
         const p = u.channel_post;
         if (p && p.chat.id === chat) {
             if (p.pinned_message) return tg('deleteMessage', { chat_id: chat, message_id: p.message_id });
@@ -37,6 +41,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         if (m && m.chat.id === group) {
             if (m.is_automatic_forward) return pin(m.message_id, group);
             if (m.pinned_message) return tg('deleteMessage', { chat_id: group, message_id: m.message_id });
+            if (await raid.onCommand(m)) return;
             return groupAnswer(m);
         }
         if (m && m.chat.type === 'private') return onPrivate(m);
@@ -226,7 +231,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
     async function pollUpdates() {
         for (;;) {
             try {
-                const ups = await tg('getUpdates', { offset: state.offset || 0, timeout: 50, allowed_updates: ['channel_post', 'message'] });
+                const ups = await tg('getUpdates', { offset: state.offset || 0, timeout: 50, allowed_updates: ['channel_post', 'message', 'callback_query'] });
                 for (const u of ups) {
                     state.offset = u.update_id + 1;
                     await onUpdate(u).catch(e => log('telegram: ' + e.message));
@@ -263,6 +268,7 @@ function createTelegram({ token, chat = -1004433617369, group = -1004327296311, 
         const tick = () => checkX().catch(e => log('telegram: X ' + e.message));
         tick();
         setInterval(tick, xEveryMs).unref();
+        setInterval(() => raid.tick().catch(e => log('telegram: raid ' + e.message)), 30e3).unref();
     }
 
     return { start, onUpdate, checkX, inbox, thread, send, sendFile, file, enabled: true };
