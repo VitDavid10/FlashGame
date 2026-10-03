@@ -18,7 +18,7 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
     function render(a, final) {
         const left = Math.max(0, Math.ceil((a.endsAt - now()) / 60e3));
         const goalsMet = a.cur.likes >= a.goals.likes && a.cur.reposts >= a.goals.reposts;
-        const raiders = Object.values(a.done);
+        const raiders = Object.values(a.done), shown = raiders.filter(Boolean);
         let t = (final ? (goalsMet ? '🏆 <b>RAID COMPLETE!</b>' : '🏁 <b>RAID ENDED</b>') : '🚀 <b>RAID!</b>') + '\n\n';
         t += esc(a.url) + '\n\n';
         t += '❤️ Likes  ' + a.cur.likes + '/' + a.goals.likes + '  ' + bar(a.cur.likes, a.goals.likes) + '\n';
@@ -98,7 +98,10 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
         const a = raid().active, answer = text => tg('answerCallbackQuery', { callback_query_id: q.id, text, show_alert: false }).catch(() => {});
         if (!a || a.id !== hit[1] || now() > a.endsAt) return answer('This raid is over 🏁');
         if (a.doneIds[q.from.id]) return answer("You're already counted ✅");
-        a.doneIds[q.from.id] = 1; a.done[q.from.id] = nameOf(q.from);
+        a.doneIds[q.from.id] = 1;
+        // El admin cuenta como raider pero su usuario no se enseña nunca (ni en el mensaje ni en el ranking).
+        if (q.from.id === admin) { a.done[q.from.id] = null; save(); return answer('Counted! +1 raid 💊'); }
+        a.done[q.from.id] = nameOf(q.from);
         const p = raid().points[q.from.id] || (raid().points[q.from.id] = { name: nameOf(q.from), raids: 0 });
         p.name = nameOf(q.from); p.raids++;
         save();

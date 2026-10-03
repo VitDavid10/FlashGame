@@ -134,3 +134,16 @@ test('el admin lanza el raid por privado: se publica en el grupo y le confirma a
     assert.equal(sent(s.calls).at(-1)[1].chat_id, ADMIN);
     assert.equal(sent(s.calls).at(-1)[1].reply_parameters, undefined);
 });
+
+test('el usuario del admin cuenta como raider pero nunca se enseña ni sale en el ranking', async () => {
+    const s = setup();
+    await s.r.onCommand(cmd('/raid ' + URL1 + ' 5 3'));
+    await s.r.onCallback({ id: 'qa', data: 'raid:done:2106221216373817434', from: { id: ADMIN, username: 'tarvuu' } });
+    await s.r.onCallback(click(1, 'ana'));
+    s.c.likes = 5; s.c.retweets = 3; await s.r.tick();
+    const e = s.calls.filter(c => c[0] === 'editMessageText').at(-1)[1].text;
+    assert.match(e, /Raiders {2}2/);
+    assert.match(e, /@ana/);
+    assert.doesNotMatch(e, /tarvuu/);
+    assert.equal(s.state.raid.points[ADMIN], undefined);
+});
