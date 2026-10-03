@@ -68,20 +68,20 @@ test('"I did it": cuenta una vez por persona y suma a su marcador', async () => 
     assert.equal(s.state.raid.points[1].raids, 1);
 });
 
-test('tick: refresca el avance y cierra al cumplir los objetivos, con los raiders', async () => {
+test('tick: refresca el avance y cierra al cumplir los objetivos (sin lista de raiders)', async () => {
     const s = setup();
     await s.r.onCommand(cmd('/raid ' + URL1 + ' 5 3'));
     await s.r.onCallback(click(1, 'ana'));
     s.c.likes = 4; await s.r.tick();
     const e1 = s.calls.filter(c => c[0] === 'editMessageText').at(-1)[1];
     assert.match(e1.text, /Likes {2}4\/5/);
-    assert.match(e1.text, /Raiders {2}1/);
+    assert.doesNotMatch(e1.text, /Raiders/);
     assert.ok(s.r.active());
     s.c.likes = 5; s.c.retweets = 3; await s.r.tick();
     // el resultado va en un mensaje nuevo (abajo del todo) y el del raid se borra
     const e2 = sent(s.calls).at(-1)[1];
     assert.match(e2.text, /RAID COMPLETE/);
-    assert.match(e2.text, /@ana/);
+    assert.doesNotMatch(e2.text, /Raiders|@ana/);
     assert.deepEqual(s.calls.at(-1), ['deleteMessage', { chat_id: GROUP, message_id: 700 }]);
     assert.equal(s.r.active(), null);
     await s.r.onCallback(click(9));
@@ -143,8 +143,6 @@ test('el usuario del admin cuenta como raider pero nunca se enseña ni sale en e
     await s.r.onCallback(click(1, 'ana'));
     s.c.likes = 5; s.c.retweets = 3; await s.r.tick();
     const e = sent(s.calls).at(-1)[1].text;
-    assert.match(e, /Raiders {2}2/);
-    assert.match(e, /@ana/);
-    assert.doesNotMatch(e, /tarvuu/);
+    assert.doesNotMatch(e, /Raiders|@ana|tarvuu/);
     assert.equal(s.state.raid.points[ADMIN], undefined);
 });

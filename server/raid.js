@@ -18,14 +18,11 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
     function render(a, final) {
         const left = Math.max(0, Math.ceil((a.endsAt - now()) / 60e3));
         const goalsMet = a.cur.likes >= a.goals.likes && a.cur.reposts >= a.goals.reposts;
-        const raiders = Object.values(a.done), shown = raiders.filter(Boolean);
         let t = (final ? (goalsMet ? '🏆 <b>RAID COMPLETE!</b>' : '🏁 <b>RAID ENDED</b>') : '🚀 <b>RAID!</b>') + '\n\n';
         t += esc(a.url) + '\n\n';
         t += '❤️ Likes  ' + a.cur.likes + '/' + a.goals.likes + '  ' + bar(a.cur.likes, a.goals.likes) + '\n';
         t += '🔁 Reposts  ' + a.cur.reposts + '/' + a.goals.reposts + '  ' + bar(a.cur.reposts, a.goals.reposts) + '\n';
-        t += '👥 Raiders  ' + raiders.length + '\n';
         if (final) {
-            if (raiders.length) t += '\n💊 ' + raiders.slice(0, 15).map(esc).join(' · ') + (raiders.length > 15 ? ' · +' + (raiders.length - 15) : '') + '\n';
             t += '\nThanks to everyone who raided! 🙌';
         } else {
             t += '⏱ ' + left + ' min left\n\n1️⃣ Open the tweet\n2️⃣ Like, repost and comment\n3️⃣ Tap “I did it”';
