@@ -120,3 +120,17 @@ test('desde el bot de Telegram: el comando del grupo y el botón llegan al raid'
     await t.onUpdate({ message: { message_id: 2, chat: { id: GROUP }, from: { id: 9, is_bot: false }, text: 'hola' } });
     assert.equal(calls.length, n);
 });
+
+test('el admin lanza el raid por privado: se publica en el grupo y le confirma a él', async () => {
+    const s = setup();
+    const dm = { message_id: 3, chat: { id: ADMIN, type: 'private' }, from: { id: ADMIN }, text: '/raid ' + URL1 + ' 5 2 10' };
+    assert.equal(await s.r.onCommand(dm), true);
+    const out = sent(s.calls);
+    assert.equal(out[0][1].chat_id, GROUP);
+    assert.match(out[0][1].text, /RAID!/);
+    assert.equal(out[1][1].chat_id, ADMIN);
+    assert.match(out[1][1].text, /started in the group/);
+    await s.r.onCommand({ ...dm, text: '/raid nada' });
+    assert.equal(sent(s.calls).at(-1)[1].chat_id, ADMIN);
+    assert.equal(sent(s.calls).at(-1)[1].reply_parameters, undefined);
+});

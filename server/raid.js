@@ -12,7 +12,8 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
     const raid = () => state.raid || (state.raid = { points: {}, active: null });
     const bar = (v, goal) => { const n = Math.max(0, Math.min(10, Math.round(10 * v / goal))); return '▓'.repeat(n) + '░'.repeat(10 - n); };
     const nameOf = u => (u.username ? '@' + u.username : [u.first_name, u.last_name].filter(Boolean).join(' ') || String(u.id));
-    const reply = (text, to) => tg('sendMessage', { chat_id: group, text, parse_mode: 'HTML', reply_parameters: to ? { message_id: to, allow_sending_without_reply: true } : undefined, link_preview_options: { is_disabled: true } });
+    // Los avisos van a donde se escribió el comando: el grupo, o el privado del admin si lanzó el raid desde ahí.
+    const reply = (text, m) => { const dm = m.chat && m.chat.type === 'private'; return tg('sendMessage', { chat_id: dm ? m.chat.id : group, text, parse_mode: 'HTML', reply_parameters: dm ? undefined : { message_id: m.message_id, allow_sending_without_reply: true }, link_preview_options: { is_disabled: true } }); };
 
     function render(a, final) {
         const left = Math.max(0, Math.ceil((a.endsAt - now()) / 60e3));
@@ -51,19 +52,20 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
 
     async function start(m, args) {
         const hit = TWEET_RE.exec(args[0] || '');
-        if (!hit) return reply(esc(HELP), m.message_id);
-        if (raid().active) return reply('A raid is already running. Use /raidend to stop it first.', m.message_id);
+        if (!hit) return reply(esc(HELP), m);
+        if (raid().active) return reply('A raid is already running. Use /raidend to stop it first.', m);
         const num = (v, d, max) => { const n = parseInt(v, 10); return n > 0 ? Math.min(n, max) : d; };
         const a = {
             id: hit[2], url: 'https://x.com/' + hit[1] + '/status/' + hit[2],
             goals: { likes: num(args[1], DEFAULTS.likes, MAX.likes), reposts: num(args[2], DEFAULTS.reposts, MAX.reposts) },
             endsAt: now() + num(args[3], DEFAULTS.minutes, MAX.minutes) * 60e3, done: {}, doneIds: {}, cur: { likes: 0, reposts: 0 }, msgId: 0, lastText: '',
         };
-        try { a.cur = await counts(a.id); } catch (e) { return reply('I could not read that tweet (' + esc(e.message) + '). Check the link.', m.message_id); }
+        try { a.cur = await counts(a.id); } catch (e) { return reply('I could not read that tweet (' + esc(e.message) + '). Check the link.', m); }
         const sent = await tg('sendMessage', { chat_id: group, text: render(a, false), parse_mode: 'HTML', link_preview_options: { is_disabled: true }, reply_markup: keyboard(a) });
         a.msgId = sent.message_id; a.lastText = render(a, false);
         raid().active = a; save();
         log('raid: iniciado ' + a.id);
+        if (m.chat && m.chat.type === 'private') return reply('Raid started in the group ✅', m);
     }
 
     async function top(m) {
@@ -71,8 +73,8 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
         if (t - (r.topAt || 0) < 60e3) return;     // una vez por minuto, que no llene el chat
         r.topAt = t;
         const list = Object.values(r.points).sort((x, y) => y.raids - x.raids).slice(0, 10);
-        if (!list.length) return reply('No raids yet. Be the first! 💊', m.message_id);
-        return reply('🏆 <b>Top raiders</b>\n\n' + list.map((p, i) => (i + 1) + '. ' + esc(p.name) + ' · ' + p.raids + ' raid' + (p.raids === 1 ? '' : 's')).join('\n'), m.message_id);
+        if (!list.length) return reply('No raids yet. Be the first! 💊', m);
+        return reply('🏆 <b>Top raiders</b>\n\n' + list.map((p, i) => (i + 1) + '. ' + esc(p.name) + ' · ' + p.raids + ' raid' + (p.raids === 1 ? '' : 's')).join('\n'), m);
     }
 
     // true si el mensaje era un comando de raid (y ya está atendido).
@@ -86,7 +88,7 @@ function createRaid({ tg, fetchImpl, state, save, group, admin, channel, now = D
         if (!isAdmin) return true;
         if (cmd === 'raid') await start(m, args);
         else if (raid().active) await finish(raid().active);
-        else await reply('There is no raid running.', m.message_id);
+        else await reply('There is no raid running.', m);
         return true;
     }
 
