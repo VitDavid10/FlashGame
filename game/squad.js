@@ -227,6 +227,7 @@
         const kill = () => { clearTimeout(tm); el.remove(); };
         const tm = setTimeout(kill, o.ms || 14000);
         el.querySelectorAll('button').forEach(b => b.onclick = () => { const a = o.actions[+b.dataset.i]; kill(); if (a[1]) a[1](); });
+        el.querySelectorAll('img').forEach(im => { im.onerror = () => im.remove(); });
         box.appendChild(el); snd('alert');
         while (box.children.length > 3) box.firstChild.remove();
     }
@@ -332,10 +333,19 @@
 
     // ---------------- UI ----------------
     // Foto de X; sin ella, el icono del menu del jugador (se dibuja al pintar, ver hydrate); y si no, su inicial.
-    const pic = o => o.p ? '<img class="sq-pic" src="' + esc(o.p) + '" alt="" referrerpolicy="no-referrer">'
+    const FALLBACK_AV = { t: 'spook', bg: '#ab9ff2' };
+    const pic = o => o.p ? '<img class="sq-pic" src="' + esc(o.p) + '" alt="" referrerpolicy="no-referrer" data-fb="' + esc(JSON.stringify(o.av || FALLBACK_AV)) + '">'
         : (o.av && window._hubAvatarEl ? '<span class="sq-pic" data-av="' + esc(JSON.stringify(o.av)) + '"></span>' : '<span class="sq-pic">' + initial(o) + '</span>');
     const memberO = m => ({ p: m.pic, av: m.av, u: '', n: m.name });
     function hydrate(box) {
+        // Si la foto de X no carga, se usa el icono que el jugador eligio en su perfil.
+        box.querySelectorAll('img[data-fb]').forEach(im => {
+            const fb = () => {
+                if (!im.isConnected || !window._hubAvatarEl) return;
+                try { const sp = document.createElement('span'); sp.className = 'sq-pic'; sp.appendChild(window._hubAvatarEl(JSON.parse(im.dataset.fb), 96)); im.replaceWith(sp); } catch (e) {}
+            };
+            if (im.complete && im.naturalWidth === 0) fb(); else im.onerror = fb;
+        });
         box.querySelectorAll('[data-av]').forEach(x => {
             try { const el = window._hubAvatarEl(JSON.parse(x.dataset.av), 96); x.removeAttribute('data-av'); x.appendChild(el); } catch (e) { x.removeAttribute('data-av'); }
         });
