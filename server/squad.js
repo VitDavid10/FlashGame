@@ -26,6 +26,7 @@
  */
 const crypto = require('crypto');
 const { createSocial } = require('./social.js');
+const { createVirtualFriends } = require('./virtual-friends.js');
 
 const SIZES = [1, 2, 3];
 const MAX_PARTY = 3;                  // un grupo es de 1 a 3 jugadores; la sala (1v1/2v2/3v3) la fija cuantos sois
@@ -48,7 +49,7 @@ function newCode(taken) {
 const cleanName = s => String(s == null ? '' : s).replace(/[^\w .\-@]/g, '').trim().slice(0, NAME_MAX) || 'PLAYER';
 
 function createSquad(deps) {
-    const { rooms, buildSim, welcomeMsg, refillBots, broadcast, log, resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS } = deps;
+    const { rooms, buildSim, welcomeMsg, refillBots, broadcast, log, resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS, startMatch, handleInput } = deps;
 
     const parties = new Map();        // code -> party
     const byWs = new Map();           // ws -> { party, id, name }
@@ -64,8 +65,8 @@ function createSquad(deps) {
     const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf });
     // Identidad de quien entra a un grupo: su usuario de X o, sin X, el resumen de su wallet.
     function identOf(ws, fallback) {
-        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), pic: p.p }; }
-        return { uid: null, name: cleanName(fallback), pic: '' };
+        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), pic: p.p, av: p.av }; }
+        return { uid: null, name: cleanName(fallback), pic: '', av: null };
     }
 
     const send = (ws, o) => { try { if (ws.readyState === 1) ws.send(JSON.stringify(o)); } catch (e) {} };
@@ -79,7 +80,7 @@ function createSquad(deps) {
             queuedAt: p.queuedAt || null,
             custom: !!p.custom,
             practice: practiceAlive(p),
-            members: [...p.members.values()].map(m => ({ id: m.id, uid: m.uid || null, pic: m.pic || '', name: m.name, leader: m.id === p.leader })),
+            members: [...p.members.values()].map(m => ({ id: m.id, uid: m.uid || null, pic: m.pic || '', av: m.av || null, name: m.name, leader: m.id === p.leader })),
         };
     }
     function pushParty(p) {
@@ -120,6 +121,8 @@ function createSquad(deps) {
             squad: { kind, practice: kind === 'practice', size, stake: 0, teams: { A: [], B: [] }, groups, joined: 0 },
         };
         rooms.set(key, room);
+        // La practica nace ya en marcha: quien entra solo espera a que cargue el mapa (hasta el GO), sin lobby.
+        if (kind === 'practice' && startMatch) startMatch(room);
         log(`Squad: sala ${kind} ${size}v${size} creada (${key})`);
         return room;
     }
@@ -138,6 +141,8 @@ function createSquad(deps) {
         let room = practiceAlive(p) ? rooms.get(p.practiceRoom) : null;
         if (!room) { room = makeRoom('practice', p.qsize, [p.code]); p.practiceRoom = room.key; pushParty(p); }
         issueTo(m, room, 'A');
+        // Los amigos de prueba (server/virtual-friends.js) entran con quien pide la practica.
+        if (!m.ws.virtual) for (const v of p.members.values()) if (v.ws.virtual) issueTo(v, room, 'A');
     }
     function startMatchBetween(a, b) {
         a.queuedAt = b.queuedAt = null;
@@ -157,7 +162,7 @@ function createSquad(deps) {
     function roomsList() {
         return [...customRooms].filter(p => p.state === 'queued').map(p => {
             const lead = p.members.get(p.leader) || {};
-            return { code: p.code, size: p.qsize, since: p.queuedAt, leader: { name: lead.name || 'PLAYER', pic: lead.pic || '', uid: lead.uid || null }, members: [...p.members.values()].map(m => ({ name: m.name, pic: m.pic || '' })) };
+            return { code: p.code, size: p.qsize, since: p.queuedAt, leader: { name: lead.name || 'PLAYER', pic: lead.pic || '', av: lead.av || null, uid: lead.uid || null }, members: [...p.members.values()].map(m => ({ name: m.name, pic: m.pic || '', av: m.av || null })) };
         }).sort((x, y) => x.since - y.since);
     }
 
@@ -173,7 +178,7 @@ function createSquad(deps) {
             const ident = identOf(ws, msg.name);
             const id = rnd(4), name = ident.name;
             const p = { code, state: 'idle', leader: id, members: new Map(), queuedAt: null, qsize: 1, lastActive: Date.now() };
-            const m = { ws, id, name, uid: ident.uid, pic: ident.pic, party: p };
+            const m = { ws, id, name, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); parties.set(code, p); byWs.set(ws, m);
             pushParty(p);
             if (m.uid) social.pushPresence(m.uid);
@@ -186,7 +191,7 @@ function createSquad(deps) {
             if (p.state !== 'idle') return err(ws, 'party_busy');
             if (p.members.size >= MAX_PARTY) return err(ws, 'party_full');
             const ident = identOf(ws, msg.name);
-            const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, party: p };
+            const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); byWs.set(ws, m);
             p.lastActive = Date.now();
             pushParty(p);
@@ -248,6 +253,11 @@ function createSquad(deps) {
         p.members.delete(me.id);
         if (me.uid) social.pushPresence(me.uid);
         if (p.members.size === 0) { dequeue(p); parties.delete(p.code); return; }
+        // Un grupo solo de amigos de prueba no tiene sentido: se va con el ultimo humano.
+        if (![...p.members.values()].some(x => !x.ws.virtual)) {
+            for (const x of [...p.members.values()]) { byWs.delete(x.ws); if (x.uid) social.pushPresence(x.uid); }
+            dequeue(p); parties.delete(p.code); return;
+        }
         if (me.id === p.leader) p.leader = p.members.keys().next().value;
         // Si alguien se va con el grupo buscando, se vuelve a empezar (el tamano ya no cuadra).
         if (p.state === 'queued') backToIdle(p);
@@ -286,6 +296,8 @@ function createSquad(deps) {
         ws.send(welcomeMsg(room, playerId, token, undefined, Object.assign(useBin ? { useBin: true, binV } : {}, { squad: { team: tk.team, size: sq.size, practice: sq.practice } })));
         if (room.state === 'playing') refillBots(room);
         else if (room.startAt) broadcast(room, { t: 'lobbyCountdown', startIn: Math.max(0, room.startAt - Date.now()), count: room.clients.size, needed: room.clients.size, roomName: 'Squad', mode: room.mode });
+        // Partida entre grupos: en cuanto estan todos dentro no se espera mas.
+        if (!sq.practice && room.state === 'waiting' && sq.joined >= sq.size * 2) room.startAt = Math.min(room.startAt, Date.now() + 2000);
         sendRoster(room);
         return { room, playerId };
     }
@@ -344,7 +356,10 @@ function createSquad(deps) {
     }, 60000);
     if (gc.unref) gc.unref();
 
-    return { handle, onClose, join, tick, endOf, social, _internals: { parties, queues, tickets, makeRoom, customRooms } };
+    // Amigos de prueba @icefox y @bandit: aparecen al buscarlos, aceptan, contestan y juegan.
+    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log });
+
+    return { handle, onClose, join, tick, endOf, social, virtual, _internals: { parties, queues, tickets, makeRoom, customRooms } };
 }
 
 module.exports = { createSquad, SIZES, POP };

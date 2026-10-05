@@ -264,6 +264,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-pic .npc{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--in2);color:var(--ac)}.pr-pic .npc svg{width:3.2em;height:3.2em}
 .pr-at{font-size:.46em;color:var(--ac);letter-spacing:.06em}
 .pr-ic,.pr-cl{display:flex;gap:.25em;justify-content:center}
+.pr-fc{display:flex;flex-direction:column;align-items:center;gap:.5em;cursor:pointer}
+.pr-fc .k{font-size:.32em;color:var(--mut);letter-spacing:.12em}
+.pr-fc b{font-size:.58em;font-weight:400;color:#ffd23a;letter-spacing:.14em;text-shadow:.12em .12em 0 #000}
 .pr-ic b{width:1.15em;height:1.15em;display:flex;align-items:center;justify-content:center;background:var(--in2);color:#eaf5ef;box-shadow:0 0 0 .1em var(--edge);cursor:pointer}
 .pr-ic b svg{width:.8em;height:.8em}.pr-ic b.on{box-shadow:0 0 0 .14em var(--ac)}
 .pr-cl b{width:.95em;height:.95em;cursor:pointer;box-shadow:0 0 0 .1em #000}.pr-cl b.on{outline:.14em solid #fff;outline-offset:.08em}
@@ -587,7 +590,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
 <div class="ov" id="ahPr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div></div>
+  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div></div>
   <div class="pr-r">
     <div class="pr-box"><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
       <div class="k" style="margin-top:.9em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
@@ -1063,6 +1066,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     const AV_BG = ['#ab9ff2', '#0a0a0a', '#ccff00', '#00ffaa', '#1e6bff', '#ff2a55', '#ffd23a', '#8a948f', '#ffffff', '#b000ff'];
     const AV_FG = { bag: '#e5463f', spook: '#fbf7ef' };
     let xWallet = null;
+    let xCode = null;   // codigo de amigo de la cuenta (el que otros escriben para agregarte)
     let xUser = null;   // cuenta de X vinculada a la wallet: { u, pic } (la misma cuenta del airdrop en PC)
     function avatar() {
         let a = null; try { a = JSON.parse(localStorage.getItem('pw_avatar')); } catch (e) {}
@@ -1106,6 +1110,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try {
             const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json();
             xWallet = j && j.user && !j.user.walletPasted && j.user.wallet || null;
+            xCode = j && j.user && j.user.code || null;
             const x = j && j.user && j.user.x;
             xUser = x && x.username && /^https:\/\/pbs\.twimg\.com\//.test(x.pic || '') ? { u: String(x.username).replace(/[^\w]/g, ''), pic: x.pic.replace('_normal', '_200x200') } : null;
         } catch (e) {}
@@ -1120,11 +1125,15 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahPrIc').innerHTML = '<button class="tb" id="ahPrEdit" style="width:auto;padding:.5em 1.2em">EDIT AVATAR</button>';
         $('#ahPrCl').innerHTML = '';
         $('#ahPrEdit').onclick = openAvatar;
+        // Codigo de amigo: debajo de EDIT AVATAR. Tocarlo lo copia.
+        const fc = $('#ahPrFc');
+        fc.innerHTML = xCode ? '<span class="k">FRIEND CODE</span><b>' + xCode.toUpperCase() + '</b>' : '';
+        fc.onclick = () => { if (!xCode) return; try { navigator.clipboard.writeText(xCode); } catch (e) {} const b = fc.querySelector('b'); if (b) { b.textContent = 'COPIED'; setTimeout(() => { b.textContent = xCode.toUpperCase(); }, 1200); } };
     }
     // Editor del avatar: estilo, fondo y, con la pildora, sus colores o una skin tuya.
     function openAvatar() {
         const av = $('#ahAv'), a = avatar();
-        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); };
+        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); try { PWSquad.refreshAv(); } catch (e) {} };
         av.classList.toggle('pill', a.t === 'pill');
         avPon($('#ahAvBig'), a, 160);
         const fila = (id, items, pinta, on, elige) => {
@@ -1279,7 +1288,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
-        window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX;
+        window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX; window._hubAvatar = avatar; window._hubAvatarEl = avEl;
         // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
         window.PWSquadHooks = {
             afterRender() { ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },

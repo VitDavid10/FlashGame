@@ -73,6 +73,19 @@
 .sq-av.me .sq-pic{box-shadow:0 0 0 .16em var(--ac,#00ff88)}
 .sq-av .l{font-size:.32em;color:#ffd23a;letter-spacing:.1em;margin-top:-.3em}
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
+.sq-pic{overflow:hidden}
+#ahFrBody,#ahArBody{max-height:17.5em;overflow-y:auto}
+.sq-pic .av,.sq-pic .av-cv{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.sq-pic .av svg{width:60%;height:60%}
+.sq-pic canvas{image-rendering:pixelated}
+/* buscando: los jugadores son lo central, grandes, y los botones van abajo */
+.sq.find{min-height:15.5em;justify-content:space-between;gap:.6em}
+.sq-grp.big{flex:1;align-items:center;gap:2.6em;margin:.2em 0}
+.sq-grp.big .sq-av{width:12em;gap:.9em}
+.sq-grp.big .sq-av .sq-pic{width:5.2em;height:5.2em;font-size:1.5em}
+.sq-grp.big .sq-av .n{font-size:.55em}
+.sq-grp.big .sq-av .l{font-size:.36em}
+.sq-bot{display:flex;flex-direction:column;align-items:center;gap:.8em;width:100%}
 .sq-av .k{font-size:.4em;color:#e5302f;cursor:pointer;padding:.2em .6em;border:.14em solid #5a2420}
 /* lista de salas */
 .sq-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:1em;width:100%}
@@ -163,6 +176,9 @@
         if (!n) { try { n = localStorage.getItem('pw_app_name') || localStorage.getItem('pw_sq_name') || ''; } catch (e) {} }
         return (n || 'PLAYER').slice(0, 16);
     }
+    // El icono del menu del jugador: lo ven sus amigos cuando no tiene foto de X.
+    function myAv() { try { return window._hubAvatar ? window._hubAvatar() : null; } catch (e) { return null; } }
+    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv() }); }
     function connect(then) {
         if (S.ws && S.ws.readyState === 1) { then && then(); return; }
         if (then) S.after = then;   // si ya se esta conectando, se ejecuta al abrir
@@ -173,7 +189,7 @@
             S.ws = ws;
             ws.onopen = () => {
                 S.conn = 'open';
-                if (S.token) send({ a: 'hello', token: S.token });   // antes que cualquier otra orden
+                if (S.token) send({ a: 'hello', token: S.token, av: myAv() });   // antes que cualquier otra orden
                 render(); const f = S.after; S.after = null; f && f();
             };
             ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMsg(m); };
@@ -315,45 +331,52 @@
     }
 
     // ---------------- UI ----------------
-    const pic = o => o.p ? '<img class="sq-pic" src="' + esc(o.p) + '" alt="" referrerpolicy="no-referrer">' : '<span class="sq-pic">' + initial(o) + '</span>';
-    const memberO = m => ({ p: m.pic, u: '', n: m.name });
+    // Foto de X; sin ella, el icono del menu del jugador (se dibuja al pintar, ver hydrate); y si no, su inicial.
+    const pic = o => o.p ? '<img class="sq-pic" src="' + esc(o.p) + '" alt="" referrerpolicy="no-referrer">'
+        : (o.av && window._hubAvatarEl ? '<span class="sq-pic" data-av="' + esc(JSON.stringify(o.av)) + '"></span>' : '<span class="sq-pic">' + initial(o) + '</span>');
+    const memberO = m => ({ p: m.pic, av: m.av, u: '', n: m.name });
+    function hydrate(box) {
+        box.querySelectorAll('[data-av]').forEach(x => {
+            try { const el = window._hubAvatarEl(JSON.parse(x.dataset.av), 96); x.removeAttribute('data-av'); x.appendChild(el); } catch (e) { x.removeAttribute('data-av'); }
+        });
+    }
     const imLeader = () => !S.party || S.party.leader === S.me;
     const groupSize = () => S.party ? S.party.members.length : 1;
     const errLine = () => '<div class="sq-err">' + (S.note ? '<span class="sq-ok">' + esc(S.note) + '</span>' : esc(S.err || '')) + '</div>';
 
     // El grupo: foto de cada uno con el nombre debajo.
-    function groupHtml(withKick) {
+    function groupHtml(withKick, slots, big) {
         const p = S.party;
         if (!p) return '';
         const out = [];
-        for (let i = 0; i < p.max; i++) {
+        for (let i = 0; i < Math.max(slots || p.members.length, p.members.length); i++) {
             const m = p.members[i];
             if (!m) { out.push('<div class="sq-av empty"><span class="sq-pic">+</span><div class="n" style="color:#4a5850">EMPTY</div></div>'); continue; }
             out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="n">' + esc(m.name) + '</div>' +
                 (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : '')) + '</div>');
         }
-        return '<div class="sq-grp">' + out.join('') + '</div>';
+        return '<div class="sq-grp' + (big ? ' big' : '') + '">' + out.join('') + '</div>';
     }
 
     // ----- panel ARENAS: lista de salas / buscando -----
     function searchingHtml() {
         const p = S.party, leader = imLeader();
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
-        return '<div class="sq"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + secs + 's</div>' +
-            groupHtml(false) +
-            '<div class="sq-row"><button class="sq-b on" data-a="practice">' + (p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
+        return '<div class="sq find"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + secs + 's</div>' +
+            groupHtml(false, p.size, true) +
+            '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice">' + (p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' +
-            '<div class="sq-note">' + (p.practice ? 'A practice room is open: jump in with your group.' : 'Practice against bots until a rival shows up.') + '</div>' + errLine() + '</div>';
+            '<div class="sq-note">' + (p.practice ? 'A practice room is open: jump in with your group.' : 'Practice against bots until a rival shows up.') + '</div>' + errLine() + '</div></div>';
     }
     function roomCard(r, mine) {
         const can = mine === r.size;
-        return '<div class="sq-rm">' + pic({ p: r.leader.pic, n: r.leader.name }) + '<div class="w"><div class="n">' + esc(r.leader.name) + '</div><div class="s">' + r.members.length + '/' + r.size + ' IN ROOM</div></div>' +
+        return '<div class="sq-rm">' + pic({ p: r.leader.pic, av: r.leader.av, n: r.leader.name }) + '<div class="w"><div class="n">' + esc(r.leader.name) + '</div><div class="s">' + r.members.length + '/' + r.size + ' IN ROOM</div></div>' +
             '<button class="sq-b sm gold" data-join="' + esc(r.code) + '" data-size="' + r.size + '">JOIN</button></div>';
     }
     function roomsHtml() {
         const p = S.party;
         if (p && p.state === 'queued') return searchingHtml();
-        if (p && p.state === 'match') return '<div class="sq"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false) + '</div>';
+        if (p && p.state === 'match') return '<div class="sq find"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '<div class="sq-bot"></div></div>';
         const mine = groupSize();
         const cols = SIZES.map(n => {
             const live = S.rooms.filter(r => r.size === n);
@@ -386,18 +409,19 @@
                 '<div class="sq-chat" id="sqChat">' + msgs + '</div>' +
                 '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqMsg" maxlength="200" placeholder="Whisper…" autocomplete="off"><button class="sq-b sm on" data-a="wsend">SEND</button></div>' + errLine() + '</div>';
         }
-        const grp = p
-            ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
-            : '<div class="sq-h">YOUR GROUP</div><div class="sq-note">You are solo. Invite a friend to form a group of up to 3, then pick a room in ARENAS.</div>';
+        // El grupo solo se enseña cuando de verdad hay alguien mas contigo.
+        const grp = p && p.members.length >= 2
+            ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true, p.members.length) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
+            : '<div class="sq-note">Invite friends to play 2V2 or 3V3 together, then pick a room in ARENAS.</div>';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
         const order = { on: 0, party: 1, game: 1, off: 2 };
         const list = F.friends.slice().sort((a, b) => order[a.st] - order[b.st] || nameOf(a).localeCompare(nameOf(b))).map(f =>
             '<div class="sq-it">' + pic(f) + '<div class="w"><div class="n">' + esc(nameOf(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div><div class="s ' + f.st + '"><i></i>' + ST[f.st] + '</div></div>' +
             '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '">INVITE</button>' : '') + '<button class="sq-b sm" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div></div>').join('');
         return '<div class="sq">' + grp +
-            '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD FRIEND: @X NAME OR WALLET" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
+            '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
-            '<div class="sq-list">' + (list || '<div class="sq-note" style="padding:.8em">No friends yet. Add someone by their X name or wallet address. They need to have opened Arenas or Friends once.</div>') + '</div>' +
+            '<div class="sq-list">' + (list || '<div class="sq-note" style="padding:.8em">No friends yet. Add someone by their @X name, wallet address or friend code (it is in your profile). They need to have opened Arenas or Friends once.</div>') + '</div>' +
             (F.outReq.length ? '<div class="sq-note">Pending: ' + F.outReq.map(r => esc(nameOf(r))).join(', ') + '</div>' : '') + errLine() + '</div>';
     }
 
@@ -410,6 +434,7 @@
         if (keepMsg != null && box.querySelector('#sqMsg')) box.querySelector('#sqMsg').value = keepMsg;
         if (focus && box.querySelector('#' + focus)) box.querySelector('#' + focus).focus();
         const c = box.querySelector('#sqChat'); if (c) c.scrollTop = c.scrollHeight;
+        hydrate(box);
         wire(box);
     }
     function render() {
@@ -525,7 +550,7 @@
         if (!c || !/^[A-Za-z0-9]{5}$/.test(c)) { setTimeout(boot, 2500); return; }
         setTimeout(() => joinCode(c.toUpperCase()), 1200);
     }
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, boot, state: S };
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, boot, refreshAv, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     if (document.readyState === 'complete') joinFromLink(); else addEventListener('load', joinFromLink);

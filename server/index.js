@@ -1284,7 +1284,7 @@ const {
 const SQUAD_HOST_ID = 0;
 const squad = createSquad({
     rooms, buildSim, welcomeMsg: gameHost.welcomeMsg, refillBots, broadcast, log,
-    resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS,
+    resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS, startMatch, handleInput: gameHost.handleInput,
     // Amigos y perfiles: solo el proceso que de verdad sirve las arenas los guarda.
     socialFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'social.json') : null,
 });

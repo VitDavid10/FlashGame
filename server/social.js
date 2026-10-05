@@ -54,7 +54,7 @@ function createSocial(opts) {
     const err = (ws, reason) => send(ws, { t: 'sqErr', reason });
     const relOf = id => data.rel[id] || (data.rel[id] = { f: [], i: [], o: [] });
     const profileOf = id => data.profiles[id] ? Object.assign({ id }, data.profiles[id]) : null;
-    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: p.n || p.u || 'PLAYER', p: p.p || '' }; };
+    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: p.n || p.u || 'PLAYER', p: p.p || '', av: p.av || null }; };
 
     function statusOf(id) {
         if (!online.has(id)) return 'off';
@@ -75,11 +75,22 @@ function createSocial(opts) {
         for (const f of relOf(id).f) sendTo(f, { t: 'sqPresence', id, st });
     }
 
-    function hello(ws, tk) {
+    // El avatar del jugador (icono del menu) que ven sus amigos cuando no tiene foto de X. Solo valores simples.
+    const HEX = /^#[0-9a-fA-F]{6}$/;
+    function cleanAv(a) {
+        if (!a || typeof a !== 'object' || !['pill', 'spook', 'bag', 'npc'].includes(a.t)) return null;
+        const o = { t: a.t, bg: HEX.test(a.bg) ? a.bg : '#8a948f' };
+        if (HEX.test(a.top)) o.top = a.top;
+        if (HEX.test(a.bot)) o.bot = a.bot;
+        if (typeof a.skin === 'string' && /^[\w-]{1,24}$/.test(a.skin)) o.skin = a.skin;
+        return o;
+    }
+    function hello(ws, tk, av) {
         const prof = token.verify(tk);
         if (!prof) { err(ws, 'bad_token'); return null; }
         const old = data.profiles[prof.id];
-        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p || (old.w || '') !== prof.w) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p, w: prof.w }; save(); }
+        const cav = cleanAv(av) || (old && old.av) || null;
+        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p || (old.w || '') !== prof.w || JSON.stringify(old.av || null) !== JSON.stringify(cav)) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p, w: prof.w, av: cav }; save(); }
         if (prof.u) byUsername.set(String(prof.u).toLowerCase(), prof.id);
         if (prof.w) byWallet.set(prof.w, prof.id);
         if (ws.pwId && ws.pwId !== prof.id) detach(ws);
@@ -104,7 +115,11 @@ function createSocial(opts) {
     function add(ws, me, msg) {
         let target = msg.id ? String(msg.id) : null;
         // Por usuario de X (@nombre) o por la direccion de la wallet.
-        if (!target && msg.u) { const q = String(msg.u).trim(); target = byWallet.get(q) || byUsername.get(q.replace(/^@/, '').toLowerCase()) || null; }
+        // Por usuario de X (@nombre), direccion de wallet o codigo de amigo (el que sale en el perfil).
+        if (!target && msg.u) {
+            const q = String(msg.u).trim();
+            target = byWallet.get(q) || byUsername.get(q.replace(/^@/, '').toLowerCase()) || (data.profiles[q] ? q : null) || (data.profiles[q.toLowerCase()] ? q.toLowerCase() : null);
+        }
         if (!target || !data.profiles[target]) return err(ws, 'no_such_user');
         if (target === me) return err(ws, 'self');
         const a = relOf(me), b = relOf(target);
@@ -175,7 +190,7 @@ function createSocial(opts) {
     // Devuelve true si el mensaje era del servicio social (y ya esta atendido).
     function handle(ws, msg) {
         const a = String(msg.a || '');
-        if (a === 'hello') { hello(ws, msg.token); return true; }
+        if (a === 'hello') { hello(ws, msg.token, msg.av); return true; }
         if (!['friends', 'fadd', 'faccept', 'fdecline', 'fremove', 'pinvite', 'whisper'].includes(a)) return false;
         const me = ws.pwId;
         if (!me) { err(ws, 'need_x'); return true; }

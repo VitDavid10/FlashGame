@@ -237,3 +237,25 @@ test('las amistades se guardan en disco y se recuperan', () => {
     assert.equal(c.last('sqFriends').friends[0].st, 'off');
     fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('tambien se agrega por codigo de amigo, con cualquier mayuscula', () => {
+    const sq = make();
+    const a = user(sq, 'abcd234', 'ana'), b = user(sq, 'wxyz567', 'bob');
+    say(sq, a, { a: 'fadd', u: 'WXYZ567' });
+    assert.equal(b.last('sqFriendReq').from.u, 'ana');
+    say(sq, b, { a: 'faccept', id: 'abcd234' });
+    assert.equal(a.last('sqFriends').friends[0].u, 'bob');
+});
+
+test('el avatar del menu viaja con el hello, se sanea y lo ven amigos y grupo', () => {
+    const sq = make();
+    const a = fakeWs(), b = user(sq, 'BBBBBBB', 'bob');
+    say(sq, a, { a: 'hello', token: token.sign({ id: 'AAAAAAA', u: '', n: 'AjGQ...qX6k', p: '' }), av: { t: 'spook', bg: '#ab9ff2', top: 'javascript:alert(1)', skin: '../etc/passwd' } });
+    say(sq, b, { a: 'fadd', id: 'AAAAAAA' }); say(sq, a, { a: 'faccept', id: 'BBBBBBB' });
+    const f = b.last('sqFriends').friends[0];
+    assert.deepEqual(f.av, { t: 'spook', bg: '#ab9ff2' }, 'solo valores simples');
+    say(sq, a, { a: 'create' });
+    assert.deepEqual(a.last('sqParty').members[0].av, { t: 'spook', bg: '#ab9ff2' });
+    say(sq, a, { a: 'hello', token: token.sign({ id: 'AAAAAAA', u: '', n: 'AjGQ...qX6k', p: '' }), av: { t: 'junk' } });
+    assert.deepEqual(b.last('sqFriends').friends[0].av, { t: 'spook', bg: '#ab9ff2' }, 'un avatar invalido no borra el bueno');
+});

@@ -14947,7 +14947,8 @@
         // server manda solo la primera vez). Uno nuevo por WebSocket, siempre.
         const snapDecoder = window.PillProto.makeSnapDecoder();
         // FINDING ROOM al conectar (localizando sala). En rejoin no: entra directo.
-        if (!isResume) startFindingUX((netState.joinMsg && netState.joinMsg.mode) || currentGameMode || 'arcade');
+        // Arenas por equipos: sin FINDING ROOM ni sala de practica offline, la sala ya existe.
+        if (!isResume && !netState.squad) startFindingUX((netState.joinMsg && netState.joinMsg.mode) || currentGameMode || 'arcade');
         ws.onopen = () => {
             const j = Object.assign({}, netState.joinMsg);
             if (isResume && netState.token) j.resume = netState.token;
@@ -14978,6 +14979,11 @@
                     // Rejoin: entrar directo, sin FINDING ni theatrics.
                     cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null);
                     enterOnlineGame(ws, msg, true);
+                } else if (netState.squad) {
+                    // Arenas: la practica ya esta en marcha, asi que se entra directo (carga del mapa y GO),
+                    // sin "MATCH STARTING". Una partida entre grupos que aun no empezo sigue el flujo de espera.
+                    if (msg.state === 'playing') { practiceMode = false; setLobbyBanner(null); enterOnlineGame(ws, msg, false); }
+                    else applyWelcome(ws, msg);
                 } else {
                     _pendingAt = Date.now();
                     // Si el FINDING ya acabó (welcome lento) aplicamos ya; si no, se
