@@ -119,6 +119,10 @@ test('en la partida entre grupos tambien entran y juegan con su equipo', async (
     const mine = [...match.clients.values()].filter(c => c.ws.virtualGame);
     assert.equal(mine.length, 1, 'icefox entra en la partida');
     assert.equal(mine[0].team, 'A');
+    // juega con la IA de los bots del sim: tras unos ticks su celda tiene un objetivo valido y se mueve
+    await wait(2500);
+    const id = [...match.clients].find(([, c]) => c.ws.virtualGame)[0], p = match.sim.players.get(id), c = p && p.cells[0];
+    if (c) assert.ok(Number.isFinite(c.targetX) && Number.isFinite(c.targetY), 'objetivo de la IA');
 });
 
 test('READY ALL: el lider avisa y los amigos de prueba contestan casi al momento', async () => {

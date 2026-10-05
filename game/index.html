@@ -11486,7 +11486,7 @@
     // HUD de red online: muestra ping RTT, snapshots recibidos/s, jitter y FPS.
     // Toggle con F4. Visible solo durante partida online.
     const NetHud = {
-        enabled: true,
+        enabled: false,   /* oculto por defecto (F4 lo enseña): ping/snaps no son para el jugador */
         ping: 0,            // último RTT
         pingEma: 0,         // RTT suavizado
         snapTimes: [],      // timestamps de los snaps recibidos en el último segundo

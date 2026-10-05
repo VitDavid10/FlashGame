@@ -166,10 +166,17 @@
 #sqEnd .rw .nm{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #sqEnd .rw .sq-pic{width:26px;height:26px;font-size:10px}
 #sqEnd button{font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:2px;padding:10px 26px;border:3px solid #000;background:#00ff88;color:#04150c;cursor:pointer;margin-top:8px}
-#sqHud{position:absolute;left:8px;top:64px;z-index:56;display:none;max-width:70vw;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.6;background:rgba(6,10,8,.55);padding:4px 8px;pointer-events:none;text-shadow:1px 1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* barras de companeros a la izquierda, como el grupo del WoW: foto, nombre y barra de masa (contra su maximo) */
+#sqHud{position:absolute;left:8px;top:64px;z-index:56;display:none;width:118px;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.4;pointer-events:none;text-shadow:1px 1px 0 #000}
 #sqHud.show{display:block}
-#sqHud span{margin-right:9px}
-#sqHud .a{color:#3fa0ff}#sqHud .b{color:#ff6a5a}#sqHud .h{color:#8aa096}
+#sqHud .h{color:#8aa096;margin-bottom:4px;font-size:6px}
+#sqHud .pf{display:flex;align-items:center;gap:5px;background:rgba(6,10,8,.6);border-left:3px solid #3fa0ff;padding:3px 5px;margin-bottom:4px}
+#sqHud .pf .sq-pic{width:20px;height:20px;font-size:8px}
+#sqHud .pf .w{flex:1;min-width:0}
+#sqHud .pf .n{color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+#sqHud .pf .bar{height:7px;background:#1a2620;box-shadow:0 0 0 1px #000}
+#sqHud .pf .bar i{display:block;height:100%;width:100%;background:#3fa0ff;transition:width .25s}
+#sqHud .pf.dead{border-left-color:#555}#sqHud .pf.dead .n{color:#777;text-decoration:line-through}#sqHud .pf.dead .bar i{width:0!important}
 #sqToast{position:absolute;right:10px;top:10px;z-index:310;display:flex;flex-direction:column;gap:8px;max-width:min(330px,92vw);font-family:'Press Start 2P',monospace}
 #sqRc{position:absolute;inset:0;z-index:305;pointer-events:auto;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.7)}
 #sqRc.show{display:flex}
@@ -254,7 +261,7 @@
     setInterval(() => { if (S.ws && S.ws.readyState === 1) S.ws.send('{"t":"ping","ts":' + Date.now() + '}'); }, 25000);
     function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
-        if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); render(); }
+        if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
         else if (m.t === 'sqErr') { S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }
         else if (m.t === 'sqTicket') onTicket(m);
@@ -383,22 +390,42 @@
         return el;
     }
     // Posiciones de companeros que manda el servidor (4 por segundo): el juego las marca en el borde si no se ven.
-    function onAllies(m) { S.allies = { t: Date.now(), a: m.a || [] }; }
+    // En la practica, mientras el grupo busca rival, sale el cartel azul de FINDING ROOM pero con RIVALS (y nada mas).
+    let rivT = null, rivN = 0;
+    function rivalsBanner() {
+        const on = !!(S.party && S.party.state === 'queued' && S.roster && S.roster.practice && S.rel);
+        if (on && !rivT) {
+            rivN = 0;
+            const put = () => { if (typeof window.setLobbyBanner === 'function') window.setLobbyBanner('FINDING RIVALS' + '.'.repeat((rivN++ % 3) + 1), 'search'); };
+            put(); rivT = setInterval(put, 400);
+        } else if (!on && rivT) { clearInterval(rivT); rivT = null; if (typeof window.setLobbyBanner === 'function') window.setLobbyBanner(null); }
+    }
+    function onAllies(m) {
+        S.allies = { t: Date.now(), a: m.a || [] };
+        const el = document.getElementById('sqHud');
+        for (const f of m.f || []) {
+            const row = el && el.querySelector('.pf[data-id="' + f.id + '"]'); if (!row) continue;
+            row._pk = Math.max(row._pk || 0, f.m);
+            row.classList.toggle('dead', !f.m);
+            row.querySelector('.bar i').style.width = (row._pk ? Math.round(100 * f.m / row._pk) : 100) + '%';
+        }
+    }
     function onRoster(m) {
-        S.roster = m; S.allies = null;
+        S.roster = m; S.allies = null; setTimeout(rivalsBanner, 0);
         S.rel = new Map();
         const mine = m.me === 'A' ? 'A' : 'B', other = mine === 'A' ? 'B' : 'A';
         for (const p of m.teams[mine]) S.rel.set(p.id, 'ally');
         for (const p of m.teams[other]) S.rel.set(p.id, 'foe');
-        const el = hud();
-        const row = (cls, list) => list.map(p => '<span class="' + cls + '">' + esc(p.name || 'PLAYER') + '</span>').join('');
-        el.innerHTML = '<span class="h">' + (m.practice ? 'PRACTICE ' : '') + m.size + 'V' + m.size + '</span>' +
-            row('a', m.teams[mine]) + (m.practice ? '' : '<span class="h">VS</span>' + row('b', m.teams[other]));
-        el.classList.add('show');
+        const el = hud(), me = m.myId;
+        const mates = m.teams[mine].filter(p => p.id !== me);
+        el.innerHTML = (m.practice ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
+            '<div class="pf" data-id="' + esc(p.id) + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '<div class="w"><div class="n">' + esc(p.name || 'PLAYER') + '</div><div class="bar"><i></i></div></div></div>').join('');
+        hydrate(el);
+        el.classList.toggle('show', mates.length > 0 || !!m.practice);
     }
     function onEnd(m) {
         hud().classList.remove('show');
-        S.rel = null; S.allies = null;
+        S.rel = null; S.allies = null; rivalsBanner();
         if (m.practice) {
             // La practica acabo: si el grupo sigue buscando, se vuelve a ofrecer sin meter a nadie a la fuerza.
             return;

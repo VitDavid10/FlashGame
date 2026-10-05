@@ -43,7 +43,7 @@ function createVirtualFriends(ctx) {
         const res = join(gws, '0.0.0.0', { t: 'join', squad: tk.ticket, bin: 0, aspect: 1.7, colorTop: f.top, colorBot: f.bot });
         if (!res) return;
         const { room, playerId } = res;
-        let tx = 0, ty = 0, until = 0, seenHuman = false;
+        let aliados = null, seenHuman = false;
         const t0 = Date.now();
         const stop = clean => {
             clearInterval(iv);
@@ -60,24 +60,11 @@ function createVirtualFriends(ctx) {
             if (room.state === 'playing' && !cli._spawned) { handleInput(room, playerId, { t: 'ready' }); return; }
             const p = room.sim.players.get(playerId), c = p && p.alive && p.cells[0];
             if (!c) return;
-            const now = Date.now(), lim = room.sim.mapSize - 200;
-            // Huyen de lo que se los puede comer (bots mas grandes cerca); si no, pasean por el mapa.
-            let amenaza = null, dMin = 700;
-            for (const e of room.sim.enemies) {
-                if (!(e.r > c.r * 1.1)) continue;
-                const d = Math.hypot(e.x - c.x, e.y - c.y);
-                if (d < dMin) { dMin = d; amenaza = e; }
-            }
-            if (amenaza) {
-                tx = Math.max(-lim, Math.min(lim, c.x + (c.x - amenaza.x) * 3));
-                ty = Math.max(-lim, Math.min(lim, c.y + (c.y - amenaza.y) * 3));
-                until = now + 500;
-            } else if (now > until) {
-                tx = Math.max(-lim, Math.min(lim, c.x + (Math.random() * 2 - 1) * 900));
-                ty = Math.max(-lim, Math.min(lim, c.y + (Math.random() * 2 - 1) * 900));
-                until = now + 1500 + Math.random() * 2000;
-            }
-            handleInput(room, playerId, { t: 'input', tx, ty });
+            // Misma IA que los bots del sim (huir de los grandes, cazar a los pequenos, ir a comer), sin hacer dano a su equipo.
+            if (!aliados) aliados = new Set(room.squad.teams[cli.team] || [playerId]);
+            c.changeDirTimer = Math.min(c.changeDirTimer, 2);   // la IA de los bots corre a 60 Hz y esta a 4: se re-apunta antes
+            c.botSteer(room.sim, [c], aliados);
+            handleInput(room, playerId, { t: 'input', tx: c.targetX, ty: c.targetY });
         }, TICK_MS);
         if (iv.unref) iv.unref();
         log(`Amigo de prueba @${f.u} entra a ${room.key}`);

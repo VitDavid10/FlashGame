@@ -383,7 +383,7 @@ function createSquad(deps) {
     }
     function sendRoster(room) {
         const teams = rosterOf(room);
-        for (const [pid, cli] of room.clients) send(cli.ws, { t: 'squadRoster', me: cli.team, size: room.squad.size, practice: room.squad.practice, teams });
+        for (const [pid, cli] of room.clients) send(cli.ws, { t: 'squadRoster', me: cli.team, myId: pid, size: room.squad.size, practice: room.squad.practice, teams });
     }
 
     // ---------- tick y fin de partida (los llama room-loop via ctx) ----------
@@ -405,16 +405,16 @@ function createSquad(deps) {
         const sq = room.squad;
         for (const [pid, cli] of room.clients) {
             if (cli.ws.virtualGame || cli.ws.readyState !== 1 || !(cli.ws.bufferedAmount < 65536)) continue;
-            const mates = [];
+            const mates = [], frames = [];
             for (const id of sq.teams[cli.team] || []) {
                 if (id === pid) continue;
                 const p = room.sim.players.get(id);
-                if (!p || !p.alive || !p.cells.length) continue;
+                if (!p || !p.alive || !p.cells.length) { frames.push({ id, m: 0 }); continue; }
                 let x = 0, y = 0, m = 0;
                 for (const c of p.cells) { x += c.x * c.mass; y += c.y * c.mass; m += c.mass; }
-                if (m > 0) mates.push({ id, x: Math.round(x / m), y: Math.round(y / m) });
+                if (m > 0) { mates.push({ id, x: Math.round(x / m), y: Math.round(y / m) }); frames.push({ id, m: Math.round(m) }); }
             }
-            try { cli.ws.send(JSON.stringify({ t: 'squadAllies', a: mates })); } catch (e) {}
+            try { cli.ws.send(JSON.stringify({ t: 'squadAllies', a: mates, f: frames })); } catch (e) {}
         }
     }
     // Estadisticas de partida por jugador (para la pantalla de resultados): kills y trozos comidos salen de los eventos de la sim.

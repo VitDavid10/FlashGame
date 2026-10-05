@@ -1429,9 +1429,28 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             if (n.nodeType === 1 && n.tagName === 'DIV' && !n.id && !n.className && n.parentElement === document.body) n.classList.add('mwa-host');
         }))).observe(document.body, { childList: true });
         // La partida tapa al hub: se esconde al empezar y vuelve al volver al menu.
+        // startOnlineGame en sala de pago pasa por popup + firma de la wallet ANTES de entrar: si el hub se esconde ya, el
+        // menu antiguo queda a la vista (popup raro) y al entrar el vigilante lo daba por perdido y volvia a tapar la partida.
+        // Por eso en online el hub solo se esconde cuando la partida corre de verdad; si el pago se cancela no se toca.
+        const entra = () => { hide(); _enPartida = true; aqHud(true); };
+        let esperando = false;
+        const alEntrar = () => {
+            if (esperando) return; esperando = true;
+            const t0 = Date.now();
+            const iv = setInterval(() => {
+                const corre = typeof gameRunning !== 'undefined' && gameRunning;
+                const firmando = typeof _joinInFlight !== 'undefined' && _joinInFlight;
+                if (corre) { clearInterval(iv); esperando = false; entra(); }
+                else if (!firmando || Date.now() - t0 > 120000) { clearInterval(iv); esperando = false; }
+            }, 100);
+        };
         ['startGame', 'startOnlineGame'].forEach(fn => {
             const o = window[fn];
-            if (typeof o === 'function') window[fn] = function () { hide(); _enPartida = true; aqHud(true); return o.apply(this, arguments); };
+            if (typeof o !== 'function') return;
+            window[fn] = function () {
+                if (fn === 'startGame' || window._squadTicket) entra(); else alEntrar();
+                return o.apply(this, arguments);
+            };
         });
         // Vuelta de la partida: el hub sale en el MISMO instante que el menu
         // antiguo (que queda tapado por hub-on), sin que se vea ni un frame.

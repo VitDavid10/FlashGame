@@ -334,13 +334,18 @@
                 if (skillToUse !== -1) { this.executeBotSkill(sim, skillToUse); siblings.forEach(s => { let idx = s.botSkills.indexOf(skillToUse); if (idx !== -1) s.botSkills.splice(idx, 1); s.botGcd = 1000; }); }
             }
 
+            this.botSteer(sim, siblings);
+        }
+
+        // Elige el objetivo (huir, cazar, comer). Lo usan los bots y los amigos de prueba de las arenas (aliados = ids a ignorar).
+        botSteer(sim, siblings, aliados) {
             this.changeDirTimer--; if (Math.abs(this.x) > sim.mapSize - 200 || Math.abs(this.y) > sim.mapSize - 200) { this.targetX = 0; this.targetY = 0; return; }
             let flee = false, visionRange = 750, targetPrey = null;
 
             // Antes: `[...sim.enemies, ...sim.allPlayerCells()]` por cada bot líder cada tick.
             // Ahora iteramos en sitio los dos contenedores sin crear el array intermedio.
             const checkEntity = (e) => {
-                if (e.id === this.id) return;
+                if (e.id === this.id || (aliados && aliados.has(e.id))) return;
                 let d = getEllipticalDist(this, e);
                 if (e.mass > this.mass * 1.25 && d < visionRange + this.r) { this.targetX = this.x - (e.x - this.x); this.targetY = this.y - (e.y - this.y); flee = true; }
                 else if (this.mass > e.mass * 1.25 && d < visionRange) { if (!targetPrey || d < targetPrey.dist) { targetPrey = { cell: e, dist: d }; } }
@@ -354,7 +359,7 @@
             if (!flee && targetPrey) { let isHiding = sim.isHiddenInVirus(targetPrey.cell); if (!isHiding) { this.targetX = targetPrey.cell.x; this.targetY = targetPrey.cell.y; flee = true; } }
             if (!flee) sim.viruses.forEach(v => { if (this.r > v.r && getEllipticalDist(this, v) < this.r + 120) flee = true; });
 
-            if (targetPrey && this.r > 45) {
+            if (targetPrey && this.r > 45 && this.isBot) {
                 let mySplitMass = (this.mass / 2); let preyMass = targetPrey.cell.mass; let boostRange = 400 + this.r; let attackRange = boostRange * 0.66;
                 if (mySplitMass > preyMass * 1.5 && targetPrey.dist < attackRange && (sim.now - this.lastSplitTime > 8000)) {
                     let currentCount = siblings.length;
