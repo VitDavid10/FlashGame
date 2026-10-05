@@ -525,7 +525,7 @@ function createGameHost(deps) {
     // los mete poco a poco, así parece que la sala se va llenando naturalmente.
     function refillBots(room) {
         if (room.state !== 'playing') return;
-        const target = targetPopOf(room.comboKey);
+        const target = room.targetPop != null ? room.targetPop : targetPopOf(room.comboKey);   // salas de equipo: 30 fijos
         if (target === 0) return;
         const deseados = Math.max(0, target - room.clients.size);
         const sim = room.sim;
@@ -543,6 +543,11 @@ function createGameHost(deps) {
         const sim = room.sim;
         const grupos = [...new Set(sim.enemies.map(e => e.id))];
         if (grupos.length === target) return;
+        // Salas de equipo: los bots entran de golpe (a trozos de 6 por tick) para que la sala nazca llena.
+        if (room.instantBots && grupos.length < target) {
+            for (let i = grupos.length, n = 0; i < target && n < 6; i++, n++) sim.spawnBot();
+            return;
+        }
         if ((room.lastBotStep || 0) + (1500 + Math.random() * 1000) > now) return;
         room.lastBotStep = now;
         if (grupos.length < target) {
@@ -612,6 +617,14 @@ function createGameHost(deps) {
     }
 
     function restartRoom(room) {
+        // Sala de equipo: una partida y fuera. Se cierran las conexiones y la sala desaparece.
+        if (room.squad) {
+            for (const cli of room.clients.values()) { try { cli.ws.close(); } catch (e) {} }
+            rooms.delete(room.key);
+            for (const [tok, info] of resumeTokens) { if (info.roomKey === room.key) resumeTokens.delete(tok); }
+            log(`Sala de equipo cerrada: ${room.key}`);
+            return;
+        }
         // Vaciar la sala al reiniciar: cerrar todas las conexiones tras el broadcast.
         // Antes se mantenían los jugadores entre partidas, lo que dejaba a los mismos
         // 30 dentro tras cada arcade → otros que esperaban fuera no tenían chance. Ahora

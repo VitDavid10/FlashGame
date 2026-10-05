@@ -452,7 +452,7 @@
             const skillState = {}; for (let i = 1; i <= 8; i++) skillState[i] = 0;
             const p = {
                 id, name: opts.name || "", colorBot: opts.colorBot || getRandomColor(), colorTop: opts.colorTop || getRandomColor(),
-                skinUrl: opts.skinUrl || null, godMode: !!opts.godMode,
+                skinUrl: opts.skinUrl || null, godMode: !!opts.godMode, team: opts.team || null,
                 cells: [], skillSlots: [null, null, null, null], skillState, globalCD: 0,
                 killStreak: 0, splitMilestones: { level1: false, level2: false },
                 lastSplitTime: -Infinity, alive: false, input: null, actions: []
@@ -1095,6 +1095,8 @@
                 for (let b = a + 1; b < plist.length; b++) {
                     const pA = plist[a], pB = plist[b];
                     if (this.config.mode === 'classic' && (pA.killStreak >= 5 || pB.killStreak >= 5)) continue;
+                    // Equipos (arenas 1v1/2v2/3v3): los compañeros no se comen entre si.
+                    if (pA.team && pA.team === pB.team) continue;
                     this.resolvePlayerCombat(pA, pB);
                     this.resolvePlayerCombat(pB, pA);
                 }

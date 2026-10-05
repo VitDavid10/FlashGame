@@ -50,6 +50,7 @@ const skinshop = require('./skinshop.js');         // tienda de skins de pais (S
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
 const { createTelegram } = require('./telegram.js');  // anuncios fijados y posts de X en Telegram
+const { createSquad } = require('./squad.js');            // arenas por equipos 1v1/2v2/3v3: grupos + cola + salas
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { listCombos, buildShardMap, applyOverrides } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
 const { createIpc } = require('./cluster/ipc.js');             // request/response sobre fork (Fase 4)
@@ -1277,6 +1278,13 @@ const {
     broadcast, sendWaiting, refillBots, tickGradualBots,
     armLobby, startMatch, restartRoom, shutdownRoom,
 } = gameHost;
+// Arenas por equipos: el servicio de grupos vive en el host 0 (o en mono). Los demas
+// procesos lo crean igual, pero /match solo manda gente al host 0.
+const squad = createSquad({
+    rooms, buildSim, welcomeMsg: gameHost.welcomeMsg, refillBots, broadcast, log,
+    resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS,
+});
+const SQUAD_HOST_ID = 0;
 
 // --- Acciones de admin de ALCANCE GLOBAL, extraídas a funciones puras (sin ws) ---
 // Las usa tanto el handler directo del comando admin (mono/host, conexión propia)
@@ -2602,7 +2610,7 @@ const httpServer = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         const mode = String(query.get('mode') || '');
         const price = String(query.get('price') || '');
-        const hostId = SHARD.comboToHost.get(mode + '_' + price);
+        const hostId = mode === 'squad' ? SQUAD_HOST_ID : SHARD.comboToHost.get(mode + '_' + price);
         if (hostId == null) { res.end(JSON.stringify({ ok: false, reason: 'combo desconocido' })); return; }
         if (PW_ROLE === 'director') {
             const h = hostProcs.get(hostId);
@@ -3994,6 +4002,17 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
+        // --- Arenas por equipos: lobby de grupos y entrada a sala con ticket ---
+        if (msg.t === 'sq' && !room) { squad.handle(ws, msg); return; }
+        if (msg.t === 'join' && msg.squad && !msg.resume && !room) {
+            if (joinPending) return;
+            joinPending = true;
+            Promise.resolve(squad.join(ws, ip, msg))
+                .then(res => { if (res) { room = res.room; playerId = res.playerId; } })
+                .catch(e => { log('squad.join error: ' + (e && e.stack || e)); })
+                .finally(() => { joinPending = false; });
+            return;
+        }
         if (msg.t === 'join' && !room) {
             // El GameHost orquesta matchmaking + sim + welcome; el cobro/stats los hace
             // vía director.*. Desde 4a.4.3 handleJoin es ASYNC (authorizeEntry puede ir
@@ -4015,7 +4034,7 @@ wss.on('connection', (ws, req) => {
         gameHost.handleInput(room, playerId, msg);
     });
 
-    ws.on('close', () => gameHost.handleClose(ws, room, playerId, spectatorRoom));
+    ws.on('close', () => { squad.onClose(ws); gameHost.handleClose(ws, room, playerId, spectatorRoom); });
     ws.on('error', () => {});
 });
 
@@ -4059,6 +4078,7 @@ const tickCtx = {
     flags: tickFlags,
     // funciones puras
     log, logAdmin, broadcast, restartRoom, startMatch, tickGradualBots,
+    squadTick: squad.tick, squadEnd: squad.endOf,
     buildSnapshotFor, aoiBoxFor,
     addToPot, sendEcon, entryFeePill, minRealOf, classicExitFeePct, ARCADE_RAKE_PCT,
     deleteRoom: (key) => rooms.delete(key),

@@ -201,12 +201,6 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-pl{position:absolute;right:calc(100% + .45em);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:.3em;font-size:.78em;text-shadow:.12em .12em 0 #000}
 .ah-pl b{font-weight:400;color:#fff;font-size:.8em}
 #ahAr{z-index:7}
-.ar-b{display:flex;flex-direction:column;align-items:center;gap:.7em;text-align:center}
-.ar-t{font-size:.95em;color:var(--ac);text-shadow:.12em .12em 0 #000}
-.ar-m{display:flex;gap:.6em}
-.ar-m span{font-size:.5em;padding:.6em .9em;border:.14em solid var(--ac);color:#fff}
-.ar-p{font-size:.4em;line-height:1.9;color:#cfd8d3;max-width:34em}
-.ar-s{font-size:.5em;color:#ffd23a;letter-spacing:.12em}
 #ahAv{z-index:7}#ahUn{z-index:8}#ahIc{z-index:9}
 /* ICON UNLOCKED: el icono de perfil nuevo en una tarjeta cuadrada que entra
    girando sobre si misma, flota y le pasa un brillo de vez en cuando. */
@@ -579,10 +573,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ov" id="ahUn"><div class="pnl" style="width:24em"><canvas></canvas><div class="pin un-b">
   <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
   <div class="un-n" id="ahUnN"></div><div class="sv-bt"><button class="tb" id="ahUnClose">CLOSE</button><button class="tb on" id="ahUnWear">WEAR IT</button></div></div></div></div>
-<div class="ov" id="ahAr"><div class="pnl" style="width:26em"><canvas></canvas><div class="pin ar-b">
-  <div class="ar-t">ARENAS</div><div class="ar-m"><span>1V1</span><span>2V2</span><span>3V3</span></div>
-  <div class="ar-p">Team battles in small arenas. Short rounds: the last team standing wins the pot. If there aren't enough players, bots fill the empty spots so you never wait.</div>
-  <div class="ar-s">COMING SOON</div><div class="sv-bt"><button class="tb" id="ahArClose">CLOSE</button></div></div></div></div>
+<div class="ov" id="ahAr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><span class="w">ARENAS</span><span class="cnt">1V1 · 2V2 · 3V3</span><button class="px">CLOSE</button></div>
+  <div id="ahArBody"></div></div></div></div>
 <div class="ov" id="ahSv"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin">
   <div class="sv-b"><canvas id="ahSvPill"></canvas><div class="sv-n" id="ahSvN"></div><div class="sv-p" id="ahSvP"></div>
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
@@ -1204,7 +1197,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try { SoundManager.play('simpleselect'); } catch (x) {}
         if (a === 'x') { conectaX(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
-        if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); placa($('#ahAr .pnl'), 1); $('#ahArClose').onclick = () => ar.classList.remove('open'); }
+        if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn($('#ahArBody')); placa($('#ahAr .pnl'), 1); }
         else if (a === 'store') openStore('shop');
         else if (a === 'quests') openQuests();
         else if (a === 'pill') {
@@ -1270,6 +1263,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
         window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada;
+        // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
+        window.PWSquadHooks = { afterRender() { const ar = $('#ahAr'); if (ar && ar.classList.contains('open')) requestAnimationFrame(() => placa($('#ahAr .pnl'), 1)); } };
         // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
         // cuelga de <body> (con shadow DOM cerrado): se marca para poder girarlo.
         new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {

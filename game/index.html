@@ -2896,6 +2896,8 @@
         .pw-big-btn.offline { background: linear-gradient(#ff5a4e, #c11f14); }
         .pw-big-btn.online { background: linear-gradient(#3f8ef7, #1450b4); }
         .pw-big-btn.free { background: linear-gradient(#2ee27a, #0f8f46); }
+        .pw-big-btn.squad { background: linear-gradient(#ffd94e, #b8860b); color: #241a00; text-shadow: none; }
+        html.pw-app #btnSquadArenas, html.pw-app #btnSquadArenas + .pw-btn-sub { display: none; }
         .pw-big-btn.room { background: linear-gradient(#3a4048, #1a1e24); }
         .pw-btn-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 1px; margin: 6px 0 12px; }
         .pw-room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -4218,6 +4220,8 @@
             <div class="pw-btn-sub">PRACTICE VS BOTS · NO WAGER</div>
             <button class="pw-big-btn online" id="btnPlayOnline" onclick="choosePlay('online')" onmouseenter="SoundManager.playSimpleHover()">PLAY ONLINE</button>
             <div class="pw-btn-sub">REAL PLAYERS · REAL ROOMS</div>
+            <button class="pw-big-btn squad" id="btnSquadArenas" onclick="PWSquad.open()" onmouseenter="SoundManager.playSimpleHover()">SQUAD ARENAS</button>
+            <div class="pw-btn-sub">1V1 · 2V2 · 3V3 · PLAY WITH A PARTY</div>
             <button class="pw-modal-cancel" onclick="closePlayChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>
@@ -6551,6 +6555,21 @@
                                                                                                             // Los rayos son solo TUYOS: de los demas se ve unicamente el aura.
                                                                                                             if (isSelf || enemySkillFx) ensureSprintBoltPops(c, now, showExtra);
                                                                                                         }
+
+                                                    // --- ARENAS por equipos: aro fino azul a los companeros y rojo a los rivales
+                                                    // (solo jugadores reales; los bots no llevan aro). Mas fino que el del sprint. ---
+                                                    if (!c.isBot && !isSelf && window.pwSquadRel) {
+                                                        const rel = pwSquadRel(c.id);
+                                                        if (rel) {
+                                                            ctx.save();
+                                                            ctx.translate(c.x, c.y);
+                                                            ctx.rotate(-Math.PI / 4);
+                                                            const gT = c.r * 0.06 + 2;
+                                                            ctx.globalAlpha = alpha * 0.95;
+                                                            ctx.drawImage(pixRingSprite(wLfx, rel === 'ally' ? '#3fa0ff' : '#ff3b3b', false, 32), -pW / 2 - gT, -pH / 2 - gT, pW + gT * 2, pH + gT * 2);
+                                                            ctx.restore();
+                                                        }
+                                                    }
 
                                                     // --- INMUNE: aura morada dentada que late. El dentado es el aro
                                                     // punteado de fuera, pero con trozos cortos (22 en vez de los 8 de
@@ -13981,7 +14000,8 @@
         const _binFlag = (new URLSearchParams(location.search)).get('bin') !== '0';
         const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
         // REJOIN: si hay token vivo, reconectar a la partida en curso sin pagar.
-        const rejoinInfo = Rejoin.get();
+        const _sqTicket = window._squadTicket || null; window._squadTicket = null;
+        const rejoinInfo = _sqTicket ? null : Rejoin.get();
         if (rejoinInfo) {
             _joinInFlight = true; setPlayBtnState(true, 'REJOINING...');
             SoundManager.play('select'); SoundManager.stopMenuMusic();
@@ -14000,7 +14020,7 @@
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
-        const mode = currentGameMode;
+        const mode = _sqTicket ? 'arcade' : currentGameMode;
         const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
         const cfg = {
             botEnabled: true, botCount: 25, botRespawn: true, botMaxSplits: 16,
@@ -14014,7 +14034,8 @@
         const url = qsServer || savedServer || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
         // Salas de pago: comprobar saldo WAR y FIRMAR la entrada antes de conectar.
         let paid;
-        try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
+        if (_sqTicket) paid = { pay: null };   // arenas por equipos: gratis, sin firma
+        else try { paid = await preparePayment(mode, currentServer); } catch (e) { paid = null; }
         if (!paid) { _joinInFlight = false; setPlayBtnState(false); return; }   // sin saldo / sin firma → ya se avisó
         // Firmado: ROOM INFO ya cumplio su papel. A partir de aqui el estado
         // (CONNECTING...) vuelve al boton PLAY de siempre.
@@ -14029,7 +14050,7 @@
         try {
             const u = new URL(url);
             const isWss = url.startsWith('wss://');
-            const mm = await fetch((isWss ? 'https://' : 'http://') + u.host + '/match?mode=' + encodeURIComponent(mode) + '&price=' + encodeURIComponent(currentServer), { cache: 'no-store' });
+            const mm = await fetch((isWss ? 'https://' : 'http://') + u.host + '/match?mode=' + encodeURIComponent(_sqTicket ? 'squad' : mode) + '&price=' + encodeURIComponent(_sqTicket ? 'Free' : currentServer), { cache: 'no-store' });
             const mj = await mm.json();
             if (mj && mj.ok) {
                 if (isWss && mj.path) {
@@ -14041,11 +14062,21 @@
                 }
             }
         } catch (e) { /* sin /match: seguir con la URL base (compat mono) */ }
-        netState = { url: gameUrl, token: null, attempts: 0, joinMsg: { t: 'join', mode: mode, room: currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect, startSkills: skillsDeSalida() } };
+        netState = { url: gameUrl, token: null, attempts: 0, squad: _sqTicket ? true : false, joinMsg: { t: 'join', squad: _sqTicket || undefined, mode: mode, room: _sqTicket ? 'Free' : currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect, startSkills: skillsDeSalida() } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.
     }
+
+    // Arenas por equipos (game/squad.js): entrar a una sala con el ticket del servidor.
+    // Si hay una partida en curso (la practica mientras se espera rival) se abandona antes.
+    window.pwSquadEnter = function (ticket, kind) {
+        if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
+        window._squadTicket = ticket; window._squadKind = kind;
+        _joinInFlight = false;
+        setTimeout(() => window.startOnlineGame(), 60);
+    };
+    window.pwSquadActive = function () { return (netState && netState.squad && gameRunning) ? window._squadKind : null; };
 
     // Práctica offline mientras la sala online espera jugadores
     let practiceMode = false;
@@ -14935,6 +14966,9 @@
             // !netState cubre el caso de returnToMenu: pone netState=null antes de
             // cerrar el WS, pero puede haber mensajes buffereados que llegan después.
             if (!netState || netState._matchOver) return;
+            if (msg.t === 'squadRoster') { if (window.PWSquad) PWSquad.onRoster(msg); return; }
+            if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); return; }
+            if (msg.t === 'squadBad') { abandonNet('That match is no longer available.'); return; }
             if (msg.t === 'welcome' && !joined) {
                 joined = true; restoreBtn(); netState.attempts = 0; netState.token = msg.token;
                 netState.lastWelcome = msg;
@@ -17104,6 +17138,7 @@
     window.GameWallet = GameWallet;   // expone GameWallet para el módulo
 </script>
 <!-- Menu de la app (dApp Store): solo en la APK, ver app-hub.js -->
+<script src="squad.js"></script>
 <script src="app-hub.js"></script>
 <script src="app-share.js"></script>
 

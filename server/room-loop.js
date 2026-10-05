@@ -80,11 +80,12 @@ function tickRoomOnce(room, now, ctx) {
 
     // Backfill gradual de bots (se acerca al objetivo a razón de +1 cada ~2s)
     ctx.tickGradualBots(room, now);
+    if (room.squad && ctx.squadTick) ctx.squadTick(room, now);
 
     // Arcade con MENOS de ARCADE_KEEP_MIN jugadores reales: acortar la partida para
     // terminar en 30s (reciclar la sala). El top timer (tl del snapshot) se actualiza
     // solo. Avisamos una vez con 'roomShorten' para el cartel del cliente.
-    if (room.mode !== 'classic' && !room._shortened && room.clients.size < ctx.ARCADE_KEEP_MIN
+    if (room.mode !== 'classic' && !room.squad && !room._shortened && room.clients.size < ctx.ARCADE_KEEP_MIN
         && room.endsAt && (room.endsAt - now) > ctx.ARCADE_SHORTEN_MS) {
         room._shortened = true;
         room.endsAt = now + ctx.ARCADE_SHORTEN_MS;
@@ -95,6 +96,7 @@ function tickRoomOnce(room, now, ctx) {
     // fin de partida (arcade/skills)
     if (room.endsAt && now >= room.endsAt) {
         room.state = 'ended';
+        if (room.squad && ctx.squadEnd) ctx.squadEnd(room);
         /*
          * +5-10s al azar (idea de David). El precio de la sala se congela en el
          * instante en que entra el primero tras quedar vacia, asi que si el
