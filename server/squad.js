@@ -168,7 +168,11 @@ function createSquad(deps) {
 
     // ---------- mensajes del lobby ----------
     function handle(ws, msg) {
-        if (social.handle(ws, msg)) return;
+        if (social.handle(ws, msg)) {
+            // Cambio de nombre o de icono con el grupo abierto: los demas lo ven al momento.
+            if (msg.a === 'hello' && ws.pwId) { const m = byWs.get(ws); if (m) { const i = identOf(ws); m.name = i.name; m.pic = i.pic; m.av = i.av; pushParty(m.party); } }
+            return;
+        }
         const a = String(msg.a || '');
         let me = byWs.get(ws);
         if (a === 'rooms') return send(ws, { t: 'sqRooms', rooms: roomsList() });
@@ -329,8 +333,27 @@ function createSquad(deps) {
         return { score: Math.round(s), alive, seen, n };
     }
     // Partida real: si un equipo se queda sin nadie vivo, acaba ya.
+    // Posicion de tus companeros (solo los tuyos): el cliente los marca en el borde de la pantalla cuando no se ven.
+    // Los snapshots solo llevan lo que cae en tu zona, asi que sin esto no sabrias donde estan.
+    function sendAllies(room) {
+        const sq = room.squad;
+        for (const [pid, cli] of room.clients) {
+            if (cli.ws.virtualGame || cli.ws.readyState !== 1 || !(cli.ws.bufferedAmount < 65536)) continue;
+            const mates = [];
+            for (const id of sq.teams[cli.team] || []) {
+                if (id === pid) continue;
+                const p = room.sim.players.get(id);
+                if (!p || !p.alive || !p.cells.length) continue;
+                let x = 0, y = 0, m = 0;
+                for (const c of p.cells) { x += c.x * c.mass; y += c.y * c.mass; m += c.mass; }
+                if (m > 0) mates.push({ id, x: Math.round(x / m), y: Math.round(y / m) });
+            }
+            try { cli.ws.send(JSON.stringify({ t: 'squadAllies', a: mates })); } catch (e) {}
+        }
+    }
     function tick(room, now) {
         const sq = room.squad;
+        if (room.tickCount % 10 === 0) sendAllies(room);
         if (sq.practice || !room.endsAt || room.endsAt - now < 1500) return;
         const a = teamScore(room, 'A'), b = teamScore(room, 'B');
         // Solo cuenta cuando todos han entrado Y spawneado: uno que aun esta cargando no esta muerto.

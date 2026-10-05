@@ -535,7 +535,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // cantidad quedaba debajo. Al escribir, el cartel sube lo justo para que el
     // campo quede a la vista; al soltar el teclado vuelve a su sitio.
     function subeCampo(inp) {
-        const box = inp.closest('.gameModalBox, .pw-modal-box'); if (!box) return;
+        const box = inp.closest('.gameModalBox, .pw-modal-box, #ahFr .pnl, #ahAr .pnl'); if (!box) return;
         const vv = window.visualViewport, alto = window.innerHeight;
         const visible = vv && vv.height < alto - 60 ? vv.height : alto * 0.5;
         box.style.removeProperty('translate');
@@ -544,10 +544,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     document.addEventListener('focusin', e => {
         const t = e.target; if (!t || t.tagName !== 'INPUT') return;
-        if (t.closest('.gameModal, .pw-modal')) setTimeout(() => subeCampo(t), 250);
+        if (t.closest('.gameModal, .pw-modal, #ahFr, #ahAr')) setTimeout(() => subeCampo(t), 250);
     });
     document.addEventListener('focusout', e => {
-        const box = e.target && e.target.closest && e.target.closest('.gameModalBox, .pw-modal-box');
+        const box = e.target && e.target.closest && e.target.closest('.gameModalBox, .pw-modal-box, #ahFr .pnl, #ahAr .pnl');
         if (box) box.style.removeProperty('translate');
     });
     const hub = document.createElement('div'); hub.id = 'appHub';
@@ -591,7 +591,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
 <div class="ov" id="ahPr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div></div>
+  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div><button class="tb" id="ahPrAddX" style="width:auto;padding:.5em 1em;display:none">+ CONNECT X</button></div>
   <div class="pr-r">
     <div class="pr-box"><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
       <div class="k" style="margin-top:.9em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
@@ -1129,6 +1129,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // Codigo de amigo: debajo de EDIT AVATAR. Tocarlo lo copia.
         const fc = $('#ahPrFc');
         fc.innerHTML = xCode ? '<span class="k">FRIEND CODE</span><b>' + xCode.toUpperCase() + '</b>' : '';
+        // Sin X vinculado: el boton para conectarlo (la cuenta de la wallet se queda, se le suma la X).
+        const ax = $('#ahPrAddX'); if (ax) { ax.style.display = xUser ? 'none' : ''; ax.onclick = () => loginX(); }
         fc.onclick = () => { if (!xCode) return; try { navigator.clipboard.writeText(xCode); } catch (e) {} const b = fc.querySelector('b'); if (b) { b.textContent = 'COPIED'; setTimeout(() => { b.textContent = xCode.toUpperCase(); }, 1200); } };
     }
     // Editor del avatar: estilo, fondo y, con la pildora, sus colores o una skin tuya.
@@ -1185,6 +1187,16 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
     }
     function conectaX() { openProfile(); }
+    const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    // Login de X por el NAVEGADOR del movil (dentro del WebView X acababa en su propia app y no volvia). Antes de
+    // salir se guarda un secreto; el servidor devuelve a la app por pillwars://xlogin y solo con ese secreto se canjea.
+    async function loginX() {
+        const sec = b64u(crypto.getRandomValues(new Uint8Array(32)));
+        try { localStorage.setItem('pw_xs', sec); } catch (e) {}
+        const h = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sec)));
+        const url = location.host + '/airdrop-auth/x/login?app=1&h=' + h + '&ret=' + encodeURIComponent(location.pathname);
+        location.href = 'intent://' + url + '#Intent;scheme=' + location.protocol.replace(':', '') + ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
+    }
     // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
     // Devuelve true si quedo conectada.
     async function loginWallet() {
@@ -1284,6 +1296,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         document.body.appendChild(hub);
         try { const n = localStorage.getItem('pw_app_name'); if (n) guardaNombre(n); } catch (e) {}
         syncX();
+        // Vuelta del login de X por el navegador (#xhandoff=...): se canjea dentro del WebView, que es donde tiene que quedar la cookie.
+        const ho = /^#xhandoff=([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
+        if (ho) { let sec = ''; try { sec = localStorage.getItem('pw_xs') || ''; localStorage.removeItem('pw_xs'); } catch (e) {} location.replace('/airdrop-auth/x/handoff?t=' + ho[1] + '&s=' + encodeURIComponent(sec)); return; }
+        if (/^#x(err)?=/.test(location.hash)) { const err = /xerr/.test(location.hash); history.replaceState(null, '', location.pathname + location.search); if (err) try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} }
         wire(); setInterval(() => { if (hub.classList.contains('on')) pullRooms(); }, 5000);
         addEventListener('resize', () => { if (hub.classList.contains('on')) { scale(); paintStatic(); } });
         // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.

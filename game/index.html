@@ -14974,6 +14974,7 @@
             // cerrar el WS, pero puede haber mensajes buffereados que llegan después.
             if (!netState || netState._matchOver) return;
             if (msg.t === 'squadRoster') { if (window.PWSquad) PWSquad.onRoster(msg); return; }
+            if (msg.t === 'squadAllies') { if (window.PWSquad) PWSquad.onAllies(msg); return; }
             if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); return; }
             if (msg.t === 'squadBad') { abandonNet('That match is no longer available.'); return; }
             if (msg.t === 'welcome' && !joined) {
@@ -15378,8 +15379,8 @@
         if (!ov) {
             const st = document.createElement('style');
             st.textContent = '#sqEntry{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);pointer-events:auto}' +
-                '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,15px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:12px;align-items:flex-start;' +
-                'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:16px 22px}' +
+                '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,15px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:row;gap:22px;align-items:center;white-space:nowrap;' +
+                'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:14px 20px}' +
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
@@ -16118,6 +16119,23 @@
 
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
         drawEnemyArrow(es);
+        drawAllyMarkers(es);
+    }
+    // Arenas: marca sutil, azul, en el borde de la pantalla hacia donde esta cada companero cuando no se le ve.
+    function drawAllyMarkers(es) {
+        const A = window.pwSquadAllies && window.pwSquadAllies();
+        if (!A || !A.length || isSpectating || !myCells().length) return;
+        const cx = width / 2, cy = height / 2, m = 24;
+        for (const a of A) {
+            const sx = (a.x - camera.x) * es + cx, sy = (a.y - camera.y) * es + cy;
+            if (sx > 0 && sx < width && sy > 0 && sy < height) continue;   // ya se ve
+            const dx = sx - cx, dy = sy - cy;
+            const k = Math.min((cx - m) / Math.max(1e-6, Math.abs(dx)), (cy - m) / Math.max(1e-6, Math.abs(dy)));
+            ctx.save(); ctx.translate(cx + dx * k, cy + dy * k); ctx.rotate(Math.atan2(dy, dx));
+            ctx.globalAlpha = 0.6; ctx.fillStyle = '#3fa0ff'; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath(); ctx.stroke(); ctx.fill();
+            ctx.restore();
+        }
     }
 
 

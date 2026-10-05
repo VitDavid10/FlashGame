@@ -220,3 +220,25 @@ test('an invited friend who swaps to a pasted wallet stops counting as an invite
     real(s, W(3));
     assert.strictEqual(s.publicView(s.sessionUser(a.token)).invites, 0);
 });
+
+test('find: por @usuario, por codigo y por el resumen de wallet del leaderboard (solo sin X), nunca por wallet completa', () => {
+    const s = createStore({});
+    const wl = 'AjGQ7kVxYh2sT9bC3dE4fG5hJ6kLmNpQrStUvWqX6k';
+    const a = s.linkWallet(null, wl, '');                       // solo wallet
+    const b = s.linkX(null, X(1));                              // solo X
+    const ua = s.sessionUser(a.token), ub = s.sessionUser(b.token);
+    assert.strictEqual(s.find('@USER1').code, ub.code);
+    assert.strictEqual(s.find(ub.code).code, ub.code);
+    assert.strictEqual(s.find('AjGQ...qX6k').code, ua.code, 'el resumen que enseña el leaderboard');
+    assert.strictEqual(s.find('AjGQ…qX6k').code, ua.code);
+    assert.strictEqual(s.find(wl), null, 'la direccion completa no revela de quien es');
+    assert.strictEqual(s.find('nobody'), null);
+    // una cuenta con X no se encuentra por su resumen de wallet
+    const c = s.linkWallet(b.token, W(9), '');
+    assert.ok(s.sessionUser(c.token).x);
+    assert.strictEqual(s.find(W(9).slice(0, 4) + '...' + W(9).slice(-4)), null);
+    // una wallet pegada sin firmar no vale
+    const d = s.linkX(null, X(2));
+    s.pasteWallet(d.token, 'Pasted' + '1'.repeat(37));
+    assert.strictEqual(s.find('Past...1111'), null);
+});

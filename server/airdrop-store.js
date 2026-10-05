@@ -276,7 +276,15 @@ function createStore(opts) {
     /** Cuenta por usuario de X o por codigo de amigo, para encontrar amigos. Nunca por wallet: buscar una
      * direccion revelaria de quien es. Solo cuentas con X o con wallet firmada (una pegada no demuestra nada). */
     function find(q) {
-        q = String(q || '').trim().replace(/^@/, '').toLowerCase();
+        const raw = String(q || '').trim();
+        // El leaderboard enseña "AjGQ...qX6k" para quien solo tiene wallet: se acepta ese mismo resumen, y solo
+        // para cuentas sin X (con X el leaderboard enseña su @, asi que esto no revela nada nuevo). Si coincide mas de una, ninguna.
+        const sh = /^([1-9A-HJ-NP-Za-km-z]{4})(?:\.\.\.|\u2026)([1-9A-HJ-NP-Za-km-z]{4})$/.exec(raw);
+        if (sh) {
+            const c = Object.values(data.users).filter(x => !x.x && x.wallet && !x.walletPasted && x.wallet.startsWith(sh[1]) && x.wallet.endsWith(sh[2]));
+            return c.length === 1 ? c[0] : null;
+        }
+        q = raw.replace(/^@/, '').toLowerCase();
         if (!q) return null;
         let u = user(byCode.get(q));
         if (!u) u = Object.values(data.users).find(x => x.x && String(x.x.username || '').toLowerCase() === q) || null;

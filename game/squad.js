@@ -74,12 +74,12 @@
 .sq-av .l{font-size:.32em;color:#ffd23a;letter-spacing:.1em;margin-top:-.3em}
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
 .sq-pic{overflow:hidden}
-#ahFrBody,#ahArBody{max-height:17.5em;overflow-y:auto}
+#ahFrBody,#ahArBody{max-height:19em;overflow-y:auto}
 .sq-pic .av,.sq-pic .av-cv{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .sq-pic .av svg{width:60%;height:60%}
 .sq-pic canvas{image-rendering:pixelated}
 /* buscando: los jugadores son lo central, grandes, y los botones van abajo */
-.sq.find{min-height:15.5em;justify-content:space-between;gap:.6em}
+.sq.find{min-height:14em;justify-content:space-between;gap:.6em}
 .sq-grp.big{flex:1;align-items:center;gap:2.6em;margin:.2em 0}
 .sq-grp.big .sq-av{width:12em;gap:.9em}
 .sq-grp.big .sq-av .sq-pic{width:5.2em;height:5.2em;font-size:1.5em}
@@ -130,9 +130,10 @@
 #sqEnd .a.w{color:#00ff66}#sqEnd .a.l{color:#ff5a4e}#sqEnd .a.d{color:#ffd23a}
 #sqEnd .b{font-size:11px;color:#cfd8d3;line-height:1.9}
 #sqEnd button{font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:2px;padding:10px 26px;border:3px solid #000;background:#00ff88;color:#04150c;cursor:pointer;margin-top:8px}
-#sqHud{position:fixed;left:8px;top:64px;z-index:56;display:none;font-family:'Press Start 2P',monospace;font-size:8px;line-height:1.7;background:rgba(6,10,8,.78);border:2px solid #2c3630;padding:6px 8px;pointer-events:none;text-shadow:1px 1px 0 #000}
+#sqHud{position:fixed;left:8px;top:64px;z-index:56;display:none;max-width:70vw;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.6;background:rgba(6,10,8,.55);padding:4px 8px;pointer-events:none;text-shadow:1px 1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sqHud.show{display:block}
-#sqHud .a{color:#00ff88}#sqHud .b{color:#ff6a5a}#sqHud .h{color:#9bbfff;margin-bottom:2px}
+#sqHud span{margin-right:9px}
+#sqHud .a{color:#3fa0ff}#sqHud .b{color:#ff6a5a}#sqHud .h{color:#8aa096}
 #sqToast{position:fixed;right:10px;top:10px;z-index:310;display:flex;flex-direction:column;gap:8px;max-width:min(330px,92vw);font-family:'Press Start 2P',monospace}
 #sqToast .t{background:rgba(8,12,10,.96);border:2px solid #4d9bff;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(77,155,255,.35);padding:9px 10px;font-size:8px;line-height:1.7;color:#fff;display:flex;flex-direction:column;gap:7px}
 #sqToast .t.w{border-color:#ffd23a;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(255,210,58,.3)}
@@ -178,7 +179,7 @@
     }
     // El icono del menu del jugador: lo ven sus amigos cuando no tiene foto de X.
     function myAv() { try { return window._hubAvatar ? window._hubAvatar() : null; } catch (e) { return null; } }
-    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv() }); }
+    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName() }); }
     function connect(then) {
         if (S.ws && S.ws.readyState === 1) { then && then(); return; }
         if (then) S.after = then;   // si ya se esta conectando, se ejecuta al abrir
@@ -189,7 +190,7 @@
             S.ws = ws;
             ws.onopen = () => {
                 S.conn = 'open'; S.retry = 0;
-                if (S.token) send({ a: 'hello', token: S.token, av: myAv() });   // antes que cualquier otra orden
+                if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName() });   // antes que cualquier otra orden
                 render(); const f = S.after; S.after = null; f && f();
             };
             ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMsg(m); };
@@ -303,21 +304,23 @@
         if (!el) { el = document.createElement('div'); el.id = 'sqHud'; document.body.appendChild(el); }
         return el;
     }
+    // Posiciones de companeros que manda el servidor (4 por segundo): el juego las marca en el borde si no se ven.
+    function onAllies(m) { S.allies = { t: Date.now(), a: m.a || [] }; }
     function onRoster(m) {
-        S.roster = m;
+        S.roster = m; S.allies = null;
         S.rel = new Map();
         const mine = m.me === 'A' ? 'A' : 'B', other = mine === 'A' ? 'B' : 'A';
         for (const p of m.teams[mine]) S.rel.set(p.id, 'ally');
         for (const p of m.teams[other]) S.rel.set(p.id, 'foe');
         const el = hud();
-        const row = (cls, list) => list.map(p => '<div class="' + cls + '">' + esc(p.name || 'PLAYER') + '</div>').join('');
-        el.innerHTML = '<div class="h">' + (m.practice ? 'PRACTICE · ' : '') + m.size + 'V' + m.size + '</div>' +
-            row('a', m.teams[mine]) + (m.practice ? '' : '<div class="h" style="margin-top:3px">VS</div>' + row('b', m.teams[other]));
+        const row = (cls, list) => list.map(p => '<span class="' + cls + '">' + esc(p.name || 'PLAYER') + '</span>').join('');
+        el.innerHTML = '<span class="h">' + (m.practice ? 'PRACTICE ' : '') + m.size + 'V' + m.size + '</span>' +
+            row('a', m.teams[mine]) + (m.practice ? '' : '<span class="h">VS</span>' + row('b', m.teams[other]));
         el.classList.add('show');
     }
     function onEnd(m) {
         hud().classList.remove('show');
-        S.rel = null;
+        S.rel = null; S.allies = null;
         if (m.practice) {
             // La practica acabo: si el grupo sigue buscando, se vuelve a ofrecer sin meter a nadie a la fuerza.
             return;
@@ -570,8 +573,9 @@
         if (!c || !/^[A-Za-z0-9]{5}$/.test(c)) { setTimeout(boot, 2500); return; }
         setTimeout(() => joinCode(c.toUpperCase()), 1200);
     }
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, boot, refreshAv, state: S };
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
+    window.pwSquadAllies = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.a : null);
     if (document.readyState === 'complete') joinFromLink(); else addEventListener('load', joinFromLink);
 })();

@@ -311,3 +311,40 @@ test('se puede invitar mientras el grupo busca: si aceptan, la busqueda se cance
     say(sq, c, { a: 'pinvite', id: 'AAAAAAA' });
     assert.equal(c.last('sqErr').reason, 'party_busy');
 });
+
+test('sin @ de X se ve el nombre elegido; un cambio de nombre o icono llega al grupo al momento', () => {
+    const sq = make();
+    const a = fakeWs();
+    const tk = token.sign({ id: 'AAAAAAA', u: '', n: 'AjGQ...qX6k', p: '' });
+    say(sq, a, { a: 'hello', token: tk, name: 'Pillwars<b>', av: { t: 'npc', bg: '#8a948f' } });
+    say(sq, a, { a: 'create' });
+    assert.equal(a.last('sqParty').members[0].name, 'Pillwarsb', 'saneado');
+    say(sq, a, { a: 'hello', token: tk, name: 'David', av: { t: 'spook', bg: '#ab9ff2' } });
+    const m = a.last('sqParty').members[0];
+    assert.equal(m.name, 'David');
+    assert.equal(m.av.t, 'spook');
+    // con @ de X manda el @, el nombre elegido no cambia nada
+    const x = fakeWs();
+    say(sq, x, { a: 'hello', token: token.sign({ id: 'XXXXXXX', u: 'xavi', n: 'Xavi', p: '' }), name: 'Otro' });
+    say(sq, x, { a: 'create' });
+    assert.equal(x.last('sqParty').members[0].name, '@xavi');
+});
+
+test('las posiciones de companeros llegan solo a los del mismo equipo y no a los virtuales', () => {
+    const sq = make();
+    const a = user(sq, 'AAAAAAA', 'ana'), b = user(sq, 'BBBBBBB', 'bob');
+    say(sq, a, { a: 'create' }); say(sq, b, { a: 'join', code: a.last('sqParty').code });
+    say(sq, a, { a: 'play' });
+    const wa = fakeWs(), wb = fakeWs();
+    say(sq, a, { a: 'practice' }); say(sq, b, { a: 'practice' });
+    const ra = sq.join(wa, 'x', { t: 'join', squad: a.last('sqTicket').ticket }), rb = sq.join(wb, 'x', { t: 'join', squad: b.last('sqTicket').ticket });
+    const room = ra.room;
+    for (const r of [ra, rb]) { room.clients.get(r.playerId)._spawned = true; room.sim.spawnPlayer(r.playerId, 0); }
+    room.state = 'playing'; room.endsAt = Date.now() + 100000; room.tickCount = 10;
+    wa.bufferedAmount = 0; wb.bufferedAmount = 0;
+    sq.tick(room, Date.now());
+    const m = wa.last('squadAllies');
+    assert.equal(m.a.length, 1, 'ana ve a bob, no a si misma');
+    assert.equal(typeof m.a[0].x, 'number');
+    assert.equal(wb.last('squadAllies').a.length, 1);
+});
