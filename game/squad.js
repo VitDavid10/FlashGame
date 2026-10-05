@@ -88,7 +88,11 @@
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
 .sq-pic{overflow:hidden}
 #ahArBody{max-height:19em;overflow-y:auto}
-#ahFrBody{max-height:19em;overflow-y:auto}
+#ahFrBody{max-height:21em;overflow-y:auto}
+/* amigos: la lista usa todo el alto del panel (si no, con 3 amigos el tercero quedaba cortado) y las filas son mas bajas */
+#ahFrBody .sq-list{max-height:none;overflow:visible;gap:.4em}
+#ahFrBody .sq-it{padding:.3em .7em}
+#ahFrBody .sq-it .sq-pic{width:1.8em;height:1.8em}
 .sq-pic .av,.sq-pic .av-cv{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .sq-pic .av svg{width:60%;height:60%}
 .sq-pic canvas{image-rendering:pixelated}
@@ -559,7 +563,7 @@
         // El grupo solo se enseña cuando de verdad hay alguien mas contigo.
         const grp = p && p.members.length >= 2
             ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true, p.members.length, false, true) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
-            : '<div class="sq-note">Invite friends to play 2V2 or 3V3 together, then pick a room in ARENAS.</div>';
+            : '';   // sin grupo no se pinta la nota: se comia el sitio del tercer amigo
         const aviso = searching ? '<div class="sq-note" style="color:#ffb347">You are searching for a match. If a friend accepts your invite, the search is cancelled.</div>' : '';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
         const order = { on: 0, party: 1, game: 1, off: 2 };
