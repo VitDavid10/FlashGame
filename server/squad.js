@@ -62,7 +62,7 @@ function createSquad(deps) {
         for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.members.size, full: m.party.members.size >= MAX_PARTY };
         return null;
     }
-    const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf });
+    const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf, directory: deps.directory || null });
     // Identidad de quien entra a un grupo: su usuario de X o, sin X, el resumen de su wallet.
     function identOf(ws, fallback) {
         if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), pic: p.p, av: p.av }; }
@@ -188,8 +188,10 @@ function createSquad(deps) {
             if (me) return err(ws, 'already_in_party');
             const p = parties.get(String(msg.code || '').toUpperCase().trim());
             if (!p) return err(ws, 'no_party');
-            if (p.state !== 'idle') return err(ws, 'party_busy');
+            if (p.state === 'match') return err(ws, 'party_busy');
             if (p.members.size >= MAX_PARTY) return err(ws, 'party_full');
+            // Alguien entra mientras el grupo busca: ya no cuadra la sala, la busqueda se cancela.
+            if (p.state === 'queued') { backToIdle(p); }
             const ident = identOf(ws, msg.name);
             const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); byWs.set(ws, m);

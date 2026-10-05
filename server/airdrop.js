@@ -651,7 +651,16 @@ function createAirdrop(opts) {
         if (u && u.wallet && !u.walletPasted) return { id: 'w_' + u.wallet, x: null, wallet: u.wallet };
         return null;
     }
-    return { handle, only: ONLY, closed: CLOSED, claimDiscord, flush: store.flush, xAccountOf };
+    // Para el servicio de amigos: la cuenta del airdrop que corresponde a un @usuario de X o a un codigo de amigo,
+    // con el mismo formato que la ficha firmada. Asi se puede agregar a quien aun no ha abierto Arenas.
+    function lookup(q) {
+        const u = store.find(q);
+        if (!u) return null;
+        const w = u.wallet && !u.walletPasted ? u.wallet : '';
+        if (u.x) return { id: u.code, u: u.x.username, n: u.x.name, p: u.x.pic, w };
+        return { id: u.code, u: '', n: w.slice(0, 4) + '...' + w.slice(-4), p: '', w };
+    }
+    return { handle, only: ONLY, closed: CLOSED, claimDiscord, flush: store.flush, xAccountOf, lookup };
 }
 
 module.exports = { createAirdrop };

@@ -11429,7 +11429,7 @@
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+    function returnToMenu() { try { hideSquadEntry(); } catch (e) {} hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
         centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
@@ -14076,7 +14076,11 @@
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
         window._squadTicket = ticket; window._squadKind = kind;
         _joinInFlight = false;
+        squadStatus(0);   // GENERATING ROOM desde el primer momento
         setTimeout(() => window.startOnlineGame(), 60);
+        // Si la sala no llega a abrirse, no se deja al jugador colgado detras del cartel.
+        clearTimeout(window._sqGuard);
+        window._sqGuard = setTimeout(() => { if (!gameRunning) { hideSquadEntry(); window.__loadingLock = false; try { returnToMenu(); } catch (e) {} try { showSystemMsg('Could not open the room. Please try again.', 'ARENAS'); } catch (e) {} } }, 15000);
     };
     window.pwSquadActive = function () { return (netState && netState.squad && gameRunning) ? window._squadKind : null; };
 
@@ -15366,6 +15370,54 @@
         }));
     }
 
+    // Entrada a una sala de arenas que ya esta jugandose: GENERATING ROOM -> LOADING PLAYERS -> READY y dentro.
+    // El cartel sale en cuanto se pulsa jugar (tapa el menu, que si no se queda debajo mientras conecta) y mientras
+    // tanto bloquea el input, como la carga normal. El mundo ya se ve detras cuando llega el READY.
+    function squadOverlay() {
+        let ov = document.getElementById('sqEntry');
+        if (!ov) {
+            const st = document.createElement('style');
+            st.textContent = '#sqEntry{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);pointer-events:auto}' +
+                '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,15px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:12px;align-items:flex-start;' +
+                'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:16px 22px}' +
+                '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
+            document.head.appendChild(st);
+            ov = document.createElement('div'); ov.id = 'sqEntry';
+            ov.innerHTML = '<div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div>';
+            document.body.appendChild(ov);
+        }
+        return ov;
+    }
+    function squadMark(ov, n) {
+        const nombres = ['GENERATING ROOM', 'LOADING PLAYERS', 'READY'];
+        ov.querySelectorAll('.l').forEach((l, i) => { l.className = 'l' + (i < n ? ' ok' : i === n ? ' on' : ''); l.textContent = (i < n ? '✓ ' : i === n ? '> ' : '  ') + nombres[i] + (i === n && n < 2 ? '…' : ''); });
+    }
+    function squadStatus(n) {
+        window.__loadingLock = true;
+        const ov = squadOverlay(); ov.style.display = 'flex'; squadMark(ov, n);
+        els.loginOverlay.style.display = 'none';   // sin esto el menu sigue "abierto" mientras conecta y el hub vuelve a salir encima
+    }
+    function hideSquadEntry() {
+        clearTimeout(window._sqGuard); clearInterval(window._sqIv);
+        const ov = document.getElementById('sqEntry'); if (ov) ov.style.display = 'none';
+    }
+    function showSquadEntry(readyFn, onDone) {
+        clearTimeout(window._sqGuard); clearInterval(window._sqIv);
+        squadStatus(1);
+        const ov = squadOverlay();
+        const t0 = performance.now();
+        let listoAt = 0;
+        window._sqIv = setInterval(() => {
+            const dt = performance.now() - t0;
+            if (!listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt > 500) { listoAt = performance.now(); squadMark(ov, 2); }
+            if (listoAt && performance.now() - listoAt > 450) {
+                clearInterval(window._sqIv);
+                ov.style.display = 'none'; window.__loadingLock = false;
+                if (onDone) onDone();
+            }
+        }, 120);
+    }
+
     function showLoadingScreen(minMs, readyFn, onDone) {
         window.__loadingLock = true;
         let ov = document.getElementById('loadingScreen');
@@ -15688,13 +15740,17 @@
             // el server te spawnea con inmunidad. La carga aguanta hasta que tu celda
             // aparece en pantalla (_camInit), y entonces sale GO! + música. Así nunca
             // estás expuesto mientras cargas y la inmunidad empieza al entrar de verdad.
-            showLoadingScreen(LOADING_MS,
-                () => {
-                    if (sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && !sim._readySent) {
-                        sim._readySent = true; sim._send({ t: 'ready' });
-                    }
-                    return sim && sim.isRemote && sim._camInit && myCells().length > 0;
-                },
+            const cargada = () => {
+                if (sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && !sim._readySent) {
+                    sim._readySent = true; sim._send({ t: 'ready' });
+                }
+                return sim && sim.isRemote && sim._camInit && myCells().length > 0;
+            };
+            // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
+            // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
+            if (netState && netState.squad) showSquadEntry(cargada, () => SoundManager.playMusic());
+            else showLoadingScreen(LOADING_MS,
+                cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al
                 // 100% mientras tanto (showLoadingScreen espera a esta promesa).
                 loaded => loaded.then(() => { showGoSplash(); SoundManager.playMusic(); }));

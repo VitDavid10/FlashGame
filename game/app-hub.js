@@ -24,6 +24,7 @@
 
     // Iconos de trazo limpio (no pixel), con la sombra dura del juego.
     const SVG = {
+        friends: '<circle cx="9" cy="7.6" r="3.8"/><path d="M2.2 21c0-4 3.1-7 6.8-7s6.8 3 6.8 7z"/><path d="M18.6 5v7M15.1 8.5h7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
         rooms: '<circle cx="9" cy="7.6" r="3.6"/><path d="M2.4 20.5c0-3.8 3-6.8 6.6-6.8s6.6 3 6.6 6.8z"/><circle cx="16.8" cy="8.6" r="3"/><path d="M15 14.1c.6-.2 1.2-.3 1.9-.3 3.1 0 5.6 2.6 5.6 5.8v.9h-5.2c0-2.5-.9-4.7-2.3-6.4z"/>',
         store: '<path d="M4.6 8.2h14.8l-1.1 12.3H5.7z"/><path d="M8.6 10V6.6a3.4 3.4 0 016.8 0V10" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>',
         quests: '<rect x="4.8" y="2.8" width="14.4" height="18.4" rx="2.2"/><path d="M8.4 8.6h7.2M8.4 12.4h7.2M8.4 16.2h4.2" stroke="#07140f" stroke-width="1.9" stroke-linecap="round"/>',
@@ -76,26 +77,26 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub canvas{image-rendering:pixelated;display:block}
 #ahBg{position:absolute;inset:0;width:100%;height:100%}
 #ahShade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(var(--sh),.9) 0,rgba(var(--sh),.6) 19em,rgba(var(--sh),0) 32em)}
-.ah-top{position:absolute;left:0;right:0;top:0;height:2.6em;background:var(--top)}
+.ah-top{position:absolute;left:0;right:0;top:0;height:3.4em;background:var(--top)}
 .ah-top:after{content:"";position:absolute;left:0;right:0;bottom:0;height:.15em;background:var(--edge);opacity:.7}
-.ah-line{position:absolute;left:4.4em;top:2.45em;width:16em;height:.25em;background:var(--ac);box-shadow:0 .12em 0 #000}
+.ah-line{position:absolute;left:4.4em;top:3.25em;width:16em;height:.25em;background:var(--ac);box-shadow:0 .12em 0 #000}
 .ah-line:after{content:"";position:absolute;right:-.4em;top:-.28em;width:.55em;height:.55em;background:var(--ac);transform:rotate(45deg);box-shadow:.1em .1em 0 #000}
 .med{position:relative;flex:none;width:3.2em;height:3.2em;border-radius:50%;box-sizing:border-box;border:.2em solid;
   border-color:var(--acL) var(--acD) var(--acD) var(--acL);background:radial-gradient(circle at 38% 32%,var(--in1) 0,var(--in2) 62%);
   box-shadow:0 0 0 .12em #000,inset 0 0 0 .12em #000,.12em .2em 0 .1em rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#eaf5ef}
 .med svg{width:1.45em;height:1.45em;filter:drop-shadow(.08em .1em 0 #000)}
 .med canvas{width:2.7em;height:2.7em}
-.ah-ava{position:absolute;left:.7em;top:.35em;width:3.8em;height:3.8em;overflow:hidden}
+.ah-ava{position:absolute;left:.7em;top:1.05em;width:3.4em;height:3.4em;overflow:hidden}
 .ah-ava img{width:100%;height:100%;border-radius:50%;object-fit:cover}
 .ah-ava .npc{display:flex;color:var(--mut)}.ah-ava .npc svg{width:2.1em;height:2.1em}
 .ah-ava{cursor:pointer}
-.ah-who{position:absolute;left:5.1em;top:.6em;display:flex;flex-direction:column;gap:.45em;cursor:pointer}
+.ah-who{position:absolute;left:5.1em;top:1.3em;display:flex;flex-direction:column;gap:.45em;cursor:pointer}
 .ah-name{font-size:.72em;letter-spacing:.08em;text-shadow:.15em .15em 0 #000}
 .ah-lv{font-size:.45em;color:var(--ac);display:flex;align-items:center;gap:.8em}
 .ah-lv i{display:block;width:9em;height:.8em;background:#000;outline:.25em solid var(--edge)}.ah-lv i b{display:block;height:100%;width:62%;background:var(--ac)}
 .ah-title{position:absolute;left:21.5em;right:13em;top:.7em;height:1.15em;display:flex;justify-content:center;gap:.5em}
 .ah-title img{height:100%;image-rendering:pixelated;filter:drop-shadow(.1em .1em 0 #000)}
-.ah-ico{position:absolute;top:.3em;right:.9em;display:flex;gap:.55em;align-items:center}
+.ah-ico{position:absolute;top:1em;right:.9em;display:flex;gap:.55em;align-items:center}
 .ah-btn{position:relative;width:2.3em;height:2.3em;border-radius:50%;box-sizing:border-box;border:.16em solid;border-color:var(--acL) var(--acD) var(--acD) var(--acL);
   background:radial-gradient(circle at 38% 32%,var(--in1) 0,var(--in2) 62%);box-shadow:0 0 0 .1em #000,inset 0 0 0 .1em #000;
   display:flex;align-items:center;justify-content:center;color:#eaf5ef;cursor:pointer}
@@ -118,7 +119,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-dot{width:.55em;height:.55em;background:#00ff66;animation:ahBl 1s steps(2) infinite}
 @keyframes ahBl{50%{opacity:.2}}
 .ah-bdg{position:absolute;left:2.3em;top:-.2em;background:#e5302f;font-size:.42em;padding:.35em .45em .25em;box-shadow:0 0 0 .2em #000}
-#ahPill{position:absolute;left:24.15em;top:2.65em;width:22em;height:14.2em;cursor:pointer}
+#ahPill{position:absolute;left:24.15em;top:3.2em;width:22em;height:14.2em;cursor:pointer}
 .ah-room{position:absolute;right:15.9em;bottom:.62em;width:5em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.55em}
 .ah-room .med{width:3.8em;height:3.8em}
 .ah-room .sw{position:absolute;right:-.45em;top:-.3em;width:1.35em;height:1.35em;border-radius:50%;background:var(--ac);color:#04150c;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 .12em #000}
@@ -556,11 +557,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
-  <div class="ah-btn" data-a="friends">${svg('rooms')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
-<div class="ah-it" data-a="pill" style="top:4.4em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
-<div class="ah-it" data-a="arenas" style="top:8.9em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS</div><div class="s"><span class="ah-dot"></span>1V1 · 2V2 · 3V3</div></div></div>
-<div class="ah-it" data-a="store" style="top:13.4em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
-<div class="ah-it" data-a="quests" style="top:17.9em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
+  <div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
+<div class="ah-it" data-a="pill" style="top:4.9em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
+<div class="ah-it" data-a="arenas" style="top:9.4em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS</div><div class="s"><span class="ah-dot"></span>1V1 · 2V2 · 3V3</div></div></div>
+<div class="ah-it" data-a="store" style="top:13.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
+<div class="ah-it" data-a="quests" style="top:18.4em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span><span class="ah-pl"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>

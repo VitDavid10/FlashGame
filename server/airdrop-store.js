@@ -273,7 +273,18 @@ function createStore(opts) {
         save(); return true;
     }
 
-    return { linkWallet, pasteWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, removeUser, save, flush, MAX_INVITES, _data: () => data };
+    /** Cuenta por usuario de X o por codigo de amigo, para encontrar amigos. Nunca por wallet: buscar una
+     * direccion revelaria de quien es. Solo cuentas con X o con wallet firmada (una pegada no demuestra nada). */
+    function find(q) {
+        q = String(q || '').trim().replace(/^@/, '').toLowerCase();
+        if (!q) return null;
+        let u = user(byCode.get(q));
+        if (!u) u = Object.values(data.users).find(x => x.x && String(x.x.username || '').toLowerCase() === q) || null;
+        if (!u || !(u.x || (u.wallet && !u.walletPasted))) return null;
+        return u;
+    }
+
+    return { find, linkWallet, pasteWallet, linkX, unlink, sessionUser, publicView, setChain, chainOf, invitedOf: u => u.invited.map(user).filter(Boolean), codeOf, setCard, cardOfCode, discordCode, claimDiscord, inviteCount, setDiscarded, removeUser, save, flush, MAX_INVITES, _data: () => data };
 }
 
 module.exports = { createStore, MAX_INVITES, INVITE_MIN_AGE_DAYS, INVITE_MIN_TXS };

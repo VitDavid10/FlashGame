@@ -30,6 +30,7 @@ function createSocial(opts) {
     const log = opts.log || (() => {});
     const partyInfoOf = opts.partyInfoOf || (() => null);   // (id) -> { state, code, size, full } | null
     const now = opts.now || Date.now;
+    const directory = opts.directory || null;   // (q) -> perfil del airdrop o null: encuentra a quien aun no ha abierto Arenas
 
     let data = { profiles: {}, rel: {} };     // profiles[id] = {u,n,p}; rel[id] = { f:[], i:[], o:[] }
     if (file) { try { data = Object.assign(data, JSON.parse(fs.readFileSync(file, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') log('[social] no se pudo leer ' + file + ': ' + e.message); } }
@@ -119,6 +120,17 @@ function createSocial(opts) {
         if (!target && msg.u) {
             const q = String(msg.u).trim();
             target = byWallet.get(q) || byUsername.get(q.replace(/^@/, '').toLowerCase()) || (data.profiles[q] ? q : null) || (data.profiles[q.toLowerCase()] ? q.toLowerCase() : null);
+            // Gente del airdrop que aun no ha abierto Arenas: se aprende su perfil y la peticion espera a que entre.
+            if (!target && directory) {
+                let f = null; try { f = directory(q); } catch (e) {}
+                const clean = f && token.verify(token.sign(f));   // pasa por el mismo saneado que la ficha (foto solo de X, wallet valida)
+                if (clean) {
+                    if (!data.profiles[clean.id]) data.profiles[clean.id] = { u: clean.u, n: clean.n, p: clean.p, w: clean.w, av: null };
+                    if (clean.u) byUsername.set(String(clean.u).toLowerCase(), clean.id);
+                    if (clean.w) byWallet.set(clean.w, clean.id);
+                    target = clean.id;
+                }
+            }
         }
         if (!target || !data.profiles[target]) return err(ws, 'no_such_user');
         if (target === me) return err(ws, 'self');
@@ -163,7 +175,9 @@ function createSocial(opts) {
         const to = String(msg.id || '');
         if (!relOf(me).f.includes(to)) return err(ws, 'not_friends');
         const pi = partyInfoOf(me);
-        if (!pi || pi.state !== 'idle') return err(ws, 'no_open_party');
+        // Se puede invitar aunque el grupo este buscando partida (si aceptan, la busqueda se cancela); no en plena partida.
+        if (!pi) return err(ws, 'no_open_party');
+        if (pi.state === 'match') return err(ws, 'party_busy');
         if (pi.full) return err(ws, 'party_full');
         if (!online.has(to)) return err(ws, 'offline');
         const k = me + '>' + to, t = now();

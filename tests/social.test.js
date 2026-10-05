@@ -259,3 +259,55 @@ test('el avatar del menu viaja con el hello, se sanea y lo ven amigos y grupo', 
     say(sq, a, { a: 'hello', token: token.sign({ id: 'AAAAAAA', u: '', n: 'AjGQ...qX6k', p: '' }), av: { t: 'junk' } });
     assert.deepEqual(b.last('sqFriends').friends[0].av, { t: 'spook', bg: '#ab9ff2' }, 'un avatar invalido no borra el bueno');
 });
+
+test('gente del airdrop que aun no ha abierto Arenas se encuentra por @usuario o codigo, y la peticion espera', () => {
+    const rooms = new Map();
+    const lista = { zed: { id: 'zed2345', u: 'zed', n: 'Zed', p: 'https://pbs.twimg.com/profile_images/9/zed.png', w: '' }, zed2345: null };
+    lista.zed2345 = lista.zed;
+    const sq = createSquad({
+        rooms, resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000, virtualFriends: false,
+        buildSim: () => ({}), welcomeMsg: () => '{}', refillBots: () => {}, broadcast: () => {}, log: () => {},
+        directory: q => lista[String(q).replace(/^@/, '').toLowerCase()] || null,
+    });
+    const a = user(sq, 'AAAAAAA', 'ana');
+    say(sq, a, { a: 'fadd', u: '@Zed' });
+    assert.equal(a.last('sqErr'), null, 'se encuentra aunque no haya abierto Arenas');
+    assert.equal(a.last('sqFriends').outReq[0].u, 'zed');
+    // cuando zed entra por fin, ve la peticion y puede aceptarla
+    const z = fakeWs();
+    say(sq, z, { a: 'hello', token: token.sign({ id: 'zed2345', u: 'zed', n: 'Zed', p: '' }) });
+    assert.equal(z.last('sqFriends').inReq[0].u, 'ana');
+    say(sq, z, { a: 'faccept', id: 'AAAAAAA' });
+    assert.equal(a.last('sqFriends').friends[0].u, 'zed');
+    // por codigo tambien, y una foto que no es de X se descarta
+    const b = user(sq, 'BBBBBBB', 'bob');
+    say(sq, b, { a: 'fadd', u: 'ZED2345' });
+    assert.equal(b.last('sqFriends').outReq.length, 1);
+    lista.mal = { id: 'mal1111', u: 'mal', n: 'Mal', p: 'https://evil.example/x.png', w: '' };
+    say(sq, b, { a: 'fadd', u: 'mal' });
+    assert.equal(b.last('sqFriends').outReq.find(r => r.u === 'mal').p, '');
+});
+
+test('se puede invitar mientras el grupo busca: si aceptan, la busqueda se cancela', () => {
+    const sq = make();
+    const a = user(sq, 'AAAAAAA', 'ana'), b = user(sq, 'BBBBBBB', 'bob');
+    say(sq, a, { a: 'fadd', u: 'bob' }); say(sq, b, { a: 'faccept', id: 'AAAAAAA' });
+    say(sq, a, { a: 'create' });
+    say(sq, a, { a: 'play' });
+    assert.equal(a.last('sqParty').state, 'queued');
+    say(sq, a, { a: 'pinvite', id: 'BBBBBBB' });
+    assert.equal(a.last('sqErr'), null, 'invitar buscando esta permitido');
+    const inv = b.last('sqInvite');
+    assert.ok(inv);
+    say(sq, b, { a: 'join', code: inv.code });
+    assert.equal(a.last('sqParty').state, 'idle', 'la busqueda se cancela');
+    assert.equal(a.last('sqParty').members.length, 2);
+    assert.equal(sq._internals.queues[1].length, 0);
+    // en plena partida no
+    const c = user(sq, 'CCCCCCC', 'cat'); say(sq, c, { a: 'create' });
+    const d = user(sq, 'DDDDDDD', 'dan'); say(sq, d, { a: 'create' });
+    say(sq, c, { a: 'play' }); say(sq, d, { a: 'play' });
+    say(sq, c, { a: 'fadd', u: 'ana' }); say(sq, a, { a: 'faccept', id: 'CCCCCCC' });
+    say(sq, c, { a: 'pinvite', id: 'AAAAAAA' });
+    assert.equal(c.last('sqErr').reason, 'party_busy');
+});

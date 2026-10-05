@@ -188,7 +188,7 @@
             const ws = new WebSocket(url);
             S.ws = ws;
             ws.onopen = () => {
-                S.conn = 'open';
+                S.conn = 'open'; S.retry = 0;
                 if (S.token) send({ a: 'hello', token: S.token, av: myAv() });   // antes que cualquier otra orden
                 render(); const f = S.after; S.after = null; f && f();
             };
@@ -198,10 +198,13 @@
                 S.ws = null; S.conn = 'idle';
                 if (S.party) { S.party = null; S.err = 'Connection lost.'; }
                 render();
+                // Si hay cuenta, se reconecta sola (el movil corta los sockets al dormir) para no perder amigos ni invitaciones.
+                if (S.token) { S.retry = (S.retry || 0) + 1; setTimeout(() => { if (!S.ws && S.conn === 'idle') connect(() => send({ a: 'friends' })); }, Math.min(30000, 1500 * Math.pow(2, S.retry - 1))); }
             };
             ws.onerror = () => { if (S.conn === 'connecting') { S.conn = 'idle'; S.after = null; S.err = "Couldn't reach the server. Try again."; render(); } };
         });
     }
+    setInterval(() => { if (S.ws && S.ws.readyState === 1) S.ws.send('{"t":"ping","ts":' + Date.now() + '}'); }, 25000);
     function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
         if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; render(); }
@@ -209,7 +212,7 @@
         else if (m.t === 'sqErr') { S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }
         else if (m.t === 'sqTicket') onTicket(m);
         else if (m.t === 'sqMe') { S.prof = m.me; }
-        else if (m.t === 'sqFriends') { S.friends = { friends: m.friends, inReq: m.inReq, outReq: m.outReq }; render(); }
+        else if (m.t === 'sqFriends') { S.friends = { friends: m.friends, inReq: m.inReq, outReq: m.outReq }; S.note = ''; render(); }
         else if (m.t === 'sqPresence') { const f = S.friends.friends.find(x => x.id === m.id); if (f) { f.st = m.st; render(); } }
         else if (m.t === 'sqRooms') { S.rooms = m.rooms; render(); }
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
@@ -411,7 +414,8 @@
     function friendsHtml() {
         if (S.x !== 'linked') return noAccount();
         const F = S.friends, p = S.party;
-        const canInvite = !p || (p.state === 'idle' && p.members.length < p.max && imLeader());
+        const searching = !!(p && p.state === 'queued');
+        const canInvite = !p || ((p.state === 'idle' || searching) && p.members.length < p.max && imLeader());
         if (S.chatWith) {
             const f = F.friends.find(x => x.id === S.chatWith) || { u: '?', p: '', st: 'off', id: S.chatWith };
             const msgs = (S.chat[f.id] || []).map(m => '<div class="' + (m.me ? 'me' : '') + '"><b>' + (m.me ? 'YOU' : esc(nameOf(f))) + ':</b> ' + esc(m.text) + '</div>').join('') || '<div>Say hi to ' + esc(nameOf(f)) + '.</div>';
@@ -423,12 +427,13 @@
         const grp = p && p.members.length >= 2
             ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true, p.members.length) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
             : '<div class="sq-note">Invite friends to play 2V2 or 3V3 together, then pick a room in ARENAS.</div>';
+        const aviso = searching ? '<div class="sq-note" style="color:#ffb347">You are searching for a match. If a friend accepts your invite, the search is cancelled.</div>' : '';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
         const order = { on: 0, party: 1, game: 1, off: 2 };
         const list = F.friends.slice().sort((a, b) => order[a.st] - order[b.st] || nameOf(a).localeCompare(nameOf(b))).map(f =>
             '<div class="sq-it">' + pic(f) + '<div class="w"><div class="n">' + esc(nameOf(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div><div class="s ' + f.st + '"><i></i>' + ST[f.st] + '</div></div>' +
-            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '">INVITE</button>' : '') + '<button class="sq-b sm" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div></div>').join('');
-        return '<div class="sq">' + grp +
+            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div></div>').join('');
+        return '<div class="sq">' + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
             '<div class="sq-list">' + (list || '<div class="sq-note" style="padding:.8em">No friends yet. Add someone by their @X name, wallet address or friend code (it is in your profile). They need to have opened Arenas or Friends once.</div>') + '</div>' +
@@ -475,7 +480,12 @@
         b.querySelectorAll('[data-dc]').forEach(x => x.onclick = () => send({ a: 'fdecline', id: x.dataset.dc }));
         b.querySelectorAll('[data-rm]').forEach(x => x.onclick = () => { if (x.dataset.sure === '1') send({ a: 'fremove', id: x.dataset.rm }); else { x.dataset.sure = '1'; x.textContent = 'SURE?'; setTimeout(() => { if (x.isConnected) { x.dataset.sure = ''; x.textContent = 'X'; } }, 2500); } });
         // Invitar sin grupo crea el grupo (el servidor atiende en orden: create y luego la invitacion).
-        b.querySelectorAll('[data-inv]').forEach(x => x.onclick = () => { snd('simpleselect'); const id = x.dataset.inv; start(() => send({ a: 'pinvite', id })); });
+        b.querySelectorAll('[data-inv]').forEach(x => x.onclick = () => {
+            snd('simpleselect'); const id = x.dataset.inv;
+            // Buscando partida: primero se avisa de que si aceptan se sale de la cola.
+            if (x.dataset.warn === '1' && x.dataset.sure !== '1') { x.dataset.sure = '1'; x.textContent = 'LEAVE QUEUE?'; setTimeout(() => { if (x.isConnected) { x.dataset.sure = ''; x.textContent = 'INVITE'; } }, 3500); return; }
+            start(() => send({ a: 'pinvite', id }));
+        });
         b.querySelectorAll('[data-w]').forEach(x => x.onclick = () => { S.chatWith = x.dataset.w; S.unread[x.dataset.w] = 0; render(); const i = b.querySelector('#sqMsg'); if (i) i.focus(); });
         const addIn = b.querySelector('#sqAdd');
         if (addIn) addIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="fadd"]').click(); };
