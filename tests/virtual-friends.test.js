@@ -173,3 +173,16 @@ test('con bandit en tu grupo, al buscar rival icefox y rcer forman el grupo riva
     assert.ok(tk && tk.kind === 'match', 'se encuentra rival: ' + JSON.stringify(p && p.state));
     assert.equal(tk.lineup.B.length + tk.lineup.A.length, 4);
 });
+
+test('si tu grupo con un bot abre sala (custom), los otros bots la retan', async () => {
+    const { sq } = make();
+    const me = human(sq, 'AAAAAAA', 'ana');
+    say(sq, me, { a: 'fadd', u: 'icefox' }); await wait(600);
+    say(sq, me, { a: 'create' });
+    say(sq, me, { a: 'pinvite', id: me.last('sqFriends').friends[0].id });
+    await wait(900);
+    say(sq, me, { a: 'play', custom: true });
+    await wait(9000);
+    const tk = me.last('sqTicket');
+    assert.ok(tk && tk.kind === 'match', 'la sala abierta recibe reto');
+});

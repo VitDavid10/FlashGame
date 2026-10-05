@@ -88,7 +88,7 @@
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
 .sq-pic{overflow:hidden}
 #ahArBody{max-height:19em;overflow-y:auto}
-#ahFrBody{max-height:16em;overflow-y:auto}
+#ahFrBody{max-height:19em;overflow-y:auto}
 .sq-pic .av,.sq-pic .av-cv{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .sq-pic .av svg{width:60%;height:60%}
 .sq-pic canvas{image-rendering:pixelated}

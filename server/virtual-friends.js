@@ -86,7 +86,7 @@ function createVirtualFriends(ctx) {
         if (libres.length < n) return;
         rivalDe.add(m.code); setTimeout(() => rivalDe.delete(m.code), 120000);
         const [lider, ...resto] = libres.slice(0, n);
-        lider.rival = { resto, n, buscando: false };
+        lider.rival = { resto, n, buscando: false, reta: m.custom ? m.code : null };   // sala abierta (custom): la retan; si no, buscan partida
         say(lider, { a: 'leave' }); say(lider, { a: 'create' });
     }
     function react(ws, f, m) {
@@ -94,10 +94,10 @@ function createVirtualFriends(ctx) {
             // el lider rival ya tiene su grupo: los demas entran y, con todos dentro, se pone a buscar
             const r = ws.rival;
             if (m.members.length < r.n) { if (!r.llamados) { r.llamados = true; setTimeout(() => r.resto.forEach(w => say(w, { a: 'join', code: m.code })), 300); } }
-            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, { a: 'play' }); ws.rival = null; }, 500); }
+            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, r.reta ? { a: 'challenge', code: r.reta } : { a: 'play' }); ws.rival = null; }, 500); }
             return;
         }
-        if (m.t === 'sqParty' && m.state === 'queued' && !m.custom && m.leader !== m.me) armaRival(m);
+        if (m.t === 'sqParty' && m.state === 'queued' && m.leader !== m.me) armaRival(m);
         if (m.t === 'sqFriendReq') setTimeout(() => say(ws, { a: 'faccept', id: m.from.id }), 400);
         else if (m.t === 'sqWhisper' && !m.mine) {
             // Susurrale "lead" y hace de lider: crea el grupo, te invita y, en cuanto entras, lanza el LISTO (para probar el cartel de companero).
