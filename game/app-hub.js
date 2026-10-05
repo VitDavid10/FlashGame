@@ -200,7 +200,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 /* Gente jugando en el modo: punto animado + numero sobre las espadas (sin texto). */
 .ah-pl{position:absolute;right:calc(100% + .45em);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:.3em;font-size:.78em;text-shadow:.12em .12em 0 #000}
 .ah-pl b{font-weight:400;color:#fff;font-size:.8em}
-#ahAr{z-index:7}
+#ahAr,#ahFr{z-index:7}
+.ah-btn{position:relative}
+.ah-fb{position:absolute;right:-.35em;top:-.35em;min-width:1.5em;background:#e5302f;color:#fff;font-style:normal;font-size:.42em;line-height:1;text-align:center;padding:.4em .35em .25em;box-shadow:0 0 0 .2em #000}
+.ah-fb:empty{display:none}
 #ahAv{z-index:7}#ahUn{z-index:8}#ahIc{z-index:9}
 /* ICON UNLOCKED: el icono de perfil nuevo en una tarjeta cuadrada que entra
    girando sobre si misma, flota y le pasa un brillo de vez en cuando. */
@@ -550,7 +553,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
-  <div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
+  <div class="ah-btn" data-a="friends">${svg('rooms')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.4em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="arenas" style="top:8.9em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS</div><div class="s"><span class="ah-dot"></span>1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="store" style="top:13.4em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
@@ -576,6 +579,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ov" id="ahAr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><span class="w">ARENAS</span><span class="cnt">1V1 · 2V2 · 3V3</span><button class="px">CLOSE</button></div>
   <div id="ahArBody"></div></div></div></div>
+<div class="ov" id="ahFr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><span class="w">FRIENDS</span><span class="cnt"></span><button class="px">CLOSE</button></div>
+  <div id="ahFrBody"></div></div></div></div>
 <div class="ov" id="ahSv"><div class="pnl" style="width:22em"><canvas></canvas><div class="pin">
   <div class="sv-b"><canvas id="ahSvPill"></canvas><div class="sv-n" id="ahSvN"></div><div class="sv-p" id="ahSvP"></div>
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
@@ -1206,7 +1212,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try { SoundManager.play('simpleselect'); } catch (x) {}
         if (a === 'x') { conectaX(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
-        if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn($('#ahArBody')); placa($('#ahAr .pnl'), 1); }
+        if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('rooms', $('#ahArBody')); placa($('#ahAr .pnl'), 1); }
+        else if (a === 'friends') { const fr = $('#ahFr'); fr.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('friends', $('#ahFrBody')); placa($('#ahFr .pnl'), 1); }
         else if (a === 'store') openStore('shop');
         else if (a === 'quests') openQuests();
         else if (a === 'pill') {
@@ -1274,7 +1281,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
         window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX;
         // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
-        window.PWSquadHooks = { afterRender() { const ar = $('#ahAr'); if (ar && ar.classList.contains('open')) requestAnimationFrame(() => placa($('#ahAr .pnl'), 1)); } };
+        window.PWSquadHooks = {
+            afterRender() { ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
+            badge(n) { const b = $('#ahFrB'); if (b) b.textContent = n ? String(Math.min(n, 99)) : ''; },
+        };
         // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
         // cuelga de <body> (con shadow DOM cerrado): se marca para poder girarlo.
         new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {

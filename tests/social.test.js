@@ -124,22 +124,23 @@ test('invitar a un amigo al grupo: llega con el codigo y se une con el nombre de
     const sq = make();
     const a = user(sq, 'AAAAAAA', 'ana'), b = user(sq, 'BBBBBBB', 'bob');
     say(sq, a, { a: 'fadd', u: 'bob' }); say(sq, b, { a: 'faccept', id: 'AAAAAAA' });
-    say(sq, a, { a: 'create', name: 'ignorado', size: 2 });
+    say(sq, a, { a: 'create', name: 'ignorado' });
     assert.equal(a.last('sqParty').members[0].name, '@ana', 'con X se usa su usuario, no el nombre escrito');
     assert.equal(a.last('sqFriends').friends[0].st, 'on');
     say(sq, a, { a: 'pinvite', id: 'BBBBBBB' });
     const inv = b.last('sqInvite');
     assert.equal(inv.from.u, 'ana');
-    assert.equal(inv.size, 2);
     say(sq, b, { a: 'join', code: inv.code, name: 'x' });
     assert.equal(b.last('sqParty').members.length, 2);
     assert.equal(b.last('sqParty').members[1].pic, 'https://pbs.twimg.com/profile_images/bob.png');
     // la presencia del grupo se ve
     assert.deepEqual(a.last('sqPresence'), { t: 'sqPresence', id: 'BBBBBBB', st: 'party' });
-    // grupo lleno: ya no se puede invitar a mas
-    const c = user(sq, 'CCCCCCC', 'cat');
-    say(sq, a, { a: 'fadd', u: 'cat' }); say(sq, c, { a: 'faccept', id: 'AAAAAAA' });
+    // con 3 el grupo esta lleno: ya no se puede invitar a mas
+    const c = user(sq, 'CCCCCCC', 'cat'), d = user(sq, 'DDDDDDD', 'dan');
+    for (const x of [c, d]) { say(sq, a, { a: 'fadd', u: x === c ? 'cat' : 'dan' }); say(sq, x, { a: 'faccept', id: 'AAAAAAA' }); }
     say(sq, a, { a: 'pinvite', id: 'CCCCCCC' });
+    say(sq, c, { a: 'join', code: c.last('sqInvite').code });
+    say(sq, a, { a: 'pinvite', id: 'DDDDDDD' });
     assert.equal(a.last('sqErr').reason, 'party_full');
 });
 
@@ -153,19 +154,20 @@ test('no se puede invitar a quien no es amigo ni sin grupo abierto', () => {
     assert.equal(a.last('sqErr').reason, 'no_open_party');
 });
 
-test('sala custom: se publica con quien la creo, otro grupo la reta y empieza la partida', () => {
+test('sala custom: se publica con quien la creo, otro grupo la une y empieza la partida', () => {
     const sq = make();
     const a = user(sq, 'AAAAAAA', 'ana'), b = user(sq, 'BBBBBBB', 'bob'), spectator = fakeWs();
-    say(sq, a, { a: 'create', size: 1 });
+    say(sq, a, { a: 'create' });
     say(sq, a, { a: 'play', custom: true });
-    assert.equal(a.last('sqTicket').kind, 'practice', 'mientras espera practica contra bots');
+    assert.equal(a.last('sqTicket'), null, 'esperar rival no mete en ninguna partida');
     say(sq, spectator, { a: 'rooms' });
     const list = spectator.last('sqRooms').rooms;
     assert.equal(list.length, 1);
+    assert.equal(list[0].size, 1);
     assert.equal(list[0].leader.name, '@ana');
     assert.equal(list[0].leader.pic, 'https://pbs.twimg.com/profile_images/ana.png');
     assert.equal(sq._internals.queues[1].length, 0, 'no entra en la cola automatica');
-    say(sq, b, { a: 'create', size: 1 });
+    say(sq, b, { a: 'create' });
     say(sq, b, { a: 'challenge', code: list[0].code });
     assert.equal(a.last('sqTicket').kind, 'match');
     assert.equal(a.last('sqTicket').team, 'A');
@@ -175,30 +177,47 @@ test('sala custom: se publica con quien la creo, otro grupo la reta y empieza la
     assert.equal(spectator.last('sqRooms').rooms.length, 0, 'la sala ya no esta libre');
 });
 
-test('retos: tamano distinto, grupo incompleto o sala inexistente se rechazan', () => {
+test('retos: tamano distinto o sala inexistente se rechazan', () => {
     const sq = make();
-    const a = fakeWs(), b = fakeWs(), c = fakeWs();
-    say(sq, a, { a: 'create', name: 'A', size: 2 }); say(sq, a, { a: 'join', code: 'ZZZZZ' });
+    const a = fakeWs(), a2 = fakeWs(), b = fakeWs();
+    say(sq, a, { a: 'create', name: 'A' });
     const codeA = a.last('sqParty').code;
-    const a2 = fakeWs(); say(sq, a2, { a: 'join', code: codeA, name: 'A2' }); say(sq, a2, { a: 'ready', v: true });
-    say(sq, a, { a: 'play', custom: true });
-    say(sq, b, { a: 'create', name: 'B', size: 1 });
+    say(sq, a2, { a: 'join', code: codeA, name: 'A2' });
+    say(sq, a, { a: 'play', custom: true });          // sala de 2
+    say(sq, b, { a: 'create', name: 'B' });            // grupo de 1
     say(sq, b, { a: 'challenge', code: codeA });
-    assert.equal(b.last('sqErr').reason, 'wrong_size');
-    say(sq, c, { a: 'create', name: 'C', size: 2 });
-    say(sq, c, { a: 'challenge', code: codeA });
-    assert.equal(c.last('sqErr').reason, 'need_full_party');
-    say(sq, c, { a: 'challenge', code: 'NOPE1' });
-    assert.equal(c.last('sqErr').reason, 'room_gone');
+    assert.equal(b.last('sqErr').reason, 'size_mismatch');
+    say(sq, b, { a: 'challenge', code: 'NOPE1' });
+    assert.equal(b.last('sqErr').reason, 'room_gone');
+    say(sq, a, { a: 'challenge', code: codeA });
+    assert.equal(a.last('sqErr').reason, 'party_busy', 'no te puedes retar a ti mismo mientras esperas');
 });
 
 test('cancelar una sala custom la saca de la lista', () => {
     const sq = make(), a = fakeWs(), v = fakeWs();
-    say(sq, a, { a: 'create', name: 'A', size: 1 }); say(sq, a, { a: 'play', custom: true });
+    say(sq, a, { a: 'create', name: 'A' }); say(sq, a, { a: 'play', custom: true });
     say(sq, a, { a: 'cancel' });
     say(sq, v, { a: 'rooms' });
     assert.equal(v.last('sqRooms').rooms.length, 0);
     assert.equal(a.last('sqParty').state, 'idle');
+});
+
+test('identidad con solo wallet: nombre = resumen de la wallet y te encuentran por la direccion', () => {
+    const sq = make();
+    const WALLET = 'AjGQ7kVxYh2sT9bC3dE4fG5hJ6kLmNpQrStUvWqX6k';
+    const w = fakeWs();
+    say(sq, w, { a: 'hello', token: token.sign({ id: 'WALLET1', u: '', n: 'AjGQ...qX6k', p: '', w: WALLET }) });
+    const x = user(sq, 'XXXXXXX', 'xavi');
+    say(sq, x, { a: 'fadd', u: WALLET });
+    assert.equal(w.last('sqFriendReq').from.u, 'xavi');
+    say(sq, w, { a: 'faccept', id: 'XXXXXXX' });
+    const row = x.last('sqFriends').friends[0];
+    assert.equal(row.n, 'AjGQ...qX6k');
+    assert.equal(row.u, '');
+    assert.equal(JSON.stringify(x.out).includes(WALLET), false, 'la wallet no se difunde a los demas');
+    // y en un grupo se le ve con ese resumen
+    say(sq, w, { a: 'create' });
+    assert.equal(w.last('sqParty').members[0].name, 'AjGQ...qX6k');
 });
 
 test('las amistades se guardan en disco y se recuperan', () => {

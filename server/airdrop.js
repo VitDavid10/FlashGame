@@ -235,14 +235,17 @@ function createAirdrop(opts) {
             const by = new URLSearchParams(String(req.url || '').split('?')[1] || '').get('by') || 'pts';
             return json(res, 200, admin.leaderboard(u && u.uid, by));
         }
-        // Ficha firmada para amigos/grupos (ver social-token.js). Solo con X vinculado: la
-        // identidad social es la cuenta de X; una wallet sola aun no tiene a quien enseñar.
+        // Ficha firmada para amigos/grupos (ver social-token.js). La identidad es la cuenta del
+        // airdrop: con X se ve su usuario y foto; con solo la wallet firmada, su resumen.
+        // Una wallet pegada a mano sin firmar no vale: cualquiera podria pegar la de otro.
         if (urlPath === '/api/airdrop/social-token') {
             if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
             const u = store.sessionUser(sessionToken(req));
-            if (!u) return json(res, 200, { linked: false, signedIn: false });
-            if (!u.x) return json(res, 200, { linked: false, signedIn: true, wallet: !!u.wallet });
-            return json(res, 200, { linked: true, token: socialToken.sign({ id: u.code, u: u.x.username, n: u.x.name, p: u.x.pic }), me: { id: u.code, u: u.x.username, n: u.x.name, p: u.x.pic } });
+            const signedWallet = u && u.wallet && !u.walletPasted ? u.wallet : '';
+            if (!u || (!u.x && !signedWallet)) return json(res, 200, { linked: false, signedIn: !!u });
+            const short = signedWallet ? signedWallet.slice(0, 4) + '...' + signedWallet.slice(-4) : '';
+            const prof = u.x ? { id: u.code, u: u.x.username, n: u.x.name, p: u.x.pic, w: signedWallet } : { id: u.code, u: '', n: short, p: '', w: signedWallet };
+            return json(res, 200, { linked: true, token: socialToken.sign(prof), me: { id: prof.id, u: prof.u, n: prof.n, p: prof.p } });
         }
         if (urlPath === '/api/airdrop/me') {
             const u = store.sessionUser(sessionToken(req));

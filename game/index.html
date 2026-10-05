@@ -2897,7 +2897,7 @@
         .pw-big-btn.online { background: linear-gradient(#3f8ef7, #1450b4); }
         .pw-big-btn.free { background: linear-gradient(#2ee27a, #0f8f46); }
         .pw-big-btn.squad { background: linear-gradient(#ffd94e, #b8860b); color: #241a00; text-shadow: none; }
-        html.pw-app #btnSquadArenas, html.pw-app #btnSquadArenas + .pw-btn-sub { display: none; }
+        html.pw-app #btnSquadArenas, html.pw-app #btnSquadArenas + .pw-btn-sub, html.pw-app #btnSquadFriends, html.pw-app #btnSquadFriends + .pw-btn-sub { display: none; }
         .pw-big-btn.room { background: linear-gradient(#3a4048, #1a1e24); }
         .pw-btn-sub { font-family: 'Press Start 2P', monospace; font-size: 7px; color: #8a939e; letter-spacing: 1px; margin: 6px 0 12px; }
         .pw-room-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -4221,7 +4221,9 @@
             <button class="pw-big-btn online" id="btnPlayOnline" onclick="choosePlay('online')" onmouseenter="SoundManager.playSimpleHover()">PLAY ONLINE</button>
             <div class="pw-btn-sub">REAL PLAYERS · REAL ROOMS</div>
             <button class="pw-big-btn squad" id="btnSquadArenas" onclick="PWSquad.open()" onmouseenter="SoundManager.playSimpleHover()">SQUAD ARENAS</button>
-            <div class="pw-btn-sub">1V1 · 2V2 · 3V3 · PLAY WITH A PARTY</div>
+            <div class="pw-btn-sub">1V1 · 2V2 · 3V3 · JOIN OR CREATE ROOMS</div>
+            <button class="pw-big-btn squad" id="btnSquadFriends" onclick="PWSquad.openFriends()" onmouseenter="SoundManager.playSimpleHover()">FRIENDS</button>
+            <div class="pw-btn-sub">GROUPS · INVITES · WHISPERS</div>
             <button class="pw-modal-cancel" onclick="closePlayChoice()" onmouseenter="SoundManager.playSimpleHover()">CANCEL</button>
         </div>
     </div>

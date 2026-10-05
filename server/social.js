@@ -35,7 +35,8 @@ function createSocial(opts) {
     if (file) { try { data = Object.assign(data, JSON.parse(fs.readFileSync(file, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') log('[social] no se pudo leer ' + file + ': ' + e.message); } }
     const online = new Map();                 // id -> Set<ws>
     const byUsername = new Map();             // usuario de X en minusculas -> id
-    for (const [id, p] of Object.entries(data.profiles)) if (p.u) byUsername.set(String(p.u).toLowerCase(), id);
+    const byWallet = new Map();               // wallet (distingue mayusculas) -> id
+    for (const [id, p] of Object.entries(data.profiles)) { if (p.u) byUsername.set(String(p.u).toLowerCase(), id); if (p.w) byWallet.set(p.w, id); }
 
     let timer = null;
     function save() {
@@ -78,8 +79,9 @@ function createSocial(opts) {
         const prof = token.verify(tk);
         if (!prof) { err(ws, 'bad_token'); return null; }
         const old = data.profiles[prof.id];
-        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p }; save(); }
+        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p || (old.w || '') !== prof.w) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p, w: prof.w }; save(); }
         if (prof.u) byUsername.set(String(prof.u).toLowerCase(), prof.id);
+        if (prof.w) byWallet.set(prof.w, prof.id);
         if (ws.pwId && ws.pwId !== prof.id) detach(ws);
         ws.pwId = prof.id;
         let set = online.get(prof.id); if (!set) online.set(prof.id, set = new Set());
@@ -101,7 +103,8 @@ function createSocial(opts) {
     // ---- amigos ----
     function add(ws, me, msg) {
         let target = msg.id ? String(msg.id) : null;
-        if (!target && msg.u) target = byUsername.get(String(msg.u).replace(/^@/, '').toLowerCase().trim()) || null;
+        // Por usuario de X (@nombre) o por la direccion de la wallet.
+        if (!target && msg.u) { const q = String(msg.u).trim(); target = byWallet.get(q) || byUsername.get(q.replace(/^@/, '').toLowerCase()) || null; }
         if (!target || !data.profiles[target]) return err(ws, 'no_such_user');
         if (target === me) return err(ws, 'self');
         const a = relOf(me), b = relOf(target);

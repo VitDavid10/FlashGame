@@ -21,12 +21,13 @@ function secret() {
 }
 function mac(body) { return crypto.createHmac('sha256', secret()).update(body).digest('base64url'); }
 
-/** p = { id, u (usuario de X), n (nombre), p (url foto) } */
+/** p = { id, u (usuario de X, vacio sin X), n (nombre visible), p (url foto), w (wallet, solo para que te busquen por ella) } */
 // Solo fotos de X: una URL cualquiera la descargarian los navegadores de todos los amigos (fuga de IP).
 const PIC_OK = /^https:\/\/pbs\.twimg\.com\/[\w\-\/.]+$/;
+const WALLET_OK = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 function sign(p, now = Date.now()) {
     const pic = PIC_OK.test(String(p.p || '')) ? String(p.p).slice(0, 300) : '';
-    const body = b64(JSON.stringify({ id: String(p.id), u: String(p.u || '').replace(/[^\w]/g, '').slice(0, 20), n: String(p.n || '').replace(/[\x00-\x1f<>]/g, '').slice(0, 40), p: pic, exp: now + TTL_MS }));
+    const body = b64(JSON.stringify({ id: String(p.id), u: String(p.u || '').replace(/[^\w]/g, '').slice(0, 20), n: String(p.n || '').replace(/[\x00-\x1f<>]/g, '').slice(0, 40), p: pic, w: WALLET_OK.test(String(p.w || '')) ? String(p.w) : '', exp: now + TTL_MS }));
     return body + '.' + mac(body);
 }
 /** Devuelve el perfil o null si la firma no cuadra o caduco. */
@@ -37,7 +38,7 @@ function verify(token, now = Date.now()) {
     if (sig.length !== ok.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(ok))) return null;
     let o; try { o = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch (e) { return null; }
     if (!o || !o.id || !(o.exp > now)) return null;
-    return { id: o.id, u: o.u, n: o.n, p: o.p };
+    return { id: o.id, u: o.u, n: o.n, p: o.p, w: o.w || '' };
 }
 
 module.exports = { sign, verify, secret };

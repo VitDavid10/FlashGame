@@ -2,26 +2,25 @@
 /*
  * Arenas por equipos 1v1 / 2v2 / 3v3.
  *
- * Servicio de grupos (party) + cola + salas de equipo, todo en memoria y en el
- * proceso que lo hospeda (en el split, el host 0; el Director enruta /match?mode=squad
- * a él). El cliente abre un WS, crea o se une a un grupo con un codigo, todos
- * marcan LISTO y el lider pulsa JUGAR:
- *   - El grupo entra en la cola de su tamano y mientras espera rival juega junto
- *     en una sala de PRACTICA (el grupo contra bots, sin rival).
- *   - Cuando hay dos grupos del mismo tamano se crea la sala de PARTIDA: grupo A
- *     contra grupo B y bots neutrales hasta 30.
- * Sin fuego amigo (sim: jugadores del mismo `team` no se comen).
+ * Servicio de grupos (party) + salas + cola, todo en memoria y en el proceso que lo
+ * hospeda (en el split, el host 0; el Director enruta /match?mode=squad a el).
  *
- * Es GRATIS: el hueco para la entrada esta en room.squad.stake (0 por ahora).
+ * Un GRUPO es de 1 a 3 jugadores (amigos que se invitan desde el panel de amigos, o uno
+ * solo). La sala la fija cuantos sois: 1 = 1v1, 2 = 2v2, 3 = 3v3. El lider:
+ *   - crea una SALA (play custom:true): queda publica en la lista, con quien la creo, y
+ *     otro grupo del mismo tamano la UNE (challenge) y empieza la partida; o
+ *   - pulsa PARTIDA RAPIDA (play): cola automatica, se empareja con el primer grupo igual.
+ * Mientras esperan rival NO se mete a nadie en partida: cada uno decide si quiere jugar
+ * una sala de PRACTICA contra bots (practice); es una por grupo, asi que si un companero la
+ * pide despues entra en la misma.
  *
- * Salas CUSTOM: al dar a CREAR SALA (play con custom:true) el grupo no entra en la cola
- * automatica sino en una lista publica; otro grupo del mismo tamano ve quien la creo y
- * la RETA (challenge). Mientras esperan, practican juntos contra bots como siempre.
+ * Partida: grupo A contra grupo B y bots neutrales hasta 30. Sin fuego amigo (sim:
+ * jugadores del mismo `team` no se comen). GRATIS: la entrada ira en room.squad.stake.
  *
- * Amigos, invitaciones y susurros: server/social.js (mismo socket, misma ficha de X).
+ * Amigos, invitaciones y susurros: server/social.js (mismo socket, misma ficha firmada).
  *
- * Mensajes cliente -> server: { t:'sq', a:'create'|'join'|'leave'|'ready'|'size'|
- *   'kick'|'play'|'cancel'|'practice'|'rename'|'rooms'|'challenge', ... } + los de social.js
+ * Mensajes cliente -> server: { t:'sq', a:'create'|'join'|'leave'|'kick'|'play'|'cancel'|
+ *   'practice'|'rooms'|'challenge', ... } + los de social.js
  * Mensajes server -> cliente: sqParty, sqTicket, sqErr, sqGone, sqRooms, y dentro de la
  * sala: squadRoster / squadEnd.
  */
@@ -29,6 +28,7 @@ const crypto = require('crypto');
 const { createSocial } = require('./social.js');
 
 const SIZES = [1, 2, 3];
+const MAX_PARTY = 3;                  // un grupo es de 1 a 3 jugadores; la sala (1v1/2v2/3v3) la fija cuantos sois
 const POP = 30;                       // jugadores totales por sala (humanos + bots)
 const MATCH_START_MS = 12000;         // los dos grupos tienen este margen para entrar
 const PRACTICE_START_MS = 2500;
@@ -58,11 +58,11 @@ function createSquad(deps) {
 
     // Estado de grupo de una cuenta, para la presencia y las invitaciones de amigos.
     function partyInfoOf(uid) {
-        for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.size, full: m.party.members.size >= m.party.size };
+        for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.members.size, full: m.party.members.size >= MAX_PARTY };
         return null;
     }
     const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf });
-    // Identidad de quien entra a un grupo: con X vinculado se ve su usuario y foto.
+    // Identidad de quien entra a un grupo: su usuario de X o, sin X, el resumen de su wallet.
     function identOf(ws, fallback) {
         if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), pic: p.p }; }
         return { uid: null, name: cleanName(fallback), pic: '' };
@@ -70,13 +70,16 @@ function createSquad(deps) {
 
     const send = (ws, o) => { try { if (ws.readyState === 1) ws.send(JSON.stringify(o)); } catch (e) {} };
     const err = (ws, reason) => send(ws, { t: 'sqErr', reason });
+    const practiceAlive = p => !!(p.practiceRoom && rooms.has(p.practiceRoom) && rooms.get(p.practiceRoom).state !== 'ended');
 
+    // `size` = jugadores del grupo: abierto es lo que hay ahora; buscando o jugando, lo que habia al empezar.
     function view(p) {
         return {
-            t: 'sqParty', code: p.code, size: p.size, state: p.state, leader: p.leader,
+            t: 'sqParty', code: p.code, max: MAX_PARTY, size: p.state === 'idle' ? p.members.size : p.qsize, state: p.state, leader: p.leader,
             queuedAt: p.queuedAt || null,
             custom: !!p.custom,
-            members: [...p.members.values()].map(m => ({ id: m.id, uid: m.uid || null, pic: m.pic || '', name: m.name, ready: m.ready, leader: m.id === p.leader })),
+            practice: practiceAlive(p),
+            members: [...p.members.values()].map(m => ({ id: m.id, uid: m.uid || null, pic: m.pic || '', name: m.name, leader: m.id === p.leader })),
         };
     }
     function pushParty(p) {
@@ -86,7 +89,7 @@ function createSquad(deps) {
         if (p._pst !== p.state) { p._pst = p.state; for (const m of p.members.values()) if (m.uid) social.pushPresence(m.uid); }
     }
     function dequeue(p) {
-        const q = queues[p.size]; const i = q ? q.indexOf(p) : -1;
+        const q = queues[p.qsize]; const i = q ? q.indexOf(p) : -1;
         if (i >= 0) q.splice(i, 1);
         customRooms.delete(p);
         p.queuedAt = null;
@@ -96,6 +99,9 @@ function createSquad(deps) {
         for (const m of p.members.values()) { byWs.delete(m.ws); send(m.ws, { t: 'sqGone', reason }); }
         parties.delete(p.code);
         for (const m of p.members.values()) if (m.uid) social.pushPresence(m.uid);
+    }
+    function backToIdle(p) {
+        dequeue(p); p.custom = false; p.state = 'idle';
     }
 
     // ---------- salas ----------
@@ -117,37 +123,41 @@ function createSquad(deps) {
         log(`Squad: sala ${kind} ${size}v${size} creada (${key})`);
         return room;
     }
-    function issue(party, room, team) {
-        for (const m of party.members.values()) {
-            const ticket = rnd(16);
-            tickets.set(ticket, { roomKey: room.key, team, name: m.name, exp: Date.now() + TICKET_TTL_MS });
-            send(m.ws, { t: 'sqTicket', kind: room.squad.kind, ticket, size: room.squad.size, team, startIn: Math.max(0, room.startAt - Date.now()) });
-        }
+    function issueTo(m, room, team) {
+        const ticket = rnd(16);
+        tickets.set(ticket, { roomKey: room.key, team, name: m.name, exp: Date.now() + TICKET_TTL_MS });
+        send(m.ws, { t: 'sqTicket', kind: room.squad.kind, ticket, size: room.squad.size, team, startIn: Math.max(0, room.startAt - Date.now()) });
     }
-    function startPractice(p) {
+    function issue(party, room, team) {
+        for (const m of party.members.values()) issueTo(m, room, team);
+    }
+    // Practica del grupo: solo si alguien la pide (nada de meter a nadie en partida sin querer).
+    // La sala es una por grupo: quien la pide entra y, si un companero la pide despues, entra en la misma.
+    function practiceFor(p, m) {
         if (p.state !== 'queued') return;
-        const room = makeRoom('practice', p.size, [p.code]);
-        issue(p, room, 'A');
+        let room = practiceAlive(p) ? rooms.get(p.practiceRoom) : null;
+        if (!room) { room = makeRoom('practice', p.qsize, [p.code]); p.practiceRoom = room.key; pushParty(p); }
+        issueTo(m, room, 'A');
     }
     function startMatchBetween(a, b) {
         a.queuedAt = b.queuedAt = null;
         a.custom = b.custom = false;
         a.state = b.state = 'match';
-        const room = makeRoom('match', a.size, [a.code, b.code]);
+        const room = makeRoom('match', a.qsize, [a.code, b.code]);
         a.matchRoom = b.matchRoom = room.key;
         issue(a, room, 'A'); issue(b, room, 'B');
         pushParty(a); pushParty(b);
-        log(`Squad: ${a.code} vs ${b.code} (${a.size}v${a.size})`);
+        log(`Squad: ${a.code} vs ${b.code} (${a.qsize}v${a.qsize})`);
     }
     function tryMatch(size) {
         const q = queues[size];
         while (q.length >= 2) startMatchBetween(q.shift(), q.shift());
     }
-    // Grupos publicos esperando retador, para la lista de la pestana SALAS.
+    // Grupos publicos esperando retador, para la lista de salas.
     function roomsList() {
         return [...customRooms].filter(p => p.state === 'queued').map(p => {
             const lead = p.members.get(p.leader) || {};
-            return { code: p.code, size: p.size, since: p.queuedAt, leader: { name: lead.name || 'PLAYER', pic: lead.pic || '', uid: lead.uid || null }, members: [...p.members.values()].map(m => m.name) };
+            return { code: p.code, size: p.qsize, since: p.queuedAt, leader: { name: lead.name || 'PLAYER', pic: lead.pic || '', uid: lead.uid || null }, members: [...p.members.values()].map(m => ({ name: m.name, pic: m.pic || '' })) };
         }).sort((x, y) => x.since - y.since);
     }
 
@@ -162,9 +172,8 @@ function createSquad(deps) {
             const code = newCode(parties);
             const ident = identOf(ws, msg.name);
             const id = rnd(4), name = ident.name;
-            const size = SIZES.includes(msg.size | 0) ? msg.size | 0 : 2;
-            const p = { code, size, state: 'idle', leader: id, members: new Map(), queuedAt: null, lastActive: Date.now() };
-            const m = { ws, id, name, uid: ident.uid, pic: ident.pic, ready: false, party: p };
+            const p = { code, state: 'idle', leader: id, members: new Map(), queuedAt: null, qsize: 1, lastActive: Date.now() };
+            const m = { ws, id, name, uid: ident.uid, pic: ident.pic, party: p };
             p.members.set(id, m); parties.set(code, p); byWs.set(ws, m);
             pushParty(p);
             if (m.uid) social.pushPresence(m.uid);
@@ -175,9 +184,9 @@ function createSquad(deps) {
             const p = parties.get(String(msg.code || '').toUpperCase().trim());
             if (!p) return err(ws, 'no_party');
             if (p.state !== 'idle') return err(ws, 'party_busy');
-            if (p.members.size >= p.size) return err(ws, 'party_full');
+            if (p.members.size >= MAX_PARTY) return err(ws, 'party_full');
             const ident = identOf(ws, msg.name);
-            const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, ready: false, party: p };
+            const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, party: p };
             p.members.set(id, m); byWs.set(ws, m);
             p.lastActive = Date.now();
             pushParty(p);
@@ -189,38 +198,27 @@ function createSquad(deps) {
         p.lastActive = Date.now();
         const leader = me.id === p.leader;
         if (a === 'leave') { leaveMember(ws); return; }
-        if (a === 'rename') { if (!me.uid) me.name = cleanName(msg.name); return pushParty(p); }
-        if (a === 'ready') {
-            if (p.state !== 'idle') return;
-            me.ready = !!msg.v; return pushParty(p);
-        }
-        if (a === 'size') {
-            if (!leader || p.state !== 'idle') return;
-            const n = msg.n | 0;
-            if (!SIZES.includes(n) || n < p.members.size) return err(ws, 'size_too_small');
-            p.size = n; for (const m of p.members.values()) m.ready = false;
-            return pushParty(p);
-        }
         if (a === 'kick') {
             if (!leader || p.state !== 'idle') return;
             const t = p.members.get(String(msg.id || ''));
             if (!t || t.id === me.id) return;
             p.members.delete(t.id); byWs.delete(t.ws);
             send(t.ws, { t: 'sqGone', reason: 'kicked' });
+            if (t.uid) social.pushPresence(t.uid);
             return pushParty(p);
         }
         if (a === 'play') {
             if (!leader) return err(ws, 'not_leader');
             if (p.state !== 'idle') return;
-            if (p.members.size !== p.size) return err(ws, 'need_full_party');
-            for (const m of p.members.values()) if (!m.ready && m.id !== p.leader) return err(ws, 'not_ready');
-            p.state = 'queued'; p.queuedAt = Date.now();
+            const n = p.members.size;
+            if (msg.size && (msg.size | 0) !== n) return err(ws, 'size_mismatch');
+            if (!SIZES.includes(n)) return err(ws, 'size_mismatch');
+            p.state = 'queued'; p.queuedAt = Date.now(); p.qsize = n; p.practiceRoom = null;
             p.custom = !!msg.custom;
             // Sala custom: no entra en la cola automatica; se publica y espera un retador.
-            if (p.custom) customRooms.add(p); else queues[p.size].push(p);
+            if (p.custom) customRooms.add(p); else queues[n].push(p);
             pushParty(p);
-            if (!p.custom) tryMatch(p.size);
-            if (p.state === 'queued') startPractice(p);   // sin rival aun: practica juntos contra bots
+            if (!p.custom) tryMatch(n);
             return;
         }
         if (a === 'challenge') {
@@ -229,20 +227,16 @@ function createSquad(deps) {
             const t = parties.get(String(msg.code || '').toUpperCase().trim());
             if (!t || !customRooms.has(t) || t.state !== 'queued') return err(ws, 'room_gone');
             if (t === p) return err(ws, 'self');
-            if (t.size !== p.size) return err(ws, 'wrong_size');
-            if (p.members.size !== p.size) return err(ws, 'need_full_party');
-            for (const m of p.members.values()) if (!m.ready && m.id !== p.leader) return err(ws, 'not_ready');
+            if (t.qsize !== p.members.size) return err(ws, 'size_mismatch');
             customRooms.delete(t);
+            p.qsize = t.qsize;
             startMatchBetween(t, p);
             return;
         }
-        if (a === 'practice') {      // el cliente la pide si la sala de practica se cerro con el grupo aun en cola
-            if (p.state === 'queued') startPractice(p);
-            return;
-        }
+        if (a === 'practice') { practiceFor(p, me); return; }
         if (a === 'cancel') {
             if (!leader) return err(ws, 'not_leader');
-            if (p.state === 'queued') { dequeue(p); p.custom = false; p.state = 'idle'; for (const m of p.members.values()) m.ready = false; pushParty(p); }
+            if (p.state === 'queued') { backToIdle(p); pushParty(p); }
             return;
         }
     }
@@ -255,9 +249,8 @@ function createSquad(deps) {
         if (me.uid) social.pushPresence(me.uid);
         if (p.members.size === 0) { dequeue(p); parties.delete(p.code); return; }
         if (me.id === p.leader) p.leader = p.members.keys().next().value;
-        // Si alguien se va con el grupo en cola o a punto de jugar, se vuelve al lobby.
-        if (p.state === 'queued') { dequeue(p); p.custom = false; p.state = 'idle'; }
-        for (const m of p.members.values()) m.ready = false;
+        // Si alguien se va con el grupo buscando, se vuelve a empezar (el tamano ya no cuadra).
+        if (p.state === 'queued') backToIdle(p);
         pushParty(p);
     }
     function onClose(ws) { leaveMember(ws); social.onClose(ws); }
@@ -336,7 +329,7 @@ function createSquad(deps) {
         const winner = sq.practice ? null : (a.score > b.score ? 'A' : b.score > a.score ? 'B' : null);
         broadcast(room, { t: 'squadEnd', practice: sq.practice, winner, a: a.score, b: b.score, stake: sq.stake });
         if (!sq.practice) {
-            for (const code of sq.groups) { const p = parties.get(code); if (p) { p.state = 'idle'; for (const m of p.members.values()) m.ready = false; pushParty(p); } }
+            for (const code of sq.groups) { const p = parties.get(code); if (p) { p.state = 'idle'; pushParty(p); } }
         }
     }
     // Limpieza: tickets caducados y grupos abandonados.
@@ -346,7 +339,7 @@ function createSquad(deps) {
         for (const p of [...parties.values()]) {
             if (now - p.lastActive > PARTY_IDLE_MS) { disband(p, 'idle'); continue; }
             // La sala de la partida ya no existe (todos salieron sin que acabara): vuelta al lobby.
-            if (p.state === 'match' && !rooms.has(p.matchRoom)) { p.state = 'idle'; for (const m of p.members.values()) m.ready = false; pushParty(p); }
+            if (p.state === 'match' && !rooms.has(p.matchRoom)) { p.state = 'idle'; pushParty(p); }
         }
     }, 60000);
     if (gc.unref) gc.unref();
