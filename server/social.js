@@ -39,6 +39,7 @@ function createSocial(opts) {
     const byWallet = new Map();               // wallet (distingue mayusculas) -> id
     for (const [id, p] of Object.entries(data.profiles)) { if (p.u) byUsername.set(String(p.u).toLowerCase(), id); if (p.w) byWallet.set(p.w, id); }
 
+    if (file) log('[social] ' + Object.keys(data.profiles).length + ' perfiles y ' + Object.keys(data.rel).length + ' cuentas con amigos cargados de ' + path.basename(file));
     let timer = null;
     function save() {
         if (!file || timer) return;
@@ -224,6 +225,8 @@ function createSocial(opts) {
         return true;
     }
 
+    // Al parar el servidor (actualizar/reiniciar) se vuelca lo pendiente: el guardado va con 2 s de retraso y un reinicio rapido lo perdia.
+    if (file) for (const sig of ['SIGTERM', 'SIGINT', 'beforeExit']) process.once(sig, () => { try { if (timer) flush(); } catch (e) {} });
     return { handle, hello, onClose, pushPresence, pub, isOnline: id => online.has(id), flush, _data: () => data };
 }
 

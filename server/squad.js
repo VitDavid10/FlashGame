@@ -65,8 +65,11 @@ function createSquad(deps) {
     const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf, directory: deps.directory || null });
     // Identidad de quien entra a un grupo: su usuario de X o, sin X, el resumen de su wallet.
     function identOf(ws, fallback) {
-        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.dn || (p.u ? '@' + p.u : p.n)), pic: p.p, av: p.av }; }
-        return { uid: null, name: cleanName(fallback), pic: '', av: null };
+        // name = como te ven los demas en grupos, amigos y pantallas previas (tu @ de X o, sin X, el resumen de tu wallet).
+        // gn = el nombre que sale sobre tu pildora en el mapa: el que pones en THE PILL y, si no pones ninguno, ninguno.
+        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), gn: p.dn || '', pic: p.p, av: p.av }; }
+        const typed = cleanName(fallback);
+        return { uid: null, name: typed, gn: typed === 'PLAYER' ? '' : typed, pic: '', av: null };
     }
 
     const send = (ws, o) => { try { if (ws.readyState === 1) ws.send(JSON.stringify(o)); } catch (e) {} };
@@ -119,7 +122,7 @@ function createSquad(deps) {
             pendingRemovals: new Map(), deadRemovals: new Map(), spectators: new Set(),
             persistent: false, pot: 0,
             targetPop: POP, instantBots: true,
-            squad: { kind, practice: kind === 'practice', size, stake: 0, teams: { A: [], B: [] }, groups, joined: 0 },
+            squad: { kind, practice: kind === 'practice', size, stake: 0, teams: { A: [], B: [] }, groups, joined: 0, stats: {} },
         };
         room.sim.config.maxPlayerCells = 2;   // en arenas la pildora solo se divide en dos
         rooms.set(key, room);
@@ -128,14 +131,16 @@ function createSquad(deps) {
         log(`Squad: sala ${kind} ${size}v${size} creada (${key})`);
         return room;
     }
-    function issueTo(m, room, team) {
+    function issueTo(m, room, team, lineup) {
         const ticket = rnd(16);
-        tickets.set(ticket, { roomKey: room.key, team, name: m.name, exp: Date.now() + TICKET_TTL_MS });
-        send(m.ws, { t: 'sqTicket', kind: room.squad.kind, ticket, size: room.squad.size, team, startIn: Math.max(0, room.startAt - Date.now()) });
+        tickets.set(ticket, { roomKey: room.key, team, name: m.gn || '', idName: m.name, pic: m.pic || '', av: m.av || null, exp: Date.now() + TICKET_TTL_MS });
+        send(m.ws, { t: 'sqTicket', kind: room.squad.kind, ticket, size: room.squad.size, team, lineup: lineup || null, startIn: Math.max(0, room.startAt - Date.now()) });
     }
-    function issue(party, room, team) {
-        for (const m of party.members.values()) issueTo(m, room, team);
+    function issue(party, room, team, lineup) {
+        for (const m of party.members.values()) issueTo(m, room, team, lineup);
     }
+    // Quienes se enfrentan, para la pantalla previa (fotos VS fotos).
+    const lineupOf = g => [...g.members.values()].map(m => ({ name: m.name, pic: m.pic || '', av: m.av || null }));
     // Practica del grupo: solo si alguien la pide (nada de meter a nadie en partida sin querer).
     // La sala es una por grupo: quien la pide entra y, si un companero la pide despues, entra en la misma.
     function practiceFor(p, m) {
@@ -152,7 +157,8 @@ function createSquad(deps) {
         a.state = b.state = 'match';
         const room = makeRoom('match', a.qsize, [a.code, b.code]);
         a.matchRoom = b.matchRoom = room.key;
-        issue(a, room, 'A'); issue(b, room, 'B');
+        const lineup = { A: lineupOf(a), B: lineupOf(b) };
+        issue(a, room, 'A', lineup); issue(b, room, 'B', lineup);
         pushParty(a); pushParty(b);
         log(`Squad: ${a.code} vs ${b.code} (${a.qsize}v${a.qsize})`);
     }
@@ -182,7 +188,7 @@ function createSquad(deps) {
     function readyThen(p, action) {
         if (p.members.size < 2) return runAction(p, action);
         const exp = Date.now() + RC_MS;
-        const ready = {}; for (const m of p.members.values()) ready[m.id] = m.id === p.leader || !!m.ws.virtual;
+        const ready = {}; for (const m of p.members.values()) ready[m.id] = m.id === p.leader;
         p.rc = { action, kind: action.kind, size: p.members.size, exp, ready, timer: setTimeout(() => cancelRc(p, 'Nobody answered in time', 'timeout'), RC_MS) };
         if (p.rc.timer.unref) p.rc.timer.unref();
         const lead = (p.members.get(p.leader) || {}).name || 'PLAYER';
@@ -213,7 +219,7 @@ function createSquad(deps) {
     function handle(ws, msg) {
         if (social.handle(ws, msg)) {
             // Cambio de nombre o de icono con el grupo abierto: los demas lo ven al momento.
-            if (msg.a === 'hello' && ws.pwId) { const m = byWs.get(ws); if (m) { const i = identOf(ws); m.name = i.name; m.pic = i.pic; m.av = i.av; pushParty(m.party); } }
+            if (msg.a === 'hello' && ws.pwId) { const m = byWs.get(ws); if (m) { const i = identOf(ws); m.name = i.name; m.gn = i.gn; m.pic = i.pic; m.av = i.av; pushParty(m.party); } }
             return;
         }
         const a = String(msg.a || '');
@@ -225,7 +231,7 @@ function createSquad(deps) {
             const ident = identOf(ws, msg.name);
             const id = rnd(4), name = ident.name;
             const p = { code, state: 'idle', leader: id, members: new Map(), queuedAt: null, qsize: 1, lastActive: Date.now() };
-            const m = { ws, id, name, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
+            const m = { ws, id, name, gn: ident.gn, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); parties.set(code, p); byWs.set(ws, m);
             pushParty(p);
             if (m.uid) social.pushPresence(m.uid);
@@ -241,7 +247,7 @@ function createSquad(deps) {
             if (p.state === 'queued') { backToIdle(p); }
             if (p.rc) cancelRc(p, 'A new player joined', 'joined');
             const ident = identOf(ws, msg.name);
-            const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
+            const id = rnd(4), m = { ws, id, name: ident.name, gn: ident.gn, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); byWs.set(ws, m);
             p.lastActive = Date.now();
             pushParty(p);
@@ -356,7 +362,8 @@ function createSquad(deps) {
         const useBin = binV >= 1;
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
         const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
-        room.clients.set(playerId, { ws, ip, name, joinedAt: Date.now(), token, opts, cid, paidFee: 0, payWallet: null, carry: 0, isTester: false, useBin, binV, aspect, _spawned: false, entrySig: null, team: tk.team });
+        if (deps.recordEntry && cid && !ws.virtualGame) { try { deps.recordEntry({ comboKey: 'squad_Free', key: room.key, mode: 'arcade', playerId, name: '', cid, ip, tester: false }); } catch (e) {} }
+        room.clients.set(playerId, { ws, ip, name, idName: tk.idName || 'PLAYER', pic: tk.pic || '', av: tk.av || null, joinedAt: Date.now(), token, opts, cid, paidFee: 0, payWallet: null, carry: 0, isTester: false, useBin, binV, aspect, _spawned: false, entrySig: null, team: tk.team });
         tickets.delete(String(msg.squad));
         ws.send(welcomeMsg(room, playerId, token, undefined, Object.assign(useBin ? { useBin: true, binV } : {}, { squad: { team: tk.team, size: sq.size, practice: sq.practice } })));
         if (room.state === 'playing') refillBots(room);
@@ -369,8 +376,8 @@ function createSquad(deps) {
     function rosterOf(room) {
         const out = { A: [], B: [] };
         for (const t of ['A', 'B']) for (const id of room.squad.teams[t]) {
-            const p = room.sim.players.get(id);
-            if (p) out[t].push({ id, name: p.name });
+            const p = room.sim.players.get(id), cli = room.clients.get(id);
+            if (p) out[t].push({ id, name: (cli && cli.idName) || 'PLAYER', pic: (cli && cli.pic) || '', av: (cli && cli.av) || null });
         }
         return out;
     }
@@ -410,8 +417,17 @@ function createSquad(deps) {
             try { cli.ws.send(JSON.stringify({ t: 'squadAllies', a: mates })); } catch (e) {}
         }
     }
+    // Estadisticas de partida por jugador (para la pantalla de resultados): kills y trozos comidos salen de los eventos de la sim.
+    function statOf(room, id) { const st = room.squad.stats; return st[id] || (st[id] = { kills: 0, pieces: 0, spawnAt: 0, diedAt: 0 }); }
+    function onEvent(room, ev, now) {
+        if (!ev || !ev.playerId) return;
+        if (ev.type === 'botKilled') statOf(room, ev.playerId).kills++;
+        else if (ev.type === 'botPieceEaten') statOf(room, ev.playerId).pieces++;
+        else if (ev.type === 'playerDied') statOf(room, ev.playerId).diedAt = now;
+    }
     function tick(room, now) {
         const sq = room.squad;
+        for (const [pid, cli] of room.clients) if (cli._spawned) { const st = statOf(room, pid); if (!st.spawnAt) st.spawnAt = now; }
         if (room.tickCount % 10 === 0) sendAllies(room);
         if (sq.practice || !room.endsAt || room.endsAt - now < 1500) return;
         const a = teamScore(room, 'A'), b = teamScore(room, 'B');
@@ -423,7 +439,17 @@ function createSquad(deps) {
         const sq = room.squad;
         const a = teamScore(room, 'A'), b = teamScore(room, 'B');
         const winner = sq.practice ? null : (a.score > b.score ? 'A' : b.score > a.score ? 'B' : null);
-        broadcast(room, { t: 'squadEnd', practice: sq.practice, winner, a: a.score, b: b.score, stake: sq.stake });
+        const now = Date.now(), players = { A: [], B: [] };
+        for (const t of ['A', 'B']) for (const id of sq.teams[t]) {
+            const cli = room.clients.get(id), p = room.sim.players.get(id), st = sq.stats[id] || {};
+            const fin = st.diedAt || now;
+            players[t].push({
+                name: (cli && cli.idName) || 'PLAYER', pic: (cli && cli.pic) || '', av: (cli && cli.av) || null,
+                kills: st.kills | 0, pieces: st.pieces | 0, peak: p ? Math.round(p.peakMass || 0) : 0,
+                secs: st.spawnAt ? Math.max(0, Math.round((fin - st.spawnAt) / 1000)) : 0, alive: !!(p && p.alive),
+            });
+        }
+        broadcast(room, { t: 'squadEnd', practice: sq.practice, winner, a: a.score, b: b.score, stake: sq.stake, players });
         if (!sq.practice) {
             for (const code of sq.groups) { const p = parties.get(code); if (p) { p.state = 'idle'; pushParty(p); } }
         }
@@ -441,9 +467,9 @@ function createSquad(deps) {
     if (gc.unref) gc.unref();
 
     // Amigos de prueba @icefox y @bandit: aparecen al buscarlos, aceptan, contestan y juegan.
-    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log });
+    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log, readyMs: deps.virtualReadyMs });
 
-    return { handle, onClose, join, tick, endOf, social, virtual, _internals: { parties, queues, tickets, makeRoom, customRooms } };
+    return { handle, onClose, join, tick, endOf, onEvent, social, virtual, _internals: { parties, queues, tickets, makeRoom, customRooms } };
 }
 
 module.exports = { createSquad, SIZES, POP };

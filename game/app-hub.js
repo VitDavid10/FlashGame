@@ -1023,10 +1023,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         renderQuests();
     }
     const fmtN = n => n >= 1000 ? Math.round(n).toLocaleString('en-US') : String(n);
-    // ---------- MISIONES de la app: se marcan hasta 3 y cuentan en TODOS los modos ----------
-    // Offline, practica, arenas u online: el juego avisa de lo que pasa (window.pwAq, ver index.html) y aqui se cuenta
-    // solo para las marcadas. El progreso vive en el movil (por eso vale sin conexion); al completar una se cobra en el
-    // servidor (maximo 3 al dia por cuenta, ver server/appquests.js) y si no hay red o cuenta se cobra al volver.
+    // ---------- MISIONES de la app: cuentan TODAS en TODOS los modos; marcar (hasta 3) es para verlas en la partida ----------
+    // Offline, practica, arenas u online: el juego avisa de lo que pasa (window.pwAq, ver index.html) y aqui se cuenta para
+    // las 9 del dia. Las 3 marcadas salen en pantalla mientras juegas. El progreso vive en el movil (por eso vale sin
+    // conexion); al completar una se cobra en el servidor (ver server/appquests.js: hace falta cuenta y que el servidor te
+    // haya visto jugar hoy, practica de arenas incluida) y si no hay red, cuenta o prueba de juego se cobra al volver.
     const AQ_MAX = 3;
     const AQ_STAT = {
         'e-kill1': 'kills', 'm-kill3': 'kills', 'h-kill5': 'kills', 'e-pieces5': 'pieces', 'm-pieces15': 'pieces', 'e-skills2': 'skills', 'm-skills3': 'skillsDiff',
@@ -1043,19 +1044,21 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         return aq;
     }
     function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} }
-    const aqList = () => appMissionsFor(aqLoad().day);
+    // El sorteo del dia se calcula una vez (aqStat se llama muchas veces por segundo).
+    let aqCache = null;
+    const aqList = () => { const d = aqLoad().day; if (!aqCache || aqCache.d !== d) aqCache = { d, l: appMissionsFor(d) }; return aqCache.l; };
     function aqToast(t) { try { if (window.pwToast) return window.pwToast({ text: t, warm: true, ms: 6000 }); showSystemMsg(t, 'MISSION'); } catch (e) {} }
     function aqStat(stat, n, abs) {
         const a = aqLoad(); let cambio = false;
-        for (const id of a.pins) {
+        for (const m of aqList()) {
+            const id = m.id;
             if (a.done[id] || AQ_STAT[id] !== stat) continue;
-            const m = aqList().find(x => x.id === id); if (!m) continue;
             const prev = a.prog[id] | 0, v = Math.min(m.goal, abs ? Math.max(prev, n | 0) : prev + (n | 0));
             if (v === prev) continue;
             a.prog[id] = v; cambio = true;
             if (v >= m.goal) { a.done[id] = 1; aqToast('MISSION COMPLETE: ' + m.t + ' · +' + m.pts + ' SP'); try { SoundManager.play('select'); } catch (e) {} aqClaim(m); }
         }
-        if (cambio) { aqSave(); if ($('#ahQ').classList.contains('open')) renderQuests(); }
+        if (cambio) { aqSave(); aqHud(); if ($('#ahQ').classList.contains('open')) renderQuests(); }
     }
     async function aqClaim(m) {
         const a = aqLoad();
@@ -1067,24 +1070,25 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 if (r.ok && !r.already) { aqMsg = ''; try { if (typeof paisSync === 'function') await paisSync(); } catch (e) {} try { $('#ahSp').textContent = paisSp(); } catch (e) {} }
                 if (r.error === 'limit') aqMsg = 'DAILY LIMIT: 3 PAID MISSIONS PER DAY';
             } else if (r.error === 'no_account') { aqMsg = 'CONNECT YOUR WALLET TO CLAIM YOUR SP'; }
+            else if (r.error === 'no_proof') { aqMsg = 'PLAY ONE ONLINE MATCH TODAY TO CLAIM · ARENA PRACTICE COUNTS'; }
         } catch (e) { /* sin red: se cobra al volver */ }
         if ($('#ahQ').classList.contains('open')) renderQuests();
     }
     function aqRetry() { const a = aqLoad(); aqList().filter(m => a.done[m.id] && !a.claimed[m.id]).forEach(aqClaim); }
     function aqToggle(m) {
         const a = aqLoad();
-        if (a.done[m.id]) { if (!a.claimed[m.id]) aqClaim(m); return; }
+        if (a.done[m.id] && !a.pins.includes(m.id)) { if (!a.claimed[m.id]) aqClaim(m); return; }
         const k = a.pins.indexOf(m.id);
         if (k >= 0) { a.pins.splice(k, 1); aqMsg = ''; }
-        else if (a.pins.length >= AQ_MAX) { aqMsg = 'MAX 3 MISSIONS · TAP ONE OF YOURS TO DROP IT'; setTimeout(() => { aqMsg = ''; if ($('#ahQ').classList.contains('open')) renderQuests(); }, 2500); }
+        else if (a.pins.length >= AQ_MAX) { aqMsg = 'MAX 3 SHOWN IN GAME · TAP ONE OF THEM TO REPLACE IT'; setTimeout(() => { aqMsg = ''; if ($('#ahQ').classList.contains('open')) renderQuests(); }, 2500); }
         else { a.pins.push(m.id); aqMsg = ''; }
-        aqSave(); renderQuests();
+        aqSave(); renderQuests(); aqHud();
     }
     // Lo que ve el juego: cada hecho pasa por aqui, en cualquier modo.
     const aqLife = { mass: 0, alive: 0, kills: 0 };
     window.pwAq = {
         matchStart() { aqLife.mass = 0; aqLife.alive = 0; aqLife.kills = 0; aqStat('matches', 1); },
-        tick(dt, mass) { aqLife.alive += dt / 1000; if (mass > aqLife.mass) aqLife.mass = mass; aqStat('mass', Math.floor(aqLife.mass), true); aqStat('alive', Math.floor(aqLife.alive), true); },
+        tick(dt, mass) { aqLife.alive += dt / 1000; if ((aqLife.n = (aqLife.n | 0) + 1) % 15) { if (mass > aqLife.mass) aqLife.mass = mass; return; } if (mass > aqLife.mass) aqLife.mass = mass; aqStat('mass', Math.floor(aqLife.mass), true); aqStat('alive', Math.floor(aqLife.alive), true); },
         kill(split) { aqLife.kills++; aqStat('kills', 1); aqStat('killsLife', aqLife.kills, true); if (split) aqStat('splitKills', 1); },
         piece() { aqStat('pieces', 1); },
         split() { aqStat('splits', 1); },
@@ -1094,7 +1098,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             aqStat('skills', 1); aqStat('sk' + id, 1);
             if (id === 8 && win) aqStat('gambleWin', 1);
             const a = aqLoad();
-            if (a.pins.some(x => AQ_STAT[x] === 'skillsDiff') && !a.sk.includes(id)) { a.sk.push(id); aqStat('skillsDiff', a.sk.length, true); }
+            if (!a.sk.includes(id)) { a.sk.push(id); aqSave(); }
+            aqStat('skillsDiff', a.sk.length, true);
         },
         // Fin de la vida o de la partida: sobrevivir al reloj y acabar en el top 5 solo valen si sigues vivo / en el ranking al acabar.
         lifeEnd(aliveAtEnd, rank, clock) {
@@ -1102,13 +1107,36 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             aqLife.mass = 0; aqLife.alive = 0; aqLife.kills = 0;
         },
     };
+    // Las marcadas salen en la partida, como en el Daily Arena del airdrop: asi es mas facil hacerlas.
+    let aqHudOn = false;
+    function aqHud(on) {
+        if (typeof on === 'boolean') aqHudOn = on;
+        let el = document.getElementById('aqHud');
+        if (!el) {
+            const st = document.createElement('style');
+            st.textContent = '#aqHud{position:absolute;left:8px;top:90px;z-index:55;display:none;max-width:52vw;font-family:\'Press Start 2P\',monospace;font-size:7px;line-height:1.5;pointer-events:none;text-shadow:1px 1px 0 #000}' +
+                '#aqHud.show{display:block}#aqHud .h{color:#8aa096;margin-bottom:3px}' +
+                '#aqHud .r{background:rgba(6,10,8,.55);border-left:3px solid #ccff00;padding:3px 7px;margin-bottom:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+                '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-left-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}';
+            document.head.appendChild(st);
+            el = document.createElement('div'); el.id = 'aqHud';
+            (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(el);
+        }
+        const a = aqLoad(), rows = a.pins.map(id => aqList().find(m => m.id === id)).filter(Boolean);
+        if (!aqHudOn || !rows.length) { el.classList.remove('show'); return; }
+        el.innerHTML = '<div class="h">MISSIONS</div>' + rows.map(m => {
+            const ok = !!a.done[m.id], v = Math.min(m.goal, ok ? m.goal : (a.prog[m.id] | 0));
+            return '<div class="r' + (ok ? ' ok' : '') + '">' + (ok ? '✓ ' : '') + m.t + '<b>' + fmtN(v) + '/' + fmtN(m.goal) + '</b></div>';
+        }).join('');
+        el.classList.add('show');
+    }
     function renderQuests() {
         const g = $('#ahQG'); g.innerHTML = '';
         const a = aqLoad(), ms = aqList();
         const hechas = ms.filter(m => a.done[m.id]).length;
-        $('#ahQBoost').textContent = a.pins.length + '/' + AQ_MAX + ' SELECTED · ' + hechas + ' DONE';
+        $('#ahQBoost').textContent = hechas + '/' + ms.length + ' DONE · ' + a.pins.length + '/' + AQ_MAX + ' IN GAME';
         $('#ahQSp').textContent = (typeof paisSp === 'function' ? paisSp() : 0) + ' SP';
-        $('#ahQFoot').textContent = aqMsg || 'Tap up to 3 missions to track them · they count in every mode, offline too · reset 00:00 UTC';
+        $('#ahQFoot').textContent = aqMsg || 'All 9 count in every mode, offline too · tap up to 3 to show them in game · reset 00:00 UTC';
         $('#ahQFoot').style.color = aqMsg ? '#ffb347' : '';
         const orden = ms.filter(m => a.pins.includes(m.id) && !a.done[m.id]).concat(ms.filter(m => !a.pins.includes(m.id) && !a.done[m.id]), ms.filter(m => a.done[m.id]));
         orden.forEach(m => {
@@ -1117,7 +1145,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const c = document.createElement('div');
             c.className = 'qc' + (ok ? ' done' : '') + (pin ? ' pin' : '');
             const estado = ok ? (a.claimed[m.id] ? 'DONE' : 'CLAIM') : '+' + m.pts + ' SP';
-            c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + (pin && !ok ? ' · TRACKING' : '') + '</div><div class="t"></div></div>' +
+            c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + (pin ? ' · IN GAME' : '') + '</div><div class="t"></div></div>' +
                 '<div class="qp"><i style="width:' + Math.round(v / m.goal * 100) + '%"></i></div>' +
                 '<div class="b"><span class="n">' + fmtN(v) + '/' + fmtN(m.goal) + '</span><span class="pts">' + estado + '</span></div>';
             c.querySelector('.t').textContent = m.t;
@@ -1403,14 +1431,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // La partida tapa al hub: se esconde al empezar y vuelve al volver al menu.
         ['startGame', 'startOnlineGame'].forEach(fn => {
             const o = window[fn];
-            if (typeof o === 'function') window[fn] = function () { hide(); _enPartida = true; return o.apply(this, arguments); };
+            if (typeof o === 'function') window[fn] = function () { hide(); _enPartida = true; aqHud(true); return o.apply(this, arguments); };
         });
         // Vuelta de la partida: el hub sale en el MISMO instante que el menu
         // antiguo (que queda tapado por hub-on), sin que se vea ni un frame.
         const oRet = window.returnToMenu;
         if (typeof oRet === 'function') window.returnToMenu = function () {
             document.body.classList.add('hub-on');
-            const r = oRet.apply(this, arguments); _enPartida = false; show(mode); return r;
+            const r = oRet.apply(this, arguments); _enPartida = false; aqHud(false); show(mode); return r;
         };
         // selectMode deja pendiente mostrar el menu antiguo (showLogin, tras cargar
         // las skins): si se vuelve atras antes, llegaba despues y tapaba la rueda.

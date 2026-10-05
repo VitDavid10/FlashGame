@@ -16,6 +16,7 @@ function make() {
         rooms, resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000,
         buildSim: (mode) => { const s = new PillSim.Simulation({ mode, mapSize: 3000, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, botConfig: { enabled: false, count: 0, respawn: false }, fx: { enabled: false } }); s.populate(); return s; },
         welcomeMsg: () => '{}', refillBots: () => {}, broadcast: () => {}, log: () => {},
+        virtualReadyMs: 60,
         startMatch: room => { room.state = 'playing'; },
         // Como el host: 'ready' spawnea al jugador
         handleInput: (room, pid, m) => { inputs.push(m.t); if (m.t === 'ready') { const c = room.clients.get(pid); c._spawned = true; room.sim.spawnPlayer(pid, 0); } },
@@ -64,6 +65,10 @@ test('invitados entran al grupo y juegan la practica: la sala nace ya iniciada y
     assert.equal(p.members.length, 3, 'yo + los dos amigos');
     assert.deepEqual(p.members.map(m => m.name).sort(), ['@bandit', '@icefox', '@ana'].sort());
     say(sq, me, { a: 'play', custom: true });
+    assert.equal(me.last('sqParty').state, 'idle', 'los amigos de prueba no dan listo al instante');
+    assert.ok(me.last('sqParty').rc, 'hay un chequeo abierto');
+    await wait(300);
+    assert.equal(me.last('sqParty').state, 'queued', 'acaban dando listo y empieza la busqueda');
     assert.equal(me.last('sqParty').size, 3);
     assert.equal(rooms.size, 0, 'buscar no abre ninguna sala');
     say(sq, me, { a: 'practice' });
@@ -104,7 +109,7 @@ test('en la partida entre grupos tambien entran y juegan con su equipo', async (
     say(sq, me, { a: 'challenge', code: foe.last('sqParty').code });
     assert.equal(me.last('sqErr').reason, 'size_mismatch');
     say(sq, foe, { a: 'cancel' });
-    say(sq, me, { a: 'play' }); say(sq, foe, { a: 'leave' });
+    say(sq, me, { a: 'play' }); await wait(300); say(sq, foe, { a: 'leave' });
     const duo = human(sq, 'CCCCCCC', 'cat'); say(sq, duo, { a: 'create' });
     const duo2 = human(sq, 'DDDDDDD', 'dan'); say(sq, duo2, { a: 'join', code: duo.last('sqParty').code });
     say(sq, duo, { a: 'play' }); say(sq, duo2, { a: 'ready', v: true });
@@ -114,4 +119,38 @@ test('en la partida entre grupos tambien entran y juegan con su equipo', async (
     const mine = [...match.clients.values()].filter(c => c.ws.virtualGame);
     assert.equal(mine.length, 1, 'icefox entra en la partida');
     assert.equal(mine[0].team, 'A');
+});
+
+test('READY ALL: el lider avisa y los amigos de prueba contestan casi al momento', async () => {
+    const { sq } = make();
+    // ready lento para ver la diferencia
+    const sq2 = createSquad({
+        rooms: new Map(), resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000, virtualReadyMs: 5000,
+        buildSim: () => ({}), welcomeMsg: () => '{}', refillBots: () => {}, broadcast: () => {}, log: () => {},
+    });
+    const me = human(sq2, 'AAAAAAA', 'ana');
+    say(sq2, me, { a: 'fadd', u: 'icefox' }); await wait(600);
+    say(sq2, me, { a: 'create' }); say(sq2, me, { a: 'pinvite', id: me.last('sqFriends').friends[0].id }); await wait(900);
+    say(sq2, me, { a: 'play' });
+    assert.equal(me.last('sqParty').state, 'idle');
+    await wait(300);
+    assert.equal(me.last('sqParty').state, 'idle', 'con ready lento sigue esperando');
+    say(sq2, me, { a: 'remind' });
+    await wait(900);
+    assert.equal(me.last('sqParty').state, 'queued', 'tras READY ALL contesta enseguida');
+});
+
+test('susurrar "lead" a un amigo de prueba: crea el grupo y te invita', async () => {
+    const { sq } = make();
+    const me = human(sq, 'AAAAAAA', 'ana');
+    say(sq, me, { a: 'fadd', u: 'bandit' }); await wait(600);
+    const id = me.last('sqFriends').friends[0].id;
+    say(sq, me, { a: 'whisper', id, text: 'lead' });
+    await wait(1200);
+    const inv = me.last('sqInvite');
+    assert.ok(inv, 'te llega la invitacion');
+    assert.equal(inv.from.u, 'bandit');
+    say(sq, me, { a: 'join', code: inv.code });
+    assert.equal(me.last('sqParty').members.length, 2);
+    assert.equal(me.last('sqParty').leader !== me.last('sqParty').me, true, 'el lider es el bot');
 });

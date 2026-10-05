@@ -312,26 +312,41 @@ test('se puede invitar mientras el grupo busca: si aceptan, la busqueda se cance
     assert.equal(c.last('sqErr').reason, 'party_busy');
 });
 
-test('sin @ de X se ve el nombre elegido; un cambio de nombre o icono llega al grupo al momento', () => {
+test('en el mapa sale el nombre de THE PILL (o ninguno); en grupos y amigos, el @ de X o el resumen de wallet', () => {
     const sq = make();
-    const a = fakeWs();
-    const tk = token.sign({ id: 'AAAAAAA', u: '', n: 'AjGQ...qX6k', p: '' });
+    // Entra a una practica en solitario y devuelve el nombre que lleva la pildora.
+    const juega = ws => {
+        say(sq, ws, { a: 'create' }); say(sq, ws, { a: 'play' }); say(sq, ws, { a: 'practice' });
+        const r = sq.join(fakeWs(), 'x', { t: 'join', squad: ws.last('sqTicket').ticket });
+        say(sq, ws, { a: 'leave' });
+        return r.room.sim.players.get(r.playerId).name;
+    };
+    const a = fakeWs(), tk = token.sign({ id: 'AAAAAAA', u: '', n: 'AjGQ...qX6k', p: '' });
     say(sq, a, { a: 'hello', token: tk, name: 'Pillwars<b>', av: { t: 'npc', bg: '#8a948f' } });
     say(sq, a, { a: 'create' });
-    assert.equal(a.last('sqParty').members[0].name, 'Pillwarsb', 'saneado');
+    assert.equal(a.last('sqParty').members[0].name, 'AjGQ...qX6k', 'en el grupo: el resumen de la wallet');
+    say(sq, a, { a: 'leave' });
+    assert.equal(juega(a), 'Pillwarsb', 'en el mapa: el nombre elegido, saneado');
+    // cambio de nombre con el grupo abierto
+    say(sq, a, { a: 'create' });
     say(sq, a, { a: 'hello', token: tk, name: 'David', av: { t: 'spook', bg: '#ab9ff2' } });
-    const m = a.last('sqParty').members[0];
-    assert.equal(m.name, 'David');
-    assert.equal(m.av.t, 'spook');
-    // el nombre elegido manda SIEMPRE; solo si no pone ninguno sale su @ de X
+    assert.equal(a.last('sqParty').members[0].av.t, 'spook');
+    say(sq, a, { a: 'leave' });
+    assert.equal(juega(a), 'David');
+    // con @ de X: en el grupo el @, en el mapa lo que puso
     const x = fakeWs();
     say(sq, x, { a: 'hello', token: token.sign({ id: 'XXXXXXX', u: 'xavi', n: 'Xavi', p: '' }), name: 'Otro' });
     say(sq, x, { a: 'create' });
-    assert.equal(x.last('sqParty').members[0].name, 'Otro');
+    assert.equal(x.last('sqParty').members[0].name, '@xavi');
+    say(sq, x, { a: 'leave' });
+    assert.equal(juega(x), 'Otro');
+    // sin nombre elegido: ninguno sobre la pildora (el @ solo sale en amigos y grupos)
     const y = fakeWs();
     say(sq, y, { a: 'hello', token: token.sign({ id: 'YYYYYYY', u: 'yago', n: 'Yago', p: '' }), name: 'PLAYER' });
     say(sq, y, { a: 'create' });
-    assert.equal(y.last('sqParty').members[0].name, '@yago', 'sin nombre elegido, el @ de X');
+    assert.equal(y.last('sqParty').members[0].name, '@yago');
+    say(sq, y, { a: 'leave' });
+    assert.equal(juega(y), '', 'sin nombre elegido, ningun nombre en el mapa');
 });
 
 test('las posiciones de companeros llegan solo a los del mismo equipo y no a los virtuales', () => {

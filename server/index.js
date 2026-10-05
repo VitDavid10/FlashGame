@@ -48,7 +48,7 @@ leaderboard.setProveedorOponentes(() => matches.oponentesDe());
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILLY + quema)
 const skinpoints = require('./skinpoints.js');
-const appquests = require('./appquests.js').create({ addPoints: (cid, n) => skinpoints.addPoints(cid, n) });   // misiones de la app: el servidor solo cobra
+const appquests = require('./appquests.js').create({ addPoints: (cid, n) => skinpoints.addPoints(cid, n), playedToday: cid => dailyquests.playedToday(cid) });   // misiones de la app: el servidor solo cobra
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
 const { createTelegram } = require('./telegram.js');  // anuncios fijados y posts de X en Telegram
@@ -1287,6 +1287,7 @@ const SQUAD_HOST_ID = 0;
 const squad = createSquad({
     rooms, buildSim, welcomeMsg: gameHost.welcomeMsg, refillBots, broadcast, log,
     resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS, startMatch, handleInput: gameHost.handleInput,
+    recordEntry: p => director.recordEntry(p),   // jugar arenas cuenta como partida del dia (retos diarios y cobro de misiones)
     directory: q => airdrop.lookup(q),   // encuentra a gente del airdrop que aun no ha abierto Arenas
     // Amigos y perfiles: solo el proceso que de verdad sirve las arenas los guarda.
     socialFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'social.json') : null,
@@ -4098,7 +4099,7 @@ const tickCtx = {
     flags: tickFlags,
     // funciones puras
     log, logAdmin, broadcast, restartRoom, startMatch, tickGradualBots,
-    squadTick: squad.tick, squadEnd: squad.endOf,
+    squadTick: squad.tick, squadEnd: squad.endOf, squadEvent: squad.onEvent,
     buildSnapshotFor, aoiBoxFor,
     addToPot, sendEcon, entryFeePill, minRealOf, classicExitFeePct, ARCADE_RAKE_PCT,
     deleteRoom: (key) => rooms.delete(key),

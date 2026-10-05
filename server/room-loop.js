@@ -268,6 +268,7 @@ function tickRoomOnce(room, now, ctx) {
 
     const events = room.sim.drainEvents();
     for (const ev of events) {
+        if (room.squad && ctx.squadEvent) ctx.squadEvent(room, ev, now);
         if (ev.type === 'playerDied') {
             const dCli_ = room.clients.get(ev.playerId);
             const dTest_ = dCli_ && dCli_.isTester;

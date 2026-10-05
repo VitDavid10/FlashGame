@@ -275,3 +275,48 @@ test('en las salas de arenas la pildora solo se divide en dos', () => {
     for (let i = 0; i < 6; i++) { o.splitPlayer(q, q.cells[0].x + 100, q.cells[0].y); o.now += 5000; }
     assert.ok(q.cells.length > 2);
 });
+
+test('al emparejar cada uno recibe la alineacion de los dos equipos (fotos VS fotos)', () => {
+    const { sq } = make();
+    const a = party(sq, 'ana', 2), b = party(sq, 'bea', 2);
+    say(sq, a[0], { a: 'play' }); say(sq, a[1], { a: 'ready', v: true });
+    say(sq, b[0], { a: 'play' }); say(sq, b[1], { a: 'ready', v: true });
+    const t = a[0].last('sqTicket');
+    assert.equal(t.kind, 'match');
+    assert.equal(t.lineup.A.length, 2);
+    assert.equal(t.lineup.B.length, 2);
+    assert.deepEqual(t.lineup.A.map(x => x.name).sort(), ['ana', 'ana1']);
+    assert.deepEqual(b[1].last('sqTicket').lineup.B.map(x => x.name).sort(), ['bea', 'bea1']);
+    assert.ok('pic' in t.lineup.A[0] && 'av' in t.lineup.A[0]);
+});
+
+test('al acabar, los resultados llevan las estadisticas de cada jugador de los dos equipos', () => {
+    const { sq } = make();
+    const a = party(sq, 'ana', 1), b = party(sq, 'bea', 1);
+    for (const p of [a, b]) say(sq, p[0], { a: 'play' });
+    const wa = fakeWs(), wb = fakeWs();
+    const ra = sq.join(wa, 'x', { t: 'join', squad: a[0].last('sqTicket').ticket });
+    const rb = sq.join(wb, 'x', { t: 'join', squad: b[0].last('sqTicket').ticket });
+    const room = ra.room;
+    for (const r of [ra, rb]) { room.clients.get(r.playerId)._spawned = true; room.sim.spawnPlayer(r.playerId, 0); }
+    room.state = 'playing'; room.endsAt = Date.now() + 100000;
+    sq.tick(room, Date.now() - 12000);                    // marca el instante de aparicion
+    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId }, Date.now());
+    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId }, Date.now());
+    sq.onEvent(room, { type: 'botPieceEaten', playerId: ra.playerId }, Date.now());
+    room.sim.players.get(ra.playerId).peakMass = 4321.6;
+    sq.onEvent(room, { type: 'playerDied', playerId: rb.playerId }, Date.now());
+    room.sim.players.get(rb.playerId).alive = false;
+    sq.endOf(room);
+    const m = wa.last('squadEnd');
+    assert.equal(m.players.A.length, 1);
+    assert.equal(m.players.A[0].name, 'ana');
+    assert.equal(m.players.A[0].kills, 2);
+    assert.equal(m.players.A[0].pieces, 1);
+    assert.equal(m.players.A[0].peak, 4322);
+    assert.ok(m.players.A[0].secs >= 11 && m.players.A[0].secs <= 14, 'segundos jugados');
+    assert.equal(m.players.A[0].alive, true);
+    assert.equal(m.players.B[0].alive, false);
+    assert.equal(m.players.B[0].name, 'bea');
+    assert.equal(m.winner, 'A');
+});

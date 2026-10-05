@@ -40,7 +40,16 @@
         offline: 'That friend is offline.', slow_down: 'Slow down a little.', room_gone: 'That room is no longer available.',
     };
     const ST = { on: 'ONLINE', party: 'IN A GROUP', game: 'IN A MATCH', off: 'OFFLINE' };
-    const nameOf = o => o.dn || (o.u ? '@' + o.u : (o.n || 'PLAYER'));
+    // Como se ve a alguien en grupos y amigos: su @ de X o, sin X, el resumen de su wallet. (El nombre que pone en THE PILL solo
+    // sale sobre su pildora en el mapa.) A los amigos se les puede poner un apodo, solo tuyo.
+    const nameOf = o => (o.u ? '@' + o.u : (o.n || 'PLAYER'));
+    let nicks = {}; try { nicks = JSON.parse(localStorage.getItem('pw_nicks')) || {}; } catch (e) { nicks = {}; }
+    const friendName = o => nicks[o.id] || nameOf(o);
+    function setNick(id, v) {
+        v = String(v || '').replace(/[<>]/g, '').trim().slice(0, 16);
+        if (v) nicks[id] = v; else delete nicks[id];
+        try { localStorage.setItem('pw_nicks', JSON.stringify(nicks)); } catch (e) {}
+    }
     const initial = o => esc(String(o.u || o.n || '?').replace(/^@/, '').slice(0, 1).toUpperCase());
 
     const css = `
@@ -78,7 +87,8 @@
 .sq-av .l{font-size:.32em;color:#ffd23a;letter-spacing:.1em;margin-top:-.3em}
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
 .sq-pic{overflow:hidden}
-#ahFrBody,#ahArBody{max-height:19em;overflow-y:auto}
+#ahArBody{max-height:19em;overflow-y:auto}
+#ahFrBody{max-height:16em;overflow-y:auto}
 .sq-pic .av,.sq-pic .av-cv{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .sq-pic .av svg{width:60%;height:60%}
 .sq-pic canvas{image-rendering:pixelated}
@@ -86,6 +96,11 @@
 .sq.find{min-height:16.5em;justify-content:space-between;gap:.6em}
 .sq.find .mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2em;width:100%}
 .sq-grp.big{flex:none;align-items:center;gap:2.6em}
+/* en AMIGOS el grupo es una tira compacta: si no, con tres jugadores el panel se sale de la pantalla */
+.sq-grp.small{gap:.8em}
+.sq-grp.small .sq-av{width:6.2em;gap:.4em}
+.sq-grp.small .sq-av .sq-pic{width:2.5em;height:2.5em;font-size:1em}
+.sq-grp.small .sq-av .n{font-size:.4em}
 .sq-grp.big .sq-av{width:12em;gap:.9em}
 .sq-grp.big .sq-av .sq-pic{width:5.2em;height:5.2em;font-size:1.5em}
 .sq-grp.big .sq-av .n{font-size:.55em}
@@ -130,10 +145,26 @@
 #sqFound,#sqEnd{position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(3,6,4,.82);font-family:'Press Start 2P',monospace;color:#fff;text-align:center}
 #sqFound.show,#sqEnd.show{display:flex}
 #sqFound .a{font-size:22px;color:#ffd23a;text-shadow:3px 3px 0 #000,0 0 18px #ffd23a}
+.lu{display:flex;align-items:center;gap:26px;margin:4px 0}
+.lu .side{display:flex;gap:16px}
+.lu .p{display:flex;flex-direction:column;align-items:center;gap:7px;width:84px}
+.lu .p .sq-pic{width:58px;height:58px;font-size:22px}
+.lu .p .nm{font-size:8px;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:1px 1px 0 #000}
+.lu .side.me .nm{color:#3fa0ff}.lu .side.foe .nm{color:#ff6a5a}
+.lu .vs{font-size:20px;color:#ffd23a;text-shadow:3px 3px 0 #000}
 #sqFound .b{font-size:12px;color:#9bbfff}
 #sqEnd .a{font-size:28px;text-shadow:3px 3px 0 #000}
 #sqEnd .a.w{color:#00ff66}#sqEnd .a.l{color:#ff5a4e}#sqEnd .a.d{color:#ffd23a}
 #sqEnd .b{font-size:11px;color:#cfd8d3;line-height:1.9}
+#sqEnd .res{display:flex;gap:22px;max-width:96%;justify-content:center}
+#sqEnd .tm{background:rgba(8,12,10,.9);border:2px solid #2c3630;padding:8px 10px;min-width:250px}
+#sqEnd .tm.me{border-color:#3fa0ff}#sqEnd .tm.foe{border-color:#ff6a5a}
+#sqEnd .th{font-size:9px;margin-bottom:6px}#sqEnd .tm.me .th{color:#3fa0ff}#sqEnd .tm.foe .th{color:#ff6a5a}
+#sqEnd .rw{display:grid;grid-template-columns:30px 1fr 38px 46px 58px 38px;gap:6px;align-items:center;font-size:8px;line-height:1.2;padding:3px 0;text-align:right}
+#sqEnd .rw.hd{color:#7d8a82;font-size:6px}
+#sqEnd .rw.dead{opacity:.6}
+#sqEnd .rw .nm{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sqEnd .rw .sq-pic{width:26px;height:26px;font-size:10px}
 #sqEnd button{font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:2px;padding:10px 26px;border:3px solid #000;background:#00ff88;color:#04150c;cursor:pointer;margin-top:8px}
 #sqHud{position:absolute;left:8px;top:64px;z-index:56;display:none;max-width:70vw;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.6;background:rgba(6,10,8,.55);padding:4px 8px;pointer-events:none;text-shadow:1px 1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sqHud.show{display:block}
@@ -295,7 +326,7 @@
             const viewing = S.chatWith === other.id && isOpen('friends');
             if (!viewing) {
                 S.unread[other.id] = (S.unread[other.id] || 0) + 1;
-                toast({ pic: other.p, text: esc(nameOf(other)) + ': ' + esc(m.text.slice(0, 80)), actions: [['REPLY', () => { S.chatWith = other.id; S.unread[other.id] = 0; openFriends(); }, 1], ['X', null]], ms: 9000 });
+                toast({ pic: other.p, text: esc(friendName(other)) + ': ' + esc(m.text.slice(0, 80)), actions: [['REPLY', () => { S.chatWith = other.id; S.unread[other.id] = 0; openFriends(); }, 1], ['X', null]], ms: 9000 });
             }
         }
         render();
@@ -321,7 +352,13 @@
         const el = foundEl();
         const paint = () => { el.querySelector('.b').textContent = 'ENTERING IN ' + n + '…'; };
         el.querySelector('.a').textContent = 'RIVAL FOUND!';
-        el.querySelector('.c').textContent = m.size + 'V' + m.size + ' · TEAM ' + m.team;
+        // Fotos de tu equipo VS fotos del rival, con su nombre de X o de wallet: asi sabes con quien juegas.
+        const side = (list, cls) => '<div class="side ' + cls + '">' + (list || []).map(x => '<div class="p">' + pic({ p: x.pic, av: x.av, n: x.name }) + '<span class="nm">' + esc(x.name) + '</span></div>').join('') + '</div>';
+        const mine = m.team === 'B' ? 'B' : 'A', other = mine === 'A' ? 'B' : 'A';
+        el.querySelector('.c').innerHTML = m.lineup
+            ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>'
+            : esc(m.size + 'V' + m.size + ' · TEAM ' + m.team);
+        hydrate(el);
         el.classList.add('show'); paint(); snd('alert');
         clearInterval(S.ticketTimer);
         S.ticketTimer = setInterval(() => {
@@ -368,13 +405,18 @@
         }
         let el = document.getElementById('sqEnd');
         if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = '<div class="a"></div><div class="b"></div><button>CONTINUE</button>'; frame().appendChild(el); el.querySelector('button').onclick = () => el.classList.remove('show'); }
-        const mine = S.roster ? S.roster.me : 'A';
+        const mine = S.roster ? S.roster.me : 'A', other = mine === 'A' ? 'B' : 'A';
         const a = el.querySelector('.a');
         if (!m.winner) { a.textContent = 'DRAW'; a.className = 'a d'; }
         else if (m.winner === mine) { a.textContent = 'VICTORY!'; a.className = 'a w'; }
         else { a.textContent = 'DEFEAT'; a.className = 'a l'; }
         const my = mine === 'A' ? m.a : m.b, their = mine === 'A' ? m.b : m.a;
-        el.querySelector('.b').innerHTML = 'YOUR TEAM ' + my + '<br>RIVALS ' + their;
+        const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        const rows = list => (list || []).map(p => '<div class="rw' + (p.alive ? '' : ' dead') + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '<span class="nm">' + esc(p.name) + '</span>' +
+            '<span>' + p.kills + '</span><span>' + p.pieces + '</span><span>' + p.peak.toLocaleString('en-US') + '</span><span>' + mmss(p.secs) + '</span></div>').join('');
+        const team = (cls, title, score, list) => '<div class="tm ' + cls + '"><div class="th">' + title + ' · ' + score + '</div><div class="rw hd"><span></span><span class="nm"></span><span>KILLS</span><span>PIECES</span><span>PEAK</span><span>TIME</span></div>' + rows(list) + '</div>';
+        el.querySelector('.b').innerHTML = '<div class="res">' + team('me', 'YOUR TEAM', my, m.players && m.players[mine]) + team('foe', 'RIVALS', their, m.players && m.players[other]) + '</div>';
+        hydrate(el);
         el.classList.add('show'); snd(m.winner === mine ? 'select' : 'alert');
     }
 
@@ -402,7 +444,7 @@
     const errLine = () => '<div class="sq-err">' + (S.note ? '<span class="sq-ok">' + esc(S.note) + '</span>' : esc(S.err || '')) + '</div>';
 
     // El grupo: foto de cada uno con el nombre debajo.
-    function groupHtml(withKick, slots, big) {
+    function groupHtml(withKick, slots, big, small) {
         const p = S.party;
         if (!p) return '';
         const out = [];
@@ -413,7 +455,7 @@
             out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="n">' + esc(m.name) + '</div>' +
                 (p.rc ? rcTag : (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : ''))) + '</div>');
         }
-        return '<div class="sq-grp' + (big ? ' big' : '') + '">' + out.join('') + '</div>';
+        return '<div class="sq-grp' + (big ? ' big' : '') + (small ? ' small' : '') + '">' + out.join('') + '</div>';
     }
 
     // ----- panel ARENAS: lista de salas / buscando -----
@@ -475,21 +517,25 @@
         const canInvite = !p || ((p.state === 'idle' || searching) && p.members.length < p.max && imLeader());
         if (S.chatWith) {
             const f = F.friends.find(x => x.id === S.chatWith) || { u: '?', p: '', st: 'off', id: S.chatWith };
-            const msgs = (S.chat[f.id] || []).map(m => '<div class="' + (m.me ? 'me' : '') + '"><b>' + (m.me ? 'YOU' : esc(nameOf(f))) + ':</b> ' + esc(m.text) + '</div>').join('') || '<div>Say hi to ' + esc(nameOf(f)) + '.</div>';
-            return '<div class="sq"><div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="chatx">BACK</button>' + pic(f) + '<span style="font-size:.5em">' + esc(nameOf(f)) + '</span></div>' +
+            const msgs = (S.chat[f.id] || []).map(m => '<div class="' + (m.me ? 'me' : '') + '"><b>' + (m.me ? 'YOU' : esc(friendName(f))) + ':</b> ' + esc(m.text) + '</div>').join('') || '<div>Say hi to ' + esc(friendName(f)) + '.</div>';
+            return '<div class="sq"><div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="chatx">BACK</button>' + pic(f) + '<span style="font-size:.5em">' + esc(friendName(f)) + '</span></div>' +
                 '<div class="sq-chat" id="sqChat">' + msgs + '</div>' +
                 '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqMsg" maxlength="200" placeholder="Whisper…" autocomplete="off"><button class="sq-b sm on" data-a="wsend">SEND</button></div>' + errLine() + '</div>';
         }
         // El grupo solo se enseña cuando de verdad hay alguien mas contigo.
         const grp = p && p.members.length >= 2
-            ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true, p.members.length) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
+            ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true, p.members.length, false, true) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
             : '<div class="sq-note">Invite friends to play 2V2 or 3V3 together, then pick a room in ARENAS.</div>';
         const aviso = searching ? '<div class="sq-note" style="color:#ffb347">You are searching for a match. If a friend accepts your invite, the search is cancelled.</div>' : '';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
         const order = { on: 0, party: 1, game: 1, off: 2 };
         const list = F.friends.slice().sort((a, b) => order[a.st] - order[b.st] || nameOf(a).localeCompare(nameOf(b))).map(f =>
-            '<div class="sq-it">' + pic(f) + '<div class="w"><div class="n">' + esc(nameOf(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div><div class="s ' + f.st + '"><i></i>' + ST[f.st] + '</div></div>' +
-            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div></div>').join('');
+            '<div class="sq-it">' + pic(f) + '<div class="w">' + (S.nickEdit === f.id
+                ? '<input class="sq-in" id="sqNick" maxlength="16" placeholder="NICKNAME (ONLY YOU SEE IT)" value="' + esc(nicks[f.id] || '') + '" autocomplete="off">'
+                : '<div class="n">' + esc(friendName(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div>') +
+            '<div class="s ' + f.st + '"><i></i>' + ST[f.st] + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
+            (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
+            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
         return '<div class="sq">' + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
@@ -533,6 +579,11 @@
             start(() => send({ a: 'challenge', code: x.dataset.join }));
         });
         b.querySelectorAll('[data-k]').forEach(x => x.onclick = () => send({ a: 'kick', id: x.dataset.k }));
+        b.querySelectorAll('[data-nk]').forEach(x => x.onclick = () => { S.nickEdit = x.dataset.nk; render(); const i = b.querySelector('#sqNick'); if (i) i.focus(); });
+        b.querySelectorAll('[data-nks]').forEach(x => x.onclick = () => { const i = b.querySelector('#sqNick'); setNick(x.dataset.nks, i ? i.value : ''); S.nickEdit = null; render(); });
+        b.querySelectorAll('[data-nkc]').forEach(x => x.onclick = () => { S.nickEdit = null; render(); });
+        const nkIn = b.querySelector('#sqNick');
+        if (nkIn) nkIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-nks]').click(); };
         b.querySelectorAll('[data-ac]').forEach(x => x.onclick = () => send({ a: 'faccept', id: x.dataset.ac }));
         b.querySelectorAll('[data-dc]').forEach(x => x.onclick = () => send({ a: 'fdecline', id: x.dataset.dc }));
         b.querySelectorAll('[data-rm]').forEach(x => x.onclick = () => { if (x.dataset.sure === '1') send({ a: 'fremove', id: x.dataset.rm }); else { x.dataset.sure = '1'; x.textContent = 'SURE?'; setTimeout(() => { if (x.isConnected) { x.dataset.sure = ''; x.textContent = 'X'; } }, 2500); } });
@@ -634,7 +685,7 @@
     }
     window.pwSquadFrame = frame;
     window.pwToast = toast;
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, state: S };
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadAllies = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.a : null);

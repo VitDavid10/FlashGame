@@ -33,7 +33,7 @@ test('el servidor y el menu de la app sortean las MISMAS misiones (el pool no se
     assert.deepEqual(JSON.parse(orden).length, 9);
 });
 
-test('cobrar: solo misiones de hoy, una vez cada una, maximo 3 al dia y con cuenta', () => {
+test('cobrar: solo misiones de hoy, una vez cada una, todas las del dia, con cuenta y con prueba de juego', () => {
     const { q, pts, setDay } = make();
     const hoy = aq.missionsOf('2026-10-06');
     assert.equal(q.claim(null, 'cid1', hoy[0].id).error, 'no_account');
@@ -43,13 +43,21 @@ test('cobrar: solo misiones de hoy, una vez cada una, maximo 3 al dia y con cuen
     assert.equal(pts.cid1, hoy[0].sp);
     assert.equal(q.claim('x_1', 'cid1', hoy[0].id).already, true, 'repetir no paga otra vez');
     assert.equal(pts.cid1, hoy[0].sp);
-    q.claim('x_1', 'cid1', hoy[1].id); q.claim('x_1', 'cid1', hoy[2].id);
-    assert.equal(q.claim('x_1', 'cid1', hoy[3].id).error, 'limit', 'el cuarto del dia no');
-    // otra cuenta tiene su propio tope
+    for (const m of hoy.slice(1)) assert.equal(q.claim('x_1', 'cid1', m.id).ok, true, 'se pueden cobrar todas las del dia');
+    assert.equal(pts.cid1, hoy.reduce((n, m) => n + m.sp, 0));
     assert.equal(q.claim('x_2', 'cid2', hoy[3].id).ok, true);
     // al dia siguiente se reinicia
     setDay('2026-10-07');
     const manana = aq.missionsOf('2026-10-07');
     assert.equal(q.claim('x_1', 'cid1', manana[0].id).ok, true);
     assert.equal(q.claim('x_1', 'cid1', hoy[3].id).error, 'not_today' , 'las de ayer ya no valen');
+});
+
+test('sin prueba de juego (el servidor no ha visto jugar a ese cliente hoy) no se cobra', () => {
+    const jugados = new Set();
+    const q = aq.create({ file: null, now: () => new Date('2026-10-06T12:00:00Z'), addPoints: () => 0, playedToday: cid => jugados.has(cid) });
+    const hoy = aq.missionsOf('2026-10-06');
+    assert.equal(q.claim('x_1', 'cidA', hoy[0].id).error, 'no_proof');
+    jugados.add('cidA');
+    assert.equal(q.claim('x_1', 'cidA', hoy[0].id).ok, true);
 });

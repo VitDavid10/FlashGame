@@ -22,6 +22,7 @@ const FRIENDS = [
     { id: 'TESTICE', u: 'icefox', av: { t: 'pill', bg: '#1e6bff', top: '#e8f6ff', bot: '#3aa7ff' }, top: '#e8f6ff', bot: '#3aa7ff' },
     { id: 'TESTBAN', u: 'bandit', av: { t: 'bag', bg: '#ff2a55' }, top: '#2b2b2b', bot: '#ff2a55' },
 ];
+const LEAD_TXT = "OK! I'll lead. Join my group and I'll start a ready check in a few seconds.";
 const REPLIES = [
     "hey! I'm a test friend. Invite me to a group and press play.",
     'ready when you are. 2v2? 3v3?',
@@ -32,6 +33,7 @@ const rnd = a => a[Math.floor(Math.random() * a.length)];
 
 function createVirtualFriends(ctx) {
     const { social, handle, join, rooms, handleInput, log } = ctx;
+    const READY_MS = ctx.readyMs == null ? 4500 : ctx.readyMs;   // lo que tardan en dar LISTO; con READY ALL contestan casi al momento
     const lobby = [];
 
     function say(ws, o) { handle(ws, Object.assign({ t: 'sq' }, o)); }
@@ -83,10 +85,20 @@ function createVirtualFriends(ctx) {
 
     function react(ws, f, m) {
         if (m.t === 'sqFriendReq') setTimeout(() => say(ws, { a: 'faccept', id: m.from.id }), 400);
-        else if (m.t === 'sqWhisper' && !m.mine) setTimeout(() => say(ws, { a: 'whisper', id: m.from.id, text: rnd(REPLIES) }), 900);
+        else if (m.t === 'sqWhisper' && !m.mine) {
+            // Susurrale "lead" y hace de lider: crea el grupo, te invita y, en cuanto entras, lanza el LISTO (para probar el cartel de companero).
+            if (/^\s*lead\s*$/i.test(m.text)) {
+                f.leadFor = m.from.id;
+                setTimeout(() => { say(ws, { a: 'leave' }); say(ws, { a: 'create' }); say(ws, { a: 'pinvite', id: m.from.id }); say(ws, { a: 'whisper', id: m.from.id, text: LEAD_TXT }); }, 500);
+            } else setTimeout(() => say(ws, { a: 'whisper', id: m.from.id, text: rnd(REPLIES) }), 900);
+        }
+        else if (m.t === 'sqParty' && f.leadFor && m.leader === m.me && m.state === 'idle' && !m.rc && m.members.length >= 2 && !f.leadBusy) {
+            f.leadBusy = true;
+            setTimeout(() => { f.leadBusy = false; say(ws, { a: 'play', custom: true }); }, 3500);
+        }
         else if (m.t === 'sqInvite') setTimeout(() => say(ws, { a: 'join', code: m.code, name: f.u }), 500);
         else if (m.t === 'sqTicket') setTimeout(() => play(f, m), 350);
-        else if (m.t === 'sqReadyCheck') setTimeout(() => say(ws, { a: 'ready', v: true }), 700);
+        else if (m.t === 'sqReadyCheck') setTimeout(() => say(ws, { a: 'ready', v: true }), m.remind ? 500 : READY_MS);
     }
 
     for (const f of FRIENDS) {

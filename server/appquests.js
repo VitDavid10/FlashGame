@@ -3,15 +3,16 @@
  * Misiones de la app (menu QUESTS del movil): cada dia salen 9, el jugador marca hasta 3 y las hace en cualquier
  * modo, tambien sin conexion o en practica. El cliente cuenta el progreso; el servidor solo PAGA los SP:
  *   - la mision tiene que ser una de las 9 de hoy (mismo sorteo por dia UTC que el cliente, game/app-hub.js),
- *   - maximo 3 cobros al dia por cuenta (X o wallet firmada) y uno por mision,
- *   - sin cuenta no se cobra: la mision queda hecha en el movil y se cobra al conectar.
- * Que el progreso lo cuente el cliente es lo que permite jugarlas offline; el tope de 3 cobros al dia y la cuenta
- * son lo que limita lo que se puede sacar de ahi (como mucho 60 SP al dia por cuenta).
+ *   - una vez por mision y cuenta (X o wallet firmada): como mucho las 9 del dia,
+ *   - sin cuenta no se cobra, y tampoco sin PRUEBA DE JUEGO: el servidor tiene que haber visto a este cliente jugar hoy en
+ *     alguna sala (online, arenas o practica de arenas). Asi se pueden hacer offline, pero no se reclaman a pelo.
+ * Que el progreso lo cuente el cliente es lo que permite jugarlas offline; la cuenta y la prueba de juego son lo que
+ * limita lo que se puede sacar de ahi (como mucho unos 90 SP al dia por cuenta).
  */
 const fs = require('fs');
 const path = require('path');
 
-const MAX_CLAIMS = 3;
+const MAX_CLAIMS = 9;
 const FILE = path.join(__dirname, 'appquests.json');
 
 // [id, titulo, meta, tipo]. Mismos ids, orden y tiers que QP de game/app-hub.js (hay un test que lo vigila).
@@ -49,6 +50,7 @@ function missionsOf(day) {
 function create(opts) {
     const file = opts.file === undefined ? FILE : opts.file;
     const addPoints = opts.addPoints;            // (cid, n) -> saldo
+    const playedToday = opts.playedToday || (() => true);   // (cid) -> el servidor vio jugar a este cliente hoy
     const now = opts.now || (() => new Date());
     let data = {};                               // cuenta -> { day, claimed: [ids] }
     if (file) { try { data = JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch (e) {} }
@@ -59,6 +61,7 @@ function create(opts) {
 
     function claim(acct, cid, id) {
         if (!acct) return { ok: false, error: 'no_account' };
+        if (!playedToday(cid)) return { ok: false, error: 'no_proof' };
         const day = today();
         const m = missionsOf(day).find(x => x.id === id);
         if (!m) return { ok: false, error: 'not_today' };

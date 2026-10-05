@@ -134,9 +134,12 @@ function getState(cid) {
 // Llamada del servidor cuando ocurre un evento del juego. Suma a TODOS los retos del
 // día cuyo `event` matchee. Si completa un reto y no estaba reclamado, acredita los
 // puntos y lo marca como claimed.
+// Hoy este cliente jugo en un servidor (cualquier evento cuenta): la prueba de juego que pide el cobro de misiones de la app.
+function playedToday(cid) { const u = data[cid]; return !!(u && u.date === todayKey() && u.seen); }
 function recordEvent(cid, eventType, amount) {
     if (!cid) return;
     const u = ensureToday(cid);
+    if (!u.seen) { u.seen = true; dirty = true; }
     const today = u.date;
     const picks = pickFor(today);
     const inc = amount | 0 || 1;
@@ -156,4 +159,4 @@ function recordEvent(cid, eventType, amount) {
     return pointsGained;
 }
 
-module.exports = { getState, recordEvent, POOL, todayKey };
+module.exports = { getState, recordEvent, playedToday, POOL, todayKey };
