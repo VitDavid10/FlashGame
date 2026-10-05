@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { createStore } = require('./airdrop-store.js');
+const socialToken = require('./social-token.js');
 const { createChain } = require('./airdrop-chain.js');
 const { createScore } = require('./airdrop-score.js');
 const { createAdmin } = require('./airdrop-admin.js');
@@ -233,6 +234,15 @@ function createAirdrop(opts) {
             const u = store.sessionUser(sessionToken(req));
             const by = new URLSearchParams(String(req.url || '').split('?')[1] || '').get('by') || 'pts';
             return json(res, 200, admin.leaderboard(u && u.uid, by));
+        }
+        // Ficha firmada para amigos/grupos (ver social-token.js). Solo con X vinculado: la
+        // identidad social es la cuenta de X; una wallet sola aun no tiene a quien enseñar.
+        if (urlPath === '/api/airdrop/social-token') {
+            if (!hitOk(clientIp(req), 30)) return json(res, 429, { error: 'rate' });
+            const u = store.sessionUser(sessionToken(req));
+            if (!u) return json(res, 200, { linked: false, signedIn: false });
+            if (!u.x) return json(res, 200, { linked: false, signedIn: true, wallet: !!u.wallet });
+            return json(res, 200, { linked: true, token: socialToken.sign({ id: u.code, u: u.x.username, n: u.x.name, p: u.x.pic }), me: { id: u.code, u: u.x.username, n: u.x.name, p: u.x.pic } });
         }
         if (urlPath === '/api/airdrop/me') {
             const u = store.sessionUser(sessionToken(req));

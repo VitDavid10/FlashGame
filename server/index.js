@@ -50,6 +50,7 @@ const skinshop = require('./skinshop.js');         // tienda de skins de pais (S
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
 const { createTelegram } = require('./telegram.js');  // anuncios fijados y posts de X en Telegram
+require('./social-token.js').secret();                     // el secreto de las fichas lo heredan los hosts por entorno al forkear
 const { createSquad } = require('./squad.js');            // arenas por equipos 1v1/2v2/3v3: grupos + cola + salas
 const { createGameHost } = require('./game-host.js');   // salas + matchmaking + tick (Fase 1 split Director/Host)
 const { listCombos, buildShardMap, applyOverrides } = require('./cluster/shard-map.js');   // reparto combo→host (Fase 4 split multiproceso)
@@ -1280,11 +1281,13 @@ const {
 } = gameHost;
 // Arenas por equipos: el servicio de grupos vive en el host 0 (o en mono). Los demas
 // procesos lo crean igual, pero /match solo manda gente al host 0.
+const SQUAD_HOST_ID = 0;
 const squad = createSquad({
     rooms, buildSim, welcomeMsg: gameHost.welcomeMsg, refillBots, broadcast, log,
     resumeTokens, PillSim, MATCH_MS, SPAWN_IMMUNE_MS,
+    // Amigos y perfiles: solo el proceso que de verdad sirve las arenas los guarda.
+    socialFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'social.json') : null,
 });
-const SQUAD_HOST_ID = 0;
 
 // --- Acciones de admin de ALCANCE GLOBAL, extraídas a funciones puras (sin ws) ---
 // Las usa tanto el handler directo del comando admin (mono/host, conexión propia)

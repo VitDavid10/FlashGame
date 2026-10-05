@@ -1,0 +1,192 @@
+'use strict';
+/*
+ * Amigos, presencia, invitaciones de grupo y susurros.
+ *
+ * Vive junto a los grupos (server/squad.js) en el mismo proceso y comparte sus
+ * sockets. La identidad es la cuenta de X vinculada, que llega en una ficha firmada
+ * (server/social-token.js): el id publico es el codigo de invitacion de la cuenta.
+ * Quien solo tiene wallet y no ha vinculado X no tiene identidad social todavia.
+ *
+ * Persistente: perfiles y amistades (social.json). Efimero: quien esta conectado,
+ * invitaciones y susurros (no se guardan mensajes: si el amigo no esta, no llega).
+ *
+ * Mensajes cliente -> server (t:'sq'): hello{token}, friends, fadd{id|u}, faccept{id},
+ *   fdecline{id}, fremove{id}, pinvite{id}, whisper{id,text}
+ * Server -> cliente: sqMe, sqFriends, sqPresence, sqFriendReq, sqInvite, sqWhisper, sqErr
+ */
+const fs = require('fs');
+const path = require('path');
+const token = require('./social-token.js');
+
+const MAX_FRIENDS = 100;
+const MAX_REQS = 50;
+const WHISPER_MAX = 200;
+const WHISPER_PER_MIN = 20;
+const INVITE_GAP_MS = 8000;
+const SAVE_MS = 2000;
+
+function createSocial(opts) {
+    const file = opts.file || null;
+    const log = opts.log || (() => {});
+    const partyInfoOf = opts.partyInfoOf || (() => null);   // (id) -> { state, code, size, full } | null
+    const now = opts.now || Date.now;
+
+    let data = { profiles: {}, rel: {} };     // profiles[id] = {u,n,p}; rel[id] = { f:[], i:[], o:[] }
+    if (file) { try { data = Object.assign(data, JSON.parse(fs.readFileSync(file, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') log('[social] no se pudo leer ' + file + ': ' + e.message); } }
+    const online = new Map();                 // id -> Set<ws>
+    const byUsername = new Map();             // usuario de X en minusculas -> id
+    for (const [id, p] of Object.entries(data.profiles)) if (p.u) byUsername.set(String(p.u).toLowerCase(), id);
+
+    let timer = null;
+    function save() {
+        if (!file || timer) return;
+        timer = setTimeout(flush, SAVE_MS); if (timer.unref) timer.unref();
+    }
+    function flush() {
+        clearTimeout(timer); timer = null;
+        if (!file) return;
+        try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(data)); fs.renameSync(file + '.tmp', file); } catch (e) { log('[social] no se pudo guardar: ' + e.message); }
+    }
+
+    const send = (ws, o) => { try { if (ws.readyState === 1) ws.send(JSON.stringify(o)); } catch (e) {} };
+    const sendTo = (id, o) => { const s = online.get(id); if (s) for (const ws of s) send(ws, o); };
+    const err = (ws, reason) => send(ws, { t: 'sqErr', reason });
+    const relOf = id => data.rel[id] || (data.rel[id] = { f: [], i: [], o: [] });
+    const profileOf = id => data.profiles[id] ? Object.assign({ id }, data.profiles[id]) : null;
+    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: p.n || p.u || 'PLAYER', p: p.p || '' }; };
+
+    function statusOf(id) {
+        if (!online.has(id)) return 'off';
+        const pi = partyInfoOf(id);
+        if (pi && (pi.state === 'queued' || pi.state === 'match')) return 'game';
+        if (pi) return 'party';
+        return 'on';
+    }
+    const row = id => Object.assign(pub(id), { st: statusOf(id) });
+
+    function pushFriends(id) {
+        const r = relOf(id);
+        sendTo(id, { t: 'sqFriends', friends: r.f.map(row), inReq: r.i.map(row), outReq: r.o.map(row) });
+    }
+    // Avisa a los amigos conectados de que cambio el estado de `id`.
+    function pushPresence(id) {
+        const st = statusOf(id);
+        for (const f of relOf(id).f) sendTo(f, { t: 'sqPresence', id, st });
+    }
+
+    function hello(ws, tk) {
+        const prof = token.verify(tk);
+        if (!prof) { err(ws, 'bad_token'); return null; }
+        const old = data.profiles[prof.id];
+        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p }; save(); }
+        if (prof.u) byUsername.set(String(prof.u).toLowerCase(), prof.id);
+        if (ws.pwId && ws.pwId !== prof.id) detach(ws);
+        ws.pwId = prof.id;
+        let set = online.get(prof.id); if (!set) online.set(prof.id, set = new Set());
+        const first = set.size === 0;
+        set.add(ws);
+        send(ws, { t: 'sqMe', me: pub(prof.id) });
+        pushFriends(prof.id);
+        if (first) pushPresence(prof.id);
+        return prof.id;
+    }
+    function detach(ws) {
+        const id = ws.pwId; if (!id) return;
+        const set = online.get(id);
+        if (set) { set.delete(ws); if (!set.size) { online.delete(id); pushPresence(id); } }
+        ws.pwId = null;
+    }
+    function onClose(ws) { detach(ws); }
+
+    // ---- amigos ----
+    function add(ws, me, msg) {
+        let target = msg.id ? String(msg.id) : null;
+        if (!target && msg.u) target = byUsername.get(String(msg.u).replace(/^@/, '').toLowerCase().trim()) || null;
+        if (!target || !data.profiles[target]) return err(ws, 'no_such_user');
+        if (target === me) return err(ws, 'self');
+        const a = relOf(me), b = relOf(target);
+        if (a.f.includes(target)) return err(ws, 'already_friends');
+        if (a.f.length >= MAX_FRIENDS || b.f.length >= MAX_FRIENDS) return err(ws, 'friends_full');
+        if (a.i.includes(target)) return accept(ws, me, { id: target });   // el otro ya te habia pedido: se aceptan
+        if (a.o.includes(target)) return err(ws, 'already_requested');
+        if (b.i.length >= MAX_REQS) return err(ws, 'requests_full');
+        a.o.push(target); b.i.push(me);
+        save();
+        pushFriends(me); pushFriends(target);
+        sendTo(target, { t: 'sqFriendReq', from: pub(me) });
+    }
+    function accept(ws, me, msg) {
+        const other = String(msg.id || '');
+        const a = relOf(me), b = relOf(other);
+        if (!a.i.includes(other)) return err(ws, 'no_request');
+        a.i = a.i.filter(x => x !== other); b.o = b.o.filter(x => x !== me);
+        if (!a.f.includes(other)) a.f.push(other);
+        if (!b.f.includes(me)) b.f.push(me);
+        save();
+        pushFriends(me); pushFriends(other);
+    }
+    function decline(ws, me, msg) {
+        const other = String(msg.id || '');
+        const a = relOf(me), b = relOf(other);
+        a.i = a.i.filter(x => x !== other); b.o = b.o.filter(x => x !== me);
+        save(); pushFriends(me); pushFriends(other);
+    }
+    function remove(ws, me, msg) {
+        const other = String(msg.id || '');
+        const a = relOf(me), b = relOf(other);
+        a.f = a.f.filter(x => x !== other); b.f = b.f.filter(x => x !== me);
+        a.o = a.o.filter(x => x !== other); b.i = b.i.filter(x => x !== me);
+        save(); pushFriends(me); pushFriends(other);
+    }
+
+    // ---- invitaciones y susurros ----
+    const lastInvite = new Map();   // "de>a" -> ts
+    function invite(ws, me, msg) {
+        const to = String(msg.id || '');
+        if (!relOf(me).f.includes(to)) return err(ws, 'not_friends');
+        const pi = partyInfoOf(me);
+        if (!pi || pi.state !== 'idle') return err(ws, 'no_open_party');
+        if (pi.full) return err(ws, 'party_full');
+        if (!online.has(to)) return err(ws, 'offline');
+        const k = me + '>' + to, t = now();
+        if (t - (lastInvite.get(k) || 0) < INVITE_GAP_MS) return err(ws, 'slow_down');
+        lastInvite.set(k, t);
+        if (lastInvite.size > 5000) lastInvite.clear();
+        sendTo(to, { t: 'sqInvite', from: pub(me), code: pi.code, size: pi.size });
+        send(ws, { t: 'sqInvited', id: to });
+    }
+    const whisperHits = new Map();   // id -> [ts]
+    function whisper(ws, me, msg) {
+        const to = String(msg.id || '');
+        if (!relOf(me).f.includes(to)) return err(ws, 'not_friends');
+        const text = String(msg.text == null ? '' : msg.text).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, WHISPER_MAX);
+        if (!text) return;
+        const t = now(), hits = (whisperHits.get(me) || []).filter(x => t - x < 60000);
+        if (hits.length >= WHISPER_PER_MIN) return err(ws, 'slow_down');
+        hits.push(t); whisperHits.set(me, hits);
+        if (!online.has(to)) return err(ws, 'offline');
+        const m = { t: 'sqWhisper', from: pub(me), to: pub(to), text, ts: t };
+        sendTo(to, m); sendTo(me, Object.assign({ mine: true }, m));
+    }
+
+    // Devuelve true si el mensaje era del servicio social (y ya esta atendido).
+    function handle(ws, msg) {
+        const a = String(msg.a || '');
+        if (a === 'hello') { hello(ws, msg.token); return true; }
+        if (!['friends', 'fadd', 'faccept', 'fdecline', 'fremove', 'pinvite', 'whisper'].includes(a)) return false;
+        const me = ws.pwId;
+        if (!me) { err(ws, 'need_x'); return true; }
+        if (a === 'friends') pushFriends(me);
+        else if (a === 'fadd') add(ws, me, msg);
+        else if (a === 'faccept') accept(ws, me, msg);
+        else if (a === 'fdecline') decline(ws, me, msg);
+        else if (a === 'fremove') remove(ws, me, msg);
+        else if (a === 'pinvite') invite(ws, me, msg);
+        else if (a === 'whisper') whisper(ws, me, msg);
+        return true;
+    }
+
+    return { handle, hello, onClose, pushPresence, pub, isOnline: id => online.has(id), flush, _data: () => data };
+}
+
+module.exports = { createSocial };

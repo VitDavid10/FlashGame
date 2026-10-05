@@ -1057,6 +1057,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     const AV_BG = ['#ab9ff2', '#0a0a0a', '#ccff00', '#00ffaa', '#1e6bff', '#ff2a55', '#ffd23a', '#8a948f', '#ffffff', '#b000ff'];
     const AV_FG = { bag: '#e5463f', spook: '#fbf7ef' };
     let xWallet = null;
+    let xUser = null;   // cuenta de X vinculada a la wallet: { u, pic } (la misma cuenta del airdrop en PC)
     function avatar() {
         let a = null; try { a = JSON.parse(localStorage.getItem('pw_avatar')); } catch (e) {}
         // Sin elegir: gris de jugador sin conectar; con wallet, el fantasma en morado.
@@ -1083,16 +1084,24 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         sp.innerHTML = svg(a.t); return sp;
     }
     const avPon = (host, a, px) => { host.innerHTML = ''; host.appendChild(avEl(a, px)); };
+    // Con X vinculado la foto de X es el icono por defecto; si el jugador eligio avatar propio, manda el suyo.
+    function avPonX(host, a, px) {
+        let propio = false; try { propio = !!localStorage.getItem('pw_avatar'); } catch (e) {}
+        if (xUser && xUser.pic && !propio) { host.innerHTML = ''; const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.src = xUser.pic; im.onerror = () => avPon(host, a, px); host.appendChild(im); return; }
+        avPon(host, a, px);
+    }
     function pintaX() {
         const w = xWallet || (window.GameWallet && GameWallet.address);
-        avPon($('.ah-ava'), avatar(), 64);
-        $('#ahX').textContent = w ? 'WALLET ' + w.slice(0, 4) + '...' + w.slice(-4) : 'TAP TO CONNECT';
+        avPonX($('.ah-ava'), avatar(), 64);
+        $('#ahX').textContent = w ? (xUser ? '@' + xUser.u + ' · ' : 'WALLET ') + w.slice(0, 4) + '...' + w.slice(-4) : 'TAP TO CONNECT';
     }
     // Sesion del juego (la firma de wallet del airdrop): este movil pasa a esa cuenta.
     async function syncX() {
         try {
             const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json();
             xWallet = j && j.user && !j.user.walletPasted && j.user.wallet || null;
+            const x = j && j.user && j.user.x;
+            xUser = x && x.username && /^https:\/\/pbs\.twimg\.com\//.test(x.pic || '') ? { u: String(x.username).replace(/[^\w]/g, ''), pic: x.pic.replace('_normal', '_200x200') } : null;
         } catch (e) {}
         if (xWallet && cidLocal()) {
             try { await fetch('/api/account/link', { method: 'POST', headers: { 'x-client-id': cidLocal() } }); } catch (e) {}
@@ -1101,7 +1110,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         pintaX(); paintStatic();
     }
     function pintaAvatarEditor() {
-        avPon($('#ahPrPic'), avatar(), 96);
+        avPonX($('#ahPrPic'), avatar(), 96);
         $('#ahPrIc').innerHTML = '<button class="tb" id="ahPrEdit" style="width:auto;padding:.5em 1.2em">EDIT AVATAR</button>';
         $('#ahPrCl').innerHTML = '';
         $('#ahPrEdit').onclick = openAvatar;
@@ -1249,6 +1258,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function show(m) {
         mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on');
         scale(); paintStatic(); pullRooms(); requestAnimationFrame(loop);
+        try { if (window.PWSquad) PWSquad.boot(); } catch (e) {}   // amigos: invitaciones y susurros aunque el panel este cerrado
         try { if (typeof paisSync === 'function') Promise.resolve(paisSync()).then(paintStatic); } catch (e) {}
     }
     function hide() { closeQuests(); hub.classList.remove('on'); document.body.classList.remove('hub-on'); hub.querySelectorAll('.ov').forEach(o => o.classList.remove('open')); }
@@ -1262,7 +1272,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
-        window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada;
+        window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX;
         // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
         window.PWSquadHooks = { afterRender() { const ar = $('#ahAr'); if (ar && ar.classList.contains('open')) requestAnimationFrame(() => placa($('#ahAr .pnl'), 1)); } };
         // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
