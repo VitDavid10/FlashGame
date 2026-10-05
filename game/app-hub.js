@@ -202,6 +202,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 /* Gente jugando en el modo: punto animado + numero sobre las espadas (sin texto). */
 .ah-pl{position:absolute;right:calc(100% + .45em);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:.3em;font-size:.78em;text-shadow:.12em .12em 0 #000}
 .ah-pl b{font-weight:400;color:#fff;font-size:.8em}
+/* $PILLY tras la partida: verde con + si ganaste, rojo con - si perdiste, parpadeando unos segundos */
+.ah-py.py-up #ahPy,.ah-py.py-dn #ahPy{animation:pyBlink .5s steps(2) 12}
+.ah-py.py-up #ahPy{color:#00ff88}.ah-py.py-dn #ahPy{color:#ff4d6d}
+.ah-py.py-up #ahPy:before{content:'+'}.ah-py.py-dn #ahPy:before{content:'-'}
+@keyframes pyBlink{50%{opacity:.25}}
 #ahAr,#ahFr{z-index:7}
 .ah-btn{position:relative}
 .ah-fb{position:absolute;right:-.35em;top:-.35em;min-width:1.5em;background:#e5302f;color:#fff;font-style:normal;font-size:.42em;line-height:1;text-align:center;padding:.4em .35em .25em;box-shadow:0 0 0 .2em #000}
@@ -505,8 +510,17 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const box = document.querySelector('#appHub .ah-py'); if (!box) return;
         const w = typeof GameWallet !== 'undefined' && GameWallet.address;
         box.hidden = !w;
-        if (w) document.getElementById('ahPy').textContent = corto(GameWalletUI.gameBalance);
+        if (!w) return;
+        const v = Number(GameWalletUI.gameBalance) || 0, el = document.getElementById('ahPy');
+        el.textContent = corto(v);
+        if (pyPrev != null && v !== pyPrev && !_enPartida) {
+            box.classList.remove('py-up', 'py-dn'); void box.offsetWidth;
+            box.classList.add(v > pyPrev ? 'py-up' : 'py-dn');
+            clearTimeout(pyT); pyT = setTimeout(() => box.classList.remove('py-up', 'py-dn'), 6000);
+        }
+        if (!_enPartida) pyPrev = v;
     }
+    let pyPrev = null, pyT = null;
     setInterval(pintaPilly, 3000);
     window._hubCorto = corto;   // pruebas
     // DEPOSIT y WITHDRAW con el marco de los menus (la variante B que eligio David).
@@ -635,7 +649,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         drawPill($('#ahPillIco'), 64, 0.78);
         $('#ahPillSub').innerHTML = mode === 'arcade'
             ? '<img src="' + skIcon(picks[0]) + '"><img src="' + skIcon(picks[1]) + '">' + (picks[0] && picks[1] ? '' : 'PICK 2 SKILLS')
-            : 'COLOR · SKIN';
+            : 'COLOR · SKIN · SKILLS';
         $('#ahRoomV').innerHTML = word + ' · <b class="' + (room === 'Free' || room === 'offline' ? '' : 'usd') + '">' + (room === 'offline' ? 'OFFLINE' : room === 'Free' ? 'FREE' : '$' + room.replace('$', '')) + '</b>';
         try {
             // Barra = misiones hechas hoy sobre las 3 que se pueden marcar; la insignia = las que aun puedes marcar.
@@ -770,13 +784,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     function renderPill() {
         const arc = mode === 'arcade';
-        // Las 2 skills de salida son solo de arcade (classic las va eligiendo en partida).
-        hub.querySelectorAll('#ahSk .tb').forEach(b => { b.classList.toggle('on', b.dataset.t === pillTab); b.style.display = b.dataset.t === 'skills' && !arc ? 'none' : ''; });
-        $('#ahSk .sk-slots').style.display = $('#ahSk .sk-lab').style.display = arc ? '' : 'none';
+        // Las 2 skills de salida: en arcade valen siempre; en classic se eligen igual pero solo cuentan en ARENAS.
+        hub.querySelectorAll('#ahSk .tb').forEach(b => { b.classList.toggle('on', b.dataset.t === pillTab); b.style.display = ''; });
+        $('#ahSk .sk-slots').style.display = $('#ahSk .sk-lab').style.display = '';
         $('#ahSkG').style.display = pillTab === 'skills' ? '' : 'none';
         $('#ahCo').style.display = pillTab === 'color' ? '' : 'none';
         $('#ahSn').style.display = pillTab === 'skins' ? '' : 'none';
-        $('#ahSkFoot').textContent = pillTab === 'skills' ? 'You start the match with these two skills' : pillTab === 'color' ? 'Tap a color to paint that half' : 'Tap a skin to wear it';
+        $('#ahSkFoot').textContent = pillTab === 'skills' ? (arc ? 'You start the match with these two skills' : 'These skills are only for ARENAS') : pillTab === 'color' ? 'Tap a color to paint that half' : 'Tap a skin to wear it';
         $('#ahSkSp').textContent = $('#ahSp').textContent + ' SP';
         drawPill($('#ahSkPill'), 96, 0.92);
         hub.querySelectorAll('.sk-slot').forEach(sl => {

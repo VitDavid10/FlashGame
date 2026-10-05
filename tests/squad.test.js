@@ -282,8 +282,9 @@ test('al acabar, los resultados llevan las estadisticas de cada jugador de los d
     for (const r of [ra, rb]) { room.clients.get(r.playerId)._spawned = true; room.sim.spawnPlayer(r.playerId, 0); }
     room.state = 'playing'; room.endsAt = Date.now() + 100000;
     sq.tick(room, Date.now() - 12000);                    // marca el instante de aparicion
-    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId }, Date.now());
-    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId }, Date.now());
+    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId, victimId: rb.playerId }, Date.now());
+    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId, victimId: 'otro' }, Date.now());
+    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId }, Date.now());   // un bot: no cuenta
     sq.onEvent(room, { type: 'botPieceEaten', playerId: ra.playerId }, Date.now());
     room.sim.players.get(ra.playerId).peakMass = 4321.6;
     sq.onEvent(room, { type: 'playerDied', playerId: rb.playerId }, Date.now());

@@ -6089,6 +6089,7 @@
         //  - rim de luz en el borde iluminado (antes del reborde oscuro)
         //  - costura entre mitades + brillo en ROMBO duro (manhattan)
         // Sin detailed: look corto de las pildoras pequenas en partida.
+        window.pwPillSprite = pixPillSpriteRot;   // tarjetas 1V1/2V2/3V3 de arenas (game/squad.js)
         function pixPillSpriteRot(wL, cTop, cBot, ang, detailed) {
             const qa = Math.round(ang / PIX_ROT_STEP) * PIX_ROT_STEP;
             const key = wL + '|' + Math.round(qa / PIX_ROT_STEP) + '|' + cTop + '|' + cBot + (detailed ? '|d2' : '');
@@ -11304,7 +11305,7 @@
     // la pantalla de seleccion. Ahora se guarda para poder cancelarlo desde
     // returnToMenu, y ademas el callback comprueba que sigues en partida.
     let deathResultTimer = null;
-    function stopGame() { isSpectating = true; hideCountdownNumber(); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => { deathResultTimer = null; if (!gameRunning) return; setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
+    function stopGame() { const sqSpec = !!(netState && netState.squad && window._squadKind === 'match'); isSpectating = true; hideCountdownNumber(); if (!sqSpec) SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => { deathResultTimer = null; if (!gameRunning) return; setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -14993,6 +14994,7 @@
             if (!netState || netState._matchOver) return;
             if (msg.t === 'squadRoster') { if (window.PWSquad) PWSquad.onRoster(msg); return; }
             if (msg.t === 'squadAllies') { if (window.PWSquad) PWSquad.onAllies(msg); return; }
+            if (msg.t === 'squadNote') { setLobbyBanner(msg.text, 'found'); SoundManager.play('alert'); setTimeout(() => setLobbyBanner(null), 3500); return; }
             if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); return; }
             if (msg.t === 'squadBad') { abandonNet('That match is no longer available.'); return; }
             if (msg.t === 'welcome' && !joined) {
@@ -15399,27 +15401,36 @@
             st.textContent = '#sqEntry{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#05090a;pointer-events:auto}' +   /* carga opaca: nada de partida detras */
                 '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,13px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:9px;align-items:flex-start;white-space:nowrap;' +
                 'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:12px 18px}' +
-                '#sqEntry .lw{font-family:\'Press Start 2P\',monospace;color:#fff}#sqEntry.quick .bar,#sqEntry.quick .lw{display:none}' +
-                '#sqEntry .bar{position:absolute;left:18%;right:18%;bottom:7%;height:10px;background:#0c1511;box-shadow:0 0 0 3px #000,inset 0 0 0 2px #1b2a22}#sqEntry .bar i{display:block;height:100%;width:0;background:#eaf6f0;transition:width .5s steps(8)}' +
+                '#sqEntry .lw{position:absolute;inset:0}#sqEntry.quick .bar,#sqEntry.quick .lw,#sqEntry.quick .b{display:none}' +
+                '#sqEntry.vs .b{display:none}#sqEntry:not(.vs) .bar{display:none}#sqEntry .bar{z-index:3}' +
+                '#sqEntry .bar{position:absolute;left:18%;right:18%;bottom:3%;height:10px;background:#0c1511;box-shadow:0 0 0 3px #000,inset 0 0 0 2px #1b2a22}#sqEntry .bar i{display:block;height:100%;width:0;background:#eaf6f0;transition:width .5s steps(8)}' +
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
-            ov.innerHTML = '<div class="lw"></div><div class="bar"><i></i></div>';
+            ov.innerHTML = '<div class="lw"></div><div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div><div class="bar"><i></i></div>';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
         }
         return ov;
     }
     function squadMark(ov, n) {
-        // Solo una barra abajo (sin textos): el protagonista es el VS de los jugadores.
+        // Partida contra otro grupo: la pantalla C (VS) y solo una barra abajo. Practica: los tres textos.
         const bar = ov.querySelector('.bar i'); if (bar) bar.style.width = [30, 70, 100][Math.min(2, n)] + '%';
+        const nombres = ['GENERATING ROOM', 'LOADING PLAYERS', 'READY'];
+        ov.querySelectorAll('.l').forEach((l, i) => { l.className = 'l' + (i < n ? ' ok' : i === n ? ' on' : ''); l.textContent = (i < n ? '✓ ' : i === n ? '> ' : '  ') + nombres[i] + (i === n && n < 2 ? '…' : ''); });
     }
     function squadStatus(n) {
         window.__loadingLock = true;
         if (n === 0) window._sqT0 = performance.now();   // los tiempos minimos de cada fase cuentan desde aqui
         const ov = squadOverlay(); ov.style.display = 'flex'; squadMark(ov, n);
         ov.classList.toggle('quick', !!window._sqQuick);
-        const lw = ov.querySelector('.lw'); lw.innerHTML = '';
-        if (!window._sqQuick && window.pwSquadLineup) { const l = window.pwSquadLineup(); if (l) lw.appendChild(l); }
+        // La pantalla C se monta UNA vez por entrada (si no, su animacion volvia a empezar en cada fase).
+        const lw = ov.querySelector('.lw');
+        if (n === 0 || !lw.firstChild) {
+            lw.innerHTML = '';
+            const l = !window._sqQuick && window._squadKind === 'match' && window.pwSquadIntro ? window.pwSquadIntro() : null;
+            if (l) lw.appendChild(l);
+            ov.classList.toggle('vs', !!l);
+        }
         els.loginOverlay.style.display = 'none';   // sin esto el menu sigue "abierto" mientras conecta y el hub vuelve a salir encima
     }
     function hideSquadEntry() {
@@ -15436,7 +15447,7 @@
         window._sqIv = setInterval(() => {
             const dt = performance.now() - t0;
             if (fase === 0 && dt >= 800) { fase = 1; squadMark(ov, 1); }
-            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= (window._sqQuick ? 300 : 1600)) { listoAt = performance.now(); squadMark(ov, 2); }
+            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= (window._sqQuick ? 300 : (ov.classList.contains('vs') ? 3800 : 1600))) { listoAt = performance.now(); squadMark(ov, 2); }
             if (listoAt && performance.now() - listoAt > (window._sqQuick ? 100 : 700)) {
                 clearInterval(window._sqIv);
                 ov.style.display = 'none'; window.__loadingLock = false;
@@ -16788,6 +16799,7 @@
 
     // Arenas: volver a MIRAR la partida de tu grupo (te saliste al morir). Sigue a un companero (pwSquadRel).
     window.pwSquadSpectate = function (roomKey, mode) {
+        window._sqSpecAt = Date.now();
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
         if (window.pwHubHide) pwHubHide();
         els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';

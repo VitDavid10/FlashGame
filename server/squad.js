@@ -33,6 +33,8 @@ const MAX_PARTY = 3;                  // un grupo es de 1 a 3 jugadores; la sala
 const POP = 30;                       // jugadores totales por sala (humanos + bots)
 const MATCH_START_MS = 12000;         // los dos grupos tienen este margen para entrar
 const PRACTICE_START_MS = 2500;
+const SQUAD_CAP_MS = 20 * 60 * 1000;    // arenas sin reloj: tope invisible de 20 min
+const BOT_SPLIT_FROM_MS = 30000;      // los bots no dividen en los primeros 30 s
 const TICKET_TTL_MS = 180000;
 const PARTY_IDLE_MS = 30 * 60 * 1000;
 const NAME_MAX = 16;
@@ -128,6 +130,8 @@ function createSquad(deps) {
             targetPop: POP, instantBots: true,
             squad: { kind, practice: kind === 'practice', size, stake: 0, teams: { A: [], B: [] }, groups, joined: 0, stats: {} },
         };
+        // Arenas: se empieza grande (radio 60, el virus mide 70) y los bots no dividen hasta los 30 s, y luego cada 30 s.
+        Object.assign(room.sim.config, { startRadius: 60, botSplitMs: 30000, botSplitFrom: Infinity });   // botSplitFrom se fija al empezar (tick)
         rooms.set(key, room);
         // La practica nace ya en marcha: quien entra solo espera a que cargue el mapa (hasta el GO), sin lobby.
         if (kind === 'practice' && startMatch) startMatch(room);
@@ -438,7 +442,7 @@ function createSquad(deps) {
     function statOf(room, id) { const st = room.squad.stats; return st[id] || (st[id] = { kills: 0, pieces: 0, spawnAt: 0, diedAt: 0 }); }
     function onEvent(room, ev, now) {
         if (!ev || !ev.playerId) return;
-        if (ev.type === 'botKilled') statOf(room, ev.playerId).kills++;
+        if (ev.type === 'botKilled' && ev.victimId) statOf(room, ev.playerId).kills++;   // solo cuentan los jugadores, no los bots
         else if (ev.type === 'botPieceEaten') statOf(room, ev.playerId).pieces++;
         else if (ev.type === 'playerDied') statOf(room, ev.playerId).diedAt = now;
     }
@@ -446,6 +450,10 @@ function createSquad(deps) {
         const sq = room.squad;
         for (const [pid, cli] of room.clients) if (cli._spawned) { const st = statOf(room, pid); if (!st.spawnAt) st.spawnAt = now; }
         if (room.tickCount % 10 === 0) sendAllies(room);
+        // Sin reloj: se gana eliminando al otro equipo. Solo un tope invisible para que una sala no viva para siempre.
+        if (room.state === 'playing' && !sq.capped) { sq.capped = true; room.endsAt = now + SQUAD_CAP_MS; room.sim.config.botSplitFrom = room.sim.now + BOT_SPLIT_FROM_MS; }
+        // Aviso cuando los bots ya pueden dividirse.
+        if (!sq.splitWarned && room.sim.now >= room.sim.config.botSplitFrom) { sq.splitWarned = true; broadcast(room, { t: 'squadNote', text: 'BOTS CAN SPLIT NOW · BE CAREFUL' }); }
         if (sq.practice || !room.endsAt || room.endsAt - now < 1500) return;
         const a = teamScore(room, 'A'), b = teamScore(room, 'B');
         // Solo cuenta cuando todos han entrado Y spawneado: uno que aun esta cargando no esta muerto.

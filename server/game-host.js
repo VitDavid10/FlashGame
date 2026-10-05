@@ -514,7 +514,7 @@ function createGameHost(deps) {
             // dura mas que arcade. Mandando siempre MATCH_MS el contador de classic
             // habria arrancado en 3:50 y se habria quedado clavado en 0:00 el resto.
             duration: room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS,
-            tl: room.endsAt ? Math.max(0, room.endsAt - Date.now()) : null,
+            tl: room.endsAt && !room.squad ? Math.max(0, room.endsAt - Date.now()) : null,   // arenas no tienen reloj
             startIn: room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
             restartEnMs: room.restartAt ? Math.max(0, room.restartAt - Date.now()) : null,
             simTime: room.sim ? Math.round(room.sim.now) : 0

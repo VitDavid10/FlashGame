@@ -97,8 +97,8 @@
 .sq-pic .av svg{width:60%;height:60%}
 .sq-pic canvas{image-rendering:pixelated}
 /* buscando: los jugadores son lo central, grandes, y los botones van abajo */
-.sq.find{min-height:16.5em;justify-content:space-between;gap:.6em}
-.sq.find .mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2em;width:100%}
+.sq.find{min-height:13.5em;justify-content:space-between;gap:.6em}
+.sq.find .mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8em;width:100%}
 .sq-grp.big{flex:none;align-items:center;gap:2.6em}
 /* en AMIGOS el grupo es una tira compacta: si no, con tres jugadores el panel se sale de la pantalla */
 .sq-grp.small{gap:.8em}
@@ -106,23 +106,72 @@
 .sq-grp.small .sq-av .sq-pic{width:2.5em;height:2.5em;font-size:1em}
 .sq-grp.small .sq-av .n{font-size:.4em}
 .sq-grp.big .sq-av{width:12em;gap:.9em}
-.sq-grp.big .sq-av .sq-pic{width:6.2em;height:6.2em;font-size:1.7em}
+.sq-grp.big .sq-av .sq-pic{width:4.6em;height:4.6em;font-size:1.4em}
 .sq-grp.big .sq-av .n{font-size:.55em}
 .sq-grp.big .sq-av .l{font-size:.36em}
 .sq-bot{display:flex;flex-direction:column;align-items:center;gap:.8em;width:100%}
-.sq.find .sq-bot{margin-bottom:-.9em}
+.sq.find .sq-bot{margin-bottom:0}
 .sq-err:empty{display:none}
+/* FIN DE PARTIDA (diseno C): fondo oscuro, banda en diagonal, VICTORY verde / DEFEAT rojo */
+#sqEnd{position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;font-family:'Press Start 2P',monospace;color:#fff;overflow:hidden;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 2px,transparent 2px 40px),#2a0d14;--ec:#ff4d6d}
+#sqEnd.win{background-color:#0b2416;--ec:#00ff88}
+#sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 2px,transparent 2px 40px)}
+#sqEnd.show{display:block}
+#sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;background:#0b0f05;transform:rotate(-4deg);border-top:7px solid var(--ec);border-bottom:7px solid var(--ec)}
+#sqEnd .t{position:absolute;left:0;right:0;top:-36%;text-align:center;font-size:min(8vw,13vh,56px);color:var(--ec);-webkit-text-stroke:4px #0b0f05;paint-order:stroke fill;text-shadow:7px 7px 0 #0b0f05;animation:seT .5s cubic-bezier(.2,1.4,.3,1) both}
+#sqEnd .cols{position:absolute;inset:8% 8% 6% 9%;display:flex;gap:4%;align-items:flex-start}
+#sqEnd .tms{flex:1.25;min-width:0}
+#sqEnd .h{font-size:9px;margin:6px 0 8px}#sqEnd .h.me{color:#3fa0ff}#sqEnd .h.foe{color:#ff6a5a}
+#sqEnd .rw{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+#sqEnd .rw.dead{opacity:.55}
+#sqEnd .rw .ph .sq-pic{width:32px;height:32px;border-radius:0;box-shadow:0 0 0 3px #3fa0ff,3px 3px 0 3px #000}
+#sqEnd .rw .ph.foe .sq-pic{box-shadow:0 0 0 3px #ff6a5a,3px 3px 0 3px #000}
+#sqEnd .rw .nm{width:34%;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sqEnd .rw .k{font-family:'VT323',monospace;font-size:19px;color:#ffce3d;width:22%;white-space:nowrap}
+#sqEnd .rw .pk{font-family:'VT323',monospace;font-size:19px;color:#e8e8e8;white-space:nowrap}
+#sqEnd .prz{flex:1;text-align:center;padding-top:5%}
+#sqEnd .pt{font-size:11px;margin-bottom:14px}
+#sqEnd .pd{font-family:'VT323',monospace;font-size:22px;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
+#sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:16px}
+#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:12px;padding:11px 22px;border:3px solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:4px 4px 0 rgba(0,0,0,.45);cursor:pointer}
+#sqEnd .bts button.o{background:transparent;color:#e8e8e8;border-color:#e8e8e8}
+@keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+/* ENTRADA A LA PARTIDA (diseno C animado) */
+.ci{position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
+  background:repeating-linear-gradient(0deg,rgba(11,15,5,.12) 0 2px,transparent 2px 40px),#ccff00;animation:ciIn .3s both}
+.ci:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(11,15,5,.12) 0 2px,transparent 2px 40px)}
+.ci .bd{position:absolute;left:-6%;right:-6%;height:36%;background:#0b0f05;transform:rotate(-4deg)}
+.ci .bd.ba{top:13%;border-top:6px solid #1d9bf0;animation:ciL .5s .15s cubic-bezier(.2,.9,.3,1) both}
+.ci .bd.bb{top:55%;border-top:6px solid #ff4d6d;animation:ciR .5s 1.45s cubic-bezier(.2,.9,.3,1) both}
+.ci .row{position:absolute;left:12%;top:8%;display:flex;gap:4%;width:56%}
+.ci .ti{display:flex;flex-direction:column;align-items:center;gap:8px;width:24%;animation:ciPop .35s cubic-bezier(.2,1.4,.3,1) both}
+.ci .ti .sq-pic{width:min(19vh,110px);height:min(19vh,110px);border-radius:0;font-size:28px}
+.ci .ti.me .sq-pic{box-shadow:0 0 0 5px #1d9bf0,6px 6px 0 5px #000,0 0 22px rgba(29,155,240,.5)}
+.ci .ti.foe .sq-pic{box-shadow:0 0 0 5px #ff4d6d,6px 6px 0 5px #000,0 0 22px rgba(255,77,109,.5)}
+.ci .ti .nm{font-size:9px;text-shadow:2px 2px 0 #000;max-width:120%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci .pl4{position:absolute;right:12%;top:30%;display:flex;gap:16px}
+.ci .pl4 i{display:block;width:16px;height:32px;border-radius:9px;transform:rotate(-45deg);box-shadow:0 0 0 2px #000}
+.ci .pl4.pa i{background:linear-gradient(#e8f6ff 50%,#1d9bf0 50%)}.ci .pl4.pb i{background:linear-gradient(#fff 50%,#ff4d6d 50%)}
+.ci .vs{position:absolute;left:58%;top:40%;font-size:min(13vh,78px);color:#fff;-webkit-text-stroke:5px #0b0f05;paint-order:stroke fill;text-shadow:8px 8px 0 #0b0f05;transform:rotate(-4deg);animation:ciVs .45s 1.05s cubic-bezier(.2,1.6,.3,1) both;z-index:2}
+.ci .tt{position:absolute;right:3%;top:3%;font-size:13px;color:#0b0f05}
+@keyframes ciIn{from{opacity:0}to{opacity:1}}
+@keyframes ciL{from{transform:translateX(-110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
+@keyframes ciR{from{transform:translateX(110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
+@keyframes ciPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes ciVs{from{transform:scale(3) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
+/* tarjetas 1V1/2V2/3V3 con dibujo */
+.sq-card{padding:.5em .5em .7em;gap:.5em}
+.sq-card canvas.cvc{width:100%;height:auto;image-rendering:pixelated;display:block;box-shadow:0 0 0 .1em #000}
+.sq-card .tag{font-size:.42em;color:#e8e8e8;letter-spacing:.1em}
+/* en las batallas (entrada y resultados) la foto va CUADRADA y entera, como en X; redonda solo en perfil y listas */
+.ci .sq-pic,.ci .sq-pic .av,.ci .sq-pic .av-cv,.ci .sq-pic img,#sqEnd .sq-pic,#sqEnd .sq-pic .av,#sqEnd .sq-pic .av-cv{border-radius:0}
 /* ARENAS: tres tarjetas grandes con dibujo (pildoras azules contra rojas) y sin scroll */
 .sq-cards{display:flex;gap:1em;width:100%}
 .sq-card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;padding:1.1em .4em;background:rgba(0,0,0,.3);border:.14em solid #2f3d35;cursor:pointer}
 .sq-card .big{font-size:1.3em;color:var(--ac,#00ff88);text-shadow:.1em .1em 0 #000}
-.sq-card .vsx{font-size:.45em;color:#ffd23a}
 .sq-card.dim{opacity:.45}
 .sq-card:active{border-color:var(--ac,#00ff88)}
-.pls{display:flex;gap:.25em;justify-content:center}
-.pl{display:block;width:.9em;height:1.7em;border-radius:.5em;transform:rotate(28deg);box-shadow:0 0 0 .1em #000}
-.pls.a .pl{background:linear-gradient(#e8f6ff 50%,#3aa7ff 50%)}
-.pls.b .pl{background:linear-gradient(#fff 50%,#ff4a4a 50%)}
 .sq-card{flex-direction:column}
 .sq-menu{display:flex;flex-direction:column;gap:.7em;width:100%;align-items:center}
 .sq-b.big{width:78%;font-size:1.05em;padding:.7em 1em}
@@ -172,8 +221,8 @@
 .sq-pcp.open{display:flex}
 .sq-pcp .sq-box{position:relative;width:min(48em,94vw);max-height:94vh;overflow:auto;font-size:16px;padding:1.6em 1.4em 1.2em;background:#0b120e;border:.2em solid var(--ac,#00ff88);box-shadow:0 0 0 .2em #000,.4em .4em 0 .2em rgba(0,0,0,.6),0 0 2em rgba(0,255,136,.25)}
 .sq-pcp .sq-x{position:absolute;right:.5em;top:.4em;font-family:'Russo One',sans-serif;font-size:.7em;letter-spacing:.1em;padding:.4em .8em;border:.14em solid #2c3630;color:#9fb0a6;background:none;cursor:pointer}
-#sqFound,#sqEnd{position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(3,6,4,.82);font-family:'Press Start 2P',monospace;color:#fff;text-align:center}
-#sqFound.show,#sqEnd.show{display:flex}
+#sqFound{position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(3,6,4,.82);font-family:'Press Start 2P',monospace;color:#fff;text-align:center}
+#sqFound.show{display:flex}
 #sqFound .a{font-size:22px;color:#ffd23a;text-shadow:3px 3px 0 #000,0 0 18px #ffd23a}
 .lu{display:flex;align-items:center;gap:26px;margin:4px 0}
 .lu .side{display:flex;gap:16px}
@@ -183,19 +232,6 @@
 .lu .side.me .nm{color:#3fa0ff}.lu .side.foe .nm{color:#ff6a5a}
 .lu .vs{font-size:20px;color:#ffd23a;text-shadow:3px 3px 0 #000}
 #sqFound .b{font-size:12px;color:#9bbfff}
-#sqEnd .a{font-size:28px;text-shadow:3px 3px 0 #000}
-#sqEnd .a.w{color:#00ff66}#sqEnd .a.l{color:#ff5a4e}#sqEnd .a.d{color:#ffd23a}
-#sqEnd .b{font-size:11px;color:#cfd8d3;line-height:1.9}
-#sqEnd .res{display:flex;gap:22px;max-width:96%;justify-content:center}
-#sqEnd .tm{background:rgba(8,12,10,.9);border:2px solid #2c3630;padding:8px 10px;min-width:250px}
-#sqEnd .tm.me{border-color:#3fa0ff}#sqEnd .tm.foe{border-color:#ff6a5a}
-#sqEnd .th{font-size:9px;margin-bottom:6px}#sqEnd .tm.me .th{color:#3fa0ff}#sqEnd .tm.foe .th{color:#ff6a5a}
-#sqEnd .rw{display:grid;grid-template-columns:30px 1fr 38px 46px 58px 38px;gap:6px;align-items:center;font-size:8px;line-height:1.2;padding:3px 0;text-align:right}
-#sqEnd .rw.hd{color:#7d8a82;font-size:6px}
-#sqEnd .rw.dead{opacity:.6}
-#sqEnd .rw .nm{text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#sqEnd .rw .sq-pic{width:26px;height:26px;font-size:10px}
-#sqEnd button{font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:2px;padding:10px 26px;border:3px solid #000;background:#00ff88;color:#04150c;cursor:pointer;margin-top:8px}
 /* barras de companeros a la izquierda, como el grupo del WoW: foto, nombre y barra de masa (contra su maximo) */
 #sqHud{position:absolute;left:8px;top:64px;z-index:56;display:none;width:118px;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.4;pointer-events:none;text-shadow:1px 1px 0 #000}
 #sqHud.show{display:block}
@@ -380,7 +416,7 @@
     }
     function onTicket(m) {
         if (m.kind === 'practice') {
-            S.lineup = null;
+            S.lineup = null; S.lineupData = null;
             // El jugador pidio practicar mientras espera. Si ya hay una partida de equipo en curso no se pisa.
             if (window.pwSquadActive && window.pwSquadActive() === 'match') return;
             enter(m.ticket, 'practice', m.mode);
@@ -394,6 +430,7 @@
         // Fotos de tu equipo VS fotos del rival, con su nombre de X o de wallet: asi sabes con quien juegas.
         const side = (list, cls) => '<div class="side ' + cls + '">' + (list || []).map(x => '<div class="p">' + pic({ p: x.pic, av: x.av, n: x.name }) + '<span class="nm">' + esc(x.name) + '</span></div>').join('') + '</div>';
         const mine = m.team === 'B' ? 'B' : 'A', other = mine === 'A' ? 'B' : 'A';
+        S.lineupData = m.lineup ? { me: m.lineup[mine], foe: m.lineup[other] } : null; S.lastSize = m.size;
         S.lineup = m.lineup ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>' : null;
         el.querySelector('.c').innerHTML = m.lineup
             ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>'
@@ -463,21 +500,64 @@
             // La practica acabo: si el grupo sigue buscando, se vuelve a ofrecer sin meter a nadie a la fuerza.
             return;
         }
+        // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
         let el = document.getElementById('sqEnd');
-        if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = '<div class="a"></div><div class="b"></div><button>CONTINUE</button>'; frame().appendChild(el); el.querySelector('button').onclick = () => el.classList.remove('show'); }
-        const mine = S.roster ? S.roster.me : 'A', other = mine === 'A' ? 'B' : 'A';
-        const a = el.querySelector('.a');
-        if (!m.winner) { a.textContent = 'DRAW'; a.className = 'a d'; }
-        else if (m.winner === mine) { a.textContent = 'VICTORY!'; a.className = 'a w'; }
-        else { a.textContent = 'DEFEAT'; a.className = 'a l'; }
-        const my = mine === 'A' ? m.a : m.b, their = mine === 'A' ? m.b : m.a;
-        const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-        const rows = list => (list || []).map(p => '<div class="rw' + (p.alive ? '' : ' dead') + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '<span class="nm">' + esc(p.name) + '</span>' +
-            '<span>' + p.kills + '</span><span>' + p.pieces + '</span><span>' + p.peak.toLocaleString('en-US') + '</span><span>' + mmss(p.secs) + '</span></div>').join('');
-        const team = (cls, title, score, list) => '<div class="tm ' + cls + '"><div class="th">' + title + ' · ' + score + '</div><div class="rw hd"><span></span><span class="nm"></span><span>KILLS</span><span>PIECES</span><span>PEAK</span><span>TIME</span></div>' + rows(list) + '</div>';
-        el.querySelector('.b').innerHTML = '<div class="res">' + team('me', 'YOUR TEAM', my, m.players && m.players[mine]) + team('foe', 'RIVALS', their, m.players && m.players[other]) + '</div>';
+        if (!el) {
+            el = document.createElement('div'); el.id = 'sqEnd';
+            el.innerHTML = '<div class="band"><div class="t"></div><div class="cols"><div class="tms"></div><div class="prz"></div></div></div><div class="bts"><button data-e="again">PLAY AGAIN</button><button data-e="menu" class="o">MENU</button></div>';
+            frame().appendChild(el);
+            el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { returnToMenu(); } catch (e) {} };
+            // PLAY AGAIN: vuelta a la pantalla del grupo; hay que dar LISTO otra vez.
+            el.querySelector('[data-e="again"]').onclick = () => {
+                el.classList.remove('show');
+                try { returnToMenu(); } catch (e) {}
+                setTimeout(() => { S.arStep = S.lastSize ? { size: S.lastSize, view: null } : null; const b = document.querySelector('#appHub [data-a="arenas"]'); if (b) b.click(); else openPc('rooms'); S.arStep = S.lastSize ? { size: S.lastSize, view: null } : null; render(); }, 250);
+            };
+        }
+        const mine = S.roster ? S.roster.me : 'A', other = mine === 'A' ? 'B' : 'A', win = m.winner === mine;
+        el.className = win ? 'win' : 'lose';
+        el.querySelector('.t').textContent = !m.winner ? 'DRAW' : win ? 'VICTORY!' : 'DEFEAT';
+        const row = (p, cls) => '<div class="rw' + (p.alive ? '' : ' dead') + '"><span class="ph ' + cls + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '</span><span class="nm">' + esc(p.name) + '</span>' +
+            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk">' + p.peak.toLocaleString('en-US') + ' PEAK</span></div>';
+        const list = (t, cls) => ((m.players && m.players[t]) || []).map(p => row(p, cls)).join('');
+        el.querySelector('.tms').innerHTML = '<div class="h me">YOUR TEAM</div>' + list(mine, 'me') + '<div class="h foe">RIVALS</div>' + list(other, 'foe');
+        // Arenas gratis: se recuerda que en las salas de pago se gana $PILLY (con $PILLY en juego ira la cantidad y CLAIM).
+        el.querySelector('.prz').innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid room</b><br>and ' + (win ? 'take' : 'win') + ' their <b>$PILLY</b>.</div>';
         hydrate(el);
-        el.classList.add('show'); snd(m.winner === mine ? 'select' : 'alert');
+        el.classList.add('show'); snd(win ? 'select' : 'alert');
+    }
+    // Pantalla de entrada a la partida (diseno C, animada ~4 s): fondo lima, entra la banda azul con tu equipo,
+    // golpe del VS y entra la banda roja con los rivales. index.html la mete en #sqEntry.
+    function intro() {
+        const d = S.lineupData; if (!d) return null;
+        const tiles = (list, cls) => list.map((x, i) => '<div class="ti ' + cls + '" style="animation-delay:' + (cls === 'me' ? .45 + i * .15 : 1.75 + i * .15) + 's">' + pic({ p: x.pic, av: x.av, n: x.name }) + '<span class="nm">' + esc(x.name) + '</span></div>').join('');
+        const pills = cls => '<div class="pl4 ' + cls + '">' + '<i></i>'.repeat(4) + '</div>';
+        const el = document.createElement('div'); el.className = 'ci';
+        el.innerHTML = '<div class="bd ba"><div class="row">' + tiles(d.me, 'me') + '</div>' + pills('pa') + '</div>' +
+            '<div class="vs">VS</div>' +
+            '<div class="bd bb"><div class="row">' + tiles(d.foe, 'foe') + '</div>' + pills('pb') + '</div>' +
+            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + '</div>';
+        hydrate(el);
+        return el;
+    }
+    // Dibujo de cada tarjeta 1V1/2V2/3V3: un trozo de mapa (cuadricula y comida) con las pildoras del juego enfrentadas.
+    function drawCards(box) {
+        const spr = window.pwPillSprite; if (!box || !spr) return;
+        box.querySelectorAll('canvas.cvc').forEach(cv => {
+            const n = +cv.dataset.n, W = cv.width = 220, H = cv.height = 150, g = cv.getContext('2d');
+            g.imageSmoothingEnabled = false;
+            g.fillStyle = '#050505'; g.fillRect(0, 0, W, H);
+            g.fillStyle = 'rgba(255,255,255,.05)'; for (let x = 0; x < W; x += 20) g.fillRect(x, 0, 1, H); for (let y = 0; y < H; y += 20) g.fillRect(0, y, W, 1);
+            const FOOD = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#2ee6d6'];
+            let sd = 11 + n * 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+            for (let i = 0; i < 22; i++) { g.fillStyle = FOOD[i % FOOD.length]; g.fillRect(Math.round(rnd() * W), Math.round(rnd() * H), 3, 3); }
+            const tint = g.createLinearGradient(0, 0, W, 0); tint.addColorStop(0, 'rgba(29,155,240,.32)'); tint.addColorStop(.5, 'rgba(0,0,0,0)'); tint.addColorStop(1, 'rgba(255,77,109,.32)');
+            g.fillStyle = tint; g.fillRect(0, 0, W, H);
+            const sz = n === 1 ? 16 : n === 2 ? 11 : 8, k = 3;
+            const pos = n === 1 ? [[58, 75]] : n === 2 ? [[44, 46], [70, 104]] : [[34, 32], [70, 75], [34, 118]];
+            const put = (o, x, y) => { const c = o.cv || o; g.drawImage(c, Math.round(x - c.width * k / 2), Math.round(y - c.height * k / 2), c.width * k, c.height * k); };
+            pos.forEach(([x, y]) => { put(spr(sz, '#e8f6ff', '#1d9bf0', Math.PI / 4, true), x, y); put(spr(sz, '#ffffff', '#ff4d6d', -Math.PI / 4, true), W - x, y); });
+        });
     }
 
     // ---------------- UI ----------------
@@ -540,13 +620,12 @@
             '</div>' + errLine() + '</div></div>';
     }
     // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / CREATE ROOM / JOIN ROOM -----
-    const arMode = () => ((window.pwHubMode ? window.pwHubMode() : (typeof currentGameMode !== 'undefined' ? currentGameMode : '')) === 'classic' ? 'classic' : 'arcade');
-    const pills = (n, cls) => '<span class="pls ' + cls + '">' + '<i class="pl"></i>'.repeat(n) + '</span>';
+    const arMode = () => 'arcade';   // arenas es un solo modo (con skills elegidas en THE PILL), se entre desde arcade o classic
     function roomCard(r) {
         return '<div class="sq-rm">' + pic({ p: r.leader.pic, av: r.leader.av, n: r.leader.name }) + '<div class="w"><div class="n">' + esc(r.leader.name) + '</div><div class="s">' + r.members.length + '/' + r.size + ' IN ROOM · FREE</div></div>' +
             '<button class="sq-b sm gold" data-join="' + esc(r.code) + '" data-size="' + r.size + '">JOIN</button></div>';
     }
-    function modeTitle() { return 'ARENAS ' + (arMode() === 'classic' ? 'CLASSIC' : 'ARCADE'); }
+    function modeTitle() { return 'ARENAS'; }
     function roomsHtml() {
         const p = S.party;
         if (p && p.rc) return readyCheckHtml();
@@ -554,12 +633,12 @@
         if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="spectate">SPECTATE YOUR TEAM</button></div>' + errLine() + '</div></div>';
         const mine = groupSize(), step = S.arStep;
         if (!step) {
-            const cards = SIZES.map(n => '<div class="sq-card' + (n === mine ? '' : ' dim') + '" data-size="' + n + '">' + pills(n, 'a') + '<span class="vsx">VS</span>' + pills(n, 'b') + '<div class="big">' + n + 'V' + n + '</div></div>').join('');
+            const cards = SIZES.map(n => '<div class="sq-card' + (n === mine ? '' : ' dim') + '" data-size="' + n + '"><canvas class="cvc" data-n="' + n + '"></canvas><div class="tag">' + ['DUEL', 'DUO', 'SQUAD'][n - 1] + '</div><div class="big">' + n + 'V' + n + '</div></div>').join('');
             const hint = mine > 1 ? 'YOUR GROUP · ' + mine + ' PLAYERS · ' + mine + 'V' + mine : 'PLAYING SOLO · FORM A GROUP IN FRIENDS FOR 2V2 / 3V3';
             return '<div class="sq"><div class="sq-row"><span class="sq-lab">' + hint + '</span></div><div class="sq-cards">' + cards + '</div>' + errLine() + '</div>';
         }
         const n = step.size, live = S.rooms.filter(r => r.size === n && (r.mode || 'arcade') === arMode());
-        const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + ' · ' + (arMode() === 'classic' ? 'CLASSIC' : 'ARCADE') + '</span></div>';
+        const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + '</span></div>';
         if (step.view === 'join') {
             const list = live.map(roomCard).join('') || '<div class="sq-note" style="padding:.8em">No open ' + n + 'V' + n + ' rooms right now. Create one!</div>';
             return '<div class="sq">' + head + '<div class="sq-row"><span class="sq-chip on">ALL</span><span class="sq-chip on">FREE</span><span class="sq-chip off">$ SOON</span></div><div class="sq-rl">' + list + '</div>' + errLine() + '</div>';
@@ -625,7 +704,7 @@
     }
     function render() {
         if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500 }); }   // los avisos cortos van como popup, no dentro del menu
-        if (S.box.rooms) { paint('rooms', roomsHtml()); const w = document.querySelector('#ahAr .ph .w'); if (w) w.textContent = modeTitle(); }
+        if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); const w = document.querySelector('#ahAr .ph .w'); if (w) w.textContent = modeTitle(); }
         if (S.box.friends) paint('friends', friendsHtml());
         try { if (window.PWSquadHooks) { if (PWSquadHooks.afterRender) PWSquadHooks.afterRender(); if (PWSquadHooks.badge) PWSquadHooks.badge(badgeCount()); } } catch (e) {}
     }
@@ -782,9 +861,11 @@
     // Las barras y las marcas de companeros solo existen dentro de la partida de arenas.
     setInterval(() => {
         const h = document.getElementById('sqHud');
+        if (Date.now() - (window._sqSpecAt || 0) < 15000) return;
         if ((h && h.classList.contains('show') || S.rel) && !(typeof gameRunning !== 'undefined' && gameRunning)) { if (h) h.classList.remove('show'); S.rel = null; S.allies = null; rivalsBanner(); }
     }, 700);
     window.pwSquadGuard = guardPlay;
+    window.pwSquadIntro = intro;
     window.pwSquadLineup = () => { if (!S.lineup) return null; const d = document.createElement('div'); d.innerHTML = S.lineup; hydrate(d); return d.firstChild; };
     window.pwSquadFrame = frame;
     window.pwToast = toast;

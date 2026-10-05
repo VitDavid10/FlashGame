@@ -361,7 +361,8 @@
 
             if (targetPrey && this.r > 45 && this.isBot) {
                 let mySplitMass = (this.mass / 2); let preyMass = targetPrey.cell.mass; let boostRange = 400 + this.r; let attackRange = boostRange * 0.66;
-                if (mySplitMass > preyMass * 1.5 && targetPrey.dist < attackRange && (sim.now - this.lastSplitTime > 8000)) {
+                // config.botSplitMs / botSplitFrom (arenas): los bots dividen como mucho cada 30 s y nunca en los primeros 30 s.
+                if (mySplitMass > preyMass * 1.5 && targetPrey.dist < attackRange && (sim.now - this.lastSplitTime > (sim.config.botSplitMs || 8000)) && sim.now >= (sim.config.botSplitFrom || 0)) {
                     let currentCount = siblings.length;
                     siblings.forEach(s => {
                         if (currentCount >= sim.config.maxBotCells) return;
@@ -470,7 +471,8 @@
         spawnPlayer(id, initialImmuneMs) {
             const p = this.players.get(id);
             const pos = this.getSafePos(this.mapSize);
-            const cell = new Cell(pos.x, pos.y, INITIAL_RADIUS, p.colorBot, p.colorTop, p.name, false, p.skinUrl, id, this.now);
+            // config.startRadius: arenas empiezan mas grandes (casi del tamano de un virus, sin pasarlo).
+            const cell = new Cell(pos.x, pos.y, this.config.startRadius || INITIAL_RADIUS, p.colorBot, p.colorTop, p.name, false, p.skinUrl, id, this.now);
             if (initialImmuneMs > 0) cell.immuneTime = initialImmuneMs;
             p.cells = [cell];
             p.alive = true;
