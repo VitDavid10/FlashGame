@@ -377,7 +377,7 @@ function createSquad(deps) {
         const out = { A: [], B: [] };
         for (const t of ['A', 'B']) for (const id of room.squad.teams[t]) {
             const p = room.sim.players.get(id), cli = room.clients.get(id);
-            if (p) out[t].push({ id, name: (cli && cli.idName) || 'PLAYER', pic: (cli && cli.pic) || '', av: (cli && cli.av) || null });
+            if (p && cli) out[t].push({ id, name: (cli && cli.idName) || 'PLAYER', pic: (cli && cli.pic) || '', av: (cli && cli.av) || null });
         }
         return out;
     }
@@ -407,7 +407,7 @@ function createSquad(deps) {
             if (cli.ws.virtualGame || cli.ws.readyState !== 1 || !(cli.ws.bufferedAmount < 65536)) continue;
             const mates = [], frames = [];
             for (const id of sq.teams[cli.team] || []) {
-                if (id === pid) continue;
+                if (id === pid || !room.clients.has(id)) continue;   // sin cliente = jugador fantasma de una entrada anterior
                 const p = room.sim.players.get(id);
                 if (!p || !p.alive || !p.cells.length) { frames.push({ id, m: 0 }); continue; }
                 let x = 0, y = 0, m = 0;

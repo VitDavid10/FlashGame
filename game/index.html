@@ -11680,7 +11680,8 @@
             const fill = (o, cd, gid, name, isBot) => {
                 o.id = gid; o.name = name; o.colorBot = cd.cb; o.colorTop = cd.ct; o.skinUrl = null;
                 o.isBot = isBot;
-                o.immuneTime = cd.im || 0; o.sprintTime = cd.sp ? 1 : 0; o.magnetTime = cd.mg ? 1 : 0;
+                const fin = !!(netState && netState._matchOver);   // partida acabada: el ultimo snapshot ya no se actualiza y los efectos se quedaban colgados
+                o.immuneTime = fin ? 0 : (cd.im || 0); o.sprintTime = cd.sp && !fin ? 1 : 0; o.magnetTime = cd.mg && !fin ? 1 : 0;
                 o.tpPhase = cd.tp || 0; o.tpTimer = cd.tt || 0; o.flashTime = 0; o.flashColor = null;
                 o.mass = Math.PI * o.r * (o.r * PILL_RATIO);
             };

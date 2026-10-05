@@ -682,7 +682,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // copias quepan sin cortarse; la pildora entera se ve igual que antes
     // (96 px de lienzo = 13.5em, mismo centro).
     const SPLIT_CICLO = 30000, PILL_W = 157, PILL_H = 101;
-    const splitTrozos = c => { const x = Math.sin(c * 12.9898 + 78.233) * 43758.5453; return 2 + Math.floor((x - Math.floor(x)) * 7); };
+    const splitTrozos = () => 2;   // el menu se divide siempre en 2 (antes de 2 a 8)
     // El corro se abre a lo ancho (sobra sitio a los lados; arriba esta la barra).
     const sale = x => 1 - Math.pow(1 - x, 3), suave = x => x * x * (3 - 2 * x);
     function splitEstado(t) {
