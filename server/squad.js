@@ -124,7 +124,6 @@ function createSquad(deps) {
             targetPop: POP, instantBots: true,
             squad: { kind, practice: kind === 'practice', size, stake: 0, teams: { A: [], B: [] }, groups, joined: 0, stats: {} },
         };
-        room.sim.config.maxPlayerCells = 2;   // en arenas la pildora solo se divide en dos
         rooms.set(key, room);
         // La practica nace ya en marcha: quien entra solo espera a que cargue el mapa (hasta el GO), sin lobby.
         if (kind === 'practice' && startMatch) startMatch(room);

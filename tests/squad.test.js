@@ -257,25 +257,6 @@ test('LISTO del grupo: si alguien se va o entra uno nuevo se anula, y unirse a u
     assert.equal(l2.last('sqTicket').kind, 'match');
 });
 
-test('en las salas de arenas la pildora solo se divide en dos', () => {
-    const { sq, rooms } = make();
-    const a = party(sq, 'ana', 1)[0];
-    say(sq, a, { a: 'play' }); say(sq, a, { a: 'practice' });
-    const room = [...rooms.values()][0];
-    assert.equal(room.sim.config.maxPlayerCells, 2);
-    const s = room.sim;
-    s.addPlayer('p1', { name: 'p1', team: 'A' }); s.spawnPlayer('p1', 0);
-    const p = s.players.get('p1'); p.cells[0].r = 400;
-    for (let i = 0; i < 6; i++) { s.splitPlayer(p, p.cells[0].x + 100, p.cells[0].y); s.now += 5000; }
-    assert.equal(p.cells.length, 2, 'nunca mas de 2 trozos');
-    // y fuera de arenas sigue siendo el tope de siempre
-    const o = new PillSim.Simulation({ mode: 'arcade', mapSize: 3000, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, botConfig: { enabled: false, count: 0, respawn: false }, fx: { enabled: false } });
-    o.populate(); o.addPlayer('q', { name: 'q' }); o.spawnPlayer('q', 0);
-    const q = o.players.get('q'); q.cells[0].r = 600;
-    for (let i = 0; i < 6; i++) { o.splitPlayer(q, q.cells[0].x + 100, q.cells[0].y); o.now += 5000; }
-    assert.ok(q.cells.length > 2);
-});
-
 test('al emparejar cada uno recibe la alineacion de los dos equipos (fotos VS fotos)', () => {
     const { sq } = make();
     const a = party(sq, 'ana', 2), b = party(sq, 'bea', 2);
