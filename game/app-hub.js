@@ -584,7 +584,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
   <div class="un-n" id="ahUnN"></div><div class="sv-bt"><button class="tb" id="ahUnClose">CLOSE</button><button class="tb on" id="ahUnWear">WEAR IT</button></div></div></div></div>
 <div class="ov" id="ahAr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
-  <div class="ph"><span class="w">ARENAS</span><span class="cnt">1V1 · 2V2 · 3V3</span><button class="px">CLOSE</button></div>
+  <div class="ph"><span class="w">ARENAS</span><button class="px">CLOSE</button></div>
   <div id="ahArBody"></div></div></div></div>
 <div class="ov" id="ahFr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><span class="w">FRIENDS</span><span class="cnt"></span><button class="px">CLOSE</button></div>
@@ -1423,6 +1423,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
         window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX; window._hubAvatar = avatar; window._hubAvatarEl = avEl;
         // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
+        window.pwHubMode = () => mode;
+        window.pwAqShow = on => aqHud(!!on);
+        window.pwHubHide = () => { hide(); _enPartida = true; aqHud(false); };
         window.PWSquadHooks = {
             afterRender() { ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
             badge(n) { const b = $('#ahFrB'); if (b) b.textContent = n ? String(Math.min(n, 99)) : ''; },

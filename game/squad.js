@@ -88,7 +88,7 @@
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
 .sq-pic{overflow:hidden}
 #ahArBody{max-height:19em;overflow-y:auto}
-#ahFrBody{max-height:21em;overflow-y:auto}
+#ahFrBody{max-height:15.5em;overflow-y:auto}   /* el panel no se sale de la pantalla: con grupo la lista hace scroll dentro */
 /* amigos: la lista usa todo el alto del panel (si no, con 3 amigos el tercero quedaba cortado) y las filas son mas bajas */
 #ahFrBody .sq-list{max-height:none;overflow:visible;gap:.4em}
 #ahFrBody .sq-it{padding:.3em .7em}
@@ -111,6 +111,27 @@
 .sq-grp.big .sq-av .l{font-size:.36em}
 .sq-bot{display:flex;flex-direction:column;align-items:center;gap:.8em;width:100%}
 .sq.find .sq-bot{margin-bottom:-.9em}
+.sq-err:empty{display:none}
+/* ARENAS: tres tarjetas grandes con dibujo (pildoras azules contra rojas) y sin scroll */
+.sq-cards{display:flex;gap:1em;width:100%}
+.sq-card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;padding:1.1em .4em;background:rgba(0,0,0,.3);border:.14em solid #2f3d35;cursor:pointer}
+.sq-card .big{font-size:1.3em;color:var(--ac,#00ff88);text-shadow:.1em .1em 0 #000}
+.sq-card .vsx{font-size:.45em;color:#ffd23a}
+.sq-card.dim{opacity:.45}
+.sq-card:active{border-color:var(--ac,#00ff88)}
+.pls{display:flex;gap:.25em;justify-content:center}
+.pl{display:block;width:.9em;height:1.7em;border-radius:.5em;transform:rotate(28deg);box-shadow:0 0 0 .1em #000}
+.pls.a .pl{background:linear-gradient(#e8f6ff 50%,#3aa7ff 50%)}
+.pls.b .pl{background:linear-gradient(#fff 50%,#ff4a4a 50%)}
+.sq-card{flex-direction:column}
+.sq-menu{display:flex;flex-direction:column;gap:.7em;width:100%;align-items:center}
+.sq-b.big{width:78%;font-size:1.05em;padding:.7em 1em}
+.sq-chip{font-size:.4em;letter-spacing:.1em;padding:.4em .8em;border:.12em solid #2f3d35;color:#7d8a82}
+.sq-chip.on{border-color:var(--ac,#00ff88);color:var(--ac,#00ff88)}
+.sq-chip.off{opacity:.55}
+.sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em}
+.sq-b.blink{animation:sqBlink .7s steps(2) infinite;border-color:#ffd23a;color:#ffd23a}
+@keyframes sqBlink{50%{background:#ffd23a;color:#04150c}}
 #sqGuard{position:absolute;inset:0;z-index:420;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);pointer-events:auto;font-family:'Press Start 2P',monospace;color:#fff}
 #sqGuard.show{display:flex}
 #sqGuard .bx{background:#0a110d;border:3px solid #ffb347;padding:16px 18px;max-width:78%;text-align:center;display:flex;flex-direction:column;gap:14px;font-size:9px;line-height:1.7}
@@ -186,7 +207,7 @@
 #sqHud .pf .bar{height:7px;background:#1a2620;box-shadow:0 0 0 1px #000}
 #sqHud .pf .bar i{display:block;height:100%;width:100%;background:#3fa0ff;transition:width .25s}
 #sqHud .pf.dead{border-left-color:#555}#sqHud .pf.dead .n{color:#777;text-decoration:line-through}#sqHud .pf.dead .bar i{width:0!important}
-#sqToast{position:absolute;right:10px;top:10px;z-index:310;display:flex;flex-direction:column;gap:8px;max-width:min(330px,92vw);font-family:'Press Start 2P',monospace}
+#sqToast{position:absolute;left:26px;bottom:22px;z-index:310;display:flex;flex-direction:column;gap:8px;max-width:min(330px,92vw);font-family:'Press Start 2P',monospace}
 #sqRc{position:absolute;inset:0;z-index:305;pointer-events:auto;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.7)}
 #sqRc.show{display:flex}
 #sqRc .bx{font-family:'Press Start 2P',monospace;color:#fff;text-align:center;background:rgba(8,12,10,.97);border:3px solid #ffd23a;box-shadow:0 0 18px rgba(255,210,58,.4),4px 4px 0 rgba(0,0,0,.6);padding:18px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;max-width:90%}
@@ -281,6 +302,7 @@
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
         else if (m.t === 'sqFriendReq') { toast({ pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
+        else if (m.t === 'sqSpectate') { closeAll(); S.rel = new Map((m.allies || []).map(id => [id, 'ally'])); if (typeof window.pwSquadSpectate === 'function') window.pwSquadSpectate(m.room, m.mode); }
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
         else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
         else if (m.t === 'sqWhisper') onWhisper(m);
@@ -350,18 +372,18 @@
     }
 
     // ---------------- entrada a sala ----------------
-    function enter(ticket, kind) {
+    function enter(ticket, kind, mode) {
         if (S.enterBusy) return;
         S.enterBusy = true; setTimeout(() => { S.enterBusy = false; }, 2500);
         closeAll();
-        if (typeof window.pwSquadEnter === 'function') window.pwSquadEnter(ticket, kind);
+        if (typeof window.pwSquadEnter === 'function') window.pwSquadEnter(ticket, kind, mode);
     }
     function onTicket(m) {
         if (m.kind === 'practice') {
             S.lineup = null;
             // El jugador pidio practicar mientras espera. Si ya hay una partida de equipo en curso no se pisa.
             if (window.pwSquadActive && window.pwSquadActive() === 'match') return;
-            enter(m.ticket, 'practice');
+            enter(m.ticket, 'practice', m.mode);
             return;
         }
         // Rival encontrado: aviso con cuenta atras y entrada automatica.
@@ -385,7 +407,7 @@
             clearInterval(S.ticketTimer); S.ticketTimer = null;
             el.classList.remove('show');
             S.enterBusy = false;
-            enter(m.ticket, 'match');
+            enter(m.ticket, 'match', m.mode);
         }, 1000);
     }
     function foundEl() {
@@ -517,28 +539,36 @@
                 : (mine ? '<span class="sq-q">READY · WAITING FOR THE OTHERS</span>' : '<button class="sq-b on" data-a="rok">READY</button><button class="sq-b" data-a="rno">NOT READY</button>')) +
             '</div>' + errLine() + '</div></div>';
     }
-    function roomCard(r, mine) {
-        const can = mine === r.size;
-        return '<div class="sq-rm">' + pic({ p: r.leader.pic, av: r.leader.av, n: r.leader.name }) + '<div class="w"><div class="n">' + esc(r.leader.name) + '</div><div class="s">' + r.members.length + '/' + r.size + ' IN ROOM</div></div>' +
+    // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / CREATE ROOM / JOIN ROOM -----
+    const arMode = () => ((window.pwHubMode ? window.pwHubMode() : (typeof currentGameMode !== 'undefined' ? currentGameMode : '')) === 'classic' ? 'classic' : 'arcade');
+    const pills = (n, cls) => '<span class="pls ' + cls + '">' + '<i class="pl"></i>'.repeat(n) + '</span>';
+    function roomCard(r) {
+        return '<div class="sq-rm">' + pic({ p: r.leader.pic, av: r.leader.av, n: r.leader.name }) + '<div class="w"><div class="n">' + esc(r.leader.name) + '</div><div class="s">' + r.members.length + '/' + r.size + ' IN ROOM · FREE</div></div>' +
             '<button class="sq-b sm gold" data-join="' + esc(r.code) + '" data-size="' + r.size + '">JOIN</button></div>';
     }
+    function modeTitle() { return 'ARENAS ' + (arMode() === 'classic' ? 'CLASSIC' : 'ARCADE'); }
     function roomsHtml() {
         const p = S.party;
         if (p && p.rc) return readyCheckHtml();
         if (p && p.state === 'queued') return searchingHtml();
-        if (p && p.state === 'match') return '<div class="sq find"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '<div class="sq-bot"></div></div>';
-        const mine = groupSize();
-        const cols = SIZES.map(n => {
-            const live = S.rooms.filter(r => r.size === n);
-            const cards = live.map(r => roomCard(r, mine));
-            while (cards.length < SLOTS) cards.push('<div class="sq-rm empty" data-new="' + n + '"><div class="n">EMPTY ROOM</div><div class="s">- - - -</div></div>');
-            return '<div class="sq-col' + (n === mine ? '' : ' dim') + '"><div class="sq-ch">' + n + 'V' + n + '</div><div class="sq-more">' + cards.join('') + '</div></div>';
-        }).join('');
-        const hint = S.party && mine > 1 ? 'YOUR GROUP · ' + mine + ' PLAYERS · ' + mine + 'V' + mine + ' ROOMS'
-            : 'PLAYING SOLO · 1V1 ROOMS · FORM A GROUP IN FRIENDS FOR 2V2 / 3V3';
-        return '<div class="sq"><div class="sq-row"><span class="sq-lab">' + hint + '</span></div>' +
-            '<div class="sq-cols">' + cols + '</div>' +
-            '<div class="sq-row"><button class="sq-b on" data-a="quick">QUICK MATCH · ' + mine + 'V' + mine + '</button></div>' + errLine() + '</div>';
+        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="spectate">SPECTATE YOUR TEAM</button></div>' + errLine() + '</div></div>';
+        const mine = groupSize(), step = S.arStep;
+        if (!step) {
+            const cards = SIZES.map(n => '<div class="sq-card' + (n === mine ? '' : ' dim') + '" data-size="' + n + '">' + pills(n, 'a') + '<span class="vsx">VS</span>' + pills(n, 'b') + '<div class="big">' + n + 'V' + n + '</div></div>').join('');
+            const hint = mine > 1 ? 'YOUR GROUP · ' + mine + ' PLAYERS · ' + mine + 'V' + mine : 'PLAYING SOLO · FORM A GROUP IN FRIENDS FOR 2V2 / 3V3';
+            return '<div class="sq"><div class="sq-row"><span class="sq-lab">' + hint + '</span></div><div class="sq-cards">' + cards + '</div>' + errLine() + '</div>';
+        }
+        const n = step.size, live = S.rooms.filter(r => r.size === n && (r.mode || 'arcade') === arMode());
+        const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + ' · ' + (arMode() === 'classic' ? 'CLASSIC' : 'ARCADE') + '</span></div>';
+        if (step.view === 'join') {
+            const list = live.map(roomCard).join('') || '<div class="sq-note" style="padding:.8em">No open ' + n + 'V' + n + ' rooms right now. Create one!</div>';
+            return '<div class="sq">' + head + '<div class="sq-row"><span class="sq-chip on">ALL</span><span class="sq-chip on">FREE</span><span class="sq-chip off">$ SOON</span></div><div class="sq-rl">' + list + '</div>' + errLine() + '</div>';
+        }
+        return '<div class="sq">' + head + '<div class="sq-menu">' +
+            '<button class="sq-b on big" data-a="quick">QUICK MATCH · FREE</button>' +
+            '<button class="sq-b big" data-a="create">CREATE ROOM</button>' +
+            '<button class="sq-b big" data-a="joinv">JOIN ROOM' + (live.length ? ' · ' + live.length : '') + '</button></div>' +
+            '<div class="sq-row"><span class="sq-chip off">QUICK MATCH $ · SOON</span></div>' + errLine() + '</div>';
     }
 
     // ----- panel AMIGOS: grupo, amigos y susurros -----
@@ -573,7 +603,7 @@
                 : '<div class="n">' + esc(friendName(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div>') +
             '<div class="s ' + f.st + '"><i></i>' + ST[f.st] + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
             (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
-            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
+            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
         return '<div class="sq">' + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
@@ -594,7 +624,8 @@
         wire(box);
     }
     function render() {
-        if (S.box.rooms) paint('rooms', roomsHtml());
+        if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500 }); }   // los avisos cortos van como popup, no dentro del menu
+        if (S.box.rooms) { paint('rooms', roomsHtml()); const w = document.querySelector('#ahAr .ph .w'); if (w) w.textContent = modeTitle(); }
         if (S.box.friends) paint('friends', friendsHtml());
         try { if (window.PWSquadHooks) { if (PWSquadHooks.afterRender) PWSquadHooks.afterRender(); if (PWSquadHooks.badge) PWSquadHooks.badge(badgeCount()); } } catch (e) {}
     }
@@ -607,14 +638,20 @@
             const n = +x.dataset.new, have = groupSize();
             if (!imLeader()) return fail('Only your group leader can create rooms.');
             if (have !== n) return fail(have === 1 ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick a ' + have + 'V' + have + ' room.');
-            start(() => send({ a: 'play', custom: true, size: n }));
+            start(() => send({ a: 'play', custom: true, size: n, mode: arMode() }));
+        });
+        b.querySelectorAll('.sq-card').forEach(x => x.onclick = () => {
+            snd('simpleselect');
+            const n = +x.dataset.size, have = groupSize();
+            if (have !== n) return fail(have === 1 ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.');
+            S.err = ''; S.arStep = { size: n, view: null }; render();
         });
         b.querySelectorAll('[data-join]').forEach(x => x.onclick = () => {
             snd('simpleselect');
             const n = +x.dataset.size, have = groupSize();
             if (!imLeader()) return fail('Only your group leader can join rooms.');
             if (have !== n) return fail(have === 1 ? 'That is a ' + n + 'V' + n + ' room: you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: join a ' + have + 'V' + have + ' room.');
-            start(() => send({ a: 'challenge', code: x.dataset.join }));
+            start(() => send({ a: 'challenge', code: x.dataset.join, mode: arMode() }));
         });
         b.querySelectorAll('[data-k]').forEach(x => x.onclick = () => send({ a: 'kick', id: x.dataset.k }));
         b.querySelectorAll('[data-nk]').forEach(x => x.onclick = () => { S.nickEdit = x.dataset.nk; render(); const i = b.querySelector('#sqNick'); if (i) i.focus(); });
@@ -639,7 +676,11 @@
         if (msgIn) msgIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="wsend"]').click(); };
         b.querySelectorAll('[data-a]').forEach(x => x.onclick = () => {
             const a = x.dataset.a; snd('simpleselect');
-            if (a === 'quick') start(() => send({ a: 'play' }));
+            if (a === 'quick') start(() => send({ a: 'play', mode: arMode() }));
+            else if (a === 'create') { const n = S.arStep.size; if (!imLeader()) return fail('Only your group leader can create rooms.'); start(() => send({ a: 'play', custom: true, size: n, mode: arMode() })); }
+            else if (a === 'joinv') { S.arStep.view = 'join'; render(); }
+            else if (a === 'stepx') { if (S.arStep && S.arStep.view) S.arStep.view = null; else S.arStep = null; S.err = ''; render(); }
+            else if (a === 'spectate') { send({ a: 'spectate' }); }
             else if (a === 'practice') send({ a: 'practice' });
             else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Ready check sent to everyone'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
             else if (a === 'rok') { send({ a: 'ready', v: true }); hideRc(); }
@@ -692,7 +733,7 @@
     }
     // La app monta cada panel dentro del suyo (el hub llama con su contenedor).
     function mountIn(kind, box) {
-        S.box[kind] = box; S.err = ''; S.note = '';
+        S.box[kind] = box; S.err = ''; S.note = ''; if (kind === 'rooms') S.arStep = null;
         if (kind === 'friends') loadIdentity(true).then(() => { connect(() => send({ a: 'friends' })); render(); });
         else connect(watchRooms);
         render();
@@ -700,7 +741,7 @@
     function openPc(kind) {
         closePcBackdrops();
         const r = pcPanel(kind); r.classList.add('open');
-        S.box[kind] = r.querySelector('.sq-body'); S.err = ''; S.note = '';
+        S.box[kind] = r.querySelector('.sq-body'); S.err = ''; S.note = ''; if (kind === 'rooms') S.arStep = null;
         try { closePlayChoice(); } catch (e) {}
         if (kind === 'friends') loadIdentity(true).then(() => { connect(() => send({ a: 'friends' })); render(); });
         else connect(watchRooms);

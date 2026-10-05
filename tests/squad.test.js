@@ -301,3 +301,28 @@ test('al acabar, los resultados llevan las estadisticas de cada jugador de los d
     assert.equal(m.players.B[0].name, 'bea');
     assert.equal(m.winner, 'A');
 });
+
+test('arenas arcade y classic no se mezclan: cada modo tiene su cola y su sala', () => {
+    const { sq, rooms } = make();
+    const a = party(sq, 'ana', 1)[0], b = party(sq, 'bob', 1)[0], c = party(sq, 'cat', 1)[0];
+    say(sq, a, { a: 'play', mode: 'classic' });
+    say(sq, b, { a: 'play', mode: 'arcade' });
+    assert.equal(a.last('sqParty').state, 'queued');
+    assert.equal(b.last('sqParty').state, 'queued', 'distinto modo: no se emparejan');
+    say(sq, c, { a: 'play', mode: 'classic' });
+    const t = c.last('sqTicket');
+    assert.ok(t && t.kind === 'match' && t.mode === 'classic');
+    assert.equal([...rooms.values()].find(r => !r.squad.practice).mode, 'classic');
+});
+
+test('QUICK MATCH entra en una sala abierta del mismo tamano y modo; y se puede mirar la partida', () => {
+    const { sq, rooms } = make();
+    const a = party(sq, 'ana', 1)[0], b = party(sq, 'bob', 1)[0];
+    say(sq, a, { a: 'play', custom: true, mode: 'arcade' });
+    assert.equal(sq._internals.customRooms.size, 1);
+    say(sq, b, { a: 'play', mode: 'arcade' });
+    assert.equal(b.last('sqTicket').kind, 'match', 'quick match se une a la sala abierta');
+    say(sq, a, { a: 'spectate' });
+    const s = a.last('sqSpectate');
+    assert.ok(s && rooms.has(s.room) && s.mode === 'arcade' && Array.isArray(s.allies));
+});

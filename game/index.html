@@ -11390,6 +11390,13 @@
         return linea(l1) + linea(l2);
     }
     function showResultsUI(tipo, extra) {
+        // Arenas (partida contra otro grupo): al morir se pasa a ESPECTAR a tu companero en vez del cartel de TRY AGAIN.
+        if (tipo === 'gameOver' && netState && netState.squad && window._squadKind === 'match' && sim && sim.isRemote) {
+            try { if (window.pwAqShow) pwAqShow(false); } catch (e) {}
+            spectateOnline(); return;
+        }
+        try { if (window.pwAqShow) pwAqShow(false); } catch (e) {}   // las misiones no salen en el cartel de muerte
+        try { const h = document.getElementById('sqHud'); if (h) h.classList.remove('show'); } catch (e) {}
         // 1a muerte de la partida disparada desde PLAY NOW del hero: nada de
         // TRY AGAIN, vuelta directa al menu (ver heroQuickPlay). Solo aplica a
         // GAME OVER — MATCH FINISHED/victory no son "morir", se dejan igual.
@@ -14028,7 +14035,7 @@
         playerName = document.getElementById('playerNameInput').value.trim() || "";
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
-        const mode = _sqTicket ? 'arcade' : currentGameMode;
+        const mode = _sqTicket ? (window._squadMode || 'arcade') : currentGameMode;
         const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
         const cfg = {
             botEnabled: true, botCount: 25, botRespawn: true, botMaxSplits: 16,
@@ -14078,9 +14085,9 @@
 
     // Arenas por equipos (game/squad.js): entrar a una sala con el ticket del servidor.
     // Si hay una partida en curso (la practica mientras se espera rival) se abandona antes.
-    window.pwSquadEnter = function (ticket, kind) {
+    window.pwSquadEnter = function (ticket, kind, mode) {
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
-        window._squadTicket = ticket; window._squadKind = kind;
+        window._squadTicket = ticket; window._squadKind = kind; window._squadMode = mode === 'classic' ? 'classic' : 'arcade';
         window._sqQuick = !!window._sqAgain; window._sqAgain = false;   // TRY AGAIN de la practica: sin mensajes de carga
         _joinInFlight = false;
         squadStatus(0);   // GENERATING ROOM desde el primer momento
@@ -15392,18 +15399,19 @@
             st.textContent = '#sqEntry{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#05090a;pointer-events:auto}' +   /* carga opaca: nada de partida detras */
                 '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,13px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:9px;align-items:flex-start;white-space:nowrap;' +
                 'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:12px 18px}' +
-                '#sqEntry .lw{font-family:\'Press Start 2P\',monospace;color:#fff}#sqEntry.quick .b,#sqEntry.quick .lw{display:none}' +
+                '#sqEntry .lw{font-family:\'Press Start 2P\',monospace;color:#fff}#sqEntry.quick .bar,#sqEntry.quick .lw{display:none}' +
+                '#sqEntry .bar{position:absolute;left:18%;right:18%;bottom:7%;height:10px;background:#0c1511;box-shadow:0 0 0 3px #000,inset 0 0 0 2px #1b2a22}#sqEntry .bar i{display:block;height:100%;width:0;background:#eaf6f0;transition:width .5s steps(8)}' +
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
-            ov.innerHTML = '<div class="lw"></div><div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div>';
+            ov.innerHTML = '<div class="lw"></div><div class="bar"><i></i></div>';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
         }
         return ov;
     }
     function squadMark(ov, n) {
-        const nombres = ['GENERATING ROOM', 'LOADING PLAYERS', 'READY'];
-        ov.querySelectorAll('.l').forEach((l, i) => { l.className = 'l' + (i < n ? ' ok' : i === n ? ' on' : ''); l.textContent = (i < n ? '✓ ' : i === n ? '> ' : '  ') + nombres[i] + (i === n && n < 2 ? '…' : ''); });
+        // Solo una barra abajo (sin textos): el protagonista es el VS de los jugadores.
+        const bar = ov.querySelector('.bar i'); if (bar) bar.style.width = [30, 70, 100][Math.min(2, n)] + '%';
     }
     function squadStatus(n) {
         window.__loadingLock = true;
@@ -15906,7 +15914,10 @@
         if (isSpectating) {
             if (onlineSpectator && sim) {
                 // Sigue al líder (mayor radio) con su mismo zoom: visión cercana, como un jugador
-                let lead = null; for (const e of sim.enemies) { if (!lead || e.r > lead.r) lead = e; }
+                // En arenas se sigue a un companero (el mayor); si no hay, al lider de la sala.
+                let lead = null; const sqy = netState && netState.squad && window.pwSquadRel;
+                if (sqy) for (const e of sim.enemies) { if (pwSquadRel(e.id) === 'ally' && (!lead || e.r > lead.r)) lead = e; }
+                if (!lead) for (const e of sim.enemies) { if (!lead || e.r > lead.r) lead = e; }
                 if (lead) {
                     camera.x += (lead.x - camera.x) * 0.08 * timeScale; camera.y += (lead.y - camera.y) * 0.08 * timeScale;
                     let targetScale = ZOOM_CONFIG.baseScale * Math.pow(INITIAL_RADIUS / lead.r, ZOOM_CONFIG.exponent); targetScale = Math.max(ZOOM_CONFIG.minScale, Math.min(ZOOM_CONFIG.maxScale, targetScale)); camera.scale += (targetScale - camera.scale) * 0.05 * timeScale;
@@ -16774,6 +16785,45 @@
         ws.onerror = () => setLobbyBanner('⚠ Could not connect to the server to spectate.');
         return true;
     }
+
+    // Arenas: volver a MIRAR la partida de tu grupo (te saliste al morir). Sigue a un companero (pwSquadRel).
+    window.pwSquadSpectate = function (roomKey, mode) {
+        if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
+        if (window.pwHubHide) pwHubHide();
+        els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';
+        const qsServer = new URLSearchParams(location.search).get('server');
+        let saved = null; try { saved = localStorage.getItem('pw_server'); } catch (e) {}
+        const base = qsServer || saved || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
+        const go = url => {
+            const ws = new WebSocket(url);
+            ws.onopen = () => ws.send(JSON.stringify({ t: 'spectate', sqRoom: roomKey, mode }));
+            ws.onmessage = (e) => {
+                let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
+                if (msg.t === 'specWelcome') {
+                    sim = new RemoteSim(ws, msg); sim._camInit = true;
+                    MAP_SIZE = msg.mapSize; currentGameMode = msg.mode; currentServer = msg.roomName;
+                    isSpectating = true; onlineSpectator = true; gameRunning = true;
+                    document.getElementById('ui').style.display = 'flex';
+                    document.getElementById('leaderboard').style.display = 'block';
+                    document.getElementById('timerDisplay').style.display = 'block';
+                    document.getElementById('exitGameBtn').style.display = 'flex';
+                    camera.scale = 0.45; lastFrameTime = Date.now();
+                    window.__loadingLock = false;
+                } else if (msg.t === 'specEmpty') { try { returnToMenu(); showSystemMsg('That match is over.', 'ARENAS'); } catch (e) {} }
+                else if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); }
+                else if (sim && sim.isRemote && sim.ws === ws) sim.onMessage(msg);
+            };
+            ws.onclose = () => { if (gameRunning && sim && sim.ws === ws) { try { returnToMenu(); } catch (e) {} } };
+        };
+        // El squad vive en el host 0: se pregunta al matchmaker igual que al entrar a jugar.
+        let hostQ = ''; try { const x = new URL(base); hostQ = (base.startsWith('wss://') ? 'https://' : 'http://') + x.host; } catch (e) {}
+        fetch(hostQ + '/match?mode=squad&price=Free', { cache: 'no-store' }).then(r => r.json()).then(mj => {
+            let u = base;
+            if (!mj || !mj.ok) return go(base);
+            try { const x = new URL(base); if (base.startsWith('wss://') && mj.path) u = 'wss://' + x.host + mj.path + '/'; else if (!base.startsWith('wss://') && mj.port && String(mj.port) !== (x.port || '80')) u = 'ws://' + x.hostname + ':' + mj.port; } catch (e) {}
+            go(u);
+        }).catch(() => go(base));
+    };
 
     // Mandos del panel de control dentro del espectador (usan el mismo WebSocket)
     function specSend(o) { if (sim && sim.ws && sim.ws.readyState === 1) sim.ws.send(JSON.stringify(o)); }
