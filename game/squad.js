@@ -433,7 +433,7 @@
         return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqRcQ">' + (leader ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[p.rc.kind] + ' · ' + s + 's</div>' +
             groupHtml(false, p.size, true) + '</div>' +
             '<div class="sq-bot"><div class="sq-row">' +
-            (leader ? '<button class="sq-b on" data-a="remind"' + (falta ? '' : ' disabled') + '>REMIND</button><button class="sq-b" data-a="cancel">CANCEL</button>'
+            (leader ? '<button class="sq-b on" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button><button class="sq-b" data-a="cancel">CANCEL</button>'
                 : (mine ? '<span class="sq-q">READY · WAITING FOR THE OTHERS</span>' : '<button class="sq-b on" data-a="rok">READY</button><button class="sq-b" data-a="rno">NOT READY</button>')) +
             '</div>' + errLine() + '</div></div>';
     }
@@ -552,7 +552,7 @@
             const a = x.dataset.a; snd('simpleselect');
             if (a === 'quick') start(() => send({ a: 'play' }));
             else if (a === 'practice') send({ a: 'practice' });
-            else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Reminder sent'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
+            else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Ready check sent to everyone'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
             else if (a === 'rok') { send({ a: 'ready', v: true }); hideRc(); }
             else if (a === 'rno') { send({ a: 'ready', v: false }); hideRc(); }
             else if (a === 'cancel') send({ a: 'cancel' });
