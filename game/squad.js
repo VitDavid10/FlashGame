@@ -134,7 +134,7 @@
 #sqEnd .pt{font-size:1.1em;margin-bottom:1.4em}
 #sqEnd .pd{font-family:'VT323',monospace;font-size:2.2em;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
 #sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
-#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.2em;padding:1.1em 2.2em;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
+#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;padding:1em 2em;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
 #sqEnd .bts button.o{background:transparent;color:#e8e8e8;border-color:#e8e8e8}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
@@ -493,6 +493,12 @@
         hydrate(el);
         el.classList.toggle('show', mates.length > 0 || !!m.practice);
     }
+    // Tamano base en pixeles ENTEROS y pares: con decimales la letra pixel se veia borrosa (sobre todo en PC).
+    function nitido(el) {
+        const M = Math.max(innerWidth, innerHeight), m = Math.min(innerWidth, innerHeight);
+        el.style.fontSize = Math.max(10, 2 * Math.round(Math.min(M * 0.0125, m * 0.027) / 2)) + 'px';
+    }
+    addEventListener('resize', () => document.querySelectorAll('#sqEnd,.ci').forEach(nitido));
     function onEnd(m) {
         hud().classList.remove('show');
         S.rel = null; S.allies = null; rivalsBanner();
@@ -524,7 +530,7 @@
         // Arenas gratis: se recuerda que en las salas de pago se gana $PILLY (con $PILLY en juego ira la cantidad y CLAIM).
         el.querySelector('.prz').innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid room</b><br>and ' + (win ? 'take' : 'win') + ' their <b>$PILLY</b>.</div>';
         hydrate(el);
-        el.classList.add('show'); snd(win ? 'select' : 'alert');
+        nitido(el); el.classList.add('show'); snd(win ? 'select' : 'alert');
     }
     // Pantalla de entrada a la partida (diseno C, animada ~4 s): fondo lima, entra la banda azul con tu equipo,
     // golpe del VS y entra la banda roja con los rivales. index.html la mete en #sqEntry.
@@ -532,7 +538,7 @@
         const d = S.lineupData; if (!d) return null;
         const tiles = (list, cls) => list.map((x, i) => '<div class="ti ' + cls + '" style="animation-delay:' + (cls === 'me' ? .45 + i * .15 : 1.75 + i * .15) + 's">' + pic({ p: x.pic, av: x.av, n: x.name }) + '<span class="nm">' + esc(x.name) + '</span></div>').join('');
         const pills = cls => '<div class="pl4 ' + cls + '">' + '<i></i>'.repeat(4) + '</div>';
-        const el = document.createElement('div'); el.className = 'ci';
+        const el = document.createElement('div'); el.className = 'ci'; nitido(el);
         el.innerHTML = '<div class="bd ba"><div class="row">' + tiles(d.me, 'me') + '</div>' + pills('pa') + '</div>' +
             '<div class="vs">VS</div>' +
             '<div class="bd bb"><div class="row">' + tiles(d.foe, 'foe') + '</div>' + pills('pb') + '</div>' +
