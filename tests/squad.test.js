@@ -32,6 +32,8 @@ test('la sala la fija cuantos sois: un grupo de 2 busca 2v2 y uno de 1 busca 1v1
     const { sq } = make();
     const duo = party(sq, 'ana', 2), solo = party(sq, 'bob', 1);
     say(sq, duo[0], { a: 'play' });
+    assert.equal(duo[0].last('sqParty').state, 'idle', 'con companeros primero hay que dar LISTO');
+    say(sq, duo[1], { a: 'ready', v: true });
     assert.equal(duo[0].last('sqParty').state, 'queued');
     assert.equal(duo[0].last('sqParty').size, 2);
     say(sq, solo[0], { a: 'play', size: 2 });
@@ -64,7 +66,7 @@ test('buscar partida NO mete a nadie en partida: la practica es opcional', () =>
 test('practica: solo entra quien la pide y un companero que la pide despues entra en la MISMA sala', () => {
     const { sq, rooms } = make();
     const [a, b] = party(sq, 'ana', 2);
-    say(sq, a, { a: 'play' });
+    say(sq, a, { a: 'play' }); say(sq, b, { a: 'ready', v: true });
     say(sq, a, { a: 'practice' });
     const t1 = a.last('sqTicket');
     assert.equal(t1.kind, 'practice');
@@ -92,7 +94,8 @@ test('la practica solo se pide buscando', () => {
 test('dos grupos del mismo tamano se emparejan y la sala tiene los dos equipos', () => {
     const { sq, rooms } = make();
     const a = party(sq, 'ana', 2), b = party(sq, 'bea', 2);
-    say(sq, a[0], { a: 'play' }); say(sq, b[0], { a: 'play' });
+    say(sq, a[0], { a: 'play' }); say(sq, a[1], { a: 'ready', v: true });
+    say(sq, b[0], { a: 'play' }); say(sq, b[1], { a: 'ready', v: true });
     const ta = a.map(w => w.last('sqTicket')), tb = b.map(w => w.last('sqTicket'));
     assert.ok(ta.every(t => t.kind === 'match' && t.team === 'A'));
     assert.ok(tb.every(t => t.kind === 'match' && t.team === 'B'));
@@ -113,7 +116,7 @@ test('dos grupos del mismo tamano se emparejan y la sala tiene los dos equipos',
 test('tamanos distintos no se emparejan', () => {
     const { sq } = make();
     const a = party(sq, 'ana', 2), b = party(sq, 'bob', 1);
-    say(sq, a[0], { a: 'play' }); say(sq, b[0], { a: 'play' });
+    say(sq, a[0], { a: 'play' }); say(sq, a[1], { a: 'ready', v: true }); say(sq, b[0], { a: 'play' });
     assert.equal(a[0].last('sqParty').state, 'queued');
     assert.equal(b[0].last('sqParty').state, 'queued');
 });
@@ -156,7 +159,8 @@ test('termina cuando un equipo se queda sin vivos y gana el otro', () => {
 test('un companero que aun esta cargando no cuenta como muerto', () => {
     const { sq } = make();
     const a = party(sq, 'ana', 2), b = party(sq, 'bea', 2);
-    say(sq, a[0], { a: 'play' }); say(sq, b[0], { a: 'play' });
+    say(sq, a[0], { a: 'play' }); say(sq, a[1], { a: 'ready', v: true });
+    say(sq, b[0], { a: 'play' }); say(sq, b[1], { a: 'ready', v: true });
     const joined = [...a, ...b].map(w => sq.join(fakeWs(), 'x', { t: 'join', squad: w.last('sqTicket').ticket }));
     const room = joined[0].room;
     room.state = 'playing'; room.endsAt = Date.now() + 100000;
@@ -186,4 +190,88 @@ test('si alguien sale mientras el grupo busca, se cancela la busqueda (ya no cua
     sq.onClose(mate);
     assert.equal(lead.last('sqParty').state, 'idle');
     assert.equal(sq._internals.queues[2].length, 0);
+});
+
+test('LISTO del grupo: no se busca hasta que todos dan listo; el lider avisa con RECORDAR y puede cancelar', () => {
+    const { sq } = make();
+    const [lead, b, c] = party(sq, 'ana', 3);
+    say(sq, lead, { a: 'play' });
+    const p = lead.last('sqParty');
+    assert.equal(p.state, 'idle', 'aun no busca');
+    assert.deepEqual(Object.values(p.rc.ready).sort(), [false, false, true], 'solo el lider esta listo');
+    assert.equal(b.last('sqReadyCheck').kind, 'quick');
+    assert.equal(c.last('sqReadyCheck').size, 3);
+    assert.equal(lead.last('sqReadyCheck'), null, 'el lider no recibe cartel');
+    // uno da listo: aun no
+    say(sq, b, { a: 'ready', v: true });
+    assert.equal(lead.last('sqParty').state, 'idle');
+    // el lider recuerda: solo le llega al que falta
+    const antes = b.out.filter(o => o.t === 'sqReadyCheck').length;
+    say(sq, lead, { a: 'remind' });
+    assert.equal(b.out.filter(o => o.t === 'sqReadyCheck').length, antes, 'b ya estaba listo');
+    assert.equal(c.last('sqReadyCheck').remind, true);
+    // el ultimo da listo: empieza la busqueda
+    say(sq, c, { a: 'ready', v: true });
+    assert.equal(lead.last('sqParty').state, 'queued');
+    assert.equal(lead.last('sqParty').rc, null);
+});
+
+test('LISTO del grupo: si alguien dice que no, o el lider cancela, no se busca', () => {
+    const { sq } = make();
+    const [lead, b] = party(sq, 'ana', 2);
+    say(sq, lead, { a: 'play', custom: true });
+    say(sq, b, { a: 'ready', v: false });
+    assert.equal(lead.last('sqParty').state, 'idle');
+    assert.equal(lead.last('sqParty').rc, null);
+    assert.equal(lead.last('sqReadyEnd').reason, 'declined');
+    assert.equal(sq._internals.customRooms.size, 0);
+    say(sq, lead, { a: 'play' });
+    say(sq, lead, { a: 'cancel' });
+    assert.equal(b.last('sqReadyEnd').reason, 'cancelled');
+    assert.equal(lead.last('sqParty').state, 'idle');
+});
+
+test('LISTO del grupo: si alguien se va o entra uno nuevo se anula, y unirse a una sala tambien pide listo', () => {
+    const { sq } = make();
+    const [lead, b] = party(sq, 'ana', 2);
+    say(sq, lead, { a: 'play' });
+    sq.onClose(b);
+    assert.equal(lead.last('sqParty').rc, null);
+    // sala publica de un solo jugador y un duo que quiere unirse a ella
+    const solo = party(sq, 'sol', 1)[0];
+    say(sq, solo, { a: 'play', custom: true });
+    const [l2, m2] = party(sq, 'duo', 2);
+    const sola2 = party(sq, 'otro', 1)[0];
+    say(sq, sola2, { a: 'play', custom: true });
+    const codeSolo = sq._internals.parties.get(solo.last('sqParty').code);
+    // el duo no puede unirse a una sala de 1 (tamano distinto)
+    say(sq, l2, { a: 'challenge', code: codeSolo.code });
+    assert.equal(l2.last('sqErr').reason, 'size_mismatch');
+    // un duo publica sala (con listo) y otro duo se une (con listo)
+    say(sq, l2, { a: 'play', custom: true }); say(sq, m2, { a: 'ready', v: true });
+    const [l3, m3] = party(sq, 'duo3', 2);
+    say(sq, l3, { a: 'challenge', code: l2.last('sqParty').code });
+    assert.equal(l3.last('sqParty').state, 'idle', 'aun no se une');
+    say(sq, m3, { a: 'ready', v: true });
+    assert.equal(l3.last('sqTicket').kind, 'match');
+    assert.equal(l2.last('sqTicket').kind, 'match');
+});
+
+test('en las salas de arenas la pildora solo se divide en dos', () => {
+    const { sq, rooms } = make();
+    const a = party(sq, 'ana', 1)[0];
+    say(sq, a, { a: 'play' }); say(sq, a, { a: 'practice' });
+    const room = [...rooms.values()][0];
+    assert.equal(room.sim.config.maxPlayerCells, 2);
+    const s = room.sim;
+    s.addPlayer('p1', { name: 'p1', team: 'A' }); s.spawnPlayer('p1', 0);
+    const p = s.players.get('p1'); p.cells[0].r = 400;
+    for (let i = 0; i < 6; i++) { s.splitPlayer(p, p.cells[0].x + 100, p.cells[0].y); s.now += 5000; }
+    assert.equal(p.cells.length, 2, 'nunca mas de 2 trozos');
+    // y fuera de arenas sigue siendo el tope de siempre
+    const o = new PillSim.Simulation({ mode: 'arcade', mapSize: 3000, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, botConfig: { enabled: false, count: 0, respawn: false }, fx: { enabled: false } });
+    o.populate(); o.addPlayer('q', { name: 'q' }); o.spawnPlayer('q', 0);
+    const q = o.players.get('q'); q.cells[0].r = 600;
+    for (let i = 0; i < 6; i++) { o.splitPlayer(q, q.cells[0].x + 100, q.cells[0].y); o.now += 5000; }
+    assert.ok(q.cells.length > 2);
 });

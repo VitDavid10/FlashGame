@@ -107,7 +107,7 @@ test('en la partida entre grupos tambien entran y juegan con su equipo', async (
     say(sq, me, { a: 'play' }); say(sq, foe, { a: 'leave' });
     const duo = human(sq, 'CCCCCCC', 'cat'); say(sq, duo, { a: 'create' });
     const duo2 = human(sq, 'DDDDDDD', 'dan'); say(sq, duo2, { a: 'join', code: duo.last('sqParty').code });
-    say(sq, duo, { a: 'play' });
+    say(sq, duo, { a: 'play' }); say(sq, duo2, { a: 'ready', v: true });
     await wait(900);
     const match = [...rooms.values()].find(r => !r.squad.practice);
     assert.ok(match, 'se crea la partida 2v2');

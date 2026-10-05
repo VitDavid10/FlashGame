@@ -65,7 +65,7 @@ function createSquad(deps) {
     const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf, directory: deps.directory || null });
     // Identidad de quien entra a un grupo: su usuario de X o, sin X, el resumen de su wallet.
     function identOf(ws, fallback) {
-        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), pic: p.p, av: p.av }; }
+        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.dn || (p.u ? '@' + p.u : p.n)), pic: p.p, av: p.av }; }
         return { uid: null, name: cleanName(fallback), pic: '', av: null };
     }
 
@@ -80,6 +80,7 @@ function createSquad(deps) {
             queuedAt: p.queuedAt || null,
             custom: !!p.custom,
             practice: practiceAlive(p),
+            rc: p.rc ? { kind: p.rc.kind, size: p.rc.size, exp: p.rc.exp, ready: Object.assign({}, p.rc.ready) } : null,
             members: [...p.members.values()].map(m => ({ id: m.id, uid: m.uid || null, pic: m.pic || '', av: m.av || null, name: m.name, leader: m.id === p.leader })),
         };
     }
@@ -120,6 +121,7 @@ function createSquad(deps) {
             targetPop: POP, instantBots: true,
             squad: { kind, practice: kind === 'practice', size, stake: 0, teams: { A: [], B: [] }, groups, joined: 0 },
         };
+        room.sim.config.maxPlayerCells = 2;   // en arenas la pildora solo se divide en dos
         rooms.set(key, room);
         // La practica nace ya en marcha: quien entra solo espera a que cargue el mapa (hasta el GO), sin lobby.
         if (kind === 'practice' && startMatch) startMatch(room);
@@ -166,6 +168,47 @@ function createSquad(deps) {
         }).sort((x, y) => x.since - y.since);
     }
 
+    // ---------- LISTO del grupo ----------
+    // El lider pulsa buscar o unirse; con companeros les sale un cartel a todos y solo cuando todos dan LISTO
+    // empieza la busqueda. Solo, es inmediato.
+    const RC_MS = 20000;
+    function clearRc(p) { if (p.rc) { clearTimeout(p.rc.timer); p.rc = null; } }
+    function cancelRc(p, why, reason) {
+        if (!p.rc) return;
+        clearRc(p);
+        for (const m of p.members.values()) send(m.ws, { t: 'sqReadyEnd', reason, why });
+        pushParty(p);
+    }
+    function readyThen(p, action) {
+        if (p.members.size < 2) return runAction(p, action);
+        const exp = Date.now() + RC_MS;
+        const ready = {}; for (const m of p.members.values()) ready[m.id] = m.id === p.leader || !!m.ws.virtual;
+        p.rc = { action, kind: action.kind, size: p.members.size, exp, ready, timer: setTimeout(() => cancelRc(p, 'Nobody answered in time', 'timeout'), RC_MS) };
+        if (p.rc.timer.unref) p.rc.timer.unref();
+        const lead = (p.members.get(p.leader) || {}).name || 'PLAYER';
+        for (const m of p.members.values()) if (m.id !== p.leader) send(m.ws, { t: 'sqReadyCheck', kind: action.kind, size: p.members.size, exp, leader: lead });
+        pushParty(p);
+        if (Object.values(ready).every(Boolean)) { const act = action; clearRc(p); runAction(p, act); }
+    }
+    function runAction(p, action) {
+        if (p.state !== 'idle') return;
+        if (action.kind === 'join') {
+            const t = parties.get(action.code);
+            if (!t || !customRooms.has(t) || t.state !== 'queued' || t.qsize !== p.members.size) { for (const m of p.members.values()) send(m.ws, { t: 'sqErr', reason: 'room_gone' }); return; }
+            customRooms.delete(t);
+            p.qsize = t.qsize;
+            startMatchBetween(t, p);
+            return;
+        }
+        const n = p.members.size;
+        p.state = 'queued'; p.queuedAt = Date.now(); p.qsize = n; p.practiceRoom = null;
+        p.custom = !!action.custom;
+        // Sala custom: no entra en la cola automatica; se publica y espera un retador.
+        if (p.custom) customRooms.add(p); else queues[n].push(p);
+        pushParty(p);
+        if (!p.custom) tryMatch(n);
+    }
+
     // ---------- mensajes del lobby ----------
     function handle(ws, msg) {
         if (social.handle(ws, msg)) {
@@ -196,6 +239,7 @@ function createSquad(deps) {
             if (p.members.size >= MAX_PARTY) return err(ws, 'party_full');
             // Alguien entra mientras el grupo busca: ya no cuadra la sala, la busqueda se cancela.
             if (p.state === 'queued') { backToIdle(p); }
+            if (p.rc) cancelRc(p, 'A new player joined', 'joined');
             const ident = identOf(ws, msg.name);
             const id = rnd(4), m = { ws, id, name: ident.name, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); byWs.set(ws, m);
@@ -221,32 +265,46 @@ function createSquad(deps) {
         if (a === 'play') {
             if (!leader) return err(ws, 'not_leader');
             if (p.state !== 'idle') return;
+            if (p.rc) return;
             const n = p.members.size;
             if (msg.size && (msg.size | 0) !== n) return err(ws, 'size_mismatch');
             if (!SIZES.includes(n)) return err(ws, 'size_mismatch');
-            p.state = 'queued'; p.queuedAt = Date.now(); p.qsize = n; p.practiceRoom = null;
-            p.custom = !!msg.custom;
-            // Sala custom: no entra en la cola automatica; se publica y espera un retador.
-            if (p.custom) customRooms.add(p); else queues[n].push(p);
-            pushParty(p);
-            if (!p.custom) tryMatch(n);
+            // Con companeros, nadie busca rival hasta que todos hayan dado LISTO.
+            readyThen(p, { kind: msg.custom ? 'room' : 'quick', custom: !!msg.custom });
             return;
         }
         if (a === 'challenge') {
             if (!leader) return err(ws, 'not_leader');
             if (p.state !== 'idle') return err(ws, 'party_busy');
+            if (p.rc) return;
             const t = parties.get(String(msg.code || '').toUpperCase().trim());
             if (!t || !customRooms.has(t) || t.state !== 'queued') return err(ws, 'room_gone');
             if (t === p) return err(ws, 'self');
             if (t.qsize !== p.members.size) return err(ws, 'size_mismatch');
-            customRooms.delete(t);
-            p.qsize = t.qsize;
-            startMatchBetween(t, p);
+            readyThen(p, { kind: 'join', code: t.code });
+            return;
+        }
+        // ---- LISTO del grupo ----
+        if (a === 'ready') {
+            if (!p.rc) return;
+            if (!msg.v) { cancelRc(p, me.name + ' is not ready', 'declined'); return; }
+            p.rc.ready[me.id] = true;
+            if (Object.values(p.rc.ready).every(Boolean)) { const act = p.rc.action; clearRc(p); runAction(p, act); }
+            else pushParty(p);
+            return;
+        }
+        // El lider avisa de nuevo a quien aun no ha contestado.
+        if (a === 'remind') {
+            if (!leader) return err(ws, 'not_leader');
+            if (!p.rc || Date.now() - (p.rc.lastRemind || 0) < 3000) return;
+            p.rc.lastRemind = Date.now();
+            for (const m of p.members.values()) if (!p.rc.ready[m.id]) send(m.ws, { t: 'sqReadyCheck', kind: p.rc.kind, size: p.rc.size, exp: p.rc.exp, leader: (p.members.get(p.leader) || {}).name || 'PLAYER', remind: true });
             return;
         }
         if (a === 'practice') { practiceFor(p, me); return; }
         if (a === 'cancel') {
             if (!leader) return err(ws, 'not_leader');
+            if (p.rc) { cancelRc(p, 'Cancelled', 'cancelled'); return; }
             if (p.state === 'queued') { backToIdle(p); pushParty(p); }
             return;
         }
@@ -258,6 +316,7 @@ function createSquad(deps) {
         byWs.delete(ws);
         p.members.delete(me.id);
         if (me.uid) social.pushPresence(me.uid);
+        clearRc(p);
         if (p.members.size === 0) { dequeue(p); parties.delete(p.code); return; }
         // Un grupo solo de amigos de prueba no tiene sentido: se va con el ultimo humano.
         if (![...p.members.values()].some(x => !x.ws.virtual)) {

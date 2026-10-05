@@ -55,8 +55,8 @@ function createSocial(opts) {
     const err = (ws, reason) => send(ws, { t: 'sqErr', reason });
     const relOf = id => data.rel[id] || (data.rel[id] = { f: [], i: [], o: [] });
     const profileOf = id => data.profiles[id] ? Object.assign({ id }, data.profiles[id]) : null;
-    // Sin @ de X, el nombre que ve la gente es el que el jugador eligio en el menu (si no, el resumen de su wallet).
-    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: (!p.u && p.dn) || p.n || p.u || 'PLAYER', p: p.p || '', av: p.av || null }; };
+    // El nombre que ve la gente es el que el jugador eligio en el menu (dn); si no puso ninguno, su @ de X, y si no, el resumen de su wallet.
+    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: p.n || p.u || 'PLAYER', dn: p.dn || '', p: p.p || '', av: p.av || null }; };
 
     function statusOf(id) {
         if (!online.has(id)) return 'off';

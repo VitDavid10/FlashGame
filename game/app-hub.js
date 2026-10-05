@@ -191,7 +191,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .qc .n{font-size:.4em;color:var(--mut)}
 .qc button{font-family:'Russo One',sans-serif;font-size:.6em;letter-spacing:.1em;padding:.3em .9em;border:none;background:var(--ac);color:#04150c;cursor:pointer}
 .qc button.v{background:#ffd23a}
-.qc.done{opacity:.45}.qc.done .pts{color:var(--ac)}
+.qc{cursor:pointer}.qc.pin{outline:.16em solid var(--ac);outline-offset:-.16em;background:rgba(255,255,255,.05)}
+.qc.done{opacity:.45}.qc.done .pts{color:var(--ac)}.qc.done:not(.x){cursor:default}
 .ph .qb{font-size:.42em;color:#ffd23a;letter-spacing:.06em;margin-left:1em}
 .sn .cell .pr{font-size:.4em;color:#ffd23a}
 .sn .cell .pr.own{color:var(--ac)}
@@ -265,6 +266,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-pic .npc{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--in2);color:var(--ac)}.pr-pic .npc svg{width:3.2em;height:3.2em}
 .pr-at{font-size:.46em;color:var(--ac);letter-spacing:.06em}
 .pr-ic,.pr-cl{display:flex;gap:.25em;justify-content:center}
+.pr-box{position:relative}
+#ahPrAddX{position:absolute;right:.7em;top:.6em;width:auto;padding:.4em .8em;font-size:.5em}
 .pr-fc{display:flex;flex-direction:column;align-items:center;gap:.5em;cursor:pointer}
 .pr-fc .k{font-size:.32em;color:var(--mut);letter-spacing:.12em}
 .pr-fc b{font-size:.58em;font-weight:400;color:#ffd23a;letter-spacing:.14em;text-shadow:.12em .12em 0 #000}
@@ -591,9 +594,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="sv-bt"><button class="tb" id="ahSvBack">BACK</button><button class="tb on" id="ahSvGo"></button></div></div></div></div></div>
 <div class="ov" id="ahPr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div><button class="tb" id="ahPrAddX" style="width:auto;padding:.5em 1em;display:none">+ CONNECT X</button></div>
+  <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div></div>
   <div class="pr-r">
-    <div class="pr-box"><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
+    <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
       <div class="k" style="margin-top:.9em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
       <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
@@ -635,8 +638,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             : 'COLOR · SKIN';
         $('#ahRoomV').innerHTML = word + ' · <b class="' + (room === 'Free' || room === 'offline' ? '' : 'usd') + '">' + (room === 'offline' ? 'OFFLINE' : room === 'Free' ? 'FREE' : '$' + room.replace('$', '')) + '</b>';
         try {
-            const ms = appMissionsFor(qToday()), hechas = 0, faltan = ms.length - hechas;
-            $('#ahQBar').style.width = Math.round(hechas / ms.length * 100) + '%';
+            // Barra = misiones hechas hoy sobre las 3 que se pueden marcar; la insignia = las que aun puedes marcar.
+            const q = aqLoad(), hechas = Object.keys(q.done).length, faltan = Math.max(0, AQ_MAX - q.pins.length - hechas);
+            $('#ahQBar').style.width = Math.round(Math.min(1, hechas / AQ_MAX) * 100) + '%';
             $('#ahQBdg').textContent = faltan; $('#ahQBdg').style.display = faltan ? '' : 'none';
         } catch (e) {}
         try { $('#ahSp').textContent = typeof paisSp === 'function' ? paisSp() : '0'; } catch (e) {}
@@ -1019,26 +1023,105 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         renderQuests();
     }
     const fmtN = n => n >= 1000 ? Math.round(n).toLocaleString('en-US') : String(n);
+    // ---------- MISIONES de la app: se marcan hasta 3 y cuentan en TODOS los modos ----------
+    // Offline, practica, arenas u online: el juego avisa de lo que pasa (window.pwAq, ver index.html) y aqui se cuenta
+    // solo para las marcadas. El progreso vive en el movil (por eso vale sin conexion); al completar una se cobra en el
+    // servidor (maximo 3 al dia por cuenta, ver server/appquests.js) y si no hay red o cuenta se cobra al volver.
+    const AQ_MAX = 3;
+    const AQ_STAT = {
+        'e-kill1': 'kills', 'm-kill3': 'kills', 'h-kill5': 'kills', 'e-pieces5': 'pieces', 'm-pieces15': 'pieces', 'e-skills2': 'skills', 'm-skills3': 'skillsDiff',
+        'm-splitkill': 'splitKills', 's-sprint': 'sk3', 's-blink': 'sk4', 's-magnet': 'sk5', 's-shield': 'sk6', 's-shot': 'sk2', 's-gamble': 'gambleWin',
+        'g-play3': 'matches', 'g-split10': 'splits', 'g-picks5': 'picks', 'g-virus': 'virus', 'e-mass3k': 'mass', 'm-mass8k': 'mass', 'h-mass20k': 'mass',
+        'e-survive60': 'alive', 'g-survive90': 'alive', 'h-kill3match': 'killsLife', 'h-finish': 'finish', 'h-top5': 'top5',
+    };
+    let aq = null, aqMsg = '';
+    function aqLoad() {
+        const day = qToday();
+        if (aq && aq.day === day) return aq;
+        try { aq = JSON.parse(localStorage.getItem('pw_aq')); } catch (e) { aq = null; }
+        if (!aq || aq.day !== day) aq = { day, pins: [], prog: {}, done: {}, claimed: {}, sk: [] };
+        return aq;
+    }
+    function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} }
+    const aqList = () => appMissionsFor(aqLoad().day);
+    function aqToast(t) { try { if (window.pwToast) return window.pwToast({ text: t, warm: true, ms: 6000 }); showSystemMsg(t, 'MISSION'); } catch (e) {} }
+    function aqStat(stat, n, abs) {
+        const a = aqLoad(); let cambio = false;
+        for (const id of a.pins) {
+            if (a.done[id] || AQ_STAT[id] !== stat) continue;
+            const m = aqList().find(x => x.id === id); if (!m) continue;
+            const prev = a.prog[id] | 0, v = Math.min(m.goal, abs ? Math.max(prev, n | 0) : prev + (n | 0));
+            if (v === prev) continue;
+            a.prog[id] = v; cambio = true;
+            if (v >= m.goal) { a.done[id] = 1; aqToast('MISSION COMPLETE: ' + m.t + ' · +' + m.pts + ' SP'); try { SoundManager.play('select'); } catch (e) {} aqClaim(m); }
+        }
+        if (cambio) { aqSave(); if ($('#ahQ').classList.contains('open')) renderQuests(); }
+    }
+    async function aqClaim(m) {
+        const a = aqLoad();
+        if (a.claimed[m.id]) return;
+        try {
+            const r = await (await fetch('/api/appquests/claim', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Client-Id': cidLocal() }, body: JSON.stringify({ id: m.id }) })).json();
+            if (r.ok || r.error === 'limit' || r.error === 'not_today') {
+                a.claimed[m.id] = r.ok ? 1 : 2; aqSave();
+                if (r.ok && !r.already) { aqMsg = ''; try { if (typeof paisSync === 'function') await paisSync(); } catch (e) {} try { $('#ahSp').textContent = paisSp(); } catch (e) {} }
+                if (r.error === 'limit') aqMsg = 'DAILY LIMIT: 3 PAID MISSIONS PER DAY';
+            } else if (r.error === 'no_account') { aqMsg = 'CONNECT YOUR WALLET TO CLAIM YOUR SP'; }
+        } catch (e) { /* sin red: se cobra al volver */ }
+        if ($('#ahQ').classList.contains('open')) renderQuests();
+    }
+    function aqRetry() { const a = aqLoad(); aqList().filter(m => a.done[m.id] && !a.claimed[m.id]).forEach(aqClaim); }
+    function aqToggle(m) {
+        const a = aqLoad();
+        if (a.done[m.id]) { if (!a.claimed[m.id]) aqClaim(m); return; }
+        const k = a.pins.indexOf(m.id);
+        if (k >= 0) { a.pins.splice(k, 1); aqMsg = ''; }
+        else if (a.pins.length >= AQ_MAX) { aqMsg = 'MAX 3 MISSIONS · TAP ONE OF YOURS TO DROP IT'; setTimeout(() => { aqMsg = ''; if ($('#ahQ').classList.contains('open')) renderQuests(); }, 2500); }
+        else { a.pins.push(m.id); aqMsg = ''; }
+        aqSave(); renderQuests();
+    }
+    // Lo que ve el juego: cada hecho pasa por aqui, en cualquier modo.
+    const aqLife = { mass: 0, alive: 0, kills: 0 };
+    window.pwAq = {
+        matchStart() { aqLife.mass = 0; aqLife.alive = 0; aqLife.kills = 0; aqStat('matches', 1); },
+        tick(dt, mass) { aqLife.alive += dt / 1000; if (mass > aqLife.mass) aqLife.mass = mass; aqStat('mass', Math.floor(aqLife.mass), true); aqStat('alive', Math.floor(aqLife.alive), true); },
+        kill(split) { aqLife.kills++; aqStat('kills', 1); aqStat('killsLife', aqLife.kills, true); if (split) aqStat('splitKills', 1); },
+        piece() { aqStat('pieces', 1); },
+        split() { aqStat('splits', 1); },
+        virus() { aqStat('virus', 1); },
+        pick() { aqStat('picks', 1); },
+        skill(id, win) {
+            aqStat('skills', 1); aqStat('sk' + id, 1);
+            if (id === 8 && win) aqStat('gambleWin', 1);
+            const a = aqLoad();
+            if (a.pins.some(x => AQ_STAT[x] === 'skillsDiff') && !a.sk.includes(id)) { a.sk.push(id); aqStat('skillsDiff', a.sk.length, true); }
+        },
+        // Fin de la vida o de la partida: sobrevivir al reloj y acabar en el top 5 solo valen si sigues vivo / en el ranking al acabar.
+        lifeEnd(aliveAtEnd, rank, clock) {
+            if (clock && aliveAtEnd) { aqStat('finish', 1, true); if (rank && rank <= 5) aqStat('top5', 1, true); }
+            aqLife.mass = 0; aqLife.alive = 0; aqLife.kills = 0;
+        },
+    };
     function renderQuests() {
         const g = $('#ahQG'); g.innerHTML = '';
-        const dl = adScore && adScore.daily, day = dl && dl.date || qToday();
-        const ms = appMissionsFor(day), done = {};
-        $('#ahQBoost').textContent = ms.filter(m => done[m.id]).length + '/' + ms.length + ' TODAY';
+        const a = aqLoad(), ms = aqList();
+        const hechas = ms.filter(m => a.done[m.id]).length;
+        $('#ahQBoost').textContent = a.pins.length + '/' + AQ_MAX + ' SELECTED · ' + hechas + ' DONE';
         $('#ahQSp').textContent = (typeof paisSp === 'function' ? paisSp() : 0) + ' SP';
-        $('#ahQFoot').textContent = 'New missions every day at 00:00 UTC';
-        const orden = ms.filter(m => !done[m.id]).concat(ms.filter(m => done[m.id]));
-        orden.forEach((m, i) => {
-            const ok = !!done[m.id];
-            let v = 0;
-            if (ok) v = m.goal;
-            else if (false && dl) v = m.kind === 'd' ? (m.prog ? m.prog({ kills: dl.kills || 0, matches: dl.matches || 0, c: Object.assign({ skill: {}, skillSet: [] }, dl.c || {}) }) : 0) : ((dl.best || {})[m.id] || 0);
-            v = Math.min(m.goal, v | 0);
+        $('#ahQFoot').textContent = aqMsg || 'Tap up to 3 missions to track them · they count in every mode, offline too · reset 00:00 UTC';
+        $('#ahQFoot').style.color = aqMsg ? '#ffb347' : '';
+        const orden = ms.filter(m => a.pins.includes(m.id) && !a.done[m.id]).concat(ms.filter(m => !a.pins.includes(m.id) && !a.done[m.id]), ms.filter(m => a.done[m.id]));
+        orden.forEach(m => {
+            const ok = !!a.done[m.id], pin = a.pins.includes(m.id);
+            const v = Math.min(m.goal, ok ? m.goal : (a.prog[m.id] | 0));
             const c = document.createElement('div');
-            c.className = 'qc' + (ok ? ' done' : '');
-            c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + '</div><div class="t"></div></div>' +
+            c.className = 'qc' + (ok ? ' done' : '') + (pin ? ' pin' : '');
+            const estado = ok ? (a.claimed[m.id] ? 'DONE' : 'CLAIM') : '+' + m.pts + ' SP';
+            c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + (pin && !ok ? ' · TRACKING' : '') + '</div><div class="t"></div></div>' +
                 '<div class="qp"><i style="width:' + Math.round(v / m.goal * 100) + '%"></i></div>' +
-                '<div class="b"><span class="n">' + fmtN(v) + '/' + fmtN(m.goal) + '</span><span class="pts">' + (ok ? 'DONE' : '+' + m.pts + ' SP') + '</span></div>';
+                '<div class="b"><span class="n">' + fmtN(v) + '/' + fmtN(m.goal) + '</span><span class="pts">' + estado + '</span></div>';
             c.querySelector('.t').textContent = m.t;
+            c.onclick = () => aqToggle(m);
             g.appendChild(c);
         });
         placa($('#ahQ .pnl'), 1);
@@ -1288,6 +1371,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on');
         scale(); paintStatic(); pullRooms(); requestAnimationFrame(loop);
         try { if (window.PWSquad) PWSquad.boot(); } catch (e) {}   // amigos: invitaciones y susurros aunque el panel este cerrado
+        try { aqRetry(); } catch (e) {}   // misiones hechas sin red o sin cuenta: se cobran al volver
         try { if (typeof paisSync === 'function') Promise.resolve(paisSync()).then(paintStatic); } catch (e) {}
     }
     function hide() { closeQuests(); hub.classList.remove('on'); document.body.classList.remove('hub-on'); hub.querySelectorAll('.ov').forEach(o => o.classList.remove('open')); }

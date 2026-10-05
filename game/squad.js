@@ -40,10 +40,14 @@
         offline: 'That friend is offline.', slow_down: 'Slow down a little.', room_gone: 'That room is no longer available.',
     };
     const ST = { on: 'ONLINE', party: 'IN A GROUP', game: 'IN A MATCH', off: 'OFFLINE' };
-    const nameOf = o => o.u ? '@' + o.u : (o.n || 'PLAYER');
+    const nameOf = o => o.dn || (o.u ? '@' + o.u : (o.n || 'PLAYER'));
     const initial = o => esc(String(o.u || o.n || '?').replace(/^@/, '').slice(0, 1).toUpperCase());
 
     const css = `
+/* En el movil el juego se gira por CSS (--pw-largo/--pw-corto): todo lo que cuelga de body y no va dentro de un contenedor
+   girado sale tumbado. Los carteles de arenas viven en este marco, que se gira igual que #loadingScreen. */
+#sqFrame{position:fixed;inset:0;z-index:9990;pointer-events:none}
+@media (pointer: coarse){html:not([data-hero]) body.mobile-allowed #sqFrame{inset:auto;width:100vh;height:100vw;width:var(--pw-largo,100dvh);height:var(--pw-corto,100dvw);top:50%;left:50%;transform:translate(-50%,-50%) rotate(90deg);transform-origin:center}}
 .sq{font-family:'Press Start 2P',monospace;color:#fff;text-align:center;display:flex;flex-direction:column;align-items:center;gap:.8em;padding:.4em .8em .2em}
 .sq *{box-sizing:border-box}
 .sq-t{font-size:.9em;color:var(--ac,#00ff88);text-shadow:.12em .12em 0 #000;letter-spacing:.06em}
@@ -79,8 +83,9 @@
 .sq-pic .av svg{width:60%;height:60%}
 .sq-pic canvas{image-rendering:pixelated}
 /* buscando: los jugadores son lo central, grandes, y los botones van abajo */
-.sq.find{min-height:14em;justify-content:space-between;gap:.6em}
-.sq-grp.big{flex:1;align-items:center;gap:2.6em;margin:.2em 0}
+.sq.find{min-height:16.5em;justify-content:space-between;gap:.6em}
+.sq.find .mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2em;width:100%}
+.sq-grp.big{flex:none;align-items:center;gap:2.6em}
 .sq-grp.big .sq-av{width:12em;gap:.9em}
 .sq-grp.big .sq-av .sq-pic{width:5.2em;height:5.2em;font-size:1.5em}
 .sq-grp.big .sq-av .n{font-size:.55em}
@@ -122,7 +127,7 @@
 .sq-pcp.open{display:flex}
 .sq-pcp .sq-box{position:relative;width:min(48em,94vw);max-height:94vh;overflow:auto;font-size:16px;padding:1.6em 1.4em 1.2em;background:#0b120e;border:.2em solid var(--ac,#00ff88);box-shadow:0 0 0 .2em #000,.4em .4em 0 .2em rgba(0,0,0,.6),0 0 2em rgba(0,255,136,.25)}
 .sq-pcp .sq-x{position:absolute;right:.5em;top:.4em;font-family:'Russo One',sans-serif;font-size:.7em;letter-spacing:.1em;padding:.4em .8em;border:.14em solid #2c3630;color:#9fb0a6;background:none;cursor:pointer}
-#sqFound,#sqEnd{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(3,6,4,.82);font-family:'Press Start 2P',monospace;color:#fff;text-align:center}
+#sqFound,#sqEnd{position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(3,6,4,.82);font-family:'Press Start 2P',monospace;color:#fff;text-align:center}
 #sqFound.show,#sqEnd.show{display:flex}
 #sqFound .a{font-size:22px;color:#ffd23a;text-shadow:3px 3px 0 #000,0 0 18px #ffd23a}
 #sqFound .b{font-size:12px;color:#9bbfff}
@@ -130,12 +135,22 @@
 #sqEnd .a.w{color:#00ff66}#sqEnd .a.l{color:#ff5a4e}#sqEnd .a.d{color:#ffd23a}
 #sqEnd .b{font-size:11px;color:#cfd8d3;line-height:1.9}
 #sqEnd button{font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:2px;padding:10px 26px;border:3px solid #000;background:#00ff88;color:#04150c;cursor:pointer;margin-top:8px}
-#sqHud{position:fixed;left:8px;top:64px;z-index:56;display:none;max-width:70vw;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.6;background:rgba(6,10,8,.55);padding:4px 8px;pointer-events:none;text-shadow:1px 1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sqHud{position:absolute;left:8px;top:64px;z-index:56;display:none;max-width:70vw;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.6;background:rgba(6,10,8,.55);padding:4px 8px;pointer-events:none;text-shadow:1px 1px 0 #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sqHud.show{display:block}
 #sqHud span{margin-right:9px}
 #sqHud .a{color:#3fa0ff}#sqHud .b{color:#ff6a5a}#sqHud .h{color:#8aa096}
-#sqToast{position:fixed;right:10px;top:10px;z-index:310;display:flex;flex-direction:column;gap:8px;max-width:min(330px,92vw);font-family:'Press Start 2P',monospace}
-#sqToast .t{background:rgba(8,12,10,.96);border:2px solid #4d9bff;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(77,155,255,.35);padding:9px 10px;font-size:8px;line-height:1.7;color:#fff;display:flex;flex-direction:column;gap:7px}
+#sqToast{position:absolute;right:10px;top:10px;z-index:310;display:flex;flex-direction:column;gap:8px;max-width:min(330px,92vw);font-family:'Press Start 2P',monospace}
+#sqRc{position:absolute;inset:0;z-index:305;pointer-events:auto;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.7)}
+#sqRc.show{display:flex}
+#sqRc .bx{font-family:'Press Start 2P',monospace;color:#fff;text-align:center;background:rgba(8,12,10,.97);border:3px solid #ffd23a;box-shadow:0 0 18px rgba(255,210,58,.4),4px 4px 0 rgba(0,0,0,.6);padding:18px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;max-width:90%}
+#sqRc .a{font-size:13px;color:#ffd23a;text-shadow:2px 2px 0 #000}
+#sqRc .b{font-size:9px;line-height:1.8;color:#cfd8d3}
+#sqRc .r{display:flex;gap:12px}
+#sqRc button{font-family:'Russo One',sans-serif;font-size:14px;letter-spacing:2px;padding:9px 22px;border:3px solid #000;background:#2c3630;color:#cfd8d3;cursor:pointer}
+#sqRc button.y{background:#00ff88;color:#04150c}
+#sqRc.pulse .bx{animation:sqPulse .5s steps(2) 3}
+@keyframes sqPulse{50%{box-shadow:0 0 28px rgba(255,210,58,.9),4px 4px 0 rgba(0,0,0,.6)}}
+#sqToast .t{pointer-events:auto;background:rgba(8,12,10,.96);border:2px solid #4d9bff;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(77,155,255,.35);padding:9px 10px;font-size:8px;line-height:1.7;color:#fff;display:flex;flex-direction:column;gap:7px}
 #sqToast .t.w{border-color:#ffd23a;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(255,210,58,.3)}
 #sqToast .t .r{display:flex;gap:6px;align-items:center}
 #sqToast .t img{width:22px;height:22px;border-radius:50%;object-fit:cover}
@@ -208,7 +223,7 @@
     setInterval(() => { if (S.ws && S.ws.readyState === 1) S.ws.send('{"t":"ping","ts":' + Date.now() + '}'); }, 25000);
     function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
-        if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; render(); }
+        if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
         else if (m.t === 'sqErr') { S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }
         else if (m.t === 'sqTicket') onTicket(m);
@@ -219,13 +234,21 @@
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
         else if (m.t === 'sqFriendReq') { toast({ pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
+        else if (m.t === 'sqReadyCheck') onReadyCheck(m);
+        else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
         else if (m.t === 'sqWhisper') onWhisper(m);
     }
 
     // ---------------- avisos ----------------
+    // Marco girado (ver CSS): ahi viven los carteles que no cuelgan del hub.
+    function frame() {
+        let f = document.getElementById('sqFrame');
+        if (!f) { f = document.createElement('div'); f.id = 'sqFrame'; document.body.appendChild(f); }
+        return f;
+    }
     function toast(o) {
         let box = document.getElementById('sqToast');
-        if (!box) { box = document.createElement('div'); box.id = 'sqToast'; document.body.appendChild(box); }
+        if (!box) { box = document.createElement('div'); box.id = 'sqToast'; frame().appendChild(box); }
         const el = document.createElement('div'); el.className = 't' + (o.warm ? ' w' : '');
         el.innerHTML = '<div class="r">' + (o.pic ? '<img src="' + esc(o.pic) + '" alt="" referrerpolicy="no-referrer">' : '') + '<div>' + o.text + '</div></div>' + (o.actions ? '<div class="r">' + o.actions.map((a, i) => '<button data-i="' + i + '" class="' + (a[2] ? 'y' : '') + '">' + a[0] + '</button>').join('') + '</div>' : '');
         const kill = () => { clearTimeout(tm); el.remove(); };
@@ -234,6 +257,24 @@
         el.querySelectorAll('img').forEach(im => { im.onerror = () => im.remove(); });
         box.appendChild(el); snd('alert');
         while (box.children.length > 3) box.firstChild.remove();
+    }
+    // TRY AGAIN tras morir en la practica: se pide otra entrada a la misma sala si el grupo sigue buscando.
+    function practiceAgain() {
+        if (S.party && S.party.state === 'queued' && S.ws && S.ws.readyState === 1) { send({ a: 'practice' }); return true; }
+        return false;
+    }
+    // Cartel de LISTO para los companeros: el lider ha pulsado buscar o unirse y hay que confirmar.
+    const RC_TXT = { quick: 'QUICK MATCH', room: 'NEW ROOM', join: 'JOINING A ROOM' };
+    function hideRc() { const el = document.getElementById('sqRc'); if (el) el.classList.remove('show'); clearInterval(S.rcTimer); }
+    function onReadyCheck(m) {
+        let el = document.getElementById('sqRc');
+        if (!el) { el = document.createElement('div'); el.id = 'sqRc'; el.innerHTML = '<div class="bx"><div class="a"></div><div class="b"></div><div class="r"><button class="y" data-v="1">READY</button><button data-v="0">NOT READY</button></div></div>'; frame().appendChild(el); }
+        el.querySelector('.a').textContent = String(m.leader).toUpperCase() + ' WANTS TO START';
+        const paint = () => { const s = Math.max(0, Math.round((m.exp - Date.now()) / 1000)); el.querySelector('.b').innerHTML = RC_TXT[m.kind] + ' · ' + m.size + 'V' + m.size + '<br>' + s + 's'; if (s <= 0) hideRc(); };
+        paint(); clearInterval(S.rcTimer); S.rcTimer = setInterval(paint, 500);
+        el.querySelectorAll('button').forEach(b => b.onclick = () => { send({ a: 'ready', v: b.dataset.v === '1' }); hideRc(); });
+        el.classList.add('show'); el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+        snd('alert');
     }
     function onInvite(m) {
         toast({
@@ -294,14 +335,14 @@
     }
     function foundEl() {
         let el = document.getElementById('sqFound');
-        if (!el) { el = document.createElement('div'); el.id = 'sqFound'; el.innerHTML = '<div class="a"></div><div class="c b"></div><div class="b"></div>'; document.body.appendChild(el); }
+        if (!el) { el = document.createElement('div'); el.id = 'sqFound'; el.innerHTML = '<div class="a"></div><div class="c b"></div><div class="b"></div>'; frame().appendChild(el); }
         return el;
     }
 
     // ---------------- dentro de la partida ----------------
     function hud() {
         let el = document.getElementById('sqHud');
-        if (!el) { el = document.createElement('div'); el.id = 'sqHud'; document.body.appendChild(el); }
+        if (!el) { el = document.createElement('div'); el.id = 'sqHud'; frame().appendChild(el); }
         return el;
     }
     // Posiciones de companeros que manda el servidor (4 por segundo): el juego las marca en el borde si no se ven.
@@ -326,7 +367,7 @@
             return;
         }
         let el = document.getElementById('sqEnd');
-        if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = '<div class="a"></div><div class="b"></div><button>CONTINUE</button>'; document.body.appendChild(el); el.querySelector('button').onclick = () => el.classList.remove('show'); }
+        if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = '<div class="a"></div><div class="b"></div><button>CONTINUE</button>'; frame().appendChild(el); el.querySelector('button').onclick = () => el.classList.remove('show'); }
         const mine = S.roster ? S.roster.me : 'A';
         const a = el.querySelector('.a');
         if (!m.winner) { a.textContent = 'DRAW'; a.className = 'a d'; }
@@ -368,8 +409,9 @@
         for (let i = 0; i < Math.max(slots || p.members.length, p.members.length); i++) {
             const m = p.members[i];
             if (!m) { out.push('<div class="sq-av empty"><span class="sq-pic">+</span><div class="n" style="color:#4a5850">EMPTY</div></div>'); continue; }
+            const rcTag = p.rc ? (p.rc.ready[m.id] ? '<div class="l" style="color:#00ff66">READY</div>' : '<div class="l" style="color:#ffb347">WAITING…</div>') : '';
             out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="n">' + esc(m.name) + '</div>' +
-                (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : '')) + '</div>');
+                (p.rc ? rcTag : (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : ''))) + '</div>');
         }
         return '<div class="sq-grp' + (big ? ' big' : '') + '">' + out.join('') + '</div>';
     }
@@ -378,11 +420,22 @@
     function searchingHtml() {
         const p = S.party, leader = imLeader();
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
-        return '<div class="sq find"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + secs + 's</div>' +
-            groupHtml(false, p.size, true) +
+        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + secs + 's</div>' +
+            groupHtml(false, p.size, true) + '</div>' +
             '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice">' + (p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
-            (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' +
-            '<div class="sq-note">' + (p.practice ? 'A practice room is open: jump in with your group.' : 'Practice against bots until a rival shows up.') + '</div>' + errLine() + '</div></div>';
+            (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' + errLine() + '</div></div>';
+    }
+    // El lider ha pulsado buscar o unirse: se espera a que todos den LISTO.
+    function readyCheckHtml() {
+        const p = S.party, leader = imLeader(), mine = p.rc.ready[S.me];
+        const s = Math.max(0, Math.round((p.rc.exp - Date.now()) / 1000));
+        const falta = Object.values(p.rc.ready).filter(v => !v).length;
+        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqRcQ">' + (leader ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[p.rc.kind] + ' · ' + s + 's</div>' +
+            groupHtml(false, p.size, true) + '</div>' +
+            '<div class="sq-bot"><div class="sq-row">' +
+            (leader ? '<button class="sq-b on" data-a="remind"' + (falta ? '' : ' disabled') + '>REMIND</button><button class="sq-b" data-a="cancel">CANCEL</button>'
+                : (mine ? '<span class="sq-q">READY · WAITING FOR THE OTHERS</span>' : '<button class="sq-b on" data-a="rok">READY</button><button class="sq-b" data-a="rno">NOT READY</button>')) +
+            '</div>' + errLine() + '</div></div>';
     }
     function roomCard(r, mine) {
         const can = mine === r.size;
@@ -391,6 +444,7 @@
     }
     function roomsHtml() {
         const p = S.party;
+        if (p && p.rc) return readyCheckHtml();
         if (p && p.state === 'queued') return searchingHtml();
         if (p && p.state === 'match') return '<div class="sq find"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '<div class="sq-bot"></div></div>';
         const mine = groupSize();
@@ -498,6 +552,9 @@
             const a = x.dataset.a; snd('simpleselect');
             if (a === 'quick') start(() => send({ a: 'play' }));
             else if (a === 'practice') send({ a: 'practice' });
+            else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Reminder sent'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
+            else if (a === 'rok') { send({ a: 'ready', v: true }); hideRc(); }
+            else if (a === 'rno') { send({ a: 'ready', v: false }); hideRc(); }
             else if (a === 'cancel') send({ a: 'cancel' });
             else if (a === 'leave') { send({ a: 'leave' }); S.party = null; S.err = ''; render(); }
             else if (a === 'fadd') { const v = (b.querySelector('#sqAdd').value || '').trim(); if (v) { send({ a: 'fadd', u: v }); b.querySelector('#sqAdd').value = ''; S.note = 'Request sent!'; S.err = ''; } }
@@ -515,6 +572,8 @@
     // El contador de la busqueda se actualiza sin repintar todo.
     setInterval(() => {
         const q = document.getElementById('sqQ');
+        const rq = document.getElementById('sqRcQ');
+        if (rq && S.party && S.party.rc) rq.textContent = (imLeader() ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[S.party.rc.kind] + ' · ' + Math.max(0, Math.round((S.party.rc.exp - Date.now()) / 1000)) + 's';
         if (q && S.party && S.party.queuedAt) q.textContent = (S.party.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + Math.max(0, Math.round((Date.now() - S.party.queuedAt) / 1000)) + 's';
     }, 1000);
 
@@ -573,7 +632,9 @@
         if (!c || !/^[A-Za-z0-9]{5}$/.test(c)) { setTimeout(boot, 2500); return; }
         setTimeout(() => joinCode(c.toUpperCase()), 1200);
     }
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, state: S };
+    window.pwSquadFrame = frame;
+    window.pwToast = toast;
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadAllies = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.a : null);

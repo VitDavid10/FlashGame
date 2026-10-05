@@ -100,6 +100,8 @@ server/airdrop-data.json.tmp
 # Amigos y perfiles sociales (datos personales)
 server/social.json
 server/social.json.tmp
+# Cobros de misiones de la app por cuenta (datos personales)
+server/appquests.json
 
 # App de la dApp Store: la clave de firma vive FUERA del repo
 # (C:\Users\34679\pillwars-app-signing). Esto es por si alguna vez se copia aqui:

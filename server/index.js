@@ -47,6 +47,8 @@ const rake = require('./rake.js');                 // lo que se queda la casa, y
 leaderboard.setProveedorOponentes(() => matches.oponentesDe());
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILLY + quema)
+const skinpoints = require('./skinpoints.js');
+const appquests = require('./appquests.js').create({ addPoints: (cid, n) => skinpoints.addPoints(cid, n) });   // misiones de la app: el servidor solo cobra
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
 const { createTelegram } = require('./telegram.js');  // anuncios fijados y posts de X en Telegram
@@ -2833,6 +2835,20 @@ const httpServer = http.createServer(async (req, res) => {
     // la wallet firmada si no hay X):
     // desde ahi SP y skins se guardan en la cuenta (ver skinpoints.linkCid). Lo
     // del movil se SUMA a la cuenta; nunca se pierde nada.
+    // Cobro de una mision de la app (progreso contado en el movil, tambien offline): hoy, maximo 3 al dia, solo con cuenta.
+    if (urlPath === '/api/appquests/claim' && req.method === 'POST') {
+        const cid = String(req.headers['x-client-id'] || '').trim();
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 1000) req.destroy(); });
+        req.on('end', () => {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+            let p; try { p = JSON.parse(body || '{}'); } catch (e) { p = {}; }
+            if (!isValidClientId(cid)) { res.end(JSON.stringify({ ok: false, error: 'no_session' })); return; }
+            const acc = airdrop.xAccountOf(req);
+            res.end(JSON.stringify(appquests.claim(acc && acc.id, cid, String(p.id || '').slice(0, 40))));
+        });
+        return;
+    }
     if (urlPath === '/api/account/link' && req.method === 'POST') {
         const cid = String(req.headers['x-client-id'] || '').trim();
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });

@@ -86,6 +86,7 @@ function createVirtualFriends(ctx) {
         else if (m.t === 'sqWhisper' && !m.mine) setTimeout(() => say(ws, { a: 'whisper', id: m.from.id, text: rnd(REPLIES) }), 900);
         else if (m.t === 'sqInvite') setTimeout(() => say(ws, { a: 'join', code: m.code, name: f.u }), 500);
         else if (m.t === 'sqTicket') setTimeout(() => play(f, m), 350);
+        else if (m.t === 'sqReadyCheck') setTimeout(() => say(ws, { a: 'ready', v: true }), 700);
     }
 
     for (const f of FRIENDS) {

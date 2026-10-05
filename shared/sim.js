@@ -645,17 +645,20 @@
         }
 
         splitPlayer(p, tx, ty) {
-            if (this.now - p.lastSplitTime < SPLIT_COOLDOWN_MS || p.cells.length >= MAX_CELLS) return;
+            // Arenas por equipos: config.maxPlayerCells = 2, la pildora solo se divide en dos.
+            const cap = this.config.maxPlayerCells || MAX_CELLS;
+            if (this.now - p.lastSplitTime < SPLIT_COOLDOWN_MS || p.cells.length >= cap) return;
             let did = false;
-            for (let i = p.cells.length - 1; i >= 0; i--) { let c = p.cells[i]; if (c.r >= 35 && p.cells.length < MAX_CELLS) { let a = Math.atan2(ty - c.y, tx - c.x); this.performSplit(c, a); did = true; } }
+            for (let i = p.cells.length - 1; i >= 0; i--) { let c = p.cells[i]; if (c.r >= 35 && p.cells.length < cap) { let a = Math.atan2(ty - c.y, tx - c.x); this.performSplit(c, a); did = true; } }
             if (did) p.lastSplitTime = this.now;
         }
 
         triggerRandomSplit(p) {
-            if (p.cells.length >= MAX_CELLS) return;
+            const cap = this.config.maxPlayerCells || MAX_CELLS;
+            if (p.cells.length >= cap) return;
             let newC = [];
             p.cells.forEach(c => {
-                if (c.r >= 35 && p.cells.length + newC.length < MAX_CELLS) {
+                if (c.r >= 35 && p.cells.length + newC.length < cap) {
                     let nR = c.r / 1.414; c.r = nR; c.bornTime = this.now; let a = Math.random() * Math.PI * 2;
                     let s = new Cell(c.x + Math.cos(a) * c.r * 2, c.y + Math.sin(a) * c.r * 2, nR, c.colorBot, c.colorTop, c.name, false, c.skinUrl, c.id, this.now);
                     s.magnetTime = c.magnetTime; s.sprintTime = c.sprintTime;
@@ -675,7 +678,7 @@
             this.emit({ type: 'virusSound', isBot: cell.isBot, x: v.x, y: v.y });
             if (!isP) { let g = (cell.mass < VIRUS_GAIN_THRESHOLD) ? VIRUS_GAIN_LOW : VIRUS_GAIN_HIGH; cell.r = Math.sqrt((cell.mass + g) / (Math.PI * PILL_RATIO)); if (!cell.isBot) this.emit({ type: 'text', playerId: cell.id, world: true, text: "VIRUS GAIN MASS+", color: "#00FF00" }); }
             if (cell.immuneTime > 0) return;
-            let list = this.ownerCellsOf(cell); let lim = MAX_CELLS; let myCount = 0;
+            let list = this.ownerCellsOf(cell); let lim = (!cell.isBot && this.config.maxPlayerCells) || MAX_CELLS; let myCount = 0;
             if (cell.isBot) { for (let e of this.enemies) if (e.id === cell.id) myCount++; } else { myCount = list.length; }
             if (myCount >= lim) return;
             cell.r /= 1.732; cell.bornTime = this.now;

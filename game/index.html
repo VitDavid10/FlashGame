@@ -5590,6 +5590,7 @@
         function startMatch(mode, online) {
             match = { mode, online, kills: 0, skillsUsed: 0, peakMass: 0, alive: true, reportedOnline: false, reportedGame: false, reportedSurvive: false, reportedSkill: false };
             resetKills();
+            try { if (window.pwAq) pwAq.matchStart(); } catch (e) {}   // misiones de la app (vale en cualquier modo)
         }
         function endMatch(reason) {
             if (!match) return;
@@ -11411,6 +11412,7 @@
     }
     function finishGameSuccess() {
         try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {}
+        try { if (window.pwAq) pwAq.lifeEnd(myCells().length > 0 && !isSpectating, _miPuesto, true); } catch (e) {}
         hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer');
         isSpectating = true;
         if (saveInterval) clearInterval(saveInterval);
@@ -14846,6 +14848,11 @@
     // pagar ni firmar nada. Antes el botón ni siquiera salía sin conexión.
     async function tryAgainOnline() {
         if (_joinInFlight) return;
+        // Arenas: la practica deja volver a entrar mientras el grupo siga buscando; una partida entre grupos no se repite.
+        if (netState && netState.squad) {
+            if (window._squadKind === 'practice' && window.PWSquad && PWSquad.practiceAgain()) return;
+            returnToMenu(); return;
+        }
         if (!netState || !netState.joinMsg) {
             if (sim && sim.isRemote) { returnToMenu(); return; }
             els.result.style.display = 'none';
@@ -15378,14 +15385,14 @@
         let ov = document.getElementById('sqEntry');
         if (!ov) {
             const st = document.createElement('style');
-            st.textContent = '#sqEntry{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);pointer-events:auto}' +
+            st.textContent = '#sqEntry{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);pointer-events:auto}' +
                 '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,15px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:row;gap:22px;align-items:center;white-space:nowrap;' +
                 'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:14px 20px}' +
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
             ov.innerHTML = '<div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div>';
-            document.body.appendChild(ov);
+            (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
         }
         return ov;
     }
@@ -15395,6 +15402,7 @@
     }
     function squadStatus(n) {
         window.__loadingLock = true;
+        if (n === 0) window._sqT0 = performance.now();   // los tiempos minimos de cada fase cuentan desde aqui
         const ov = squadOverlay(); ov.style.display = 'flex'; squadMark(ov, n);
         els.loginOverlay.style.display = 'none';   // sin esto el menu sigue "abierto" mientras conecta y el hub vuelve a salir encima
     }
@@ -15404,14 +15412,16 @@
     }
     function showSquadEntry(readyFn, onDone) {
         clearTimeout(window._sqGuard); clearInterval(window._sqIv);
-        squadStatus(1);
+        const t0 = window._sqT0 || performance.now();
+        squadStatus(performance.now() - t0 < 800 ? 0 : 1);
         const ov = squadOverlay();
-        const t0 = performance.now();
-        let listoAt = 0;
+        let fase = performance.now() - t0 < 800 ? 0 : 1, listoAt = 0;
+        // Margen para poder leerlo aunque cargue muy rapido: cada fase se ve un minimo (~2,3 s en total).
         window._sqIv = setInterval(() => {
             const dt = performance.now() - t0;
-            if (!listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt > 500) { listoAt = performance.now(); squadMark(ov, 2); }
-            if (listoAt && performance.now() - listoAt > 450) {
+            if (fase === 0 && dt >= 800) { fase = 1; squadMark(ov, 1); }
+            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= 1600) { listoAt = performance.now(); squadMark(ov, 2); }
+            if (listoAt && performance.now() - listoAt > 700) {
                 clearInterval(window._sqIv);
                 ov.style.display = 'none'; window.__loadingLock = false;
                 if (onDone) onDone();
@@ -15804,7 +15814,7 @@
         }
         els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
-    function selectArcadeSkill(id) { SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
+    function selectArcadeSkill(id) { try { if (window.pwAq) pwAq.pick(); } catch (e) {} SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
 
     // Cada frame: entrega el input a la sim, avanza un tick, consume los eventos
     // y actualiza el HUD. Toda la física/colisiones ocurre dentro de sim.step().
@@ -15829,6 +15839,7 @@
         // 3) HUD
         let totalM = 0; myCells().forEach(c => totalM += c.mass);
         if (totalM > 0) Quests.reportMass(totalM);
+        if (totalM > 0 && !isSpectating) { try { if (window.pwAq) pwAq.tick(delta, totalM); } catch (e) {} }
         fpsTimer += delta; frameCount++; if (fpsTimer >= 1000) { els.fpsVal.innerText = frameCount; fpsTimer = 0; frameCount = 0; }
         const globalCD = p ? p.globalCD : 0;
         let gcdText = globalCD > 0 ? (globalCD/1000).toFixed(1) : ""; for(let i=1; i<=10; i++) { if(uiGcds[i]) uiGcds[i].innerText = gcdText; }
@@ -15926,13 +15937,13 @@
         for (const ev of events) {
             switch (ev.type) {
                 case 'explosion': createExplosion(ev.x, ev.y); break;
-                case 'splitSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('split', {x: ev.x, y: ev.y}); } else { SoundManager.playSplit(); } break;
+                case 'splitSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('split', {x: ev.x, y: ev.y}); } else { SoundManager.playSplit(); try { if (window.pwAq) pwAq.split(); } catch (e) {} } break;
                 case 'shootSound':
                     if (ev.isBot) { if (enableEnemySnd) SoundManager.play('shoot', {x: ev.x, y: ev.y}); }
                     else if (ev.playerId === 'me' || ev.x == null) { SoundManager.play('shoot'); }
                     else { SoundManager.play('shoot', {x: ev.x, y: ev.y}); }
                     break;
-                case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); } break;
+                case 'virusSound': if (ev.isBot) { if (enableEnemySnd) SoundManager.play('virus', {x: ev.x, y: ev.y}); } else { SoundManager.play('virus'); try { if (window.pwAq) pwAq.virus(); } catch (e) {} } break;
                 case 'text': if (ev.playerId === 'me') spawnFloatingText(ev.text, ev.color, ev.world); break;
                 // Mapa vivo (classic): el borde se mueve con la gente, sin anunciarlo
                 // (decision de David).
@@ -15948,6 +15959,7 @@
                 case 'botKilled': {
                     if (ev.playerId !== 'me') break;
                     Quests.reportKill();
+                    try { if (window.pwAq) pwAq.kill(myCells().length > 1); } catch (e) {}
                     if (ev.mode === 'classic') {
                         let msg = "KILL"; if (ev.streak === 1) msg = "FIRST BLOOD"; else if (ev.streak === 2) msg = "DOUBLE KILL"; else if (ev.streak === 3) msg = "TRIPLE KILL"; else if (ev.streak === 4) msg = "QUADRA KILL"; else if (ev.streak >= 5) msg = "PENTAKILL";
                         showKillStreak(msg); SoundManager.playFloatKill();
@@ -15959,9 +15971,10 @@
                     }
                     break;
                 }
-                case 'botPieceEaten': if (ev.playerId === 'me') SoundManager.play('kill1'); break;
+                case 'botPieceEaten': if (ev.playerId === 'me') { SoundManager.play('kill1'); try { if (window.pwAq) pwAq.piece(); } catch (e) {} } break;
                 case 'playerDied': {
                     if (ev.playerId !== 'me') break;
+                    try { if (window.pwAq) pwAq.lifeEnd(false, null, false); } catch (e) {}
                     if (heroAutopilotActive) {
                         // Demo del hero: heroAmbientDemo() se llama UNA sola vez al
                         // cargar el iframe (ver el arranque al final del archivo) y el
@@ -15991,6 +16004,7 @@
                 case 'skillUsed': {
                     if (ev.playerId !== 'me') break;
                     Quests.reportSkill(ev.id);
+                    try { if (window.pwAq) pwAq.skill(ev.id, !!ev.win); } catch (e) {}
                     if (ev.id === 'godmass') { spawnFloatingText("GOD MODE MASS", "#00FF00"); SoundManager.play('big'); disparaFxMasa(true); }
                     else if (ev.id === 3) { spawnFloatingText("+ SPEED", "#00FFFF"); SoundManager.play('sprint'); }
                     else if (ev.id === 4) { SoundManager.play('tp'); }

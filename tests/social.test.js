@@ -183,7 +183,7 @@ test('retos: tamano distinto o sala inexistente se rechazan', () => {
     say(sq, a, { a: 'create', name: 'A' });
     const codeA = a.last('sqParty').code;
     say(sq, a2, { a: 'join', code: codeA, name: 'A2' });
-    say(sq, a, { a: 'play', custom: true });          // sala de 2
+    say(sq, a, { a: 'play', custom: true }); say(sq, a2, { a: 'ready', v: true });          // sala de 2
     say(sq, b, { a: 'create', name: 'B' });            // grupo de 1
     say(sq, b, { a: 'challenge', code: codeA });
     assert.equal(b.last('sqErr').reason, 'size_mismatch');
@@ -323,18 +323,22 @@ test('sin @ de X se ve el nombre elegido; un cambio de nombre o icono llega al g
     const m = a.last('sqParty').members[0];
     assert.equal(m.name, 'David');
     assert.equal(m.av.t, 'spook');
-    // con @ de X manda el @, el nombre elegido no cambia nada
+    // el nombre elegido manda SIEMPRE; solo si no pone ninguno sale su @ de X
     const x = fakeWs();
     say(sq, x, { a: 'hello', token: token.sign({ id: 'XXXXXXX', u: 'xavi', n: 'Xavi', p: '' }), name: 'Otro' });
     say(sq, x, { a: 'create' });
-    assert.equal(x.last('sqParty').members[0].name, '@xavi');
+    assert.equal(x.last('sqParty').members[0].name, 'Otro');
+    const y = fakeWs();
+    say(sq, y, { a: 'hello', token: token.sign({ id: 'YYYYYYY', u: 'yago', n: 'Yago', p: '' }), name: 'PLAYER' });
+    say(sq, y, { a: 'create' });
+    assert.equal(y.last('sqParty').members[0].name, '@yago', 'sin nombre elegido, el @ de X');
 });
 
 test('las posiciones de companeros llegan solo a los del mismo equipo y no a los virtuales', () => {
     const sq = make();
     const a = user(sq, 'AAAAAAA', 'ana'), b = user(sq, 'BBBBBBB', 'bob');
     say(sq, a, { a: 'create' }); say(sq, b, { a: 'join', code: a.last('sqParty').code });
-    say(sq, a, { a: 'play' });
+    say(sq, a, { a: 'play' }); say(sq, b, { a: 'ready', v: true });
     const wa = fakeWs(), wb = fakeWs();
     say(sq, a, { a: 'practice' }); say(sq, b, { a: 'practice' });
     const ra = sq.join(wa, 'x', { t: 'join', squad: a.last('sqTicket').ticket }), rb = sq.join(wb, 'x', { t: 'join', squad: b.last('sqTicket').ticket });
