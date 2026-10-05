@@ -467,7 +467,7 @@ function createSquad(deps) {
     if (gc.unref) gc.unref();
 
     // Amigos de prueba @icefox y @bandit: aparecen al buscarlos, aceptan, contestan y juegan.
-    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log, readyMs: deps.virtualReadyMs });
+    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log, readyMs: deps.virtualReadyMs, rivals: deps.virtualRivals !== false });
 
     return { handle, onClose, join, tick, endOf, onEvent, social, virtual, _internals: { parties, queues, tickets, makeRoom, customRooms } };
 }

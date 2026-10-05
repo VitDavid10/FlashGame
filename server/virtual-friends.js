@@ -10,6 +10,8 @@
  *   - y juegan: entran a la practica o a la partida con su ticket y se mueven por el mapa,
  *     para poder ver los colores, los aros de companero/rival y como se juega en 2v2 y 3v3.
  *
+ * Cuando tu grupo con alguno de ellos se pone a buscar rival, los que quedan libres forman el grupo rival y tambien
+ * buscan, para poder probar el VS (1v1 y 2v2; en 3v3 no hay bots de sobra).
  * No son jugadores reales ni rellenan salas por su cuenta: solo actuan por tu invitacion. Se
  * quitan solos de la sala cuando ya no queda ningun humano dentro.
  *
@@ -21,6 +23,7 @@ const token = require('./social-token.js');
 const FRIENDS = [
     { id: 'TESTICE', u: 'icefox', av: { t: 'pill', bg: '#1e6bff', top: '#e8f6ff', bot: '#3aa7ff' }, top: '#e8f6ff', bot: '#3aa7ff' },
     { id: 'TESTBAN', u: 'bandit', av: { t: 'bag', bg: '#ff2a55' }, top: '#2b2b2b', bot: '#ff2a55' },
+    { id: 'TESTRCE', u: 'rcer', av: { t: 'spook', bg: '#ffb347' }, top: '#fff3d6', bot: '#ffb347' },
 ];
 const LEAD_TXT = "OK! I'll lead. Join my group and I'll start a ready check in a few seconds.";
 const REPLIES = [
@@ -70,7 +73,31 @@ function createVirtualFriends(ctx) {
         log(`Amigo de prueba @${f.u} entra a ${room.key}`);
     }
 
+    // Rival de prueba: los amigos libres crean un grupo del mismo tamano y buscan partida.
+    const rivalDe = new Set();
+    function armaRival(m) {
+        if (!ctx.rivals || rivalDe.has(m.code) || !m.members) return;
+        const dentro = new Set(m.members.map(x => x.uid));
+        const jefe = m.members.find(x => x.id === m.leader);
+        if (!jefe || FRIENDS.some(x => x.id === jefe.uid)) return;  // el grupo lo lleva un bot: es un rival, no el tuyo
+        if (!m.members.some(x => FRIENDS.some(b => b.id === x.uid))) return;
+        const libres = lobby.filter(w => !dentro.has(w.fid));
+        const n = m.size || m.members.length;
+        if (libres.length < n) return;
+        rivalDe.add(m.code); setTimeout(() => rivalDe.delete(m.code), 120000);
+        const [lider, ...resto] = libres.slice(0, n);
+        lider.rival = { resto, n, buscando: false };
+        say(lider, { a: 'leave' }); say(lider, { a: 'create' });
+    }
     function react(ws, f, m) {
+        if (m.t === 'sqParty' && ws.rival && m.leader === m.me && !ws.rival.buscando) {
+            // el lider rival ya tiene su grupo: los demas entran y, con todos dentro, se pone a buscar
+            const r = ws.rival;
+            if (m.members.length < r.n) { if (!r.llamados) { r.llamados = true; setTimeout(() => r.resto.forEach(w => say(w, { a: 'join', code: m.code })), 300); } }
+            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, { a: 'play' }); ws.rival = null; }, 500); }
+            return;
+        }
+        if (m.t === 'sqParty' && m.state === 'queued' && !m.custom && m.leader !== m.me) armaRival(m);
         if (m.t === 'sqFriendReq') setTimeout(() => say(ws, { a: 'faccept', id: m.from.id }), 400);
         else if (m.t === 'sqWhisper' && !m.mine) {
             // Susurrale "lead" y hace de lider: crea el grupo, te invita y, en cuanto entras, lanza el LISTO (para probar el cartel de companero).
@@ -91,7 +118,7 @@ function createVirtualFriends(ctx) {
     for (const f of FRIENDS) {
         const ws = { readyState: 1, virtual: true, send(raw) { let m; try { m = JSON.parse(raw); } catch (e) { return; } react(ws, f, m); }, close() {} };
         social.hello(ws, token.sign({ id: f.id, u: f.u, n: f.u, p: '', w: '' }), f.av);
-        lobby.push(ws);
+        ws.fid = f.id; lobby.push(ws);
     }
     return { lobby, ids: FRIENDS.map(f => f.id) };
 }

@@ -129,7 +129,7 @@ test('READY ALL: el lider avisa y los amigos de prueba contestan casi al momento
     const { sq } = make();
     // ready lento para ver la diferencia
     const sq2 = createSquad({
-        rooms: new Map(), resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000, virtualReadyMs: 5000,
+        rooms: new Map(), resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000, virtualReadyMs: 5000, virtualRivals: false,
         buildSim: () => ({}), welcomeMsg: () => '{}', refillBots: () => {}, broadcast: () => {}, log: () => {},
     });
     const me = human(sq2, 'AAAAAAA', 'ana');
@@ -157,4 +157,19 @@ test('susurrar "lead" a un amigo de prueba: crea el grupo y te invita', async ()
     say(sq, me, { a: 'join', code: inv.code });
     assert.equal(me.last('sqParty').members.length, 2);
     assert.equal(me.last('sqParty').leader !== me.last('sqParty').me, true, 'el lider es el bot');
+});
+
+test('con bandit en tu grupo, al buscar rival icefox y rcer forman el grupo rival', async () => {
+    const { sq, rooms } = make();
+    const me = human(sq, 'AAAAAAA', 'ana');
+    say(sq, me, { a: 'fadd', u: 'bandit' }); await wait(600);
+    say(sq, me, { a: 'create' });
+    say(sq, me, { a: 'pinvite', id: me.last('sqFriends').friends[0].id });
+    await wait(900);
+    say(sq, me, { a: 'play' });
+    await wait(9000);
+    const p = me.last('sqParty');
+    const tk = me.last('sqTicket');
+    assert.ok(tk && tk.kind === 'match', 'se encuentra rival: ' + JSON.stringify(p && p.state));
+    assert.equal(tk.lineup.B.length + tk.lineup.A.length, 4);
 });

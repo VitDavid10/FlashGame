@@ -102,10 +102,15 @@
 .sq-grp.small .sq-av .sq-pic{width:2.5em;height:2.5em;font-size:1em}
 .sq-grp.small .sq-av .n{font-size:.4em}
 .sq-grp.big .sq-av{width:12em;gap:.9em}
-.sq-grp.big .sq-av .sq-pic{width:5.2em;height:5.2em;font-size:1.5em}
+.sq-grp.big .sq-av .sq-pic{width:6.2em;height:6.2em;font-size:1.7em}
 .sq-grp.big .sq-av .n{font-size:.55em}
 .sq-grp.big .sq-av .l{font-size:.36em}
 .sq-bot{display:flex;flex-direction:column;align-items:center;gap:.8em;width:100%}
+.sq.find .sq-bot{margin-bottom:-.9em}
+#sqGuard{position:absolute;inset:0;z-index:420;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);pointer-events:auto;font-family:'Press Start 2P',monospace;color:#fff}
+#sqGuard.show{display:flex}
+#sqGuard .bx{background:#0a110d;border:3px solid #ffb347;padding:16px 18px;max-width:78%;text-align:center;display:flex;flex-direction:column;gap:14px;font-size:9px;line-height:1.7}
+#sqGuard .bx .r{display:flex;gap:10px;justify-content:center}
 .sq-av .k{font-size:.4em;color:#e5302f;cursor:pointer;padding:.2em .6em;border:.14em solid #5a2420}
 /* lista de salas */
 .sq-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:1em;width:100%}
@@ -298,7 +303,7 @@
     }
     // TRY AGAIN tras morir en la practica: se pide otra entrada a la misma sala si el grupo sigue buscando.
     function practiceAgain() {
-        if (S.party && S.party.state === 'queued' && S.ws && S.ws.readyState === 1) { send({ a: 'practice' }); return true; }
+        if (S.party && S.party.state === 'queued' && S.ws && S.ws.readyState === 1) { window._sqAgain = true; send({ a: 'practice' }); return true; }
         return false;
     }
     // Cartel de LISTO para los companeros: el lider ha pulsado buscar o unirse y hay que confirmar.
@@ -349,6 +354,7 @@
     }
     function onTicket(m) {
         if (m.kind === 'practice') {
+            S.lineup = null;
             // El jugador pidio practicar mientras espera. Si ya hay una partida de equipo en curso no se pisa.
             if (window.pwSquadActive && window.pwSquadActive() === 'match') return;
             enter(m.ticket, 'practice');
@@ -362,6 +368,7 @@
         // Fotos de tu equipo VS fotos del rival, con su nombre de X o de wallet: asi sabes con quien juegas.
         const side = (list, cls) => '<div class="side ' + cls + '">' + (list || []).map(x => '<div class="p">' + pic({ p: x.pic, av: x.av, n: x.name }) + '<span class="nm">' + esc(x.name) + '</span></div>').join('') + '</div>';
         const mine = m.team === 'B' ? 'B' : 'A', other = mine === 'A' ? 'B' : 'A';
+        S.lineup = m.lineup ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>' : null;
         el.querySelector('.c').innerHTML = m.lineup
             ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>'
             : esc(m.size + 'V' + m.size + ' · TEAM ' + m.team);
@@ -710,6 +717,30 @@
         if (!c || !/^[A-Za-z0-9]{5}$/.test(c)) { setTimeout(boot, 2500); return; }
         setTimeout(() => joinCode(c.toUpperCase()), 1200);
     }
+    // PLAY normal con el grupo buscando (o en LISTO): avisa de que se sale de la cola y del grupo, y solo entonces sigue.
+    function guardPlay(proceed) {
+        const p = S.party;
+        if (!p || !(p.state === 'queued' || p.rc)) return proceed();
+        let el = document.getElementById('sqGuard');
+        if (!el) {
+            el = document.createElement('div'); el.id = 'sqGuard';
+            el.innerHTML = '<div class="bx"><div>YOU ARE IN THE ARENA QUEUE.<br>PLAYING A NORMAL ROOM LEAVES THE QUEUE AND YOUR GROUP.</div><div class="r"><button class="sq-b" data-g="no">STAY</button><button class="sq-b on" data-g="go">LEAVE & PLAY</button></div></div>';
+            frame().appendChild(el);
+        }
+        el.classList.add('show');
+        el.onclick = e => {
+            const g = e.target.dataset && e.target.dataset.g; if (!g) return;
+            el.classList.remove('show');
+            if (g === 'go') { send({ a: 'leave' }); S.party = null; S.err = ''; rivalsBanner(); render(); proceed(); }
+        };
+    }
+    // Las barras y las marcas de companeros solo existen dentro de la partida de arenas.
+    setInterval(() => {
+        const h = document.getElementById('sqHud');
+        if ((h && h.classList.contains('show') || S.rel) && !(typeof gameRunning !== 'undefined' && gameRunning)) { if (h) h.classList.remove('show'); S.rel = null; S.allies = null; rivalsBanner(); }
+    }, 700);
+    window.pwSquadGuard = guardPlay;
+    window.pwSquadLineup = () => { if (!S.lineup) return null; const d = document.createElement('div'); d.innerHTML = S.lineup; hydrate(d); return d.firstChild; };
     window.pwSquadFrame = frame;
     window.pwToast = toast;
     window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };

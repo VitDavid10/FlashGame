@@ -14077,6 +14077,7 @@
     window.pwSquadEnter = function (ticket, kind) {
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
         window._squadTicket = ticket; window._squadKind = kind;
+        window._sqQuick = !!window._sqAgain; window._sqAgain = false;   // TRY AGAIN de la practica: sin mensajes de carga
         _joinInFlight = false;
         squadStatus(0);   // GENERATING ROOM desde el primer momento
         setTimeout(() => window.startOnlineGame(), 60);
@@ -14215,7 +14216,7 @@
                 if (glow) { lblOpts.glow = glow; lblOpts.glowBlur = 8; }
                 lblWrap.appendChild(pixFancyText(label, 2, lblOpts));
             }
-            el.appendChild(lblWrap);
+            if (label !== 'MATCH STARTING') el.appendChild(lblWrap);   // el rotulo de inicio sobraba: solo los digitos
             // Dígitos CD_SECS..1 con su PNG horneado por modo, al tamaño del
             // contador procedural de antes (~190px de alto). Si el llamador pide un
             // look custom (font/fill/plain) o el dígito no tiene PNG, fuente
@@ -14240,7 +14241,7 @@
                 cv.className = 'cd-n'; el.appendChild(cv);
             }
         }
-        else { el.innerHTML = '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
+        else { el.innerHTML = label === 'MATCH STARTING' ? '' : '<div class="cd-lbl">' + label + '</div>'; const nd = document.createElement('div'); nd.className = 'cd-n'; nd.textContent = n; el.appendChild(nd); }
         document.body.appendChild(el);
         // El sonido (contador.mp3) lo dispara quien llama, una vez al entrar en los CD_SECS.
         setTimeout(() => { if (el.parentNode) el.remove(); }, 1000);
@@ -14367,7 +14368,6 @@
             showCountdownNumber(remaining, 'MATCH STARTING');
         } else {
             // Mientras el FINDING (3s) está activo no pisamos su banner.
-            if (_findingDone) setLobbyBanner('<b>' + _lobbyRoom + '</b> · MATCH STARTING IN <b>' + remaining + 's</b>');
             WaitHud.showTimer(remaining);
             hideCountdownNumber();
         }
@@ -15385,13 +15385,14 @@
         let ov = document.getElementById('sqEntry');
         if (!ov) {
             const st = document.createElement('style');
-            st.textContent = '#sqEntry{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);pointer-events:auto}' +
-                '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,15px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:row;gap:22px;align-items:center;white-space:nowrap;' +
-                'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:14px 20px}' +
+            st.textContent = '#sqEntry{position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#05090a;pointer-events:auto}' +   /* carga opaca: nada de partida detras */
+                '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,13px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:9px;align-items:flex-start;white-space:nowrap;' +
+                'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:12px 18px}' +
+                '#sqEntry .lw{font-family:\'Press Start 2P\',monospace;color:#fff}#sqEntry.quick .b,#sqEntry.quick .lw{display:none}' +
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
-            ov.innerHTML = '<div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div>';
+            ov.innerHTML = '<div class="lw"></div><div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div>';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
         }
         return ov;
@@ -15404,6 +15405,9 @@
         window.__loadingLock = true;
         if (n === 0) window._sqT0 = performance.now();   // los tiempos minimos de cada fase cuentan desde aqui
         const ov = squadOverlay(); ov.style.display = 'flex'; squadMark(ov, n);
+        ov.classList.toggle('quick', !!window._sqQuick);
+        const lw = ov.querySelector('.lw'); lw.innerHTML = '';
+        if (!window._sqQuick && window.pwSquadLineup) { const l = window.pwSquadLineup(); if (l) lw.appendChild(l); }
         els.loginOverlay.style.display = 'none';   // sin esto el menu sigue "abierto" mientras conecta y el hub vuelve a salir encima
     }
     function hideSquadEntry() {
@@ -15420,8 +15424,8 @@
         window._sqIv = setInterval(() => {
             const dt = performance.now() - t0;
             if (fase === 0 && dt >= 800) { fase = 1; squadMark(ov, 1); }
-            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= 1600) { listoAt = performance.now(); squadMark(ov, 2); }
-            if (listoAt && performance.now() - listoAt > 700) {
+            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= (window._sqQuick ? 300 : 1600)) { listoAt = performance.now(); squadMark(ov, 2); }
+            if (listoAt && performance.now() - listoAt > (window._sqQuick ? 100 : 700)) {
                 clearInterval(window._sqIv);
                 ov.style.display = 'none'; window.__loadingLock = false;
                 if (onDone) onDone();
@@ -15759,7 +15763,7 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(cargada, () => SoundManager.playMusic());
+            if (netState && netState.squad) showSquadEntry(cargada, () => { showGoSplash(); SoundManager.playMusic(); });
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al

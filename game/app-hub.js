@@ -1047,7 +1047,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // El sorteo del dia se calcula una vez (aqStat se llama muchas veces por segundo).
     let aqCache = null;
     const aqList = () => { const d = aqLoad().day; if (!aqCache || aqCache.d !== d) aqCache = { d, l: appMissionsFor(d) }; return aqCache.l; };
-    function aqToast(t) { try { if (window.pwToast) return window.pwToast({ text: t, warm: true, ms: 6000 }); showSystemMsg(t, 'MISSION'); } catch (e) {} }
     function aqStat(stat, n, abs) {
         const a = aqLoad(); let cambio = false;
         for (const m of aqList()) {
@@ -1056,7 +1055,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const prev = a.prog[id] | 0, v = Math.min(m.goal, abs ? Math.max(prev, n | 0) : prev + (n | 0));
             if (v === prev) continue;
             a.prog[id] = v; cambio = true;
-            if (v >= m.goal) { a.done[id] = 1; aqToast('MISSION COMPLETE: ' + m.t + ' · +' + m.pts + ' SP'); try { SoundManager.play('select'); } catch (e) {} aqClaim(m); }
+            if (v >= m.goal) { a.done[id] = 1; a.pins = a.pins.filter(x => x !== id); aqClaim(m); }   // en silencio, y deja sitio a otra en el menu
         }
         if (cambio) { aqSave(); aqHud(); if ($('#ahQ').classList.contains('open')) renderQuests(); }
     }
@@ -1114,10 +1113,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         let el = document.getElementById('aqHud');
         if (!el) {
             const st = document.createElement('style');
-            st.textContent = '#aqHud{position:absolute;left:8px;top:90px;z-index:55;display:none;max-width:52vw;font-family:\'Press Start 2P\',monospace;font-size:7px;line-height:1.5;pointer-events:none;text-shadow:1px 1px 0 #000}' +
+            st.textContent = '#aqHud{position:absolute;right:8px;top:90px;z-index:55;display:none;max-width:52vw;text-align:right;font-family:\'Press Start 2P\',monospace;font-size:7px;line-height:1.5;pointer-events:none;text-shadow:1px 1px 0 #000}' +
                 '#aqHud.show{display:block}#aqHud .h{color:#8aa096;margin-bottom:3px}' +
-                '#aqHud .r{background:rgba(6,10,8,.55);border-left:3px solid #ccff00;padding:3px 7px;margin-bottom:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-                '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-left-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}';
+                '#aqHud .r{background:rgba(6,10,8,.55);border-right:3px solid #ccff00;padding:3px 7px;margin-bottom:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+                '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-right-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}';
             document.head.appendChild(st);
             el = document.createElement('div'); el.id = 'aqHud';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(el);
@@ -1385,7 +1384,12 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
             try { SoundManager.play('select'); } catch (x) {}
             try {
-                if (typeof Rejoin !== 'undefined' && Rejoin.get()) { startOnlineGame(); return; }
+                // Volver a la partida en curso solo si es la sala elegida: antes cualquier sala de pago te devolvia a la FREE que dejaste.
+                if (typeof Rejoin !== 'undefined' && Rejoin.get()) {
+                    const rj = Rejoin.get();
+                    if (kind === 'online' && (!rj.room || rj.room === room)) { startOnlineGame(); return; }
+                    Rejoin.clear();
+                }
                 if (kind === 'online' && room !== 'Free' && !(await saldoParaSala())) return;
                 const nombre = ((document.getElementById('playerNameInput') || {}).value || '').trim();
                 // Con nombre ya puesto se entra sin preguntar; si falta, el cartel de nombre de siempre.
@@ -1448,6 +1452,12 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const o = window[fn];
             if (typeof o !== 'function') return;
             window[fn] = function () {
+                if (fn === 'startOnlineGame' && !window._squadTicket && window.pwSquadGuard && !window._sqGuardOk) {
+                    // Buscando arena: avisa y, si confirma, sale del grupo y repite esta llamada.
+                    const args = arguments;
+                    window.pwSquadGuard(() => { window._sqGuardOk = true; try { window.startOnlineGame.apply(window, args); } finally { window._sqGuardOk = false; } });
+                    return;
+                }
                 if (fn === 'startGame' || window._squadTicket) entra(); else alEntrar();
                 return o.apply(this, arguments);
             };
