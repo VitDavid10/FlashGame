@@ -796,6 +796,8 @@
             html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-info {
                 width: 268px; max-width: none; padding: 40px 26px 30px;
             }
+            html:not([data-hero]) body.mobile-allowed #roomInfoModal .pw-modal-box.room-info { --ri-l: 216px; --ri-r: 200px; column-gap: 14px; }
+            html:not([data-hero]) body.mobile-allowed #roomInfoModal .ri-tab { font-size: 6px; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-head { font-size: 7px; margin-bottom: 10px; letter-spacing: 0; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-line { font-size: 9px; margin: 5px 0; gap: 8px; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-note { font-size: 8px; line-height: 1.55; margin: 10px 0 2px; }
@@ -2908,6 +2910,16 @@
 
         /* ROOM INFO: mismo cartel gris que wallet/room-picker. Mas ancho que los
            otros popups porque lleva parrafo de texto, no solo botones. */
+        /* ROOM INFO: lo de siempre a la izquierda y una imagen del juego a la derecha; encima de la imagen, las layers.
+           El hueco de las pestanas esta siempre (haya una layer o varias), asi el cartel no cambia de tamano. */
+        #roomInfoModal .pw-modal-box.room-info { display: grid; grid-template-columns: var(--ri-l, 342px) var(--ri-r, 300px); column-gap: 24px; width: auto !important; align-items: start; }
+        #roomInfoModal .pw-modal-box.room-info > *:not(.ri-art):not(.hub-placa) { grid-column: 1; }
+        #roomInfoModal .ri-art { grid-column: 2; grid-row: 1 / span 8; align-self: stretch; display: flex; flex-direction: column; gap: 6px; min-height: 240px; }
+        #roomInfoModal .ri-tabs { height: 26px; display: flex; gap: 4px; flex: none; }
+        #roomInfoModal .ri-tab { flex: 1; font-family: 'Press Start 2P', monospace; font-size: 8px; background: #050505; color: #7d8a82; border: 2px solid #2f3d35; cursor: pointer; padding: 0; white-space: nowrap; overflow: hidden; }
+        #roomInfoModal .ri-tab.on { color: #04150c; background: var(--hub-ac, #00ff88); border-color: var(--hub-ac, #00ff88); }
+        #roomInfoModal #riArtCv { flex: 1; width: 100%; min-height: 0; image-rendering: pixelated; background: #050505; box-shadow: 0 0 0 3px #2f3d35; }
+        #roomInfoModal #riLayersBtn, #roomInfoModal #riLayers { display: none !important; }
         .pw-modal-box.room-info { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 52px 44px 40px; width: 430px; }
         .ri-head { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; letter-spacing: 1px; margin-bottom: 14px; }
         .ri-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-family: 'Russo One', sans-serif; font-size: 13px; color: #c8ced6; margin: 7px 0; }
@@ -4276,6 +4288,7 @@
                 <button class="pw-big-btn room" id="riContinue" onclick="confirmRoomInfo()" onmouseenter="SoundManager.playSimpleHover()">CONTINUE</button>
             </div>
             <button class="pw-modal-cancel" onclick="closeRoomInfo()">CANCEL</button>
+            <div class="ri-art"><div class="ri-tabs" id="riTabs"></div><canvas id="riArtCv"></canvas></div>
         </div>
     </div>
 
@@ -8942,7 +8955,8 @@
             && (r.priceUsd === 0 ? 'Free' : r.priceUsd + '$') === currentServer) || null;
     }
 
-    function openRoomInfo() {
+    function openRoomInfo(keep) {
+        if (!keep) window._riLayer = null;   // al abrir se parte de la layer del matchmaker; las pestanas la cambian
         // La paleta de la pildora se quedaba abierta DEBAJO del popup y se veia
         // asomando por los lados. Es del menu, no del aviso: fuera al abrirlo.
         cerrarUIColores();
@@ -8953,25 +8967,30 @@
         const edad = _riEdad();
         const pillUsd = Number(_lastRoomsData.pillUsd) || 0;
         const gratis = r.priceUsd === 0;
-        const fee = Number(r.pillFee) || 0;
+        const feeSel = (() => { const L = window._riLayer && (r.layers || []).find(x => x.layerIdx === window._riLayer); return L && Number(L.pillFee) > 0 ? Number(L.pillFee) : 0; })();
+        const fee = feeSel || Number(r.pillFee) || 0;
         const usdReal = (pillUsd > 0 && fee > 0) ? fee * pillUsd : r.priceUsd;
         // La layer a la que se entra. Todo lo que se enseña abajo va de ESA sala,
         // no del combo: el combo suma jugadores y aforo de todas sus layers.
-        const LP = (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx) || null;
-        const est = riEstadoLayer({
+        // Layer elegida en las pestanas (si no, la que da el matchmaker).
+        const capas = (r.layers || []).filter(L => !L.disabled);
+        const SEL = window._riLayer ? capas.find(L => L.layerIdx === window._riLayer) || null : null;
+        if (!SEL) window._riLayer = null;
+        const LP = SEL || (r.layers || []).find(L => L.layerIdx === r.pickLayerIdx) || null;
+        const est = SEL ? riEstadoLayer(SEL, edad) : riEstadoLayer({
             state: r.state, endsIn: r.endsIn, startIn: r.startIn,
             openMs: LP ? LP.openMs : 0, durationMs: LP ? LP.durationMs : 0,
         }, edad);
 
         const nombre = gratis ? 'FREE ROOM' : '$' + r.priceUsd + ' ROOM';
-        const capa = r.pickLayerIdx ? ' &middot; LAYER ' + r.pickLayerIdx : '';
+        const capa = (window._riLayer || r.pickLayerIdx) ? ' &middot; LAYER ' + (window._riLayer || r.pickLayerIdx) : '';
         let html = `<div class="ri-head">${nombre}${capa}</div>`;
         if (r.state === 'playing') {
             html += `<div class="ri-line"><span>OPEN FOR</span><b>${fmtReloj(est.abierta)}</b></div>`;
         }
         html += `<div class="ri-line"><span>MATCH</span><b class="${est.cls}">${est.txt}</b></div>`;
         const dentro = LP ? (LP.players || 0) : (r.players || 0);
-        const aforo = (LP && LP.maxPlayers) || r.cap || 0;
+        const aforo = (LP && LP.maxPlayers) || r.maxPlayers || r.cap || 0;   // aforo de la sala a la que entras, no la suma de todas las layers
         html += `<div class="ri-line"><span>PLAYERS</span><b>${dentro} / ${aforo}</b></div>`;
 
         if (!gratis) {
@@ -9042,7 +9061,29 @@
             </div>`;
         }).join('');
 
+        // Pestanas de layer encima de la imagen (solo si hay mas de una; el hueco se queda igual)
+        const tabs = document.getElementById('riTabs');
+        const actual = window._riLayer || r.pickLayerIdx;
+        tabs.innerHTML = layers.length > 1 ? layers.map(L => '<button class="ri-tab' + (L.layerIdx === actual ? ' on' : '') + '" data-l="' + L.layerIdx + '">L' + L.layerIdx + ' · ' + (L.players || 0) + '/' + (L.maxPlayers || r.maxPlayers || '') + '</button>').join('') : '';
+        tabs.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} window._riLayer = +b.dataset.l; openRoomInfo(true); });
         document.getElementById('roomInfoModal').style.display = 'flex';
+        requestAnimationFrame(riDibujo);
+    }
+    // Imagen del juego al lado de ROOM INFO: un trozo de mapa con virus y una pildora cazando a otra (los sprites del juego).
+    function riDibujo() {
+        const cv = document.getElementById('riArtCv'); if (!cv || !cv.clientWidth) return;
+        const W = cv.width = Math.round(cv.clientWidth / 2), H = cv.height = Math.round(cv.clientHeight / 2);
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+        g.fillStyle = '#050505'; g.fillRect(0, 0, W, H);
+        g.fillStyle = 'rgba(255,255,255,.05)'; for (let x = 0; x < W; x += 20) g.fillRect(x, 0, 1, H); for (let y = 0; y < H; y += 20) g.fillRect(0, y, W, 1);
+        const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#2ee6d6'];
+        let sd = 5; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+        for (let i = 0; i < 40; i++) { g.fillStyle = COL[i % COL.length]; g.fillRect(Math.round(rnd() * W), Math.round(rnd() * H), 2, 2); }
+        const put = (o, x, y, k) => { const c = o.cv || o; g.drawImage(c, Math.round(x - c.width * k / 2), Math.round(y - c.height * k / 2), c.width * k, c.height * k); };
+        try { put(pixVirusSprite(18), W * .82, H * .2, 1); put(pixVirusSprite(14), W * .18, H * .82, 1); } catch (e) {}
+        put(window.pwPillSprite(16, '#b86bff', '#3d5cff', -Math.PI / 4, true), W * .25, H * .28, 1.4);
+        put(window.pwPillSprite(12, '#c9c9c9', '#00ff88', -Math.PI / 4, true), W * .55, H * .55, 1.4);
+        put(window.pwPillSprite(6, '#ff4d6d', '#1d9bf0', -Math.PI / 4, true), W * .8, H * .75, 1.4);
     }
     function toggleRoomInfoLayers() { document.getElementById('riLayers').classList.toggle('open'); }
     function closeRoomInfo() { document.getElementById('roomInfoModal').style.display = 'none'; }
@@ -13955,6 +13996,9 @@
             const rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || [];
             const rr = rooms.find(r => r.key === (mode + '_' + roomName));
             if (rr && rr.pillFee > 0) fee = rr.pillFee;
+            // Layer elegida en ROOM INFO: su tarifa (cada layer congela la suya), para que la firma cuadre con el cobro.
+            const RL = rr && window._riLayer && (rr.layers || []).find(L => L.layerIdx === window._riLayer);
+            if (RL && RL.pillFee > 0) fee = RL.pillFee;
         } catch (e) {}
         const leeSaldo = async () => {
             try { return (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) { return 0; }
@@ -14079,7 +14123,7 @@
                 }
             }
         } catch (e) { /* sin /match: seguir con la URL base (compat mono) */ }
-        netState = { url: gameUrl, token: null, attempts: 0, squad: _sqTicket ? true : false, joinMsg: { t: 'join', squad: _sqTicket || undefined, mode: mode, room: _sqTicket ? 'Free' : currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect, startSkills: skillsDeSalida() } };
+        netState = { url: gameUrl, token: null, attempts: 0, squad: _sqTicket ? true : false, joinMsg: { t: 'join', squad: _sqTicket || undefined, mode: mode, room: _sqTicket ? 'Free' : currentServer, name: playerName, colorBot: colBot, colorTop: colTop, cid: Quests.cid, config: cfg, pay: paid.pay, bin: _binFlag ? 2 : 0, aspect: _aspect, startSkills: skillsDeSalida(), layer: (!_sqTicket && window._riLayer) || undefined } };
         setPlayBtnState(true, 'CONNECTING...');
         netConnect(false);
         // El lock se libera al recibir welcome/roomFull/payRequired/error desde el WS.

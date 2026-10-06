@@ -2763,6 +2763,7 @@ const httpServer = http.createServer(async (req, res) => {
                 players,                                  // total del combo (todas las layers)
                 needed: minRealOf(ck),
                 cap: maxPlayersOf(ck) * enabledLayerCount(mode, price), // capacidad TOTAL del combo
+                maxPlayers: maxPlayersOf(ck),             // aforo de UNA layer (ROOM INFO ensena el de la sala a la que entras)
                 state: pick ? pick.state : 'offline',
                 startIn: (pick && pick.startAt) ? Math.max(0, pick.startAt - now) : null,
                 restartIn: (pick && pick.state === 'ended' && pick.restartAt) ? Math.max(0, pick.restartAt - now) : null,

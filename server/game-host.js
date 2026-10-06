@@ -153,13 +153,19 @@ function createGameHost(deps) {
         return Math.max(propuesta, start);
     }
 
-    function pickLayer(mode, roomName) {
+    function pickLayer(mode, roomName, prefer) {
         // Fase 4: este proceso solo materializa salas de SUS combos. Sin el guard,
         // el lazy-create de L2+ creaba salas de combos ajenos (p.ej. en el Director,
         // cuyo rooms está vacío, /api/rooms interpretaba "L1 llena" y creaba L2).
         if (ownsCombo && !ownsCombo(mode, roomName)) return null;
         const ck = comboKeyOf(mode, roomName);
         const max = maxPlayersOf(ck);
+        // El jugador eligio layer en ROOM INFO: si existe y admite gente, esa; si no, la de siempre.
+        const pi = prefer | 0;
+        if (pi >= 1 && pi <= LAYERS_PER_COMBO && isLayerEnabled(mode, roomName, pi)) {
+            const r = rooms.get(layerKeyOf(mode, roomName, pi));
+            if (r && !r.disabled && liveInRoom(r) + (r._reserved || 0) < max && !(r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < LAYER_STAGGER_MS)) return r;
+        }
         for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
             // La layer apagada NO entra al matchmaking aunque su sala siga viva
             // (el admin puede apagarla con gente dentro: se vacía al terminar).
@@ -330,7 +336,7 @@ function createGameHost(deps) {
         if (roomName === '*') roomName = resolveQuickJoin(mode);
         const kick = await director.checkKick(ip);
         if (kick) { ws.send(JSON.stringify({ t: 'kickedWait', secondsLeft: kick.secondsLeft })); return null; }
-        const room = pickLayer(mode, roomName);
+        const room = pickLayer(mode, roomName, msg.layer);
         if (!room) {
             ws.send(JSON.stringify({ t: 'noSlot', roomName, mode }));
             log(`Sin sitio en ${comboKeyOf(mode, roomName)}: todas las layers llenas o a punto de acabar`);
