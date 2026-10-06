@@ -15095,10 +15095,7 @@
             if (msg.t === 'squadAllies') { if (window.PWSquad) PWSquad.onAllies(msg); return; }
             if (msg.t === 'squadPrize') { if (window.PWSquad) PWSquad.onPrize(msg); return; }
             if (msg.t === 'squadKill') {
-                // Arena de pago: lo que llevaba el que cae (para el equipo que gana, luego se reparte).
-                let dinero = '';
-                if (msg.pill > 0 && msg.usd != null && window.pwUsd) { const yo = window.PWSquad && PWSquad.state.roster ? PWSquad.state.roster.me : null; dinero = msg.team && yo && msg.team !== yo ? ' · +' + pwUsd(msg.usd) + ' FOR YOUR TEAM' : ' · -' + pwUsd(msg.usd); }
-                setLobbyBanner((msg.by ? msg.victim + ' WAS EATEN BY ' + msg.by : msg.victim + ' WAS EATEN BY A BOT') + dinero, 'found'); clearTimeout(window._sqKillT); window._sqKillT = setTimeout(() => setLobbyBanner(null), 3000); return; }
+                setLobbyBanner(msg.by ? msg.victim + ' WAS EATEN BY ' + msg.by : msg.victim + ' WAS EATEN BY A BOT', 'found'); clearTimeout(window._sqKillT); window._sqKillT = setTimeout(() => setLobbyBanner(null), 3000); return; }
             if (msg.t === 'squadNote') { setLobbyBanner(msg.text, 'found'); SoundManager.play('alert'); setTimeout(() => setLobbyBanner(null), 3500); return; }
             if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); return; }
             if (msg.t === 'squadBad') { abandonNet('That match is no longer available.'); return; }
@@ -15225,6 +15222,7 @@
                 // angulo — la direccion la recalcula el cliente cada frame.
                 crowdHint = { x: +msg.x || 0, y: +msg.y || 0, n: msg.n | 0, at: Date.now() };
             } else if (msg.t === 'killGain') {
+                if (msg.rate > 0) pillRate = msg.rate;   // arenas: no llega 'econ', la tasa viene con el botin
                 showKillGain(msg.amount);
             } else if (msg.t === 'prize') {
                 EconHUD.showPrize(msg);

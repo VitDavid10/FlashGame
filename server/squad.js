@@ -607,6 +607,7 @@ function createSquad(deps) {
         if (ev.type === 'botKilled' && ev.victimId) {   // solo cuentan los jugadores, no los bots
             statOf(room, ev.playerId).kills++;
             statOf(room, ev.victimId).by = (room.clients.get(ev.playerId) || {}).idName || nameOfId(room, ev.playerId);
+            statOf(room, ev.victimId).byId = ev.playerId;
         }
         else if (ev.type === 'botPieceEaten') statOf(room, ev.playerId).pieces++;
         else if (ev.type === 'playerDied') {
@@ -614,7 +615,10 @@ function createSquad(deps) {
             if (!st.by) st.byBot = true;   // sin jugador que se lo comiera: un bot (o el mapa)
             // Se anuncia en la partida quien cayo y a manos de quien.
             const stk = (room.squad.stakes || []).find(x => x.playerId === ev.playerId);
-            if (!room.squad.practice) broadcast(room, { t: 'squadKill', victim: nameOfId(room, ev.playerId), by: st.by || null, pill: stk ? stk.fee : 0, usd: stk ? usdOf(stk.fee) : null, team: stk ? stk.team : null });
+            if (!room.squad.practice) broadcast(room, { t: 'squadKill', victim: nameOfId(room, ev.playerId), by: st.by || null });
+            // Arena de pago: a quien se lo come le sale lo que llevaba (+$2), igual que el botin de classic.
+            const killer = stk && st.byId && room.clients.get(st.byId);
+            if (killer && killer.team !== stk.team) send(killer.ws, { t: 'killGain', amount: stk.fee, rate: Math.round(quote(1)) || 0 });
         }
     }
     function tick(room, now) {

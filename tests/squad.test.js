@@ -378,6 +378,10 @@ test('arena de pago 1v1: precio fijado, cada uno paga al dar LISTO, bote en la s
     assert.equal(ja.last('squadRoster').pot, 200, 'bote: los dos equipos');
     for (const r of [ra, rb]) { room.clients.get(r.playerId)._spawned = true; room.sim.spawnPlayer(r.playerId, 0); }
     room.state = 'playing'; room.endsAt = Date.now() + 100000;
+    sq.onEvent(room, { type: 'botKilled', playerId: ra.playerId, victimId: rb.playerId }, Date.now());
+    sq.onEvent(room, { type: 'playerDied', playerId: rb.playerId }, Date.now());
+    assert.equal(ja.last('killGain').amount, 100, 'al que se lo come le sale lo que llevaba (+$2)');
+    assert.equal(jb.last('killGain'), null, 'al que cae no le sale nada');
     room.sim.players.get(rb.playerId).alive = false;
     sq.tick(room, Date.now());
     sq.endOf(room);
