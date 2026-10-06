@@ -472,7 +472,7 @@
         } else if (!on && rivT) { clearInterval(rivT); rivT = null; if (typeof window.setLobbyBanner === 'function') window.setLobbyBanner(null); }
     }
     function onAllies(m) {
-        S.allies = { t: Date.now(), a: m.a || [] };
+        S.allies = { t: Date.now(), a: m.a || [], tg: m.tg || null };
         const el = document.getElementById('sqHud');
         for (const f of m.f || []) {
             const row = el && el.querySelector('.pf[data-id="' + f.id + '"]'); if (!row) continue;
@@ -489,10 +489,10 @@
         for (const p of m.teams[other]) S.rel.set(p.id, 'foe');
         const el = hud(), me = m.myId;
         const mates = m.teams[mine].filter(p => p.id !== me);
-        el.innerHTML = (m.practice ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
+        el.innerHTML = (m.practice && mates.length ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
             '<div class="pf" data-id="' + esc(p.id) + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '<div class="w"><div class="n">' + esc(p.name || 'PLAYER') + '</div><div class="bar"><i></i></div></div></div>').join('');
         hydrate(el);
-        el.classList.toggle('show', mates.length > 0 || !!m.practice);
+        el.classList.toggle('show', mates.length > 0);   // en 1v1 no hay companeros: nada a la izquierda
     }
     // Tamano base en pixeles ENTEROS y pares: con decimales la letra pixel se veia borrosa (sobre todo en PC).
     function nitido(el) {
@@ -878,6 +878,14 @@
     window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
-    window.pwSquadAllies = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.a : null);
+    window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);
+    // Flecha azul: cada uno senala a UN companero, siempre el mismo (en corro por orden de id); si muere uno, los dos que quedan se senalan.
+    window.pwSquadAllies = () => {
+        if (!(S.allies && Date.now() - S.allies.t < 2500)) return null;
+        const a = S.allies.a, me = S.roster && S.roster.myId;
+        if (!me || a.length < 2) return a;
+        const ids = [me].concat(a.map(x => x.id)).sort(), sig = ids[(ids.indexOf(me) + 1) % ids.length];
+        return a.filter(x => x.id === sig);
+    };
     if (document.readyState === 'complete') joinFromLink(); else addEventListener('load', joinFromLink);
 })();

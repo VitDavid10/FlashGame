@@ -186,3 +186,14 @@ test('si tu grupo con un bot abre sala (custom), los otros bots la retan', async
     const tk = me.last('sqTicket');
     assert.ok(tk && tk.kind === 'match', 'la sala abierta recibe reto');
 });
+
+test('yendo solo a 1v1 con un bot de amigo, otro bot te reta (y a quien no los tiene, no)', async () => {
+    const { sq } = make();
+    const me = human(sq, 'AAAAAAA', 'ana'), otro = human(sq, 'BBBBBBB', 'bea');
+    say(sq, me, { a: 'fadd', u: 'icefox' }); await wait(600);
+    say(sq, me, { a: 'create' }); say(sq, me, { a: 'play' });
+    say(sq, otro, { a: 'create' }); say(sq, otro, { a: 'play', custom: true });
+    await wait(4000);
+    const tk = me.last('sqTicket');
+    assert.ok(tk && tk.kind === 'match', 'un bot reta al que tiene amigos de prueba');
+});

@@ -80,13 +80,15 @@ function createVirtualFriends(ctx) {
         const dentro = new Set(m.members.map(x => x.uid));
         const jefe = m.members.find(x => x.id === m.leader);
         if (!jefe || FRIENDS.some(x => x.id === jefe.uid)) return;  // el grupo lo lleva un bot: es un rival, no el tuyo
-        if (!m.members.some(x => FRIENDS.some(b => b.id === x.uid))) return;
+        // Hace falta un bot en tu grupo, o (yendo solo) tener a alguno de amigo: a los demas jugadores no les salen rivales de prueba.
+        const amigos = (((social._data().rel || {})[jefe.uid] || {}).f) || [];
+        if (!m.members.some(x => FRIENDS.some(b => b.id === x.uid)) && !amigos.some(id => FRIENDS.some(b => b.id === id))) return;
         const libres = lobby.filter(w => !dentro.has(w.fid));
         const n = m.size || m.members.length;
         if (libres.length < n) return;
         rivalDe.add(m.code); setTimeout(() => rivalDe.delete(m.code), 120000);
         const [lider, ...resto] = libres.slice(0, n);
-        lider.rival = { resto, n, buscando: false, reta: m.custom ? m.code : null, mode: m.mode };   // sala abierta (custom): la retan; si no, buscan partida
+        lider.rival = { resto, n, buscando: false, reta: m.custom ? m.code : null, vs: m.custom ? null : m.code, mode: m.mode };   // sala abierta (custom): la retan; si no, buscan partida
         say(lider, { a: 'leave' }); say(lider, { a: 'create' });
     }
     function react(ws, f, m) {
@@ -94,7 +96,7 @@ function createVirtualFriends(ctx) {
             // el lider rival ya tiene su grupo: los demas entran y, con todos dentro, se pone a buscar
             const r = ws.rival;
             if (m.members.length < r.n) { if (!r.llamados) { r.llamados = true; setTimeout(() => r.resto.forEach(w => say(w, { a: 'join', code: m.code })), 300); } }
-            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, r.reta ? { a: 'challenge', code: r.reta, mode: r.mode } : { a: 'play', mode: r.mode }); ws.rival = null; }, 500); }
+            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, r.reta ? { a: 'challenge', code: r.reta, mode: r.mode } : { a: 'play', mode: r.mode, vs: r.vs }); ws.rival = null; }, 500); }
             return;
         }
         if (m.t === 'sqParty' && m.state === 'queued' && m.leader !== m.me) armaRival(m);
@@ -117,10 +119,10 @@ function createVirtualFriends(ctx) {
 
     for (const f of FRIENDS) {
         const ws = { readyState: 1, virtual: true, send(raw) { let m; try { m = JSON.parse(raw); } catch (e) { return; } react(ws, f, m); }, close() {} };
-        social.hello(ws, token.sign({ id: f.id, u: f.u, n: f.u, p: '', w: '' }), f.av);
+        social.hello(ws, token.sign({ id: f.id, u: f.u, n: f.u, p: '', w: '' }), f.av, f.u);   // su nombre en la pildora: icefox, rcer... (sin @)
         ws.fid = f.id; lobby.push(ws);
     }
-    return { lobby, ids: FRIENDS.map(f => f.id) };
+    return { lobby, ids: FRIENDS.map(f => f.id), onQueued: v => { if (v.state === 'queued') armaRival(v); } };
 }
 
 module.exports = { createVirtualFriends };

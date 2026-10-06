@@ -14089,6 +14089,7 @@
     window.pwSquadEnter = function (ticket, kind, mode) {
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
         // REJOIN (te fuiste al morir y vuelves a tu partida): entras sin pantalla de VS y a mirar a tu equipo.
+        window._sqGoAt = 0;
         window._sqRejoin = kind === 'rejoin'; if (window._sqRejoin) { kind = 'match'; window._sqAgain = true; }
         window._squadTicket = ticket; window._squadKind = kind; window._squadMode = mode === 'classic' ? 'classic' : 'arcade';
         window._sqQuick = !!window._sqAgain; window._sqAgain = false;   // TRY AGAIN de la practica: sin mensajes de carga
@@ -15788,7 +15789,7 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else showGoSplash(); });
+            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al
@@ -15881,7 +15882,11 @@
         // tiene fin, y ahi un reloj no significaria nada.
         const _modoConSkills = (currentGameMode === 'arcade' || currentGameMode === 'skills' || currentGameMode === 'classic');
         const _conReloj = true;   // todos los modos llevan reloj: classic tambien en offline
-        if (_conReloj) {
+        // ARENAS: sin reloj. La 1a skill se elige 15 s despues del GO (no en la carga) y luego cada 30 s.
+        if (netState && netState.squad && sim && sim.isRemote) {
+            els.timer.innerText = '';
+            if (window._sqGoAt && !isGodMode && !isSpectating && (performance.now() - window._sqGoAt) / 1000 > window._sqNextPick) { showSkillChoice(); window._sqNextPick += 30; }
+        } else if (_conReloj) {
             // Tiempo de sala: local (roomTimers) u online (el servidor lo manda en cada snapshot)
             let tl, dur;
             if (sim.isRemote) { tl = sim.remainingMs(); if (tl == null) tl = 0; dur = sim.duration; }
@@ -16169,6 +16174,21 @@
     }
     // Arenas: marca sutil, azul, en el borde de la pantalla hacia donde esta cada companero cuando no se le ve.
     function drawAllyMarkers(es) {
+        // Flecha roja de caza: apunta siempre al mismo rival (elegido al azar por el servidor) hasta que muere.
+        const T = window.pwSquadTarget && window.pwSquadTarget();
+        if (T && !isSpectating && myCells().length) {
+            const cx = width / 2, cy = height / 2, m = 34;
+            const sx = (T.x - camera.x) * es + cx, sy = (T.y - camera.y) * es + cy;
+            if (!(sx > 0 && sx < width && sy > 0 && sy < height)) {
+                const dx = sx - cx, dy = sy - cy;
+                const k = Math.min((cx - m) / Math.max(1e-6, Math.abs(dx)), (cy - m) / Math.max(1e-6, Math.abs(dy)));
+                const pulse = 1 + 0.12 * Math.sin(performance.now() / 160);
+                ctx.save(); ctx.translate(cx + dx * k, cy + dy * k); ctx.rotate(Math.atan2(dy, dx)); ctx.scale(pulse, pulse);
+                ctx.globalAlpha = 0.9; ctx.fillStyle = '#ff3b3b'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, -15); ctx.lineTo(-4, 0); ctx.lineTo(-10, 15); ctx.closePath(); ctx.stroke(); ctx.fill();
+                ctx.restore();
+            }
+        }
         const A = window.pwSquadAllies && window.pwSquadAllies();
         if (!A || !A.length || isSpectating || !myCells().length) return;
         const cx = width / 2, cy = height / 2, m = 24;

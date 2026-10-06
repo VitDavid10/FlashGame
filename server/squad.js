@@ -216,6 +216,11 @@ function createSquad(deps) {
         }
         const n = p.members.size;
         // QUICK MATCH: si alguien ya tiene una sala abierta del mismo tamano y modo, se entra en ella en vez de esperar.
+        if (!action.custom && action.vs) {
+            const t = parties.get(action.vs);
+            const q = t && queues[qkey(t.qsize, t.mode)];
+            if (t && t !== p && t.state === 'queued' && !t.custom && t.qsize === n && t.mode === p.mode && q && q.includes(t)) { q.splice(q.indexOf(t), 1); p.qsize = n; startMatchBetween(t, p); return; }
+        }
         if (!action.custom) {
             const abierta = [...customRooms].find(x => x !== p && x.state === 'queued' && x.qsize === n && x.mode === p.mode);
             if (abierta) { customRooms.delete(abierta); p.qsize = n; startMatchBetween(abierta, p); return; }
@@ -226,6 +231,7 @@ function createSquad(deps) {
         if (p.custom) customRooms.add(p); else queues[qkey(n, p.mode)].push(p);
         pushParty(p);
         if (!p.custom) tryMatch(n, p.mode);
+        if (virtual && p.state === 'queued') setTimeout(() => { if (p.state === 'queued') virtual.onQueued(view(p)); }, 1500);   // rivales de prueba para quien tiene a los bots de amigos
     }
 
     // ---------- mensajes del lobby ----------
@@ -289,7 +295,8 @@ function createSquad(deps) {
             if (msg.size && (msg.size | 0) !== n) return err(ws, 'size_mismatch');
             if (!SIZES.includes(n)) return err(ws, 'size_mismatch');
             // Con companeros, nadie busca rival hasta que todos hayan dado LISTO.
-            readyThen(p, { kind: msg.custom ? 'room' : 'quick', custom: !!msg.custom, mode: cleanMode(msg.mode) });
+            // vs: solo los rivales de prueba (server/virtual-friends.js) van a por un grupo concreto que ya esta buscando.
+            readyThen(p, { kind: msg.custom ? 'room' : 'quick', custom: !!msg.custom, mode: cleanMode(msg.mode), vs: ws.virtual ? String(msg.vs || '') : '' });
             return;
         }
         if (a === 'challenge') {
@@ -428,8 +435,29 @@ function createSquad(deps) {
     // Partida real: si un equipo se queda sin nadie vivo, acaba ya.
     // Posicion de tus companeros (solo los tuyos): el cliente los marca en el borde de la pantalla cuando no se ven.
     // Los snapshots solo llevan lo que cae en tu zona, asi que sin esto no sabrias donde estan.
+    // Centro de masa de un jugador vivo (o null).
+    function centerOf(room, id) {
+        const p = room.sim.players.get(id);
+        if (!p || !p.alive || !p.cells.length) return null;
+        let x = 0, y = 0, m = 0;
+        for (const c of p.cells) { x += c.x * c.mass; y += c.y * c.mass; m += c.mass; }
+        return m > 0 ? { x: Math.round(x / m), y: Math.round(y / m) } : null;
+    }
+    // Flecha de caza: cada equipo persigue a UN rival al azar, siempre el mismo hasta que muere (asi no se tarda en encontrarlos).
+    function targetFor(room, team) {
+        const sq = room.squad; if (sq.practice) return null;
+        sq.target = sq.target || {};
+        let id = sq.target[team], pos = id && centerOf(room, id);
+        if (!pos) {
+            const vivos = (sq.teams[team === 'A' ? 'B' : 'A'] || []).filter(x => centerOf(room, x));
+            id = vivos.length ? vivos[Math.floor(Math.random() * vivos.length)] : null;
+            sq.target[team] = id; pos = id && centerOf(room, id);
+        }
+        return pos ? { id, x: pos.x, y: pos.y } : null;
+    }
     function sendAllies(room) {
         const sq = room.squad;
+        const tg = { A: targetFor(room, 'A'), B: targetFor(room, 'B') };
         for (const [pid, cli] of room.clients) {
             if (cli.ws.virtualGame || cli.ws.readyState !== 1 || !(cli.ws.bufferedAmount < 65536)) continue;
             const mates = [], frames = [];
@@ -441,7 +469,7 @@ function createSquad(deps) {
                 for (const c of p.cells) { x += c.x * c.mass; y += c.y * c.mass; m += c.mass; }
                 if (m > 0) { mates.push({ id, x: Math.round(x / m), y: Math.round(y / m) }); frames.push({ id, m: Math.round(m) }); }
             }
-            try { cli.ws.send(JSON.stringify({ t: 'squadAllies', a: mates, f: frames })); } catch (e) {}
+            try { cli.ws.send(JSON.stringify({ t: 'squadAllies', a: mates, f: frames, tg: tg[cli.team] || null })); } catch (e) {}
         }
     }
     // Estadisticas de partida por jugador (para la pantalla de resultados): kills y trozos comidos salen de los eventos de la sim.
