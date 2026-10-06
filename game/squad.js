@@ -143,7 +143,7 @@
 #sqEnd .pt{font-size:1.1em;margin-bottom:1.4em}
 #sqEnd .pd{font-family:'VT323',monospace;font-size:2.2em;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
 #sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
-#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;padding:1em 2em;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
+#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;width:11.5em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:.25em solid #ccff00;background:#ccff00;color:#0b0f05;box-shadow:.3em .3em 0 rgba(0,0,0,.45);cursor:pointer}   /* los dos botones del mismo tamano y el mismo borde */
 #sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
 #sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
