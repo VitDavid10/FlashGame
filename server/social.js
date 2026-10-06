@@ -57,7 +57,8 @@ function createSocial(opts) {
     const relOf = id => data.rel[id] || (data.rel[id] = { f: [], i: [], o: [] });
     const profileOf = id => data.profiles[id] ? Object.assign({ id }, data.profiles[id]) : null;
     // El nombre que ve la gente es el que el jugador eligio en el menu (dn); si no puso ninguno, su @ de X, y si no, el resumen de su wallet.
-    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: p.n || p.u || 'PLAYER', dn: p.dn || '', p: p.p || '', av: p.av || null }; };
+    // np: el jugador eligio su propio icono en el perfil; entonces su foto de X no sale (sale el icono elegido).
+    const pub = id => { const p = data.profiles[id] || {}; return { id, u: p.u || '', n: p.n || p.u || 'PLAYER', dn: p.dn || '', p: p.np ? '' : (p.p || ''), av: p.av || null }; };
 
     function statusOf(id) {
         if (!online.has(id)) return 'off';
@@ -92,13 +93,14 @@ function createSocial(opts) {
         const n = String(s == null ? '' : s).replace(/[^\w .\-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
         return n && n.toUpperCase() !== 'PLAYER' ? n : '';
     }
-    function hello(ws, tk, av, name) {
+    function hello(ws, tk, av, name, noPic) {
         const prof = token.verify(tk);
         if (!prof) { err(ws, 'bad_token'); return null; }
         const old = data.profiles[prof.id];
         const cav = cleanAv(av) || (old && old.av) || null;
         const dn = name === undefined ? (old && old.dn) || '' : cleanDn(name);
-        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p || (old.w || '') !== prof.w || (old.dn || '') !== dn || JSON.stringify(old.av || null) !== JSON.stringify(cav)) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p, w: prof.w, av: cav, dn }; save(); }
+        const np = noPic === undefined ? !!(old && old.np) : !!noPic;
+        if (!old || old.u !== prof.u || old.n !== prof.n || old.p !== prof.p || (old.w || '') !== prof.w || (old.dn || '') !== dn || !!old.np !== np || JSON.stringify(old.av || null) !== JSON.stringify(cav)) { data.profiles[prof.id] = { u: prof.u, n: prof.n, p: prof.p, w: prof.w, av: cav, dn, np }; save(); }
         if (prof.u) byUsername.set(String(prof.u).toLowerCase(), prof.id);
         if (prof.w) byWallet.set(prof.w, prof.id);
         if (ws.pwId && ws.pwId !== prof.id) detach(ws);
@@ -211,7 +213,7 @@ function createSocial(opts) {
     // Devuelve true si el mensaje era del servicio social (y ya esta atendido).
     function handle(ws, msg) {
         const a = String(msg.a || '');
-        if (a === 'hello') { hello(ws, msg.token, msg.av, msg.name); return true; }
+        if (a === 'hello') { hello(ws, msg.token, msg.av, msg.name, msg.noPic); return true; }
         if (!['friends', 'fadd', 'faccept', 'fdecline', 'fremove', 'pinvite', 'whisper'].includes(a)) return false;
         const me = ws.pwId;
         if (!me) { err(ws, 'need_x'); return true; }

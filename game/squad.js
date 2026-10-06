@@ -317,7 +317,9 @@
     }
     // El icono del menu del jugador: lo ven sus amigos cuando no tiene foto de X.
     function myAv() { try { return window._hubAvatar ? window._hubAvatar() : null; } catch (e) { return null; } }
-    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName() }); }
+    // noPic: con un icono elegido en el perfil, tu foto de X no se ensena (sale el icono).
+    const noPic = () => { try { return !!localStorage.getItem('pw_avatar'); } catch (e) { return false; } };
+    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName(), noPic: noPic() }); }
     function connect(then) {
         if (S.ws && S.ws.readyState === 1) { then && then(); return; }
         if (then) S.after = then;   // si ya se esta conectando, se ejecuta al abrir
@@ -328,7 +330,7 @@
             S.ws = ws;
             ws.onopen = () => {
                 S.conn = 'open'; S.retry = 0;
-                if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName() });   // antes que cualquier otra orden
+                if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName(), noPic: noPic() });   // antes que cualquier otra orden
                 render(); const f = S.after; S.after = null; f && f();
             };
             ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMsg(m); };
@@ -638,7 +640,9 @@
     // ---------------- UI ----------------
     // Foto de X; sin ella, el icono del menu del jugador (se dibuja al pintar, ver hydrate); y si no, su inicial.
     const FALLBACK_AV = { t: 'spook', bg: '#ab9ff2' };
-    const pic = o => o.p ? '<img class="sq-pic" src="' + esc(o.p) + '" alt="" referrerpolicy="no-referrer" data-fb="' + esc(JSON.stringify(o.av || FALLBACK_AV)) + '">'
+    // Foto de X a 200 px: la _normal (48 px) se veia borrosa en las fotos grandes.
+    const bigPic = u => String(u || '').replace(/_normal(\.[a-z]+)$/i, '_200x200$1');
+    const pic = o => o.p ? '<img class="sq-pic" src="' + esc(bigPic(o.p)) + '" alt="" referrerpolicy="no-referrer" data-fb="' + esc(JSON.stringify(o.av || FALLBACK_AV)) + '">'
         : (o.av && window._hubAvatarEl ? '<span class="sq-pic" data-av="' + esc(JSON.stringify(o.av)) + '"></span>' : '<span class="sq-pic">' + initial(o) + '</span>');
     const memberO = m => ({ p: m.pic, av: m.av, u: '', n: m.name });
     function hydrate(box) {

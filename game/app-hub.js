@@ -1277,6 +1277,15 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             if (!code) { b.className = 'no'; b.title = 'NO SKIN'; b.innerHTML = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.2 11.8 11.8 4.2" stroke="currentColor" stroke-width="2"/></svg>'; return; }
             const cv = document.createElement('canvas'); avPill(cv, { bg: '#1a3a2e', skin: code }, 48); b.appendChild(cv);
         }, code => (code || null) === (a.skin || null), code => guarda(Object.assign({}, a, { skin: code })));
+        // Tu foto de X como un icono mas: elegirla quita el icono propio y vuelve a salir la foto.
+        const tx = $('#ahAvT');
+        if (xUser && tx) {
+            const b = document.createElement('b'); b.className = 'xpic' + (localStorage.getItem('pw_avatar') ? '' : ' on'); b.title = 'X PHOTO';
+            const im = new Image(); im.src = xUser.pic; im.referrerPolicy = 'no-referrer'; im.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%'; b.appendChild(im);
+            b.onclick = () => { try { localStorage.removeItem('pw_avatar'); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); try { PWSquad.refreshAv(); } catch (e) {} };
+            tx.insertBefore(b, tx.firstChild);
+            if (!localStorage.getItem('pw_avatar')) { tx.querySelectorAll('b.on').forEach(x => { if (x !== b) x.classList.remove('on'); }); const big = $('#ahAvBig'); if (big) { big.innerHTML = ''; const bi = new Image(); bi.src = xUser.pic; bi.referrerPolicy = 'no-referrer'; bi.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%'; big.appendChild(bi); } }
+        }
         av.classList.add('open'); placa($('#ahAv .pnl'), 1);
     }
     async function openProfile() {
