@@ -514,7 +514,7 @@
     function onReadyCheck(m) {
         if (m.you) return;
         const paid = m.fee > 0;
-        rcPopup(String(m.leader).toUpperCase() + ' WANTS TO PLAY', (KIND_TXT[m.kind] || 'MATCH') + ' · ' + m.size + 'V' + m.size + '<br>' + (paid ? (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) + ' EACH' : 'FREE'),
+        rcPopup(String(m.leader).toUpperCase() + ' WANTS TO PLAY', (m.kind === 'custom' ? 'Custom match' : 'Quick match') + ' · ' + m.size + 'V' + m.size + ' · ' + (paid ? (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) + ' each.' : 'free.'),
             'ACCEPT', 'LATER', abreSala);
     }
     function onInvite(m) {
@@ -522,7 +522,7 @@
             pic: m.from.p, warm: true, ms: 30000, text: esc(nameOf(m.from)) + ' invites you to a group',
             actions: [['JOIN', () => {
                 const P = S.party;
-                if (P && (P.state === 'queued' || P.rc)) { const c = P.rc ? P.rc.cents : P.cents; rcPopup("YOU'RE SEARCHING A " + (c ? '$' + c / 100 : 'FREE') + ' MATCH', 'LEAVE IT TO JOIN ' + nameOf(m.from).toUpperCase() + "'S GROUP?", 'JOIN', 'NO', () => joinCode(m.code)); }
+                if (P && (P.state === 'queued' || P.rc)) { const c = P.rc ? P.rc.cents : P.cents; rcPopup("YOU'RE SEARCHING", 'Your ' + (c ? '$' + c / 100 : 'free') + ' match queue will be cancelled to join ' + nameOf(m.from) + "'s group.", 'JOIN', 'NO', () => joinCode(m.code)); }
                 else joinCode(m.code);
             }, 1], ['NO', null]],
         });
@@ -1061,13 +1061,13 @@
         if (P && P.state === 'match') { fail('Your group is in a match right now.'); return false; }
         if (P && !imLeader()) { if (have !== n) { fail('Your group has ' + have + ' players: propose a ' + have + 'V' + have + '.'); return false; } return true; }
         if (P && (P.state === 'queued' || P.rc)) {
-            const c = P.rc ? P.rc.cents : P.cents, lbl = c ? '$' + (c / 100) : 'FREE';
-            rcPopup(have > 1 ? 'YOUR GROUP IS SEARCHING' : "YOU'RE SEARCHING", 'A ' + lbl + ' MATCH<br>IT WILL BE CANCELLED TO CONTINUE', 'CONTINUE', 'NO',
+            const c = P.rc ? P.rc.cents : P.cents;
+            rcPopup(have > 1 ? 'YOUR GROUP IS SEARCHING' : "YOU'RE SEARCHING", (have > 1 ? "Your group's " : 'Your ') + (c ? '$' + c / 100 : 'free') + ' match queue will be cancelled to continue.', 'CONTINUE', 'NO',
                 () => { send({ a: 'cancel' }); P.rc = null; P.state = 'idle'; render(); seguir(); });
             return false;
         }
         if (n === 1 && have > 1) {
-            rcPopup('THIS IS A 1V1', 'LEAVE YOUR GROUP TO PLAY IT?', 'LEAVE GROUP', 'NO', () => { send({ a: 'leave' }); S.party = null; render(); seguir(); });
+            rcPopup('THIS IS A 1V1', 'Leave your group to play it?', 'LEAVE GROUP', 'NO', () => { send({ a: 'leave' }); S.party = null; render(); seguir(); });
             return false;
         }
         if (have !== n) { fail(have < n ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.'); return false; }
@@ -1085,7 +1085,7 @@
     // PAY & READY: primero se confirma la entrada (precio exacto) y luego se firma.
     function confirmEntry(fee, cents, usd) {
         if (!(fee > 0)) { send({ a: 'ready', v: true }); return; }
-        rcPopup('CONFIRM YOUR ENTRY', (usd != null ? fmtUsd(usd) + ' · ' : '') + fmtPill(fee) + '<br>PAID FROM YOUR GAME BALANCE', 'CONFIRM', 'CANCEL', () => readyPay(fee, cents));
+        rcPopup('CONFIRM YOUR ENTRY', (usd != null ? fmtUsd(usd) + ' · ' : '') + fmtPill(fee) + ', paid from your game balance.', 'CONFIRM', 'CANCEL', () => readyPay(fee, cents));
     }
 
     // ----- panel AMIGOS: grupo, amigos y susurros -----

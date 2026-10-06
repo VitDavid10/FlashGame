@@ -1286,7 +1286,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                     try { await fetch('/api/airdrop/unlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ what: 'x' }) }); } catch (e) {}
                     await syncX(); pintaAvatarEditor();
                 };
-                if (typeof window.pwConfirm === 'function') window.pwConfirm('UNLINK X', 'DISCONNECT @' + xUser.u.toUpperCase() + ' FROM THIS ACCOUNT?\nYOU CAN CONNECT ANOTHER X ACCOUNT AFTER.', 'UNLINK', 'CANCEL', quita);
+                if (typeof window.pwConfirm === 'function') window.pwConfirm('UNLINK X', 'Disconnect @' + xUser.u + ' from this account? You can connect another X account after.', 'UNLINK', 'CANCEL', quita);
                 else quita();
             } : () => loginX();
         }
