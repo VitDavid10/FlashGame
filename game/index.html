@@ -9046,7 +9046,7 @@
         const btn = document.getElementById('riLayersBtn');
         const varias = layers.length > 1;
         btn.style.display = varias ? '' : 'none';
-        document.querySelector('#roomInfoModal .ri-actions').classList.toggle('solo', !varias);
+        document.querySelector('#roomInfoModal .ri-actions').classList.add('solo');   // el boton LAYERS ya no sale (las layers van en pestanas): CONTINUE ocupa todo
         const cont = document.getElementById('riLayers');
         cont.classList.remove('open');
         cont.innerHTML = layers.map(L => {
