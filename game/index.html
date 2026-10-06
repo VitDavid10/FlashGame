@@ -14084,7 +14084,9 @@
         const _aspect = (window.innerWidth && window.innerHeight) ? (window.innerWidth / window.innerHeight) : 1;
         // REJOIN: si hay token vivo, reconectar a la partida en curso sin pagar.
         const _sqTicket = window._squadTicket || null; window._squadTicket = null;
-        const rejoinInfo = _sqTicket ? null : Rejoin.get();
+        let rejoinInfo = _sqTicket ? null : Rejoin.get();
+        // Un REJOIN solo vale para la MISMA sala y modo que has elegido: si no, antes te metia en la partida vieja (la free) sin firmar ni pagar la de pago.
+        if (rejoinInfo && (rejoinInfo.room !== currentServer || rejoinInfo.mode !== currentGameMode)) { Rejoin.clear(); rejoinInfo = null; }
         if (rejoinInfo) {
             _joinInFlight = true; setPlayBtnState(true, 'REJOINING...');
             SoundManager.play('select'); SoundManager.stopMenuMusic();
@@ -15499,7 +15501,7 @@
         ov.classList.toggle('quick', !!window._sqQuick);
         // Practica: se entra directo a la partida (sin pantalla negra ni textos); partida de verdad: pantalla VS en silencio.
         ov.classList.toggle('prac', window._squadKind === 'practice');
-        if (n === 0) { window._sqHush = window._squadKind === 'match' && !window._sqQuick; window._sqHushUntil = performance.now() + 20000; }
+        if (n === 0) { window._sqHush = window._squadKind === 'match' && !window._sqQuick; window._sqHushUntil = performance.now() + 14000; }
         // La pantalla C se monta UNA vez por entrada (si no, su animacion volvia a empezar en cada fase).
         const lw = ov.querySelector('.lw');
         if (n === 0 || !lw.firstChild) {
@@ -15863,7 +15865,7 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : (window._squadKind === 'match' ? () => !!(sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && SoundManager.listo()) : cargada), () => { window._sqHush = false; if (window._squadKind === 'match' && !window._sqRejoin && sim && sim.isRemote && !sim._readySent) { sim._readySent = true; sim._send({ t: 'ready' }); }   /* partida de verdad: el jugador aparece (con su inmunidad) justo al acabar la pantalla VS, no antes */
+            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : (window._squadKind === 'match' ? () => !!(sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && (SoundManager.listo() || performance.now() - (window._sqT0 || 0) > 5000)) : cargada),   // el audio se espera como mucho 5 s en total (el movil no siempre precarga) () => { window._sqHush = false; if (window._squadKind === 'match' && !window._sqRejoin && sim && sim.isRemote && !sim._readySent) { sim._readySent = true; sim._send({ t: 'ready' }); }   /* partida de verdad: el jugador aparece (con su inmunidad) justo al acabar la pantalla VS, no antes */
             if (window._squadKind === 'practice' && window.pwHubEnter) { pwHubEnter(); try { pwSquadCloseAll(); } catch (e) {} } SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
             else showLoadingScreen(LOADING_MS,
                 cargada,
