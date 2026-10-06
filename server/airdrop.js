@@ -355,10 +355,21 @@ function createAirdrop(opts) {
     // app pasa su propia ruta (?ret=). Solo rutas locales simples, sin query ni
     // dominio ("//x" o "https:" se rechazan): nada de redirecciones abiertas.
     const xHandoff = new Map();   // codigo de un solo uso -> { token, h, ret, exp }
+    // App: el login de X va por el navegador del movil, que NO tiene la sesion de la wallet (esta en el WebView).
+    // Antes de salir, la app pide aqui un codigo atado a SU sesion; asi X se vincula a esa cuenta y no a una nueva.
+    const xPrep = new Map();      // codigo -> { token, exp }
     const retOk = r => (typeof r === 'string' && /^\/(?!\/)[A-Za-z0-9_\-\/]{0,120}$/.test(r)) ? r : null;
     async function handleX(req, res, urlPath, query) {
         const now = Date.now();
         for (const [k, v] of xPending) if (now - v.t > X_PENDING_TTL_MS) xPending.delete(k);
+        if (urlPath === '/airdrop-auth/x/prep') {
+            for (const [k, v] of xPrep) if (v.exp < now) xPrep.delete(k);
+            const tok = sessionToken(req);
+            if (!tok || xPrep.size > 5000) return json(res, 200, { k: null });
+            const k = b64url(crypto.randomBytes(18));
+            xPrep.set(k, { token: tok, exp: now + 10 * 60 * 1000 });
+            return json(res, 200, { k });
+        }
         if (urlPath === '/airdrop-auth/x/login') {
             if (!X_CLIENT_ID) return redirect(res, HOME + '#xerr=config');
             // Each start keeps a pending state for 10 minutes: cap how fast one IP can
@@ -371,7 +382,8 @@ function createAirdrop(opts) {
             // app por pillwars://xlogin con un codigo de un solo uso, atado a un
             // secreto que la app guardo antes de salir (h = sha256 del secreto).
             const h = /^[A-Za-z0-9_-]{43}$/.test(query.get('h') || '') ? query.get('h') : null;
-            xPending.set(state, { verifier, redirectUri, t: now, ret: retOk(query.get('ret')), app: query.get('app') === '1' && !!h, h });
+            const prep = xPrep.get(query.get('k') || ''); xPrep.delete(query.get('k') || '');
+            xPending.set(state, { verifier, redirectUri, t: now, ret: retOk(query.get('ret')), app: query.get('app') === '1' && !!h, h, sess: prep && prep.exp > now ? prep.token : null });
             const q = new URLSearchParams({
                 response_type: 'code', client_id: X_CLIENT_ID, redirect_uri: redirectUri, scope: X_SCOPES, state,
                 code_challenge: b64url(crypto.createHash('sha256').update(verifier).digest()), code_challenge_method: 'S256',
@@ -388,8 +400,9 @@ function createAirdrop(opts) {
             if (!code) { log('[airdrop] X callback: no code (' + (query.get('error') || 'denied') + ')'); return p.app ? alApp('err=denied') : redirect(res, vuelta + '#xerr=denied'); }
             try {
                 const profile = await xExchange(code, p.verifier, p.redirectUri);
-                const r = store.linkX(sessionToken(req), profile);
-                log('[airdrop] X linked @' + profile.username + (sessionToken(req) ? ' (existing session)' : ' (new session)'));
+                const base = p.sess || sessionToken(req);   // la sesion de la app (wallet) si vino con codigo
+                const r = store.linkX(base, profile);
+                log('[airdrop] X linked @' + profile.username + (p.sess ? ' (app session)' : base ? ' (existing session)' : ' (new session)'));
                 setSession(req, res, r.token);
                 if (p.app) {
                     const t = b64url(crypto.randomBytes(24));

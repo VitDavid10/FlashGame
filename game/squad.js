@@ -545,7 +545,7 @@
         }
         cancelAnimationFrame(S.fxRaf);
         const t0 = performance.now(); let tAnt = t0;
-        cv.style.zIndex = tipo === 'win' ? '3' : '0';   // el confeti pasa por delante; las de la derrota caen por detras de la banda
+        cv.style.zIndex = '0';   // el confeti pasa por detras de la banda negra (jugadores y texto se leen limpios)
         const paso = t => {
             if (!el.classList.contains('show')) return;
             const dt = Math.min(0.05, (t - tAnt) / 1000); tAnt = t;

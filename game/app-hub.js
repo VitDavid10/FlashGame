@@ -1318,7 +1318,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const sec = b64u(crypto.getRandomValues(new Uint8Array(32)));
         try { localStorage.setItem('pw_xs', sec); } catch (e) {}
         const h = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sec)));
-        const url = location.host + '/airdrop-auth/x/login?app=1&h=' + h + '&ret=' + encodeURIComponent(location.pathname);
+        // Codigo atado a la sesion de ESTA app (la wallet): asi X se vincula a tu cuenta y no a una nueva del navegador.
+        let k = ''; try { k = (await (await fetch('/airdrop-auth/x/prep', { cache: 'no-store' })).json()).k || ''; } catch (e) {}
+        const url = location.host + '/airdrop-auth/x/login?app=1&h=' + h + (k ? '&k=' + encodeURIComponent(k) : '') + '&ret=' + encodeURIComponent(location.pathname);
         location.href = 'intent://' + url + '#Intent;scheme=' + location.protocol.replace(':', '') + ';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
     }
     // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
@@ -1427,8 +1429,17 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try { const n = localStorage.getItem('pw_app_name'); if (n) guardaNombre(n); } catch (e) {}
         syncX();
         // Vuelta del login de X por el navegador (#xhandoff=...): se canjea dentro del WebView, que es donde tiene que quedar la cookie.
-        const ho = /^#xhandoff=([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
-        if (ho) { let sec = ''; try { sec = localStorage.getItem('pw_xs') || ''; localStorage.removeItem('pw_xs'); } catch (e) {} location.replace('/airdrop-auth/x/handoff?t=' + ho[1] + '&s=' + encodeURIComponent(sec)); return; }
+        // La app nativa vuelve cargando la MISMA pagina con otro #: eso no recarga, solo cambia el hash. Por eso tambien se
+        // escucha hashchange (antes solo se miraba al arrancar y el canje no se hacia nunca: volvias sin X conectado).
+        const canje = () => {
+            const ho = /^#xhandoff=([A-Za-z0-9_-]{16,64})$/.exec(location.hash);
+            if (!ho) return false;
+            let sec = ''; try { sec = localStorage.getItem('pw_xs') || ''; localStorage.removeItem('pw_xs'); } catch (e) {}
+            location.replace('/airdrop-auth/x/handoff?t=' + ho[1] + '&s=' + encodeURIComponent(sec));
+            return true;
+        };
+        addEventListener('hashchange', () => { if (!canje() && /^#xerr=/.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} } });
+        if (canje()) return;
         if (/^#x(err)?=/.test(location.hash)) { const err = /xerr/.test(location.hash); history.replaceState(null, '', location.pathname + location.search); if (err) try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} }
         wire(); setInterval(() => { if (hub.classList.contains('on')) pullRooms(); }, 5000);
         addEventListener('resize', () => { if (hub.classList.contains('on')) { scale(); paintStatic(); } });

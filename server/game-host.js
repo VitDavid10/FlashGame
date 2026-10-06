@@ -354,6 +354,8 @@ function createGameHost(deps) {
             return null;
         }
         const { payWallet, fee, tester, entry } = auth;
+        // Rastro de cada entrada (sala pedida -> sala dada, y si pago): para cazar el fallo de 'firmo una de pago y entro en la free'.
+        log(`[entrada] pide ${mode}_${String(msg.room || '').slice(0, 12)} -> ${key} · ${fee > 0 ? 'paga ' + fee + ' PILL' : (msg.pay ? 'firma recibida pero SIN cobro' : 'gratis')}${payWallet ? ' · ' + payWallet.slice(0, 6) + '…' : ''}`);
         // El socket murió mientras el cobro estaba en vuelo: no hay a quién meter en
         // la sala. Se devuelve la entrada por el mismo camino que "la sala no empezó".
         if (ws.readyState !== 1) {
