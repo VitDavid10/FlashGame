@@ -69,7 +69,7 @@ function createSquad(deps) {
     function releaseBracket(p) { if (p.inBracket) { arena.useBracket(p.inBracket, -1); p.inBracket = null; } }
     const liveStakes = new Map();   // sala -> apuestas aun sin repartir (por si la sala desaparece sin acabar)
     // Precio en el que esta un grupo: el que busca (cola) o el que mira (want).
-    const centsOf = p => (p.state === 'queued' && !p.custom) ? (p.cents | 0) : (p.want == null ? -1 : p.want);
+    const centsOf = p => p.cm ? -1 : (p.state === 'queued' && !p.custom) ? (p.cents | 0) : (p.rc && p.rc.kind === 'quick') ? (p.rc.cents | 0) : (p.want == null ? -1 : p.want);
     // Alguien entra en tu precio (busca o mira): aviso a todos los de ese precio y tamano para que sepan que hay rival.
     function avisaBracket(p) {
         const c = centsOf(p); if (c < 0) return;
@@ -85,7 +85,8 @@ function createSquad(deps) {
         const map = new Map(), at = (size, cents) => { const k = size + '|' + cents; let e = map.get(k); if (!e) map.set(k, e = { size, cents, ready: 0, looking: 0, playing: 0, fee: cents > 0 ? arena.bracketFee(bkey('arcade', size, cents)) : 0 }); return e; };
         for (const x of parties.values()) {
             if (x.state === 'queued' && !x.custom) at(x.qsize, x.cents | 0).ready += x.members.size;
-            else if (x.state === 'idle' && x.want != null) at(x.members.size, x.want).looking += x.members.size;
+            else if (x.state === 'idle' && x.rc && !x.cm && (x.rc.kind === 'quick')) at(x.rc.size, x.rc.cents | 0).looking += x.members.size;
+            else if (x.state === 'idle' && !x.cm && x.want != null) at(x.members.size, x.want).looking += x.members.size;
         }
         for (const r of rooms.values()) if (r.squad && !r.squad.practice && r.state !== 'ended') at(r.squad.size, r.squad.cents | 0).playing += r.clients.size;
         return [...map.values()].sort((a, b) => a.cents - b.cents || a.size - b.size);
@@ -95,8 +96,9 @@ function createSquad(deps) {
     const customRooms = new Set();    // grupos en espera de un retador (salas custom publicas)
 
     // Estado de grupo de una cuenta, para la presencia y las invitaciones de amigos.
+    const maxOf = p => p.cm ? p.cm.size * 2 : MAX_PARTY;
     function partyInfoOf(uid) {
-        for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.members.size, full: m.party.members.size >= MAX_PARTY };
+        for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.members.size, full: m.party.members.size >= maxOf(m.party) };
         return null;
     }
     const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf, directory: deps.directory || null });
@@ -116,14 +118,16 @@ function createSquad(deps) {
     // `size` = jugadores del grupo: abierto es lo que hay ahora; buscando o jugando, lo que habia al empezar.
     function view(p) {
         return {
-            t: 'sqParty', code: p.code, max: MAX_PARTY, size: p.state === 'idle' ? p.members.size : p.qsize, state: p.state, leader: p.leader,
+            t: 'sqParty', code: p.code, max: maxOf(p), size: p.state === 'idle' ? p.members.size : p.qsize, state: p.state, leader: p.leader,
             queuedAt: p.queuedAt || null,
             custom: !!p.custom,
             mode: p.mode || 'arcade',
             cents: p.cents | 0, want: p.want == null ? null : p.want,
             fee: p.cents > 0 ? arena.bracketFee(bkey(p.mode, p.qsize || p.members.size, p.cents)) || p.fee || 0 : 0,
+            usd: p.cents > 0 ? usdOf(arena.bracketFee(bkey(p.mode, p.qsize || p.members.size, p.cents)) || p.fee || 0) : null,
             paid: Object.keys(p.paid || {}),
             practice: practiceAlive(p),
+            cm: p.cm ? { size: p.cm.size, cents: p.cm.cents, fee: p.cm.fee, usd: usdOf(p.cm.fee), team: Object.assign({}, p.cm.team), ready: Object.assign({}, p.cm.ready), paid: Object.keys(p.cm.paid) } : null,
             rc: p.rc ? { kind: p.rc.kind, size: p.rc.size, exp: p.rc.exp, ready: Object.assign({}, p.rc.ready), fee: p.rc.fee, cents: p.rc.cents, usd: usdOf(p.rc.fee), paid: Object.keys(p.rc.paid) } : null,
             members: [...p.members.values()].map(m => ({ id: m.id, uid: m.uid || null, pic: m.pic || '', av: m.av || null, name: m.name, leader: m.id === p.leader })),
         };
@@ -141,7 +145,7 @@ function createSquad(deps) {
         p.queuedAt = null;
     }
     function disband(p, reason) {
-        dequeue(p); clearRc(p); refundMap(p.paid, 'grupo disuelto'); p.paid = {}; releaseBracket(p);
+        dequeue(p); clearRc(p); refundMap(p.paid, 'grupo disuelto'); p.paid = {}; releaseBracket(p); if (p.cm) cmResetAll(p, 'grupo disuelto');
         for (const m of p.members.values()) { byWs.delete(m.ws); send(m.ws, { t: 'sqGone', reason }); }
         parties.delete(p.code);
         for (const m of p.members.values()) if (m.uid) social.pushPresence(m.uid);
@@ -184,7 +188,7 @@ function createSquad(deps) {
         for (const m of party.members.values()) issueTo(m, room, team, lineup);
     }
     // Quienes se enfrentan, para la pantalla previa (fotos VS fotos).
-    const lineupOf = g => [...g.members.values()].map(m => ({ name: m.name, pic: m.pic || '', av: m.av || null }));
+    const lineupM = m => ({ name: m.name, pic: m.pic || '', av: m.av || null });
     // Practica del grupo: solo si alguien la pide (nada de meter a nadie en partida sin querer).
     // La sala es una por grupo: quien la pide entra y, si un companero la pide despues, entra en la misma.
     function practiceFor(p, m) {
@@ -195,28 +199,54 @@ function createSquad(deps) {
         // Los amigos de prueba (server/virtual-friends.js) entran con quien pide la practica.
         if (!m.ws.virtual) for (const v of p.members.values()) if (v.ws.virtual) issueTo(v, room, 'A');
     }
-    function startMatchBetween(a, b) {
-        a.queuedAt = b.queuedAt = null;
-        a.custom = b.custom = false;
-        a.state = b.state = 'match';
-        dequeue(a); dequeue(b);
-        const room = makeRoom('match', a.qsize, [a.code, b.code], a.mode);
-        a.matchRoom = b.matchRoom = room.key;
+    // parts: grupos que juegan; sides: miembros de cada equipo; paidOf(m): lo que pago (o null).
+    function launch(parts, sides, size, mode, cents, paidOf, fee) {
+        for (const g of parts) { g.queuedAt = null; g.custom = false; dequeue(g); g.state = 'match'; }
+        const room = makeRoom('match', size, parts.map(g => g.code), mode);
+        for (const g of parts) g.matchRoom = room.key;
         // Lo que cada uno pago pasa a ser el bote de esta partida (sigue retenido hasta el reparto).
         const sq = room.squad, stakes = [];
-        for (const [g, team] of [[a, 'A'], [b, 'B']]) for (const m of g.members.values()) {
-            const pd = (g.paid || {})[m.id];
+        sq.memberTeam = {};
+        for (const team of ['A', 'B']) for (const m of sides[team]) {
+            sq.memberTeam[m.id] = team;
+            const pd = paidOf(m);
             if (pd) stakes.push({ ref: pd.ref, wallet: pd.wallet, fee: pd.fee, team, memberId: m.id, uid: m.uid || null, ws: m.ws, playerId: null });
         }
-        sq.stakes = stakes; sq.cents = a.cents | 0;
-        sq.fee = stakes.length ? stakes[0].fee : (a.cents > 0 ? arena.bracketFee(bkey(a.mode, a.qsize, a.cents)) : 0);
+        sq.stakes = stakes; sq.cents = cents | 0;
+        sq.fee = stakes.length ? stakes[0].fee : (fee | 0);
         sq.pot = stakes.reduce((n, x) => n + x.fee, 0);
         if (stakes.length) liveStakes.set(room.key, stakes);
+        const lineup = { A: sides.A.map(lineupM), B: sides.B.map(lineupM) };
+        for (const team of ['A', 'B']) for (const m of sides[team]) issueTo(m, room, team, lineup, stakes.find(x => x.memberId === m.id && x.ws === m.ws));
+        for (const g of parts) pushParty(g);
+        return room;
+    }
+    function startMatchBetween(a, b) {
+        const pa = a.paid || {}, pb = b.paid || {};
+        const fee = a.cents > 0 ? arena.bracketFee(bkey(a.mode, a.qsize, a.cents)) : 0;
+        launch([a, b], { A: [...a.members.values()], B: [...b.members.values()] }, a.qsize, a.mode, a.cents, m => (m.party === a ? pa : pb)[m.id], fee);
         a.paid = {}; b.paid = {}; releaseBracket(a); releaseBracket(b);
-        const lineup = { A: lineupOf(a), B: lineupOf(b) };
-        for (const [g, team] of [[a, 'A'], [b, 'B']]) for (const m of g.members.values()) issueTo(m, room, team, lineup, stakes.find(x => x.memberId === m.id && x.ws === m.ws));
-        pushParty(a); pushParty(b);
         log(`Squad: ${a.code} vs ${b.code} (${a.qsize}v${a.qsize})`);
+    }
+
+    // ---------- MATCH CUSTOM ----------
+    // Una sala custom es un grupo ampliado: hasta los dos equipos enteros (2, 4 o 6), cada uno en A o B.
+    // Cada jugador da PAY & READY cuando quiere; la partida empieza sola cuando los dos equipos estan llenos y todos listos.
+    const cmFee = cents => cents > 0 ? Math.max(1, Math.round(quote(cents / 100))) : 0;
+    const cmCount = (p, t) => [...p.members.keys()].filter(id => p.cm.team[id] === t).length;
+    function cmPlace(p, id) { p.cm.team[id] = cmCount(p, 'A') < p.cm.size ? 'A' : 'B'; p.cm.ready[id] = false; }
+    function cmUnready(p, id, why) { const pd = p.cm.paid[id]; if (pd) { arena.refund(pd.ref, why); delete p.cm.paid[id]; } p.cm.ready[id] = false; }
+    function cmResetAll(p, why) { for (const id of Object.keys(p.cm.ready)) cmUnready(p, id, why); }
+    function cmDrop(p, id) { cmUnready(p, id, 'salio de la sala'); delete p.cm.team[id]; delete p.cm.ready[id]; }
+    function cmCheck(p) {
+        if (!p.cm || p.state !== 'idle') return;
+        const n = p.cm.size, ids = [...p.members.keys()];
+        const A = ids.filter(id => p.cm.team[id] === 'A'), B = ids.filter(id => p.cm.team[id] === 'B');
+        if (A.length !== n || B.length !== n || !ids.every(id => p.cm.ready[id])) return;
+        const paid = p.cm.paid; p.cm.paid = {};
+        for (const id of ids) p.cm.ready[id] = false;
+        launch([p], { A: A.map(id => p.members.get(id)), B: B.map(id => p.members.get(id)) }, n, p.mode || 'arcade', p.cm.cents, m => paid[m.id], p.cm.fee);
+        log(`Squad: sala custom ${p.code} empieza (${n}v${n})`);
     }
     function tryMatch(size, mode, cents) {
         const q = Q(qkey(size, mode, cents));
@@ -233,7 +263,6 @@ function createSquad(deps) {
     // ---------- LISTO del grupo ----------
     // El lider pulsa buscar o unirse; con companeros les sale un cartel a todos y solo cuando todos dan LISTO
     // empieza la busqueda. Solo, es inmediato.
-    const RC_MS = 20000;
     // keep: el LISTO salio bien y lo pagado pasa al grupo; si no, se devuelve lo que se hubiera pagado.
     function clearRc(p, keep) {
         if (!p.rc) return;
@@ -260,14 +289,14 @@ function createSquad(deps) {
             arena.useBracket(k, 1); p.inBracket = k; p.fee = fee;
         }
         p.cents = cents;
-        const exp = Date.now() + RC_MS;
+        const exp = null;
         // Bots de prueba: contestan al aviso como uno mas (no pagan). leaderReady: el lider ya dio LISTO al pulsar (solo gratis).
         const ready = {}; for (const m of p.members.values()) ready[m.id] = (m.id === p.leader && !!action.leaderReady && !fee);
-        p.rc = { action, kind: action.kind, size: p.members.size, exp, ready, fee, cents, paid: {}, paying: {}, timer: setTimeout(() => cancelRc(p, 'Nobody answered in time', 'timeout'), RC_MS) };
-        if (p.rc.timer.unref) p.rc.timer.unref();
+        p.rc = { action, kind: action.kind, size: p.members.size, exp, ready, fee, cents, paid: {}, paying: {}, timer: null };
         const lead = (p.members.get(p.leader) || {}).name || 'PLAYER';
         for (const m of p.members.values()) if (!ready[m.id] || m.ws.virtual) send(m.ws, { t: 'sqReadyCheck', kind: action.kind, size: p.members.size, exp, leader: lead, fee, cents, usd: usdOf(fee), you: m.id === p.leader });
         pushParty(p);
+        if (action.kind === 'quick' && !Object.values(ready).every(Boolean)) avisaBracket(p);   // ya sale como LOOKING en su precio
         if (Object.values(ready).every(Boolean)) { const act = action; clearRc(p, true); runAction(p, act); }
     }
     function runAction(p, action) {
@@ -331,13 +360,14 @@ function createSquad(deps) {
             const p = parties.get(String(msg.code || '').toUpperCase().trim());
             if (!p) return err(ws, 'no_party');
             if (p.state === 'match') return err(ws, 'party_busy');
-            if (p.members.size >= MAX_PARTY) return err(ws, 'party_full');
+            if (p.members.size >= maxOf(p)) return err(ws, 'party_full');
             // Alguien entra mientras el grupo busca: ya no cuadra la sala, la busqueda se cancela.
             if (p.state === 'queued') { backToIdle(p); }
             if (p.rc) cancelRc(p, 'A new player joined', 'joined');
             const ident = identOf(ws, msg.name);
             const id = rnd(4), m = { ws, id, name: ident.name, gn: ident.gn, uid: ident.uid, pic: ident.pic, av: ident.av, party: p };
             p.members.set(id, m); byWs.set(ws, m);
+            if (p.cm) cmPlace(p, id);
             p.lastActive = Date.now();
             pushParty(p);
             if (m.uid) social.pushPresence(m.uid);
@@ -352,11 +382,13 @@ function createSquad(deps) {
             if (!leader || p.state !== 'idle') return;
             const t = p.members.get(String(msg.id || ''));
             if (!t || t.id === me.id) return;
+            if (p.cm) cmDrop(p, t.id);
             p.members.delete(t.id); byWs.delete(t.ws);
             send(t.ws, { t: 'sqGone', reason: 'kicked' });
             if (t.uid) social.pushPresence(t.uid);
             return pushParty(p);
         }
+        if ((a === 'play' || a === 'challenge') && p.cm) return err(ws, 'in_custom');
         if (a === 'play') {
             if (!leader) return err(ws, 'not_leader');
             if (p.state !== 'idle') return;
@@ -382,6 +414,80 @@ function createSquad(deps) {
             return;
         }
         // ---- LISTO del grupo ----
+        if (a === 'ready' && p.cm) {
+            const cm = p.cm;
+            if (!msg.v) { cmUnready(p, me.id, 'NOT READY'); return pushParty(p); }
+            if (p.state !== 'idle' || cm.ready[me.id] || cm.paying[me.id]) return;
+            const fee = cm.fee, cents = cm.cents;
+            const listo = () => { if (p.cm !== cm || !p.members.has(me.id) || cm.fee !== fee) return; cm.ready[me.id] = true; pushParty(p); cmCheck(p); };
+            if (fee > 0 && !me.ws.virtual) {
+                cm.paying[me.id] = true;
+                Promise.resolve(deps.authorize ? deps.authorize({ comboKey: 'arena_' + cents, key: 'arena_' + p.code, fee, pay: msg.pay }) : { ok: false, reason: 'payments off' })
+                    .then(auth => {
+                        delete cm.paying[me.id];
+                        if (!auth || !auth.ok) { send(ws, { t: 'sqErr', reason: 'pay_failed', detail: (auth && auth.reason) || '' }); return; }
+                        if (auth.payWallet && auth.fee > 0) {
+                            const ref = arena.hold(auth.payWallet, auth.fee, 'arena custom ' + p.code);
+                            if (p.cm !== cm || !p.members.has(me.id) || cm.fee !== fee || p.state !== 'idle') { arena.refund(ref, 'la sala cambio'); return; }
+                            cm.paid[me.id] = { ref, wallet: auth.payWallet, fee: auth.fee };
+                        }
+                        listo();
+                    })
+                    .catch(() => { delete cm.paying[me.id]; send(ws, { t: 'sqErr', reason: 'pay_failed' }); });
+                return;
+            }
+            listo();
+            return;
+        }
+        if (a === 'cmopen') {
+            if (!leader) return err(ws, 'not_leader');
+            if (p.state !== 'idle' || p.rc || p.cm) return;
+            const n = SIZES.includes(msg.size | 0) ? msg.size | 0 : 1;
+            if (p.members.size > n * 2) return err(ws, 'size_mismatch');
+            const cents = cleanCents((Number(msg.price) || 0) * 100);
+            p.cm = { size: n, cents, fee: cmFee(cents), team: {}, ready: {}, paid: {}, paying: {} };
+            for (const id of p.members.keys()) cmPlace(p, id);
+            p.want = null; releaseBracket(p);
+            return pushParty(p);
+        }
+        if (a === 'cmset') {
+            if (!leader || !p.cm || p.state !== 'idle') return;
+            const n = SIZES.includes(msg.size | 0) ? msg.size | 0 : p.cm.size;
+            if (p.members.size > n * 2) return err(ws, 'size_mismatch');
+            const cents = msg.price != null ? cleanCents((Number(msg.price) || 0) * 100) : p.cm.cents;
+            // Cambia la sala: todos vuelven a dar LISTO (y se devuelve lo pagado).
+            cmResetAll(p, 'la sala cambio');
+            p.cm.size = n;
+            if (cents !== p.cm.cents) { p.cm.cents = cents; p.cm.fee = cmFee(cents); }
+            for (const t of ['A', 'B']) { const o = t === 'A' ? 'B' : 'A', ids = [...p.members.keys()].filter(id => p.cm.team[id] === t); while (ids.length > n) p.cm.team[ids.pop()] = o; }
+            return pushParty(p);
+        }
+        if (a === 'cmteam') {
+            if (!p.cm || p.state !== 'idle') return;
+            const id = leader && msg.id ? String(msg.id) : me.id;
+            if (!p.members.has(id)) return;
+            const t = msg.team === 'B' ? 'B' : 'A';
+            if (p.cm.team[id] === t) return;
+            if (cmCount(p, t) >= p.cm.size) return err(ws, 'team_full');
+            p.cm.team[id] = t;
+            pushParty(p); cmCheck(p);
+            return;
+        }
+        if (a === 'cmclose') {
+            if (!leader || !p.cm || p.state !== 'idle') return;
+            if (p.members.size > MAX_PARTY) return err(ws, 'too_many');
+            cmResetAll(p, 'sala cerrada'); p.cm = null;
+            return pushParty(p);
+        }
+        // Un companero propone una partida (FIND RIVALS / QUICK MATCH): al lider le sale el aviso.
+        if (a === 'propose') {
+            if (leader || p.state !== 'idle') return;
+            if (Date.now() - (me.lastProp || 0) < 3000) return;
+            me.lastProp = Date.now();
+            const lead = p.members.get(p.leader);
+            if (lead) send(lead.ws, { t: 'sqPropose', from: me.name, pic: me.pic || '', av: me.av || null, cents: cleanCents((Number(msg.price) || 0) * 100), size: msg.size | 0 });
+            return;
+        }
         if (a === 'ready') {
             if (!p.rc) return;
             if (!msg.v) { cancelRc(p, me.name + ' is not ready', 'declined'); return; }
@@ -425,6 +531,14 @@ function createSquad(deps) {
             return send(ws, Object.assign({ t: 'sqClaim', id: String(msg.id || '') }, r));
         }
         // El lider avisa de nuevo a quien aun no ha contestado.
+        if (a === 'remind' && p.cm) {
+            if (!leader) return err(ws, 'not_leader');
+            if (Date.now() - (p.cm.lastRemind || 0) < 3000) return;
+            p.cm.lastRemind = Date.now();
+            const lead = (p.members.get(p.leader) || {}).name || 'PLAYER';
+            for (const m of p.members.values()) if (!p.cm.ready[m.id] && m.id !== me.id) send(m.ws, { t: 'sqReadyCheck', kind: 'custom', size: p.cm.size, exp: null, leader: lead, fee: p.cm.fee, cents: p.cm.cents, usd: usdOf(p.cm.fee), remind: true });
+            return;
+        }
         if (a === 'remind') {
             if (!leader) return err(ws, 'not_leader');
             if (!p.rc || Date.now() - (p.rc.lastRemind || 0) < 3000) return;
@@ -437,7 +551,7 @@ function createSquad(deps) {
         if (a === 'rejoin') {
             const room = p.state === 'match' && rooms.get(p.matchRoom);
             if (!room || room.state === 'ended') return err(ws, 'room_gone');
-            const team = room.squad.groups[0] === p.code ? 'A' : 'B';
+            const team = (room.squad.memberTeam && room.squad.memberTeam[me.id]) || (room.squad.groups[0] === p.code ? 'A' : 'B');
             const ticket = rnd(16);
             const pid = me.uid && room.squad.byUid && room.squad.byUid[me.uid];
             const viva = !!(pid && room.sim.players.has(pid) && room.sim.players.get(pid).alive && !room.clients.has(pid));
@@ -456,6 +570,7 @@ function createSquad(deps) {
         if (!me) return;
         const p = me.party;
         byWs.delete(ws);
+        if (p.cm) cmDrop(p, me.id);
         p.members.delete(me.id);
         if (me.uid) social.pushPresence(me.uid);
         clearRc(p);
@@ -665,7 +780,7 @@ function createSquad(deps) {
         }
         broadcast(room, { t: 'squadEnd', practice: sq.practice, winner, a: a.score, b: b.score, stake: sq.stake, players, money });
         if (!sq.practice) {
-            for (const code of sq.groups) { const p = parties.get(code); if (p) { p.state = 'idle'; pushParty(p); } }
+            for (const code of sq.groups) { const p = parties.get(code); if (p) { p.state = 'idle'; if (p.cm) p.cm.fee = cmFee(p.cm.cents); pushParty(p); } }
         }
     }
     // Limpieza: tickets caducados y grupos abandonados.

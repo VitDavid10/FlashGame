@@ -38,7 +38,7 @@
     const fmtPill = n => (n | 0).toLocaleString('en-US') + ' $PILLY';
     window.pwUsd = fmtUsd;
     const ERRS = {
-        pay_failed: 'The entry payment failed.',
+        pay_failed: 'The entry payment failed.', in_custom: 'You are in a custom room.', team_full: 'That team is full.', too_many: 'Too many players to go back to a normal group.', pay_off: 'Paid matches are not available right now.',
         no_party: 'That group is gone.', party_full: 'That group is full (3 players).', party_busy: "You can't do that while your group is searching.",
         not_leader: 'Only the group leader can do that.', size_mismatch: 'Your group size does not match that room.', already_in_party: 'You are already in a group.',
         bad_token: 'Could not verify your account. Reopen this panel.', need_x: 'Connect your wallet to use friends.',
@@ -217,6 +217,16 @@
 .sq-rm .pr.free{color:var(--ac,#00ff88)}
 .sq-rm .s b{color:#00ff88;font-weight:400}.sq-rm .s i{font-style:normal;color:#ffb347}
 .sq-rm.dim{opacity:.55}
+.sq-pl{font-family:'Russo One',sans-serif;font-size:.5em;letter-spacing:.08em;color:#cfd8d3;text-align:center}
+.sq-pl b{font-weight:400;color:#ffd23a}.sq-pl.free{color:var(--ac,#00ff88)}
+.sq-row .sq-pl{flex:1}
+.sq-b.sq-ghost{visibility:hidden}
+.sq-cm{display:flex;align-items:center;justify-content:center;gap:1em;width:100%;flex:1;min-height:0}
+.sq-cm .tm{flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em;padding:.5em;border:.07em solid rgba(255,255,255,.1);background:rgba(0,0,0,.25)}
+.sq-cm .tm .h{font-size:.42em;letter-spacing:.14em}.sq-cm .tm.a .h{color:#3fa0ff}.sq-cm .tm.b .h{color:#ff6a5a}
+.sq-cm .vs{font-family:'Press Start 2P',monospace;font-size:.7em;color:#ffd23a}
+.sq-code{font-weight:400;color:#ffd23a;letter-spacing:.2em;user-select:all}
+.sq-av .k.mv{color:#00ff88;border-color:#00ff88;cursor:pointer}
 .sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0;overflow-y:auto}
 /* pantallas de arenas: cabecera arriba (BACK + modo), filtros debajo y el contenido ocupando el resto */
 .sq-empty{margin:auto;text-align:center;line-height:1.8}
@@ -374,7 +384,7 @@
     setInterval(() => { if (S.ws && S.ws.readyState === 1) S.ws.send('{"t":"ping","ts":' + Date.now() + '}'); }, 25000);
     function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
-        if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
+        if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc && !(m.cm && !m.cm.ready[m.me])) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
         else if (m.t === 'sqErr') { if (S.joining) { S.joining = false; clearTimeout(S.joinT); } if (m.reason === 'slow_down') return; S.paying = false; S.err = (ERRS[m.reason] || 'Something went wrong.') + (m.reason === 'pay_failed' && m.detail ? ' (' + m.detail + ')' : ''); S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
@@ -388,6 +398,7 @@
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
         else if (m.t === 'sqRivals') { S.rivals = m.list || []; S.pillUsd = m.pillUsd || 0; S.quote = m.quote || []; render(); }
         else if (m.t === 'sqBracket') onBracket(m);
+        else if (m.t === 'sqPropose') onPropose(m);
         else if (m.t === 'squadPrize') onPrize(m);
         else if (m.t === 'sqClaim') onClaim(m);
         else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
@@ -420,7 +431,6 @@
         return false;
     }
     // Cartel de LISTO para los companeros: el lider ha pulsado buscar o unirse y hay que confirmar.
-    const RC_TXT = { quick: 'QUICK MATCH', room: 'NEW ROOM', join: 'JOINING A ROOM' };
     function hideRc() { const el = document.getElementById('sqRc'); if (el) el.classList.remove('show'); clearInterval(S.rcTimer); }
     // Arena de pago: al dar LISTO se firma la entrada y se cobra del saldo del juego (index.html: pwArenaPay).
     async function readyPay(fee, cents) {
@@ -433,18 +443,22 @@
         if (pay) send({ a: 'ready', v: true, pay });
         render();
     }
-    function onReadyCheck(m) {
+    function rcPopup(title, body, yes, no, onYes) {
         let el = document.getElementById('sqRc');
-        if (!el) { el = document.createElement('div'); el.id = 'sqRc'; el.innerHTML = '<div class="bx"><div class="a"></div><div class="b"></div><div class="r"><button class="y" data-v="1">READY</button><button data-v="0">NOT READY</button></div></div>'; frame().appendChild(el); }
-        const paid = m.fee > 0;
-        el.querySelector('.a').textContent = m.you ? 'CONFIRM YOUR ENTRY' : String(m.leader).toUpperCase() + ' WANTS TO START';
-        el.querySelector('.y').textContent = paid ? 'PAY & READY' : 'READY';
-        const precio = paid ? '<br>ENTRY ' + (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) : '';
-        const paint = () => { const s = Math.max(0, Math.round((m.exp - Date.now()) / 1000)); el.querySelector('.b').innerHTML = RC_TXT[m.kind] + ' · ' + m.size + 'V' + m.size + precio + '<br>' + s + 's'; if (s <= 0) hideRc(); };
-        paint(); clearInterval(S.rcTimer); S.rcTimer = setInterval(paint, 500);
-        el.querySelectorAll('button').forEach(b => b.onclick = () => { hideRc(); if (b.dataset.v === '1') readyPay(m.fee, m.cents); else send({ a: 'ready', v: false }); });
+        if (!el) { el = document.createElement('div'); el.id = 'sqRc'; el.innerHTML = '<div class="bx"><div class="a"></div><div class="b"></div><div class="r"><button class="y" data-v="1"></button><button data-v="0"></button></div></div>'; frame().appendChild(el); }
+        el.querySelector('.a').textContent = title;
+        el.querySelector('.b').innerHTML = body;
+        el.querySelector('.y').textContent = yes; el.querySelector('[data-v="0"]').textContent = no;
+        el.querySelectorAll('button').forEach(b => b.onclick = () => { hideRc(); if (b.dataset.v === '1') onYes(); });
         el.classList.add('show'); el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
         snd('alert');
+    }
+    // El lider ha abierto la sala de espera (o pulsa READY ALL): a los demas les sale PAY & READY. Al lider no (lo tiene en el panel).
+    function onReadyCheck(m) {
+        if (m.you) return;
+        const paid = m.fee > 0;
+        rcPopup(String(m.leader).toUpperCase() + ' WANTS TO PLAY', (KIND_TXT[m.kind] || 'MATCH') + ' · ' + m.size + 'V' + m.size + '<br>' + (paid ? (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) + ' EACH' : 'FREE'),
+            paid ? 'PAY & READY' : 'READY', 'LATER', () => confirmEntry(m.fee, m.cents, m.usd));
     }
     function onInvite(m) {
         toast({
@@ -764,55 +778,104 @@
     }
 
     // ----- panel ARENAS: lista de salas / buscando -----
+    const KIND_TXT = { quick: 'QUICK MATCH', room: 'NEW ROOM', join: 'JOINING A ROOM', custom: 'MATCH CUSTOM' };
+    // Precio exacto: dolares de verdad (con 2 decimales como mucho), $PILLY de cada uno y el bote de los dos equipos.
+    function priceLine(fee, usd, size) {
+        if (!(fee > 0)) return '<div class="sq-pl free">FREE MATCH</div>';
+        return '<div class="sq-pl">' + (usd != null ? '<b>' + fmtUsd(usd) + '</b> · ' : '') + fmtPill(fee) + ' EACH · POT ' + fmtPill(fee * size * 2) + '</div>';
+    }
+    // Fila de botones de ancho fijo: el hueco de READY ALL se guarda aunque no salga, para que la ventana no salte.
+    const ghost = txt => '<button class="sq-b sq-ghost" tabindex="-1">' + txt + '</button>';
+    // Desde la sala de espera o buscando tambien se puede mirar FIND RIVALS (y ahi sales como (YOU)).
+    const seeRivals = '<button class="sq-b sm" data-a="seerivals">FIND RIVALS</button>';
     function searchingHtml() {
         const p = S.party, leader = imLeader();
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
-        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + priceTag(p) + ' · ' + secs + 's</div>' +
-            groupHtml(false, p.size, true) + '</div>' +
+        return '<div class="sq find"><div class="mid"><div class="sq-q">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + p.size + 'V' + p.size + ' · <span id="sqQs">' + secs + 's</span></div>' +
+            priceLine(p.fee, p.usd, p.size) + groupHtml(false, p.size, true) + seeRivals + '</div>' +
             '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice"' + (S.joining ? ' disabled' : '') + '>' + (S.joining ? 'JOINING...' : p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' + errLine() + '</div></div>';
     }
-    // El lider ha pulsado buscar o unirse: se espera a que todos den LISTO.
+    // Sala de espera: el lider ha elegido partida y precio; cada uno da (PAY &) READY cuando quiere. No caduca.
     function readyCheckHtml() {
-        const p = S.party, leader = imLeader(), mine = p.rc.ready[S.me];
-        const s = Math.max(0, Math.round((p.rc.exp - Date.now()) / 1000));
-        const falta = Object.values(p.rc.ready).filter(v => !v).length;
-        const paid = p.rc.fee > 0, rok = '<button class="sq-b on" data-a="rok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : paid ? 'PAY & READY' : 'READY') + '</button>';
-        const precio = paid ? ' · ' + (p.rc.usd != null ? fmtUsd(p.rc.usd) + ' · ' : '') + fmtPill(p.rc.fee) : '';
-        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqRcQ">' + (leader ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[p.rc.kind] + precio + ' · ' + s + 's</div>' +
-            groupHtml(false, p.size, true) + '</div>' +
-            '<div class="sq-bot"><div class="sq-row">' +
-            (leader ? (mine ? '' : rok) + '<button class="sq-b' + (mine ? ' on' : '') + '" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button><button class="sq-b" data-a="cancel">CANCEL</button>'
-                : (mine ? '<span class="sq-q">READY · WAITING FOR THE OTHERS</span>' : rok + '<button class="sq-b" data-a="rno">NOT READY</button>')) +
+        const p = S.party, rc = p.rc, leader = imLeader(), mine = rc.ready[S.me];
+        const falta = Object.values(rc.ready).filter(v => !v).length;
+        const paid = rc.fee > 0;
+        const rok = mine ? '<button class="sq-b" disabled>READY ✓</button>'
+            : '<button class="sq-b on" data-a="rok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : paid ? 'PAY & READY' : 'READY') + '</button>';
+        const all = leader && rc.size > 1 ? '<button class="sq-b" data-a="remind"' + (falta && !(falta === 1 && !mine) ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
+        return '<div class="sq find"><div class="mid"><div class="sq-q">LOBBY · ' + (KIND_TXT[rc.kind] || 'MATCH') + ' · ' + rc.size + 'V' + rc.size + '</div>' +
+            priceLine(rc.fee, rc.usd, rc.size) + groupHtml(false, p.size, true) + seeRivals + '</div>' +
+            '<div class="sq-bot"><div class="sq-row">' + rok + all +
+            (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '<button class="sq-b" data-a="leave">LEAVE</button>') +
             '</div>' + errLine() + '</div></div>';
     }
-    // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / CREATE ROOM / JOIN ROOM -----
-    const arMode = () => 'arcade';   // arenas es un solo modo (con skills elegidas en THE PILL), se entre desde arcade o classic
-    function roomCard(r) {
-        return '<div class="sq-rm">' + pic({ p: r.leader.pic, av: r.leader.av, n: r.leader.name }) + '<div class="w"><div class="n">' + esc(r.leader.name) + '</div><div class="s">' + r.members.length + '/' + r.size + ' IN ROOM · FREE</div></div>' +
-            '<button class="sq-b sm gold" data-join="' + esc(r.code) + '" data-size="' + r.size + '">JOIN</button></div>';
+    // ----- MATCH CUSTOM: dos equipos con sus huecos, codigo para entrar, precio, cambiar de equipo y READY ALL para todos -----
+    function customHtml() {
+        const p = S.party, cm = p.cm, leader = imLeader(), n = cm.size;
+        const team = t => p.members.filter(m => cm.team[m.id] === t);
+        const myTeam = cm.team[S.me];
+        const slot = (m, t) => {
+            if (!m) return '<div class="sq-av empty"><span class="sq-pic">+</span>' + (myTeam !== t ? '<span class="k mv" data-cmt="' + t + '">MOVE HERE</span>' : '<div class="n" style="color:#4a5850">EMPTY</div>') + '</div>';
+            return '<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="n">' + esc(m.name) + '</div>' +
+                (cm.ready[m.id] ? '<div class="l" style="color:#00ff66">READY</div>' : '<div class="l" style="color:#ffb347">WAITING…</div>') + '</div>';
+        };
+        const col = t => { const ms = team(t), out = []; for (let i = 0; i < n; i++) out.push(slot(ms[i], t)); return '<div class="tm ' + t.toLowerCase() + '"><div class="h">TEAM ' + t + '</div><div class="sq-grp small">' + out.join('') + '</div></div>'; };
+        const usd = Math.round((cm.cents | 0) / 100);
+        const sizes = leader ? SIZES.map(k => '<button class="sq-b sm' + (k === n ? ' on' : '') + '" data-cms="' + k + '">' + k + 'V' + k + '</button>').join('') : '<span class="sq-lab">' + n + 'V' + n + '</span>';
+        const precio = leader
+            ? '<button class="sq-b sm" data-cmp="-1"' + (usd > 0 ? '' : ' disabled') + '>-</button>' + priceLine(cm.fee, cm.usd, n) + '<button class="sq-b sm" data-cmp="1"' + (usd < 20 ? '' : ' disabled') + '>+</button>'
+            : priceLine(cm.fee, cm.usd, n);
+        const mine = cm.ready[S.me], falta = p.members.filter(m => !cm.ready[m.id] && m.id !== S.me).length;
+        const rok = mine ? '<button class="sq-b" data-a="cmno">NOT READY</button>'
+            : '<button class="sq-b on" data-a="cmok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : cm.fee > 0 ? 'PAY & READY' : 'READY') + '</button>';
+        const all = leader ? '<button class="sq-b" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
+        return '<div class="sq sq-fixed sq-cmw"><div class="sq-row" style="justify-content:space-between"><span class="sq-lab">MATCH CUSTOM · CODE <b class="sq-code">' + esc(p.code) + '</b></span><span class="sq-row">' + sizes + '</span></div>' +
+            '<div class="sq-row">' + precio + '</div>' +
+            '<div class="sq-cm">' + col('A') + '<span class="vs">VS</span>' + col('B') + '</div>' +
+            '<div class="sq-row">' + rok + all + '<button class="sq-b" data-a="cminv">INVITE</button>' + (leader ? '<button class="sq-b red" data-a="cmclose">CLOSE</button>' : '<button class="sq-b red" data-a="leave">LEAVE</button>') + '</div>' + errLine() + '</div>';
     }
+    // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / FIND RIVALS / MATCH CUSTOM -----
+    const arMode = () => 'arcade';   // arenas es un solo modo (con skills elegidas en THE PILL), se entre desde arcade o classic
     function modeTitle() { return 'ARENAS'; }
+    const usdLbl = usd => usd ? '$' + usd : 'FREE';
     function roomsHtml() {
         const p = S.party;
+        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="rejoin">REJOIN</button></div>' + errLine() + '</div></div>';
+        if (p && p.cm) return customHtml();
+        if (p && (p.rc || p.state === 'queued') && S.arStep && S.arStep.view === 'rivals') {
+            const n = S.arStep.size;
+            return '<div class="sq sq-fixed"><div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + ' · FIND RIVALS</span></div><div class="sq-rl">' + rivalsHtml(n) + '</div>' + errLine() + '</div>';
+        }
         if (p && p.rc) return readyCheckHtml();
         if (p && p.state === 'queued') return searchingHtml();
-        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="rejoin">REJOIN</button></div>' + errLine() + '</div></div>';
         const mine = groupSize(), step = S.arStep;
         if (!step) {
             const cards = SIZES.map(n => '<div class="sq-card' + (n === mine ? '' : ' dim') + '" data-size="' + n + '"><canvas class="cvc" data-n="' + n + '"></canvas><div class="tag">' + ['DUEL', 'DUO', 'SQUAD'][n - 1] + '</div><div class="big">' + n + 'V' + n + '</div></div>').join('');
             const hint = mine > 1 ? 'YOUR GROUP · ' + mine + ' PLAYERS · ' + mine + 'V' + mine : 'PLAYING SOLO · FORM A GROUP IN FRIENDS FOR 2V2 / 3V3';
             return '<div class="sq"><div class="sq-row"><span class="sq-lab">' + hint + '</span></div><div class="sq-cards">' + cards + '</div>' + errLine() + '</div>';
         }
-        const n = step.size, live = S.rooms.filter(r => r.size === n && (r.mode || 'arcade') === arMode());
-        const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + '</span></div>';
+        const n = step.size, usd = S.usd | 0;
+        const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + (step.view === 'price' ? ' · QUICK MATCH' : step.view === 'rivals' ? ' · FIND RIVALS' : step.view === 'custom' ? ' · MATCH CUSTOM' : '') + '</span></div>';
         if (step.view === 'rivals') return '<div class="sq sq-fixed">' + head + '<div class="sq-rl">' + rivalsHtml(n) + '</div>' + errLine() + '</div>';
-        const usd = S.usd | 0, est = pillOf(usd);
+        if (step.view === 'price') {
+            const est = pillOf(usd);
+            const chips = [0, 1, 2, 5, 10, 20].map(u => '<button class="sq-b sm' + (u === usd ? ' on' : '') + '" data-pu="' + u + '">' + usdLbl(u) + '</button>').join('');
+            return '<div class="sq sq-fixed">' + head + '<div class="sq-menu">' +
+                '<div class="sq-row">' + chips + '</div>' +
+                '<div class="sq-price"><button class="sq-b" data-pr="-1"' + (usd > 0 ? '' : ' disabled') + '>-</button><div class="v"><b' + (usd ? '' : ' class="free"') + '>' + usdLbl(usd) + '</b><span>' + (usd ? (est ? '≈ ' + fmtPill(est) + ' PER PLAYER' : 'ENTRY PER PLAYER') : 'NO ENTRY · UP TO $20') + '</span></div><button class="sq-b" data-pr="1"' + (usd < 20 ? '' : ' disabled') + '>+</button></div>' +
+                '<button class="sq-b on big" data-a="quick">PLAY · ' + usdLbl(usd) + '</button></div>' + errLine() + '</div>';
+        }
+        if (step.view === 'custom') {
+            return '<div class="sq sq-fixed">' + head + '<div class="sq-menu">' +
+                '<button class="sq-b on big" data-a="cmnew">CREATE ROOM · ' + n + 'V' + n + '</button>' +
+                '<div class="sq-row" style="flex-wrap:nowrap;width:78%"><input class="sq-in" id="sqCode" maxlength="8" placeholder="ROOM CODE" autocomplete="off"><button class="sq-b on" data-a="cmjoin">JOIN ROOM</button></div>' +
+                '<div class="sq-note">Create a room, share its code or invite friends, pick teams and price. It starts when both teams are full and everyone is READY.</div></div>' + errLine() + '</div>';
+        }
         return '<div class="sq sq-fixed">' + head + '<div class="sq-menu">' +
-            '<div class="sq-price"><button class="sq-b" data-pr="-1"' + (usd > 0 ? '' : ' disabled') + '>-</button><div class="v"><b' + (usd ? '' : ' class="free"') + '>' + (usd ? '$' + usd : 'FREE') + '</b><span>' + (usd ? (est ? '≈ ' + fmtPill(est) + ' PER PLAYER' : 'ENTRY PER PLAYER') : 'ENTRY PRICE · UP TO $20') + '</span></div><button class="sq-b" data-pr="1"' + (usd < 20 ? '' : ' disabled') + '>+</button></div>' +
-            '<button class="sq-b on big" data-a="quick">QUICK MATCH · ' + (usd ? '$' + usd : 'FREE') + '</button>' +
+            '<button class="sq-b on big" data-a="qpick">QUICK MATCH · ' + usdLbl(usd) + '</button>' +
             '<button class="sq-b big" data-a="rivals">FIND RIVALS</button>' +
-            '<button class="sq-b big" disabled>MATCH CUSTOM · SOON</button></div>' + errLine() + '</div>';
+            '<button class="sq-b big" data-a="custom">MATCH CUSTOM</button></div>' + errLine() + '</div>';
     }
     // Precio en dolares -> $PILLY aproximado (el real lo fija el servidor al entrar en el tramo).
     function pillOf(usd) {
@@ -820,18 +883,23 @@
         const q = (S.quote || []).find(x => x.usd === usd); if (q) return q.fee;
         const k = (S.quote || []).find(x => x.usd === 1); return k ? Math.round(k.fee * usd) : 0;
     }
-    function priceTag(p) { return (p.cents | 0) > 0 ? ' · $' + (p.cents / 100) : ''; }
     // FIND RIVALS: tramos de precio (FREE, UP TO $2, UP TO $5, UP TO $10, UP TO $20) con quien esta LISTO, mirando o jugando.
     const TRAMOS = [[0, 0], [1, 2], [3, 5], [6, 10], [11, 20]];
     function rivalsHtml(n) {
-        const lst = (S.rivals || []).filter(r => r.size === n);
+        const lst = (S.rivals || []).filter(r => r.size === n), P = S.party;
+        // Donde estas tu: buscando (READY) o en la sala de espera (LOOKING) de ese precio.
+        const yoReady = P && P.state === 'queued' && !P.custom && P.size === n ? P.cents | 0 : -1;
+        const yoLook = P && P.rc && P.rc.kind === 'quick' && P.rc.size === n ? P.rc.cents | 0 : -1;
         return TRAMOS.map(([lo, hi]) => {
             const rows = lst.filter(r => r.cents >= lo * 100 && r.cents <= hi * 100);
             const fila = (cents, r) => {
                 const usd = cents / 100, fee = r && r.fee ? r.fee : pillOf(usd), real = r && r.fee && S.pillUsd ? fmtUsd(r.fee * S.pillUsd) : null;
-                const st = r ? '<b>' + r.ready + ' READY</b> · <i>' + r.looking + ' LOOKING</i> · ' + r.playing + ' PLAYING' : 'NOBODY YET · BE THE FIRST';
-                return '<div class="sq-rm' + (r ? '' : ' dim') + '"><span class="pr' + (cents ? '' : ' free') + '">' + (cents ? '$' + usd : 'FREE') + '</span><div class="w"><div class="n">' + (cents ? (real ? real + ' · ' : '') + fmtPill(fee) : 'NO ENTRY') + '</div><div class="s">' + st + '</div></div>' +
-                    '<button class="sq-b sm ' + (r && r.ready ? 'gold' : 'on') + '" data-play="' + cents + '">' + (r && r.ready ? 'CHALLENGE' : 'SEARCH') + '</button></div>';
+                const aqui = yoReady === cents || yoLook === cents;
+                const otros = r ? r.ready + r.looking - (aqui ? groupSize() : 0) : 0;
+                const st = r ? '<b>' + r.ready + ' READY' + (yoReady === cents ? ' (YOU)' : '') + '</b> · <i>' + r.looking + ' LOOKING' + (yoLook === cents ? ' (YOU)' : '') + '</i> · ' + r.playing + ' PLAYING' : 'NOBODY YET · BE THE FIRST';
+                const bt = aqui ? '<button class="sq-b sm" disabled>YOU\'RE IN</button>'
+                    : '<button class="sq-b sm ' + (otros > 0 ? 'gold' : 'on') + '" data-play="' + cents + '">' + (otros > 0 ? 'FIGHT' : 'PLAY') + '</button>';
+                return '<div class="sq-rm' + (r ? '' : ' dim') + '"><span class="pr' + (cents ? '' : ' free') + '">' + (cents ? '$' + usd : 'FREE') + '</span><div class="w"><div class="n">' + (cents ? (real ? real + ' · ' : '') + fmtPill(fee) : 'NO ENTRY') + '</div><div class="s">' + st + '</div></div>' + bt + '</div>';
             };
             const body = rows.length ? rows.map(r => fila(r.cents, r)).join('') : fila(hi * 100, null);
             return '<div class="sq-rv-h' + (hi ? '' : ' free') + '">' + (hi ? 'UP TO $' + hi : 'FREE') + '</div>' + body;
@@ -839,16 +907,39 @@
     }
     // Alguien ha entrado en tu tramo de precio (buscando o mirando): aviso con boton para ir a por el.
     function onBracket(m) {
-        if (S.party && S.party.state !== 'idle') return;
-        const precio = m.cents ? '$' + (m.cents / 100) : 'FREE';
-        toast({ text: esc(m.who) + (m.ready ? ' is READY for ' : ' is looking for ') + m.size + 'V' + m.size + ' · ' + precio, warm: true, ms: 9000,
-            actions: [['PLAY', () => { if (groupSize() !== m.size || !imLeader()) return; S.usd = m.cents / 100; quick(); }, 1], ['X', null]] });
+        if (S.party && (S.party.state !== 'idle' || S.party.rc || S.party.cm)) return;
+        toast({ text: esc(m.who) + (m.ready ? ' is READY for ' : ' is looking for ') + m.size + 'V' + m.size + ' · ' + usdLbl(m.cents / 100), warm: true, ms: 9000,
+            actions: [['FIGHT', () => lanzar(m.size, m.cents / 100), 1], ['X', null]] });
         snd('alert');
     }
-    function quick() {
-        const usd = S.usd | 0;
-        try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {}
-        start(() => send({ a: 'play', mode: arMode(), price: usd, ready: !usd }));   // gratis: pulsar es tu LISTO; de pago: firmas en el aviso de LISTO
+    // Un companero propone partida: al lider le sale el aviso y si acepta se lanza.
+    function onPropose(m) {
+        toast({ pic: m.pic, text: esc(m.from) + ' proposes ' + m.size + 'V' + m.size + ' · ' + usdLbl(m.cents / 100), warm: true, ms: 20000,
+            actions: [['ACCEPT', () => lanzar(m.size, m.cents / 100), 1], ['NO', null]] });
+    }
+    // QUICK MATCH o FIGHT a un precio: comprueba el grupo (sin grupo, de otro tamano, o no eres el lider -> se propone).
+    function lanzar(n, usd) {
+        usd = Math.max(0, Math.min(20, Math.round(usd) || 0));
+        const have = groupSize(), P = S.party;
+        const go = () => { S.usd = usd; try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {} start(() => send({ a: 'play', mode: arMode(), price: usd, ready: !usd })); };   // gratis: pulsar es tu LISTO; de pago: PAY & READY
+        if (P && P.cm) return fail('You are in a custom room. Close it or leave it first.');
+        if (P && (P.state !== 'idle' || P.rc)) return fail('Your group is already in a match lobby.');
+        if (P && !imLeader()) {
+            if (have !== n) return fail('Your group has ' + have + ' players: propose a ' + have + 'V' + have + '.');
+            send({ a: 'propose', price: usd, size: n }); S.note = 'Proposal sent to your leader'; render(); return;
+        }
+        if (n === 1 && have > 1) {
+            toast({ text: 'This is a 1V1. Leave your group?', warm: true, center: true, ms: 12000, actions: [['LEAVE & PLAY', () => { send({ a: 'leave' }); S.party = null; render(); go(); }, 1], ['NO', null]] });
+            return;
+        }
+        if (have !== n) return fail(have < n ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.');
+        go();
+    }
+    function quick() { lanzar(S.arStep ? S.arStep.size : groupSize(), S.usd | 0); }
+    // PAY & READY: primero se confirma la entrada (precio exacto) y luego se firma.
+    function confirmEntry(fee, cents, usd) {
+        if (!(fee > 0)) { send({ a: 'ready', v: true }); return; }
+        rcPopup('CONFIRM YOUR ENTRY', (usd != null ? fmtUsd(usd) + ' · ' : '') + fmtPill(fee) + '<br>PAID FROM YOUR GAME BALANCE', 'CONFIRM', 'CANCEL', () => readyPay(fee, cents));
     }
 
     // ----- panel AMIGOS: grupo, amigos y susurros -----
@@ -930,17 +1021,9 @@
         });
         b.querySelectorAll('.sq-card').forEach(x => x.onclick = () => {
             snd('simpleselect');
-            const n = +x.dataset.size, have = groupSize();
-            if (have !== n) return fail(have === 1 ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.');
+            const n = +x.dataset.size;
             S.err = ''; S.arStep = { size: n, view: null }; render();
             connect(() => send({ a: 'rivals', size: S.arStep ? S.arStep.size : 1 }));   // cotizacion del $PILLY para el precio
-        });
-        b.querySelectorAll('[data-join]').forEach(x => x.onclick = () => {
-            snd('simpleselect');
-            const n = +x.dataset.size, have = groupSize();
-            if (!imLeader()) return fail('Only your group leader can join rooms.');
-            if (have !== n) return fail(have === 1 ? 'That is a ' + n + 'V' + n + ' room: you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: join a ' + have + 'V' + have + ' room.');
-            start(() => send({ a: 'challenge', code: x.dataset.join, mode: arMode() }));
         });
         b.querySelectorAll('[data-k]').forEach(x => x.onclick = () => send({ a: 'kick', id: x.dataset.k }));
         b.querySelectorAll('[data-pr]').forEach(x => x.onclick = () => {
@@ -951,11 +1034,17 @@
             // Los del mismo tramo ven que estas mirando (FIND RIVALS: LOOKING) y les llega el aviso.
             clearTimeout(S.wantT); S.wantT = setTimeout(() => { if (S.party && S.party.state === 'idle') send({ a: 'want', cents: (S.usd | 0) * 100 }); }, 700);
         });
-        b.querySelectorAll('[data-play]').forEach(x => x.onclick = () => {
-            snd('simpleselect');
-            if (!imLeader()) return fail('Only your group leader can start a search.');
-            S.usd = (+x.dataset.play) / 100; quick();
+        b.querySelectorAll('[data-play]').forEach(x => x.onclick = () => { snd('simpleselect'); lanzar(S.arStep.size, (+x.dataset.play) / 100); });
+        b.querySelectorAll('[data-pu]').forEach(x => x.onclick = () => {
+            snd('simpleselect'); S.usd = +x.dataset.pu;
+            try { localStorage.setItem('pw_arusd', String(S.usd)); } catch (e) {}
+            render();
         });
+        b.querySelectorAll('[data-cms]').forEach(x => x.onclick = () => { snd('simpleselect'); send({ a: 'cmset', size: +x.dataset.cms }); });
+        b.querySelectorAll('[data-cmp]').forEach(x => x.onclick = () => { snd('simpleselect'); const cm = S.party && S.party.cm; if (cm) send({ a: 'cmset', price: Math.max(0, Math.min(20, Math.round(cm.cents / 100) + (+x.dataset.cmp))) }); });
+        b.querySelectorAll('[data-cmt]').forEach(x => x.onclick = () => { snd('simpleselect'); send({ a: 'cmteam', team: x.dataset.cmt }); });
+        const codeIn = b.querySelector('#sqCode');
+        if (codeIn) codeIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="cmjoin"]').click(); };
         const guardaMute = () => { try { localStorage.setItem('pw_wmute', JSON.stringify(S.mute)); } catch (e) {} };
         b.querySelectorAll('[data-mu]').forEach(x => x.onclick = () => { snd('simpleselect'); const id = x.dataset.mu; if (S.mute.ids[id]) delete S.mute.ids[id]; else S.mute.ids[id] = 1; guardaMute(); render(); });
         b.querySelectorAll('[data-tab]').forEach(x => x.onclick = () => { if (x.disabled) return; snd('simpleselect'); S.frTab = x.dataset.tab; render(); });
@@ -982,14 +1071,21 @@
         b.querySelectorAll('[data-a]').forEach(x => x.onclick = () => {
             const a = x.dataset.a; snd('simpleselect');
             if (a === 'quick') quick();
+            else if (a === 'seerivals') { const P = S.party; S.arStep = { size: P.rc ? P.rc.size : P.size, view: 'rivals' }; render(); send({ a: 'rivals', size: S.arStep.size }); }
+            else if (a === 'qpick') { S.arStep.view = 'price'; render(); }
+            else if (a === 'custom') { S.arStep.view = 'custom'; render(); }
+            else if (a === 'cmnew') { const n = S.arStep.size; if (S.party && !imLeader()) return fail('Only your group leader can create rooms.'); if (groupSize() > n * 2) return fail('Your group does not fit in a ' + n + 'V' + n + ' room.'); start(() => send({ a: 'cmopen', size: n, price: S.usd | 0 })); }
+            else if (a === 'cmjoin') { const v = ((b.querySelector('#sqCode') || {}).value || '').trim().toUpperCase(); if (!v) return fail('Type the room code.'); connect(() => { if (S.party) { send({ a: 'leave' }); S.party = null; } send({ a: 'join', code: v, name: myName() }); }); }
+            else if (a === 'cmok') { const cm = S.party && S.party.cm; if (cm) confirmEntry(cm.fee, cm.cents, cm.usd); }
+            else if (a === 'cmno') send({ a: 'ready', v: false });
+            else if (a === 'cminv') openFriends();
+            else if (a === 'cmclose') send({ a: 'cmclose' });
             else if (a === 'rivals') { S.arStep.view = 'rivals'; render(); connect(() => send({ a: 'rivals', size: S.arStep ? S.arStep.size : 1 })); }
-            else if (a === 'create') { const n = S.arStep.size; if (!imLeader()) return fail('Only your group leader can create rooms.'); start(() => send({ a: 'play', custom: true, size: n, mode: arMode() })); }
-            else if (a === 'joinv') { S.arStep.view = 'join'; render(); }
             else if (a === 'stepx') { if (S.arStep && S.arStep.view) S.arStep.view = null; else S.arStep = null; S.err = ''; render(); }
             else if (a === 'rejoin') { send({ a: 'rejoin' }); }
             else if (a === 'practice') { if (S.joining) return; S.joining = true; render(); clearTimeout(S.joinT); S.joinT = setTimeout(() => { S.joining = false; render(); }, 20000); send({ a: 'practice' }); }   // el boton pasa a JOINING... hasta que la partida arranca
             else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Ready check sent to everyone'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
-            else if (a === 'rok') { hideRc(); readyPay(S.party && S.party.rc ? S.party.rc.fee : 0, S.party && S.party.rc ? S.party.rc.cents : 0); }
+            else if (a === 'rok') { const rc = S.party && S.party.rc; if (rc) confirmEntry(rc.fee, rc.cents, rc.usd); }
             else if (a === 'rno') { send({ a: 'ready', v: false }); hideRc(); }
             else if (a === 'cancel') send({ a: 'cancel' });
             else if (a === 'leave') { send({ a: 'leave' }); S.party = null; S.err = ''; render(); }
@@ -1008,10 +1104,8 @@
     }
     // El contador de la busqueda se actualiza sin repintar todo.
     setInterval(() => {
-        const q = document.getElementById('sqQ');
-        const rq = document.getElementById('sqRcQ');
-        if (rq && S.party && S.party.rc) rq.textContent = (imLeader() ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[S.party.rc.kind] + ' · ' + Math.max(0, Math.round((S.party.rc.exp - Date.now()) / 1000)) + 's';
-        if (q && S.party && S.party.queuedAt) q.textContent = (S.party.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + Math.max(0, Math.round((Date.now() - S.party.queuedAt) / 1000)) + 's';
+        const q = document.getElementById('sqQs');
+        if (q && S.party && S.party.queuedAt) q.textContent = Math.max(0, Math.round((Date.now() - S.party.queuedAt) / 1000)) + 's';
     }, 1000);
 
     // ---------------- montaje ----------------
@@ -1036,8 +1130,7 @@
     }
     function watchRooms() {
         clearInterval(S.roomsTimer);
-        send({ a: 'rooms' });
-        S.roomsTimer = setInterval(() => { if (isOpen('rooms') && !(S.party && S.party.state !== 'idle')) { send({ a: 'rooms' }); if (S.arStep && S.arStep.view === 'rivals') send({ a: 'rivals', size: S.arStep ? S.arStep.size : 1 }); } }, 4000);
+        S.roomsTimer = setInterval(() => { if (isOpen('rooms') && S.arStep && S.arStep.view === 'rivals') send({ a: 'rivals', size: S.arStep.size }); }, 4000);   // FIND RIVALS al dia
     }
     // La app monta cada panel dentro del suyo (el hub llama con su contenedor).
     function mountIn(kind, box) {

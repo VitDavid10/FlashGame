@@ -394,3 +394,42 @@ test('arena de pago 1v1: precio fijado, cada uno paga al dar LISTO, bote en la s
     assert.equal(a.last('sqClaim').ok, true);
     assert.equal(saldo.wa, 1100);
 });
+
+test('MATCH CUSTOM: sala de 2v2 con equipos, se cambia de equipo, READY ALL a todos y empieza al estar llenos y listos', () => {
+    const { sq } = make();
+    const [lead, mate] = party(sq, 'ana', 2);
+    say(sq, lead, { a: 'cmopen', size: 2, price: 0 });
+    let v = lead.last('sqParty');
+    assert.equal(v.max, 4);
+    assert.equal(v.cm.team[v.members[0].id], 'A');
+    assert.equal(v.cm.team[v.members[1].id], 'A');
+    const r1 = fakeWs(), r2 = fakeWs();
+    say(sq, r1, { a: 'join', code: v.code, name: 'r1' }); say(sq, r2, { a: 'join', code: v.code, name: 'r2' });
+    v = lead.last('sqParty');
+    assert.equal(v.members.length, 4);
+    assert.equal(v.cm.team[r1.last('sqParty').me], 'B', 'el equipo A estaba lleno');
+    // cambiar de equipo: no cabe (A lleno)
+    say(sq, r1, { a: 'cmteam', team: 'A' });
+    assert.equal(r1.last('sqErr').reason, 'team_full');
+    // READY ALL: les sale el aviso a todos los que faltan, tambien a los rivales
+    say(sq, lead, { a: 'remind' });
+    assert.ok(r2.last('sqReadyCheck'), 'al rival tambien');
+    for (const w of [lead, mate, r1]) say(sq, w, { a: 'ready', v: true });
+    assert.equal(lead.last('sqParty').state, 'idle', 'falta uno');
+    say(sq, r2, { a: 'ready', v: true });
+    assert.equal(lead.last('sqTicket').kind, 'match');
+    assert.equal(lead.last('sqTicket').team, 'A');
+    assert.equal(r2.last('sqTicket').team, 'B');
+    assert.equal(lead.last('sqParty').state, 'match');
+});
+
+test('la espera del LISTO no caduca y un companero propone partida al lider', () => {
+    const { sq } = make();
+    const [lead, mate] = party(sq, 'ana', 2);
+    say(sq, mate, { a: 'propose', price: 3, size: 2 });
+    const pr = lead.last('sqPropose');
+    assert.equal(pr.cents, 300); assert.equal(pr.size, 2);
+    say(sq, lead, { a: 'play', price: 0 });
+    assert.ok(lead.last('sqParty').rc, 'esperando LISTO');
+    assert.equal(lead.last('sqParty').rc.exp, null, 'sin cuenta atras');
+});
