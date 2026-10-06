@@ -351,7 +351,7 @@
     function onMsg(m) {
         if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
-        else if (m.t === 'sqErr') { if (m.reason === 'slow_down') return; S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
+        else if (m.t === 'sqErr') { if (S.joining) { S.joining = false; clearTimeout(S.joinT); } if (m.reason === 'slow_down') return; S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
         else if (m.t === 'sqMe') { S.prof = m.me; }
         else if (m.t === 'sqFriends') { S.friends = { friends: m.friends, inReq: m.inReq, outReq: m.outReq }; S.note = ''; render(); }
@@ -689,7 +689,7 @@
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
         return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + secs + 's</div>' +
             groupHtml(false, p.size, true) + '</div>' +
-            '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice">' + (p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
+            '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice"' + (S.joining ? ' disabled' : '') + '>' + (S.joining ? 'JOINING...' : p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' + errLine() + '</div></div>';
     }
     // El lider ha pulsado buscar o unirse: se espera a que todos den LISTO.
@@ -856,7 +856,7 @@
             else if (a === 'joinv') { S.arStep.view = 'join'; render(); }
             else if (a === 'stepx') { if (S.arStep && S.arStep.view) S.arStep.view = null; else S.arStep = null; S.err = ''; render(); }
             else if (a === 'rejoin') { send({ a: 'rejoin' }); }
-            else if (a === 'practice') send({ a: 'practice' });
+            else if (a === 'practice') { if (S.joining) return; S.joining = true; render(); clearTimeout(S.joinT); S.joinT = setTimeout(() => { S.joining = false; render(); }, 20000); send({ a: 'practice' }); }   // el boton pasa a JOINING... hasta que la partida arranca
             else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Ready check sent to everyone'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
             else if (a === 'rok') { send({ a: 'ready', v: true }); hideRc(); }
             else if (a === 'rno') { send({ a: 'ready', v: false }); hideRc(); }
@@ -898,6 +898,7 @@
         return !!((hub && hub.classList.contains('open')) || (S.pc[kind] && S.pc[kind].classList.contains('open')));
     }
     function closeAll() {
+        S.joining = false; clearTimeout(S.joinT);
         for (const id of ['ahAr', 'ahFr']) { const e = document.getElementById(id); if (e) e.classList.remove('open'); }
         for (const k of Object.keys(S.pc)) S.pc[k].classList.remove('open');
         clearInterval(S.roomsTimer); S.roomsTimer = null;
