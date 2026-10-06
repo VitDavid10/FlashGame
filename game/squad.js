@@ -147,7 +147,8 @@
 #sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
 #sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;padding:0 2em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}   /* el estilo de siempre; solo se iguala la altura de los dos */
 #sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
-#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8;border-width:.18em}
+#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8;border-width:.18em;height:2.6em}   /* = la parte lima visible de PLAY AGAIN (su borde oscuro no se ve sobre la banda) */
+#sqEnd .bts{align-items:center}
 #sqEnd .bts button{box-sizing:border-box}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
@@ -523,23 +524,35 @@
         const W = cv.width = Math.round(el.clientWidth / 2), H = cv.height = Math.round(el.clientHeight / 2);
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#ff5fd2'];
-        let sd = 9; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-        const n = tipo === 'win' ? 18 : 10, pills = [];
+        const n = tipo === 'win' ? 30 : tipo === 'lose' ? 34 : 10, pills = [];
         for (let i = 0; i < n; i++) {
             const top = tipo === 'win' ? '#ffffff' : tipo === 'draw' ? '#fff3c4' : '#5a5a5a';
             const bot = tipo === 'win' ? COL[i % COL.length] : tipo === 'draw' ? '#ffd23a' : '#2a2a2a';
-            const o = spr(6, top, bot, -Math.PI / 4, true);
-            // a los lados del titulo, sin taparlo
-            const lado = rnd() < .5 ? rnd() * .22 : .78 + rnd() * .22;
-            pills.push({ c: o.cv || o, x: 8 + lado * (W - 16), y: 6 + rnd() * H * 0.2, ph: rnd() * 6.28, sp: .6 + rnd() * .8 });
+            const o = spr(6, top, bot, -Math.PI / 4, true), q = { c: o.cv || o, ph: Math.random() * 6.28 };
+            if (tipo === 'win') {
+                // VICTORIA: salen disparadas desde el centro hacia todos los lados y se quedan flotando por la pantalla
+                // destino: por toda la franja de arriba y la de abajo (lo que no tapa la banda), de lado a lado
+                q.x0 = W / 2; q.y0 = H * 0.15; q.tx = 6 + Math.random() * (W - 12);
+                q.ty = Math.random() < 0.7 ? 4 + Math.random() * H * 0.2 : H * (0.9 + Math.random() * 0.08);
+            } else if (tipo === 'lose') {
+                // DERROTA: caen despacio por toda la pantalla
+                q.x = Math.random() * W; q.y = Math.random() * H; q.vy = 4 + Math.random() * 6;
+            } else { q.x = 8 + (Math.random() < .5 ? Math.random() * .22 : .78 + Math.random() * .22) * (W - 16); q.y = 6 + Math.random() * H * 0.2; }
+            pills.push(q);
         }
-        // Animacion: flotan arriba y abajo a saltitos de pixel (en la victoria, mas vivo), mientras el cartel esta abierto.
         cancelAnimationFrame(S.fxRaf);
-        const amp = tipo === 'win' ? 4 : 2;
+        const t0 = performance.now(); let tAnt = t0;
         const paso = t => {
             if (!el.classList.contains('show')) return;
+            const dt = Math.min(0.05, (t - tAnt) / 1000), k = Math.min(1, (t - t0) / 900), sale = 1 - Math.pow(1 - k, 3); tAnt = t;
             g.clearRect(0, 0, W, H);
-            for (const q of pills) g.drawImage(q.c, Math.round(q.x - q.c.width / 2), Math.round(q.y - q.c.height / 2 + Math.sin(t / 1000 * q.sp * 2 + q.ph) * amp));
+            for (const q of pills) {
+                let x, y;
+                if (tipo === 'win') { x = q.x0 + (q.tx - q.x0) * sale; y = q.y0 + (q.ty - q.y0) * sale + Math.sin(t / 600 + q.ph) * 3 * k; }
+                else if (tipo === 'lose') { q.y += q.vy * dt; if (q.y > H + 10) { q.y = -10; q.x = Math.random() * W; } x = q.x + Math.sin(t / 900 + q.ph) * 2; y = q.y; }
+                else { x = q.x; y = q.y + Math.sin(t / 700 + q.ph) * 2; }
+                g.drawImage(q.c, Math.round(x - q.c.width / 2), Math.round(y - q.c.height / 2));
+            }
             S.fxRaf = requestAnimationFrame(paso);
         };
         S.fxRaf = requestAnimationFrame(paso);
