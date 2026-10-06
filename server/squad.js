@@ -473,12 +473,21 @@ function createSquad(deps) {
         }
     }
     // Estadisticas de partida por jugador (para la pantalla de resultados): kills y trozos comidos salen de los eventos de la sim.
+    function nameOfId(room, id) { const c = room.clients.get(id), st = room.squad.stats[id]; return (c && c.idName) || (st && st.ident && st.ident.name) || 'PLAYER'; }
     function statOf(room, id) { const st = room.squad.stats; return st[id] || (st[id] = { kills: 0, pieces: 0, spawnAt: 0, diedAt: 0 }); }
     function onEvent(room, ev, now) {
         if (!ev || !ev.playerId) return;
-        if (ev.type === 'botKilled' && ev.victimId) statOf(room, ev.playerId).kills++;   // solo cuentan los jugadores, no los bots
+        if (ev.type === 'botKilled' && ev.victimId) {   // solo cuentan los jugadores, no los bots
+            statOf(room, ev.playerId).kills++;
+            statOf(room, ev.victimId).by = (room.clients.get(ev.playerId) || {}).idName || nameOfId(room, ev.playerId);
+        }
         else if (ev.type === 'botPieceEaten') statOf(room, ev.playerId).pieces++;
-        else if (ev.type === 'playerDied') statOf(room, ev.playerId).diedAt = now;
+        else if (ev.type === 'playerDied') {
+            const st = statOf(room, ev.playerId); st.diedAt = now;
+            if (!st.by) st.byBot = true;   // sin jugador que se lo comiera: un bot (o el mapa)
+            // Se anuncia en la partida quien cayo y a manos de quien.
+            if (!room.squad.practice) broadcast(room, { t: 'squadKill', victim: nameOfId(room, ev.playerId), by: st.by || null });
+        }
     }
     function tick(room, now) {
         const sq = room.squad;
@@ -505,7 +514,7 @@ function createSquad(deps) {
             players[t].push({
                 name: (cli && cli.idName) || (st.ident && st.ident.name) || 'PLAYER', pic: (cli && cli.pic) || (st.ident && st.ident.pic) || '', av: (cli && cli.av) || (st.ident && st.ident.av) || null,
                 kills: st.kills | 0, pieces: st.pieces | 0, peak: p ? Math.round(p.peakMass || 0) : 0,
-                secs: st.spawnAt ? Math.max(0, Math.round((fin - st.spawnAt) / 1000)) : 0, alive: !!(p && p.alive),
+                secs: st.spawnAt ? Math.max(0, Math.round((fin - st.spawnAt) / 1000)) : 0, alive: !!(p && p.alive), byBot: !!st.byBot,
             });
         }
         broadcast(room, { t: 'squadEnd', practice: sq.practice, winner, a: a.score, b: b.score, stake: sq.stake, players });

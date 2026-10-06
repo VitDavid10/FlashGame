@@ -87,8 +87,15 @@
 .sq-av .l{font-size:.32em;color:#ffd23a;letter-spacing:.1em;margin-top:-.3em}
 .sq-av.empty .sq-pic{background:none;border:.14em dashed #34423a;box-shadow:none}
 .sq-pic{overflow:hidden}
-#ahArBody{max-height:19em;overflow-y:auto}
-#ahFrBody{max-height:15.5em;overflow-y:auto}   /* el panel no se sale de la pantalla: con grupo la lista hace scroll dentro */
+#ahArBody{height:15.5em;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;justify-content:center}   /* mismo alto siempre: el panel no cambia de tamano al cambiar de pantalla */
+#ahArBody>.sq{width:100%;box-sizing:border-box}
+#ahFrBody{height:15.5em;overflow-y:auto}
+.sq-tabs{display:flex;gap:.5em;width:100%}
+.sq.sq-fixed{height:100%;box-sizing:border-box;justify-content:flex-start}
+.sq-tab{flex:1;font-family:inherit;font-size:.5em;letter-spacing:.1em;padding:.7em;background:none;border:.14em solid #2f3d35;color:#7d8a82;cursor:pointer}
+.sq-tab.on{border-color:var(--ac,#00ff88);color:var(--ac,#00ff88)}
+.sq-tab:disabled{opacity:.35}
+.sq-gw{flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0}   /* el panel no se sale de la pantalla: con grupo la lista hace scroll dentro */
 /* amigos: la lista usa todo el alto del panel (si no, con 3 amigos el tercero quedaba cortado) y las filas son mas bajas */
 #ahFrBody .sq-list{max-height:none;overflow:visible;gap:.4em}
 #ahFrBody .sq-it{padding:.3em .7em}
@@ -121,7 +128,7 @@
 #sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;background:#0b0f05;transform:rotate(-4deg);border-top:0.7em solid var(--ec);border-bottom:0.7em solid var(--ec)}
 #sqEnd .t{position:absolute;left:0;right:0;top:-36%;text-align:center;font-size:5.6em;color:var(--ec);-webkit-text-stroke:.07em #0b0f05;paint-order:stroke fill;text-shadow:.125em .125em 0 #0b0f05;animation:seT .5s cubic-bezier(.2,1.4,.3,1) both}
 #sqEnd .cols{position:absolute;inset:5% 8% 6% 9%;display:flex;gap:4%;align-items:flex-start}
-#sqEnd .tms{flex:1.25;min-width:0}
+#sqEnd .tms{flex:1.25;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:space-evenly}
 #sqEnd .h{font-size:0.9em;margin:0.6em 0 0.8em}#sqEnd .h.me{color:#3fa0ff}#sqEnd .h.foe{color:#ff6a5a}
 #sqEnd .rw{display:flex;align-items:center;gap:1.2em;margin-bottom:.55em}
 #sqEnd .rw.dead{opacity:.55}
@@ -135,7 +142,8 @@
 #sqEnd .pd{font-family:'VT323',monospace;font-size:2.2em;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
 #sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
 #sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;padding:1em 2em;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
-#sqEnd .bts button.o{background:transparent;color:#e8e8e8;border-color:#e8e8e8}
+#sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
+#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
 .ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
@@ -327,7 +335,7 @@
     setInterval(() => { if (S.ws && S.ws.readyState === 1) S.ws.send('{"t":"ping","ts":' + Date.now() + '}'); }, 25000);
     function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
-        if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
+        if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
         else if (m.t === 'sqErr') { if (m.reason === 'slow_down') return; S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
@@ -525,9 +533,9 @@
         el.className = win ? 'win' : 'lose';
         el.querySelector('.t').textContent = !m.winner ? 'DRAW' : win ? 'VICTORY!' : 'DEFEAT';
         const row = (p, cls) => '<div class="rw' + (p.alive ? '' : ' dead') + '"><span class="ph ' + cls + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '</span><span class="nm">' + esc(p.name) + '</span>' +
-            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk">' + p.peak.toLocaleString('en-US') + ' PEAK</span></div>';
+            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + p.peak.toLocaleString('en-US') + ' PEAK</span></div>';   // comido por un bot: tachado en rojo
         const list = (t, cls) => ((m.players && m.players[t]) || []).map(p => row(p, cls)).join('');
-        el.querySelector('.tms').innerHTML = '<div class="h me">YOUR TEAM</div>' + list(mine, 'me') + '<div class="h foe">RIVALS</div>' + list(other, 'foe');
+        el.querySelector('.tms').innerHTML = '<div><div class="h me">YOUR TEAM</div>' + list(mine, 'me') + '</div><div><div class="h foe">RIVALS</div>' + list(other, 'foe') + '</div>';
         // Arenas gratis: se recuerda que en las salas de pago se gana $PILLY (con $PILLY en juego ira la cantidad y CLAIM).
         el.querySelector('.prz').innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid room</b><br>and ' + (win ? 'take' : 'win') + ' their <b>$PILLY</b>.</div>';
         hydrate(el);
@@ -677,9 +685,16 @@
                 '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqMsg" maxlength="200" placeholder="Whisper…" autocomplete="off"><button class="sq-b sm on" data-a="wsend">SEND</button></div>' + errLine() + '</div>';
         }
         // El grupo solo se enseña cuando de verdad hay alguien mas contigo.
-        const grp = p && p.members.length >= 2
-            ? '<div class="sq-h">YOUR GROUP · ' + p.members.length + '/' + p.max + '</div>' + groupHtml(true, p.members.length, false, true) + '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div>'
-            : '';   // sin grupo no se pinta la nota: se comia el sitio del tercer amigo
+        // Dos pantallas del mismo tamano: FRIENDS (lista) y GROUP (tu grupo). Asi el panel no crece al entrar alguien.
+        const hayGrupo = !!(p && p.members.length >= 2);
+        if (!hayGrupo) S.frTab = 'friends';
+        const tabs = '<div class="sq-tabs"><button class="sq-tab' + (S.frTab !== 'group' ? ' on' : '') + '" data-tab="friends">FRIENDS</button>' +
+            '<button class="sq-tab' + (S.frTab === 'group' ? ' on' : '') + '" data-tab="group"' + (hayGrupo ? '' : ' disabled') + '>GROUP' + (hayGrupo ? ' · ' + p.members.length + '/' + p.max : '') + '</button></div>';
+        if (S.frTab === 'group' && hayGrupo) {
+            return '<div class="sq sq-fixed">' + tabs + '<div class="sq-gw">' + groupHtml(true, p.members.length) + '</div>' +
+                '<div class="sq-row"><button class="sq-b sm red" data-a="leave">LEAVE GROUP</button></div></div>';
+        }
+        const grp = '';
         const aviso = searching ? '<div class="sq-note" style="color:#ffb347">You are searching for a match. If a friend accepts your invite, the search is cancelled.</div>' : '';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
         const order = { on: 0, party: 1, game: 1, off: 2 };
@@ -690,7 +705,7 @@
             '<div class="s ' + f.st + '"><i></i>' + ST[f.st] + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
             (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
             '<div class="a">' + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
-        return '<div class="sq">' + grp + aviso +
+        return '<div class="sq sq-fixed">' + tabs + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
             '<div class="sq-list">' + (list || '<div class="sq-note" style="padding:.8em">No friends yet. Add someone by their @X name, wallet address or friend code (it is in your profile). They need to have opened Arenas or Friends once.</div>') + '</div>' +
@@ -741,6 +756,7 @@
             start(() => send({ a: 'challenge', code: x.dataset.join, mode: arMode() }));
         });
         b.querySelectorAll('[data-k]').forEach(x => x.onclick = () => send({ a: 'kick', id: x.dataset.k }));
+        b.querySelectorAll('[data-tab]').forEach(x => x.onclick = () => { if (x.disabled) return; snd('simpleselect'); S.frTab = x.dataset.tab; render(); });
         b.querySelectorAll('[data-nk]').forEach(x => x.onclick = () => { S.nickEdit = x.dataset.nk; render(); const i = b.querySelector('#sqNick'); if (i) i.focus(); });
         b.querySelectorAll('[data-nks]').forEach(x => x.onclick = () => { const i = b.querySelector('#sqNick'); setNick(x.dataset.nks, i ? i.value : ''); S.nickEdit = null; render(); });
         b.querySelectorAll('[data-nkc]').forEach(x => x.onclick = () => { S.nickEdit = null; render(); });
