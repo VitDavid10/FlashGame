@@ -123,6 +123,8 @@
 #sqEnd{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;font-family:'Press Start 2P',monospace;color:#fff;overflow:hidden;
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em),#2a0d14;--ec:#ff4d6d}
 #sqEnd.win{background-color:#0b2416;--ec:#00ff88}
+#sqEnd.draw{background-color:#241f0b;--ec:#ffd23a}
+#sqEnd.n3 .rw{margin-bottom:.15em}#sqEnd.n3 .rw .ph .sq-pic{width:2.5em;height:2.5em}#sqEnd.n3 .h{margin:.2em 0 .3em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.6em}
 #sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em)}
 #sqEnd.show{display:block}
 #sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;background:#0b0f05;transform:rotate(-4deg);border-top:0.7em solid var(--ec);border-bottom:0.7em solid var(--ec)}
@@ -186,7 +188,10 @@
 .sq-chip{font-size:.4em;letter-spacing:.1em;padding:.4em .8em;border:.12em solid #2f3d35;color:#7d8a82}
 .sq-chip.on{border-color:var(--ac,#00ff88);color:var(--ac,#00ff88)}
 .sq-chip.off{opacity:.55}
-.sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em}
+.sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0;overflow-y:auto}
+/* pantallas de arenas: cabecera arriba (BACK + modo), filtros debajo y el contenido ocupando el resto */
+.sq-empty{margin:auto;text-align:center;line-height:1.8}
+.sq-fixed .sq-menu{flex:1;justify-content:center}
 .sq-b.blink{animation:sqBlink .7s steps(2) infinite;border-color:#ffd23a;color:#ffd23a}
 @keyframes sqBlink{50%{background:#ffd23a;color:#04150c}}
 #sqGuard{position:absolute;inset:0;z-index:420;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);pointer-events:auto;font-family:'Press Start 2P',monospace;color:#fff}
@@ -530,7 +535,8 @@
             };
         }
         const mine = S.roster ? S.roster.me : 'A', other = mine === 'A' ? 'B' : 'A', win = m.winner === mine;
-        el.className = win ? 'win' : 'lose';
+        const n3 = Math.max(((m.players || {}).A || []).length, ((m.players || {}).B || []).length) >= 3;
+        el.className = (!m.winner ? 'draw' : win ? 'win' : 'lose') + (n3 ? ' n3' : '');   // n3: 3v3, filas mas bajas para que quepan
         el.querySelector('.t').textContent = !m.winner ? 'DRAW' : win ? 'VICTORY!' : 'DEFEAT';
         const row = (p, cls) => '<div class="rw' + (p.alive ? '' : ' dead') + '"><span class="ph ' + cls + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '</span><span class="nm">' + esc(p.name) + '</span>' +
             '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + p.peak.toLocaleString('en-US') + ' PEAK</span></div>';   // comido por un bot: tachado en rojo
@@ -655,10 +661,10 @@
         const n = step.size, live = S.rooms.filter(r => r.size === n && (r.mode || 'arcade') === arMode());
         const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + '</span></div>';
         if (step.view === 'join') {
-            const list = live.map(roomCard).join('') || '<div class="sq-note" style="padding:.8em">No open ' + n + 'V' + n + ' rooms right now. Create one!</div>';
-            return '<div class="sq">' + head + '<div class="sq-row"><span class="sq-chip on">ALL</span><span class="sq-chip on">FREE</span><span class="sq-chip off">$ SOON</span></div><div class="sq-rl">' + list + '</div>' + errLine() + '</div>';
+            const list = live.map(roomCard).join('') || '<div class="sq-note sq-empty">No open ' + n + 'V' + n + ' rooms right now.<br>Create one!</div>';
+            return '<div class="sq sq-fixed">' + head + '<div class="sq-row"><span class="sq-chip on">ALL</span><span class="sq-chip on">FREE</span><span class="sq-chip off">$ SOON</span></div><div class="sq-rl">' + list + '</div>' + errLine() + '</div>';
         }
-        return '<div class="sq">' + head + '<div class="sq-menu">' +
+        return '<div class="sq sq-fixed">' + head + '<div class="sq-menu">' +
             '<button class="sq-b on big" data-a="quick">QUICK MATCH · FREE</button>' +
             '<button class="sq-b big" data-a="create">CREATE ROOM</button>' +
             '<button class="sq-b big" data-a="joinv">JOIN ROOM' + (live.length ? ' · ' + live.length : '') + '</button></div>' +
