@@ -273,6 +273,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-ic,.pr-cl{display:flex;gap:.25em;justify-content:center}
 .pr-box{position:relative}
 #ahPrAddX{position:absolute;right:.7em;top:.6em;width:auto;padding:.4em .8em;font-size:.5em}
+#ahPrAddX.red{color:#ff8a7a;border-color:#7a2a26}
 .pr-fc{display:flex;flex-direction:column;align-items:center;gap:.5em;cursor:pointer}
 .pr-fc .k{font-size:.32em;color:var(--mut);letter-spacing:.12em}
 .pr-fc b{font-size:.58em;font-weight:400;color:#ffd23a;letter-spacing:.14em;text-shadow:.12em .12em 0 #000}
@@ -1269,7 +1270,21 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const fc = $('#ahPrFc');
         fc.innerHTML = xCode ? '<span class="k">FRIEND CODE</span><b>' + xCode.toUpperCase() + '</b>' : '';
         // Sin X vinculado: el boton para conectarlo (la cuenta de la wallet se queda, se le suma la X).
-        const ax = $('#ahPrAddX'); if (ax) { ax.style.display = xUser ? 'none' : ''; ax.onclick = () => loginX(); }
+        // Con X vinculado: el mismo sitio para desvincularlo y poder conectar otra cuenta.
+        const ax = $('#ahPrAddX');
+        if (ax) {
+            ax.style.display = '';
+            ax.classList.toggle('red', !!xUser);
+            ax.textContent = xUser ? 'UNLINK @' + xUser.u : '+ CONNECT X';
+            ax.onclick = xUser ? () => {
+                const quita = async () => {
+                    try { await fetch('/api/airdrop/unlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ what: 'x' }) }); } catch (e) {}
+                    await syncX(); pintaAvatarEditor();
+                };
+                if (typeof window.pwConfirm === 'function') window.pwConfirm('UNLINK X', 'DISCONNECT @' + xUser.u.toUpperCase() + ' FROM THIS ACCOUNT?\nYOU CAN CONNECT ANOTHER X ACCOUNT AFTER.', 'UNLINK', 'CANCEL', quita);
+                else quita();
+            } : () => loginX();
+        }
         fc.onclick = () => { if (!xCode) return; try { navigator.clipboard.writeText(xCode); } catch (e) {} const b = fc.querySelector('b'); if (b) { b.textContent = 'COPIED'; setTimeout(() => { b.textContent = xCode.toUpperCase(); }, 1200); } };
     }
     // Editor del avatar: estilo, fondo y, con la pildora, sus colores o una skin tuya.
