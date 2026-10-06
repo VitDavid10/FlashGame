@@ -329,7 +329,7 @@
     function onMsg(m) {
         if (m.t === 'sqParty') { S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
-        else if (m.t === 'sqErr') { S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }
+        else if (m.t === 'sqErr') { if (m.reason === 'slow_down') return; S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
         else if (m.t === 'sqMe') { S.prof = m.me; }
         else if (m.t === 'sqFriends') { S.friends = { friends: m.friends, inReq: m.inReq, outReq: m.outReq }; S.note = ''; render(); }
@@ -689,7 +689,7 @@
                 : '<div class="n">' + esc(friendName(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div>') +
             '<div class="s ' + f.st + '"><i></i>' + ST[f.st] + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
             (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
-            '<div class="a">' + (canInvite && f.st !== 'off' ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
+            '<div class="a">' + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
         return '<div class="sq">' + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
@@ -710,7 +710,8 @@
         wire(box);
     }
     function render() {
-        if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500 }); }   // los avisos cortos van como popup, no dentro del menu
+        if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500 }); }
+        if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000 }); }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
         if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); const w = document.querySelector('#ahAr .ph .w'); if (w) w.textContent = modeTitle(); }
         if (S.box.friends) paint('friends', friendsHtml());
         try { if (window.PWSquadHooks) { if (PWSquadHooks.afterRender) PWSquadHooks.afterRender(); if (PWSquadHooks.badge) PWSquadHooks.badge(badgeCount()); } } catch (e) {}
