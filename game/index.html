@@ -5366,6 +5366,7 @@
             // cuenta atras que suena durante los 10s de eleccion, sin parar. Los
             // sonidos de ACTIVAR una skill (sprint/tp/iman/shield) no se tocan.
             if (name === 'timer') vol *= 0.33;
+            if (name === 'finwin' || name === 'finlose') vol *= 0.4;   // los jingles de VICTORY/DEFEAT sonaban muy fuertes
             const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
         },
         stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },

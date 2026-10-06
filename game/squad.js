@@ -579,7 +579,7 @@
         }
         // Se deja ver (y leer) el aviso de la ultima muerte antes de pasar al cartel, con un fundido; antes salia de golpe.
         clearTimeout(S.endT);
-        S.endT = setTimeout(() => mostrarFin(m), 2200);
+        S.endT = setTimeout(() => mostrarFin(m), 1000);   // el aviso de la ultima muerte se ve 3 s en pantalla y sigue visible un poco con el fundido
     }
     function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
