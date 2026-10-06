@@ -579,7 +579,7 @@
         }
         // Se deja ver (y leer) el aviso de la ultima muerte antes de pasar al cartel, con un fundido; antes salia de golpe.
         clearTimeout(S.endT);
-        S.endT = setTimeout(() => mostrarFin(m), 3800);
+        S.endT = setTimeout(() => mostrarFin(m), 2200);
     }
     function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
@@ -607,7 +607,7 @@
         // Arenas gratis: se recuerda que en las salas de pago se gana $PILLY (con $PILLY en juego ira la cantidad y CLAIM).
         el.querySelector('.prz').innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid room</b><br>and ' + (win ? 'take' : 'win') + ' their <b>$PILLY</b>.</div>';
         hydrate(el);
-        nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose'); snd(win ? 'select' : 'alert');
+        nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose'); snd(win ? 'finwin' : 'finlose');
     }
     // Pantalla de entrada a la partida (diseno C, animada ~4 s): fondo lima, entra la banda azul con tu equipo,
     // golpe del VS y entra la banda roja con los rivales. index.html la mete en #sqEntry.
