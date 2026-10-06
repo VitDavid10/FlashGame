@@ -194,10 +194,10 @@
 .ci .pz.free{color:#00ff88}
 .ci .stk{position:absolute;left:61%;width:33%;height:33%;display:flex;align-items:center;justify-content:center;text-align:center;z-index:3;opacity:0;transform:rotate(-4deg) scale(.5);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.3,1)}
 .ci .stk.on{opacity:1;transform:rotate(-4deg) scale(1)}   /* lo enciende un temporizador (intro): con retardo de CSS, en el movil la de abajo no llegaba a salir */
-.ci .stk.a{top:7%}.ci .stk.b{top:49%}
+.ci .stk.sk-me{top:7%}.ci .stk.sk-foe{top:49%}   /* ojo: nada de clases sueltas 'a'/'b' aqui, #sqEntry oculta cualquier .b en la VS */
 .ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:1.5em;max-width:100%}
 .ci.stk3 .pl4{display:none}
-.ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.a .sl{color:#1d9bf0}.ci .stk.b .sl{color:#ff4d6d}
+.ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.sk-me .sl{color:#1d9bf0}.ci .stk.sk-foe .sl{color:#ff4d6d}
 .ci .stk .sv{font-size:1.9em;color:#ffd23a;text-shadow:.12em .12em 0 #000;white-space:nowrap;line-height:1}
 .ci .stk.sm .sv{font-size:1.45em}
 .ci .stk .sv .ap{font-family:'VT323',monospace;font-size:1.5em;line-height:0;vertical-align:-.08em}
@@ -462,7 +462,7 @@
         return f;
     }
     function toast(o) {
-        const bid = o.center ? 'sqToastC' : 'sqToast';   // los avisos cortos van centrados; susurros e invitaciones a la izquierda
+        const bid = (o.center || (!o.actions && !o.pic)) ? 'sqToastC' : 'sqToast';   // los avisos sin botones (CANCELLED, premios...) van centrados; susurros e invitaciones a la izquierda
         let box = document.getElementById(bid);
         if (!box) { box = document.createElement('div'); box.id = bid; frame().appendChild(box); }
         const el = document.createElement('div'); el.className = 't' + (o.warm ? ' w' : '');
@@ -803,12 +803,12 @@
             el.classList.add('stk3');
             const linea = k => d.fee > 0 ? fmtK(d.fee * k) + ' $PILLY' + (d.usd != null ? ' <span class="ap">≈</span> ' + fmtUsd(d.usd * k) : '') : 'FREE';
             const stk = (cls, k) => '<div class="stk ' + cls + ' sm' + (d.fee > 0 ? '' : ' free') + '" style="' + ancho + '"><div class="in">' +
-                '<div class="sl">' + (cls === 'a' ? (k > 1 ? 'YOUR TEAM' : 'YOU') : (k > 1 ? 'RIVALS' : 'RIVAL')) + '</div><div class="sv">' + linea(k) + '</div></div></div>';
+                '<div class="sl">' + (cls === 'sk-me' ? (k > 1 ? 'YOUR TEAM' : 'YOU') : (k > 1 ? 'RIVALS' : 'RIVAL')) + '</div><div class="sv">' + linea(k) + '</div></div></div>';
             // Fuera de las franjas (encima, en la misma inclinacion) y con su propia animacion: dentro de la franja de abajo,
             // que entra desde fuera de la pantalla, el WebView del movil no la llegaba a pintar.
-            el.insertAdjacentHTML('beforeend', stk('a', d.me.length) + stk('b', d.foe.length));
+            el.insertAdjacentHTML('beforeend', stk('sk-me', d.me.length) + stk('sk-foe', d.foe.length));
             const enciende = (q, ms) => setTimeout(() => { const x = el.querySelector(q); if (x) x.classList.add('on'); }, ms);
-            enciende('.stk.a', 600); enciende('.stk.b', 1600);   // la de los rivales, cuando entra su franja
+            enciende('.stk.sk-me', 600); enciende('.stk.sk-foe', 1600);   // la de los rivales, cuando entra su franja
         }
         hydrate(el);
         // Pildoras pixel (los sprites del juego) en lugar de las de CSS.

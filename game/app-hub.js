@@ -274,7 +274,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-box{position:relative}
 #ahPrAddX{position:absolute;right:.7em;top:.6em;width:auto;padding:.4em .8em;font-size:.5em}
 #ahPrAddX.red,#ahPrUnW{color:#ff8a7a;border-color:#7a2a26}
-#ahPrUnW{position:absolute;right:.7em;top:2.7em;width:auto;padding:.4em .8em;font-size:.5em}
+#ahPrUnW{position:absolute;right:.7em;top:3.9em;width:auto;padding:.4em .8em;font-size:.5em}   /* separado del de X */
 .pr-fc{display:flex;flex-direction:column;align-items:center;gap:.5em;cursor:pointer}
 .pr-fc .k{font-size:.32em;color:var(--mut);letter-spacing:.12em}
 .pr-fc b{font-size:.58em;font-weight:400;color:#ffd23a;letter-spacing:.14em;text-shadow:.12em .12em 0 #000}
