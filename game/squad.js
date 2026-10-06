@@ -145,9 +145,9 @@
 #sqEnd .pt{font-size:1.1em;margin-bottom:1.4em}
 #sqEnd .pd{font-family:'VT323',monospace;font-size:2.2em;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
 #sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
-#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;width:11.5em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:.25em solid #ccff00;background:#ccff00;color:#0b0f05;box-shadow:.3em .3em 0 rgba(0,0,0,.45);cursor:pointer}   /* los dos botones del mismo tamano y el mismo borde */
+#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;width:11.5em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:.25em solid #0b0f05;outline:.15em solid #ccff00;background:#ccff00;color:#0b0f05;box-shadow:.3em .3em 0 rgba(0,0,0,.45);cursor:pointer}   /* los dos botones del mismo tamano y el mismo borde */
 #sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
-#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8}
+#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8;outline-color:#0b0f05}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
 .ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
@@ -520,19 +520,28 @@
     function fondoFin(el, tipo) {
         const cv = el.querySelector('canvas.fx'), spr = window.pwPillSprite; if (!cv || !spr) return;
         const W = cv.width = Math.round(el.clientWidth / 2), H = cv.height = Math.round(el.clientHeight / 2);
-        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H);
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#ff5fd2'];
         let sd = 9; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-        const n = tipo === 'win' ? 18 : 10;
+        const n = tipo === 'win' ? 18 : 10, pills = [];
         for (let i = 0; i < n; i++) {
             const top = tipo === 'win' ? '#ffffff' : tipo === 'draw' ? '#fff3c4' : '#5a5a5a';
             const bot = tipo === 'win' ? COL[i % COL.length] : tipo === 'draw' ? '#ffd23a' : '#2a2a2a';
-            const o = spr(6, top, bot, -Math.PI / 4, true), c = o.cv || o;
+            const o = spr(6, top, bot, -Math.PI / 4, true);
             // a los lados del titulo, sin taparlo
             const lado = rnd() < .5 ? rnd() * .22 : .78 + rnd() * .22;
-            const x = 8 + lado * (W - 16), y = 6 + rnd() * H * 0.2;   // abajo quedaban tapadas por la banda
-            g.drawImage(c, Math.round(x - c.width / 2), Math.round(y - c.height / 2));
+            pills.push({ c: o.cv || o, x: 8 + lado * (W - 16), y: 6 + rnd() * H * 0.2, ph: rnd() * 6.28, sp: .6 + rnd() * .8 });
         }
+        // Animacion: flotan arriba y abajo a saltitos de pixel (en la victoria, mas vivo), mientras el cartel esta abierto.
+        cancelAnimationFrame(S.fxRaf);
+        const amp = tipo === 'win' ? 4 : 2;
+        const paso = t => {
+            if (!el.classList.contains('show')) return;
+            g.clearRect(0, 0, W, H);
+            for (const q of pills) g.drawImage(q.c, Math.round(q.x - q.c.width / 2), Math.round(q.y - q.c.height / 2 + Math.sin(t / 1000 * q.sp * 2 + q.ph) * amp));
+            S.fxRaf = requestAnimationFrame(paso);
+        };
+        S.fxRaf = requestAnimationFrame(paso);
     }
     function onEnd(m) {
         hud().classList.remove('show');
