@@ -1780,7 +1780,7 @@
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 300; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s;
         }
         #sysModal .exit-box { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 40px rgba(0,255,136,0.15); }
-        /* Recuadro de los paneles para avisos con opciones (pwConfirm) y para salir de la partida. */
+        /* Recuadro de los paneles para los avisos con opciones del menu (pwConfirm). Los de dentro de la partida no se tocan. */
         #pwConf { position: absolute; inset: 0; z-index: 10001; display: none; align-items: center; justify-content: center; background: rgba(3,6,4,.85); pointer-events: auto; }
         #pwConf.on { display: flex; }
         .pw-placa { position: relative !important; box-sizing: border-box; background: none !important; border: none !important; border-image: none !important; box-shadow: none !important; border-radius: 0 !important; }
@@ -1788,16 +1788,12 @@
         .pw-placa > canvas.pw-placa-cv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; image-rendering: pixelated; }
         .pw-placa > .pw-placa-in { position: relative; z-index: 1; padding: 16px 18px 18px; text-align: center; }
         #pwConf .pc-b { width: 340px; max-width: 92%; }
-        .pw-placa h3, html body #exitModal .exit-box.pw-placa .exit-title { font-family: 'Russo One', sans-serif !important; font-size: 14px !important; letter-spacing: .16em !important; color: #fff !important; text-shadow: none !important; margin: 0 0 10px !important; background: none !important; }
-        .pw-placa p, html body #exitModal .exit-box.pw-placa .exit-desc { font-family: 'Russo One', sans-serif !important; font-size: 12px !important; line-height: 1.6 !important; color: #b9c4bf !important; margin: 0 0 18px !important; letter-spacing: .02em !important; text-transform: none !important; }
-        .pw-placa .ac, html body #exitModal .exit-box.pw-placa .exit-actions { display: flex !important; gap: 12px !important; justify-content: center !important; margin: 0 !important; }
-        .pw-placa .ac button, html body #exitModal .exit-box.pw-placa .exit-actions button { width: 118px !important; flex: none !important; height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; font-family: 'Russo One', sans-serif !important; font-size: 11px !important; letter-spacing: .12em !important; padding: 9px 6px !important; margin: 0 !important;
+        .pw-placa h3 { font-family: 'Russo One', sans-serif !important; font-size: 14px !important; letter-spacing: .16em !important; color: #fff !important; text-shadow: none !important; margin: 0 0 10px !important; background: none !important; }
+        .pw-placa p { font-family: 'Russo One', sans-serif !important; font-size: 12px !important; line-height: 1.6 !important; color: #b9c4bf !important; margin: 0 0 18px !important; letter-spacing: .02em !important; text-transform: none !important; }
+        .pw-placa .ac { display: flex !important; gap: 12px !important; justify-content: center !important; margin: 0 !important; }
+        .pw-placa .ac button { width: 118px !important; flex: none !important; height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; font-family: 'Russo One', sans-serif !important; font-size: 11px !important; letter-spacing: .12em !important; padding: 9px 6px !important; margin: 0 !important;
             border: 2px solid #4b5550 !important; border-image: none !important; border-radius: 0 !important; background: #2c3630 !important; background-image: none !important; box-shadow: none !important; color: #e8ecea !important; text-shadow: none !important; clip-path: none !important; transform: none; cursor: pointer; }
-        .pw-placa .ac button.n, html body #exitModal .exit-box.pw-placa .exit-actions .btn-cancel { border-color: #7a2a26 !important; background: #5a1d1a !important; color: #ffb3a8 !important; }
-        html body #exitModal .exit-box.pw-placa .exit-actions .btn-confirm { order: -1; }
-        html body #exitModal .exit-box.pw-placa .exit-actions button:disabled { opacity: .5; }
-        html body #exitModal .exit-box.pw-placa { width: 360px !important; max-width: 92% !important; background: none !important; border: none !important; border-image: none !important; box-shadow: none !important; }
-        html body #exitModal .exit-box.pw-placa:before, html body #exitModal .exit-box.pw-placa:after { display: none !important; }
+        .pw-placa .ac button.n { border-color: #7a2a26 !important; background: #5a1d1a !important; color: #ffb3a8 !important; }
         .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
         /* Android pinta un recuadro azul translucido sobre lo que acabas de
            tocar y lo deja ahi un momento: al abrirse un cartel encima (p.ej.
@@ -10810,7 +10806,6 @@
         if(modal.style.display === 'flex') { modal.style.display = 'none'; isLoggingOut = false; return; }
         modal.style.display = 'flex';
         if (pixelMode) ensurePixPanelCss();
-        if (EN_APP) pwPlaca(modal.querySelector('.exit-box'));   // app: recuadro de los paneles, como el resto de avisos
         // Titulo del modal: PNG con el arte horneado (warning / secure-cashout)
         // en pixel-pack; texto CSS de siempre en los demas casos.
         const setTitle = (text, pngId) => {

@@ -273,7 +273,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-ic,.pr-cl{display:flex;gap:.25em;justify-content:center}
 .pr-box{position:relative}
 #ahPrAddX{position:absolute;right:.7em;top:.6em;width:auto;padding:.4em .8em;font-size:.5em}
-#ahPrAddX.red{color:#ff8a7a;border-color:#7a2a26}
+#ahPrAddX.red,#ahPrUnW{color:#ff8a7a;border-color:#7a2a26}
+#ahPrUnW{position:absolute;right:.7em;top:2.7em;width:auto;padding:.4em .8em;font-size:.5em}
 .pr-fc{display:flex;flex-direction:column;align-items:center;gap:.5em;cursor:pointer}
 .pr-fc .k{font-size:.32em;color:var(--mut);letter-spacing:.12em}
 .pr-fc b{font-size:.58em;font-weight:400;color:#ffd23a;letter-spacing:.14em;text-shadow:.12em .12em 0 #000}
@@ -297,7 +298,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pz-e{font-size:.45em;color:var(--mut);text-align:center;padding:2.5em 0;line-height:2}
 .pz-f{display:flex;align-items:center;justify-content:space-between;gap:1em;margin-top:.9em}.pz-f .k{font-size:.45em;color:var(--mut)}.pz-f b{color:#ffd23a;font-weight:400}.pz-f .tb{width:auto;padding-left:1.4em;padding-right:1.4em}
 .ph>.px:not(.bk){margin-left:auto}   /* CLOSE siempre en la esquina de arriba a la derecha, en todos los paneles */
-#ahAr .ph .bk{font-size:.8em;padding:.4em 1.1em;color:#fff;border-color:#4a5850}
+#ahAr .ph .bk{color:#fff;border-color:#4a5850}   /* mismo tamano que CLOSE */
 .pr-bt{display:flex;gap:.5em;margin-top:.8em}.pr-bt .tb{width:auto;flex:1}
 .pr-st{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;height:3.6em}
 .pr-st .cell{justify-content:center;gap:.4em}.pr-st .v{font-size:.62em;text-shadow:.12em .12em 0 #000}
@@ -627,7 +628,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div></div>
   <div class="pr-r">
-    <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
+    <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div><button class="tb red" id="ahPrUnW" style="display:none">UNLINK WALLET</button>
       <div class="k" style="margin-top:1.1em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
       <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
@@ -1348,6 +1349,18 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             setTimeout(pintaWallet, 1500);
         } : null;
         $('#ahPrCon').style.display = conectada ? 'none' : '';
+        // Desvincular la wallet (para conectar otra). El saldo del juego se queda con esa wallet.
+        $('#ahPrUnW').style.display = conectada ? '' : 'none';
+        $('#ahPrUnW').onclick = () => {
+            const quita = async () => {
+                try { await fetch('/api/airdrop/unlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ what: 'wallet' }) }); } catch (e) {}
+                try { if (window.GameWalletUI) GameWalletUI.disconnect(); } catch (e) {}
+                await syncX(); pintaWallet(); pintaAvatarEditor();
+            };
+            const w0 = conectada;
+            if (typeof window.pwConfirm === 'function') window.pwConfirm('UNLINK WALLET', 'Disconnect ' + w0.slice(0, 4) + '...' + w0.slice(-4) + ' from this account? Its in-game $PILLY stays with that wallet. You can connect another one after.', 'UNLINK', 'CANCEL', quita);
+            else quita();
+        };
         $('#ahPrDep').style.display = $('#ahPrWd').style.display = conectada ? '' : 'none';
         saldoJuego = 0;
         if (w) try { saldoJuego = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}

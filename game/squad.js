@@ -192,8 +192,9 @@
 .ci .tt{position:absolute;right:20%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
 .ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
 .ci .pz.free{color:#00ff88}
-.ci .stk{position:absolute;left:61%;width:33%;height:33%;display:flex;align-items:center;justify-content:center;text-align:center;transform:rotate(-4deg);z-index:1;animation:ciPopR .35s .6s cubic-bezier(.2,1.4,.3,1) both}
-.ci .stk.a{top:7%}.ci .stk.b{top:49%;animation-delay:1.75s}
+.ci .stk{position:absolute;left:61%;width:33%;height:33%;display:flex;align-items:center;justify-content:center;text-align:center;z-index:3;opacity:0;transform:rotate(-4deg) scale(.5);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.3,1)}
+.ci .stk.on{opacity:1;transform:rotate(-4deg) scale(1)}   /* lo enciende un temporizador (intro): con retardo de CSS, en el movil la de abajo no llegaba a salir */
+.ci .stk.a{top:7%}.ci .stk.b{top:49%}
 .ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:1.5em;max-width:100%}
 .ci.stk3 .pl4{display:none}
 .ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.a .sl{color:#1d9bf0}.ci .stk.b .sl{color:#ff4d6d}
@@ -206,7 +207,6 @@
 @keyframes ciL{from{transform:translateX(-110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
 @keyframes ciR{from{transform:translateX(110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
 @keyframes ciPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
-@keyframes ciPopR{from{transform:scale(.2) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
 @keyframes ciVs{from{transform:scale(3) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
 /* tarjetas 1V1/2V2/3V3 con dibujo */
 .sq-card{padding:.5em .5em .7em;gap:.5em}
@@ -807,6 +807,8 @@
             // Fuera de las franjas (encima, en la misma inclinacion) y con su propia animacion: dentro de la franja de abajo,
             // que entra desde fuera de la pantalla, el WebView del movil no la llegaba a pintar.
             el.insertAdjacentHTML('beforeend', stk('a', d.me.length) + stk('b', d.foe.length));
+            const enciende = (q, ms) => setTimeout(() => { const x = el.querySelector(q); if (x) x.classList.add('on'); }, ms);
+            enciende('.stk.a', 600); enciende('.stk.b', 1600);   // la de los rivales, cuando entra su franja
         }
         hydrate(el);
         // Pildoras pixel (los sprites del juego) en lugar de las de CSS.
