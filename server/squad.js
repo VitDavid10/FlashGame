@@ -616,9 +616,9 @@ function createSquad(deps) {
             // Se anuncia en la partida quien cayo y a manos de quien.
             const stk = (room.squad.stakes || []).find(x => x.playerId === ev.playerId);
             if (!room.squad.practice) broadcast(room, { t: 'squadKill', victim: nameOfId(room, ev.playerId), by: st.by || null });
-            // Arena de pago: a quien se lo come le sale lo que llevaba (+$2), igual que el botin de classic.
+            // Arena de pago: al equipo que se lo come le sale lo que llevaba (+$2), igual que el botin de classic.
             const killer = stk && st.byId && room.clients.get(st.byId);
-            if (killer && killer.team !== stk.team) send(killer.ws, { t: 'killGain', amount: stk.fee, rate: Math.round(quote(1)) || 0 });
+            if (killer && killer.team !== stk.team) for (const c of room.clients.values()) if (c.team === killer.team) send(c.ws, { t: 'killGain', amount: stk.fee, rate: Math.round(quote(1)) || 0 });
         }
     }
     function tick(room, now) {
