@@ -5341,7 +5341,8 @@
         applyMusicVolume: function() { this.music.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER); this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER * 1.875); },
         play: function(name, pos = null) {
             if(this.muted || !this.sounds[name]) return;
-            if (window._sqHush && performance.now() < (window._sqHushUntil || 0)) return;   // pantalla VS de arenas: ningun sonido del juego hasta que acaba (con tope por si algo falla)
+            // Pantalla VS de arenas: ningun sonido del juego MIENTRAS SE VEA. Sin tiempos: en cuanto la pantalla desaparece (por lo que sea) vuelve el sonido.
+            if (window._sqHush) { const ov = document.getElementById('sqEntry'); if (ov && ov.style.display !== 'none') return; window._sqHush = false; }
             // Volumen por distancia: lo que entra en pantalla suena fuerte, lo lejano
             // se atenúa, y por encima de ~1.4× el radio del viewport se descarta.
             let vol = 1;
@@ -15503,7 +15504,7 @@
         ov.classList.toggle('quick', !!window._sqQuick);
         // Practica: se entra directo a la partida (sin pantalla negra ni textos); partida de verdad: pantalla VS en silencio.
         ov.classList.toggle('prac', window._squadKind === 'practice');
-        if (n === 0) { window._sqHush = window._squadKind === 'match' && !window._sqQuick; window._sqHushUntil = performance.now() + 14000; }
+        if (n === 0) window._sqHush = window._squadKind === 'match' && !window._sqQuick;
         // La pantalla C se monta UNA vez por entrada (si no, su animacion volvia a empezar en cada fase).
         const lw = ov.querySelector('.lw');
         if (n === 0 || !lw.firstChild) {
