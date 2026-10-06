@@ -192,7 +192,8 @@
 .ci .tt{position:absolute;right:20%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
 .ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
 .ci .pz.free{color:#00ff88}
-.ci .stk{position:absolute;top:17%;height:50%;display:flex;align-items:center;justify-content:center;text-align:center}
+.ci .stk{position:absolute;left:61%;width:33%;height:33%;display:flex;align-items:center;justify-content:center;text-align:center;transform:rotate(-4deg);z-index:1;animation:ciPopR .35s .6s cubic-bezier(.2,1.4,.3,1) both}
+.ci .stk.a{top:7%}.ci .stk.b{top:49%;animation-delay:1.75s}
 .ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:1.5em;max-width:100%}
 .ci.stk3 .pl4{display:none}
 .ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.a .sl{color:#1d9bf0}.ci .stk.b .sl{color:#ff4d6d}
@@ -205,6 +206,7 @@
 @keyframes ciL{from{transform:translateX(-110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
 @keyframes ciR{from{transform:translateX(110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
 @keyframes ciPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes ciPopR{from{transform:scale(.2) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
 @keyframes ciVs{from{transform:scale(3) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
 /* tarjetas 1V1/2V2/3V3 con dibujo */
 .sq-card{padding:.5em .5em .7em;gap:.5em}
@@ -491,7 +493,7 @@
         render();
     }
     function rcPopup(title, body, yes, no, onYes) {
-        if (typeof window.pwConfirm === 'function') { hideRc(); window.pwConfirm(title, body.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''), yes, no, onYes); snd('alert'); return; }
+        if (typeof window.pwConfirm === 'function') { hideRc(); window.pwConfirm(title, body.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''), yes, no, onYes); return; }   // sin sonido
         let el = document.getElementById('sqRc');
         if (!el) { el = document.createElement('div'); el.id = 'sqRc'; el.innerHTML = '<div class="bx"><div class="a"></div><div class="b"></div><div class="r"><button class="y" data-v="1"></button><button data-v="0"></button></div></div>'; frame().appendChild(el); }
         el.querySelector('.a').textContent = title;
@@ -790,13 +792,14 @@
             '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + '</div>';
         {
             // Siempre a la derecha (en el sitio de las pildoras), igual en 1V1, 2V2 y 3V3; las fotos se centran a la izquierda.
-            const n = d.me.length, ancho = 'left:60%;width:30%';
+            const n = d.me.length, ancho = '';
             el.classList.add('stk3');
             const linea = k => d.fee > 0 ? fmtK(d.fee * k) + ' $PILLY' + (d.usd != null ? ' <span class="ap">≈</span> ' + fmtUsd(d.usd * k) : '') : 'FREE';
             const stk = (cls, k) => '<div class="stk ' + cls + ' sm' + (d.fee > 0 ? '' : ' free') + '" style="' + ancho + '"><div class="in">' +
                 '<div class="sl">' + (cls === 'a' ? (k > 1 ? 'YOUR TEAM' : 'YOU') : (k > 1 ? 'RIVALS' : 'RIVAL')) + '</div><div class="sv">' + linea(k) + '</div></div></div>';
-            el.querySelector('.bd.ba').insertAdjacentHTML('beforeend', stk('a', d.me.length));
-            el.querySelector('.bd.bb').insertAdjacentHTML('beforeend', stk('b', d.foe.length));
+            // Fuera de las franjas (encima, en la misma inclinacion) y con su propia animacion: dentro de la franja de abajo,
+            // que entra desde fuera de la pantalla, el WebView del movil no la llegaba a pintar.
+            el.insertAdjacentHTML('beforeend', stk('a', d.me.length) + stk('b', d.foe.length));
         }
         hydrate(el);
         // Pildoras pixel (los sprites del juego) en lugar de las de CSS.

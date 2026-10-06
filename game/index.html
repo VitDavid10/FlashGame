@@ -1780,9 +1780,12 @@
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 300; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s;
         }
         #sysModal .exit-box { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 40px rgba(0,255,136,0.15); }
-        /* Avisos SI/NO (diseno C elegido por David): marco gris y botones pixel del juego (verde = si, gris = no). */
-        #sysModal .btn-conf { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 0; width: 150px; height: 40px; margin: 8px 7px 0; border: 0 !important; border-image: none !important; box-shadow: none !important; border-radius: 0 !important; background: url(img/cartel-hero/btn-plain-grey.png) center/100% 100% no-repeat !important; image-rendering: pixelated; color: #fff; text-shadow: 2px 2px 0 #000; cursor: pointer; padding: 0; }
-        #sysModal .btn-conf.y { background-image: url(img/cartel-hero/btn-plain-green.png) !important; color: #0b0f05; text-shadow: none; }
+        /* Avisos SI/NO (diseno C elegido por David): marco gris y botones pixel del mismo tamano, dibujados por CSS
+           como los del juego (luz arriba-izquierda, sombra abajo-derecha, esquinas en escalon). Confirmar gris, cancelar rojo. */
+        #sysModal .btn-conf { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 0; width: 150px; height: 40px; margin: 8px 7px 0; padding: 0; border: 0 !important; border-image: none !important; border-radius: 0 !important; cursor: pointer;
+            background: #7b7b7b !important; box-shadow: inset 4px 4px 0 #a8a8a8, inset -4px -5px 0 #4b4b4b !important; color: #fff; text-shadow: 2px 2px 0 #000;
+            clip-path: polygon(8px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 4px 100%, 0 calc(100% - 4px), 0 8px); }
+        #sysModal .btn-conf.n { background: #f03434 !important; box-shadow: inset 4px 4px 0 #ff8080, inset -4px -5px 0 #a3172e !important; }
         #sysModal .btn-conf:hover { filter: brightness(1.12); }
         #sysModal .btn-conf:active { transform: translateY(2px); }
         .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
@@ -15015,12 +15018,12 @@
         // igual que INSUFFICIENT BALANCE o CONNECTION FAILED. Los dos exitos
         // usan 'simpleselect', el de confirmacion del menu.
         const _ok = (t === 'DEPOSIT COMPLETE' || t === 'WITHDRAW COMPLETE');
-        try { SoundManager.play(_ok ? 'simpleselect' : 'little'); } catch (e) {}
+        if (!window._sysMute) try { SoundManager.play(_ok ? 'simpleselect' : 'little'); } catch (e) {}   // los avisos SI/NO (pwConfirm) no suenan
     }
     function hideSystemMsg() { const m = document.getElementById('sysModal'); m.style.display = 'none'; m.style.zIndex = ''; m.querySelectorAll('.btn-conf').forEach(b => b.remove()); const ok = m.querySelector('.btn-sys'); if (ok) ok.style.display = ''; const acts = m.querySelector('.exit-actions'); if (acts) acts.style.cssText = ''; }
     // Confirmacion (SI / NO) con el cartel de los avisos: lo usan los avisos de arenas (game/squad.js).
     window.pwConfirm = function (title, text, yes, no, onYes) {
-        showSystemMsg(text, title);
+        window._sysMute = true; showSystemMsg(text, title); window._sysMute = false;
         const m = document.getElementById('sysModal'), acts = m.querySelector('.exit-actions'), ok = acts.querySelector('.btn-sys');
         m.style.zIndex = '10000';   // por encima de los paneles de arenas
         // Siempre el marco gris de los avisos de wallet, con el titulo en letra pixel blanca.
@@ -15034,7 +15037,7 @@
             b.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} hideSystemMsg(); if (accion) accion(); };
             acts.appendChild(b);
         };
-        boton(yes, onYes, ' y'); boton(no, null, '');
+        boton(yes, onYes, ' y'); boton(no, null, ' n');
     };
 
     function abandonNet(texto) { cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
