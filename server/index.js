@@ -2693,7 +2693,7 @@ const httpServer = http.createServer(async (req, res) => {
                     list.push(entry || {
                         key: ck, mode, room: price, priceUsd: priceOf(price),
                         pillFee: entryFeePill(ck, null), locked: false, players: 0,
-                        needed: minRealOf(ck), cap: maxPlayersOf(ck) * enabledLayerCount(mode, price),
+                        needed: minRealOf(ck), cap: maxPlayersOf(ck) * enabledLayerCount(mode, price), maxPlayers: maxPlayersOf(ck),
                         state: 'offline', startIn: null, restartIn: null, endsIn: null,
                         roomName: price, layers: [],
                     });

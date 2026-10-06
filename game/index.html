@@ -8993,7 +8993,7 @@
         }
         html += `<div class="ri-line"><span>MATCH</span><b class="${est.cls}">${est.txt}</b></div>`;
         const dentro = LP ? (LP.players || 0) : (r.players || 0);
-        const aforo = (LP && LP.maxPlayers) || r.maxPlayers || r.cap || 0;   // aforo de la sala a la que entras, no la suma de todas las layers
+        const aforo = (LP && LP.maxPlayers) || r.maxPlayers || ({ classic: 35, arcade: 25 })[r.mode] || r.cap || 0;   // si el servidor aun no manda maxPlayers, el de cada modo   // aforo de la sala a la que entras, no la suma de todas las layers
         html += `<div class="ri-line"><span>PLAYERS</span><b>${dentro} / ${aforo}</b></div>`;
 
         if (gratis) {
@@ -15857,7 +15857,7 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { window._sqHush = false; SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
+            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { window._sqHush = false; if (window._squadKind === 'practice' && window.pwHubEnter) pwHubEnter(); SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al

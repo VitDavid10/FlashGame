@@ -1458,6 +1458,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX; window._hubAvatar = avatar; window._hubAvatarEl = avEl;
         // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
         window.pwHubMode = () => mode;
+        window.pwHubEnter = () => entra();
         window.pwAqShow = on => aqHud(!!on);
         window.PWSquadHooks = {
             afterRender() { ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
@@ -1494,7 +1495,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                     window.pwSquadGuard(() => { window._sqGuardOk = true; try { window.startOnlineGame.apply(window, args); } finally { window._sqGuardOk = false; } });
                     return;
                 }
-                if (fn === 'startGame' || window._squadTicket) entra(); else alEntrar();
+                // Practica de arenas: el menu se queda hasta que la partida ya se ve (index.html llama a pwHubEnter); si no, se veia negro mientras cargaba.
+                if (fn === 'startGame' || (window._squadTicket && window._squadKind !== 'practice')) entra(); else if (!window._squadTicket) alEntrar();
                 return o.apply(this, arguments);
             };
         });
