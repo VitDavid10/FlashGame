@@ -26,8 +26,10 @@ function createArenaPay(o) {
     const log = o.log || (() => {});
     const now = o.now || (() => Date.now());
 
-    let db = { holds: {}, claims: {} };
+    let db = { holds: {}, claims: {}, hist: [] };   // hist: premios ganados (cobrados o no), para el historial del PROFILE
     if (file) { try { db = Object.assign(db, JSON.parse(fs.readFileSync(file, 'utf8')) || {}); } catch (e) {} }
+    if (!Array.isArray(db.hist)) db.hist = [];
+    const marcaCobrado = id => { const h = db.hist.find(x => x.id === id); if (h) h.claimed = now(); };
     let dirty = false;
     const save = () => { if (!file || !dirty) return; dirty = false; try { fs.writeFileSync(file + '.tmp', JSON.stringify(db)); fs.renameSync(file + '.tmp', file); } catch (e) {} };
     const timer = setInterval(() => { autoClaims(); save(); }, 5000); if (timer.unref) timer.unref();
@@ -73,7 +75,7 @@ function createArenaPay(o) {
     // ---------- reparto al acabar ----------
     // players: [{ team, wallet, fee, byBot }] (solo los que pagaron); winner: 'A' | 'B' | null.
     // Devuelve { pot, fee, share, prizes: [{ wallet, amount, id }] }.
-    function settle(matchId, players, winner) {
+    function settle(matchId, players, winner, meta) {
         const pot = players.reduce((n, p) => n + (p.fee | 0), 0);
         if (!pot) return { pot: 0, comision: 0, share: 0, prizes: [] };
         if (!winner) {
@@ -93,24 +95,28 @@ function createArenaPay(o) {
         // La parte de un ganador sin wallet (bot de prueba, entrada de la casa) vuelve a la casa.
         const casa = ganadores.filter(p => !p.wallet).length * share;
         if (casa > 0) treasury(casa, 'arena: parte de los bots de prueba');
-        const prizes = ganadores.filter(p => p.wallet).map(p => ({ wallet: p.wallet, amount: share, id: addClaim(p.wallet, share, matchId) }));
+        const prizes = ganadores.filter(p => p.wallet).map(p => ({ wallet: p.wallet, amount: share, id: addClaim(p.wallet, share, matchId, meta) }));
         log(`[arena] ${matchId}: bote ${pot} PILL, comision ${comision + resto}, ${ganadores.length} ganadores a ${share} cada uno`);
         return { pot, comision: comision + resto, share, prizes };
     }
 
     // ---------- premios por cobrar ----------
-    function addClaim(wallet, amount, matchId) {
+    function addClaim(wallet, amount, matchId, meta) {
         const id = newRef();
         db.claims[id] = { wallet, amount, matchId: matchId || '', at: now() }; dirty = true;
+        db.hist.push({ id, wallet, amount, at: now(), size: (meta && meta.size) | 0, cents: (meta && meta.cents) | 0, claimed: 0 });
+        if (db.hist.length > 5000) db.hist.splice(0, db.hist.length - 5000);
         return id;
     }
+    // Ultimos premios de una wallet (los mas nuevos primero).
+    const historyOf = (wallet, n = 30) => db.hist.filter(h => h.wallet === wallet).slice(-n).reverse();
     const claimMessage = id => `PillWars claim arena ${id}`;
     function claim(id, wallet, message, signature) {
         const c = db.claims[id];
         if (!c) return { ok: false, reason: 'already_claimed' };
         if (c.wallet !== wallet || message !== claimMessage(id)) return { ok: false, reason: 'bad_claim' };
         if (!verify(wallet, message, signature)) return { ok: false, reason: 'bad_signature' };
-        delete db.claims[id]; dirty = true;
+        delete db.claims[id]; marcaCobrado(id); dirty = true;
         try { credit(wallet, c.amount); } catch (e) {}
         log(`[arena] premio cobrado: ${c.amount} PILL a ${wallet.slice(0, 6)}…`);
         return { ok: true, amount: c.amount };
@@ -124,7 +130,7 @@ function createArenaPay(o) {
         if (!ids.length) return { ok: false, reason: 'already_claimed' };
         if (!verify(wallet, message, signature)) return { ok: false, reason: 'bad_signature' };
         let amount = 0;
-        for (const id of ids) { amount += db.claims[id].amount; delete db.claims[id]; }
+        for (const id of ids) { amount += db.claims[id].amount; delete db.claims[id]; marcaCobrado(id); }
         dirty = true;
         try { credit(wallet, amount); } catch (e) {}
         log(`[arena] premios cobrados de golpe: ${amount} PILL (${ids.length}) a ${wallet.slice(0, 6)}…`);
@@ -134,14 +140,14 @@ function createArenaPay(o) {
         const t = now();
         for (const [id, c] of Object.entries(db.claims)) {
             if (t - c.at < AUTO_CLAIM_MS) continue;
-            delete db.claims[id]; dirty = true;
+            delete db.claims[id]; marcaCobrado(id); dirty = true;
             try { credit(c.wallet, c.amount); } catch (e) {}
             log(`[arena] premio sin cobrar abonado solo: ${c.amount} PILL a ${c.wallet.slice(0, 6)}…`);
         }
     }
     const claimsOf = wallet => Object.entries(db.claims).filter(([, c]) => c.wallet === wallet).map(([id, c]) => ({ id, amount: c.amount, at: c.at }));
 
-    return { feeOf, useBracket, bracketFee, hold, refund, take, settle, claim, claimMessage, claimAll, claimAllMessage, claimsOf, flush: () => { dirty = true; save(); }, _db: () => db, BOT_FEE };
+    return { feeOf, useBracket, bracketFee, hold, refund, take, settle, claim, claimMessage, claimAll, claimAllMessage, claimsOf, historyOf, flush: () => { dirty = true; save(); }, _db: () => db, BOT_FEE };
 }
 
 module.exports = { createArenaPay, BOT_FEE };

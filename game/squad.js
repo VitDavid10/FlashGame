@@ -35,9 +35,15 @@
     const snd = n => { try { SoundManager.play(n); } catch (e) {} };
     // Dolares con 2 decimales como mucho ($2, $2.02).
     const EMOJIS = ['😀', '😂', '😎', '😜', '😡', '😭', '👍', '👎', '🔥', '💀', '🎉', '💊', '🤝', '👀', '🙏', '💰', '🚀', '❤️'];
-    const fmtUsd = n => '$' + (Math.round((+n || 0) * 100) / 100).toFixed(2).replace(/\.00$/, '');
+    const fmtUsd = n => { const v = Math.round((+n || 0) * 100) / 100; return '$' + (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-US') : v.toFixed(2).replace(/\.00$/, '')); };
     const fmtPill = n => (n | 0).toLocaleString('en-US') + ' $PILLY';
     window.pwUsd = fmtUsd;
+    const fmtK = n => { n = Math.round(+n || 0); const a = Math.abs(n);
+        if (a < 1000) return String(n);
+        const [d, u] = a < 999500 ? [1e3, 'K'] : [1e6, 'M'], v = n / d, av = Math.abs(v);
+        const t = av < 10 ? v.toFixed(2) : av < 100 ? v.toFixed(1) : String(Math.round(v));
+        return (t.includes('.') ? t.replace(/\.?0+$/, '') : t) + u; };
+    window.pwFmtK = fmtK;
     const ERRS = {
         pay_failed: 'The entry payment failed.', in_custom: 'You are in a custom room.', team_full: 'That team is full.', too_many: 'Too many players to go back to a normal group.', pay_off: 'Paid matches are not available right now.',
         no_party: 'That group is gone.', party_full: 'That group is full (3 players).', party_busy: "You can't do that while your group is searching.",
@@ -173,8 +179,8 @@
 .ci .bd{position:absolute;left:-6%;right:-6%;height:36%;background:#0b0f05;transform:rotate(-4deg)}
 .ci .bd.ba{top:13%;border-top:0.6em solid #1d9bf0;animation:ciL .5s .15s cubic-bezier(.2,.9,.3,1) both}
 .ci .bd.bb{top:55%;border-top:0.6em solid #ff4d6d;animation:ciR .5s 1.45s cubic-bezier(.2,.9,.3,1) both}
-.ci .row{position:absolute;left:12%;top:8%;display:flex;gap:4%;width:56%}
-.ci .ti{display:flex;flex-direction:column;align-items:center;gap:0.8em;width:24%;animation:ciPop .35s cubic-bezier(.2,1.4,.3,1) both}
+.ci .row{position:absolute;left:12%;top:8%;display:flex;justify-content:center;gap:5%;width:44.8%}   /* 3 fotos llenan el hueco; 1 o 2 quedan centradas en el */
+.ci .ti{display:flex;flex-direction:column;align-items:center;gap:0.8em;width:30%;flex:none;animation:ciPop .35s cubic-bezier(.2,1.4,.3,1) both}
 .ci .ti .sq-pic{width:11em;height:11em;border-radius:0}
 .ci .ti.me .sq-pic{box-shadow:0 0 0 0.5em #1d9bf0,0.6em 0.6em 0 0.5em #000,0 0 2.2em rgba(29,155,240,.5)}
 .ci .ti.foe .sq-pic{box-shadow:0 0 0 0.5em #ff4d6d,0.6em 0.6em 0 0.5em #000,0 0 2.2em rgba(255,77,109,.5)}
@@ -183,12 +189,11 @@
 .ci .pl4 i{display:block;width:1.6em;height:3.2em;border-radius:0.9em;transform:rotate(-45deg);box-shadow:0 0 0 0.2em #000}
 .ci .pl4.pa i{background:linear-gradient(#e8f6ff 50%,#1d9bf0 50%)}.ci .pl4.pb i{background:linear-gradient(#fff 50%,#ff4d6d 50%)}
 .ci .vs{position:absolute;left:58%;top:40%;font-size:7.8em;color:#fff;-webkit-text-stroke:.064em #0b0f05;paint-order:stroke fill;text-shadow:.1em .1em 0 #0b0f05;transform:rotate(-4deg);animation:ciVs .45s 1.05s cubic-bezier(.2,1.6,.3,1) both;z-index:2}
-.ci .tt{position:absolute;right:3%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
+.ci .tt{position:absolute;right:20%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
 .ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
 .ci .pz.free{color:#00ff88}
 .ci .stk{position:absolute;top:17%;height:50%;display:flex;align-items:center;justify-content:center;text-align:center}
-.ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:.8em;animation:ciPop .35s .9s cubic-bezier(.2,1.4,.3,1) both}
-.ci .bd.bb .stk .in{animation-delay:1.75s}
+.ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:1.5em;max-width:100%}
 .ci.stk3 .pl4{display:none}
 .ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.a .sl{color:#1d9bf0}.ci .stk.b .sl{color:#ff4d6d}
 .ci .stk .sv{font-size:1.9em;color:#ffd23a;text-shadow:.12em .12em 0 #000;white-space:nowrap;line-height:1}
@@ -442,7 +447,7 @@
         else if (m.t === 'sqPropose') onPropose(m);
         else if (m.t === 'squadPrize') onPrize(m);
         else if (m.t === 'sqClaim') onClaim(m);
-        else if (m.t === 'sqClaims') { const cb = S.onClaims; S.onClaims = null; if (cb) cb(m.total | 0, m.list || [], m.usd); }
+        else if (m.t === 'sqClaims') { const cb = S.onClaims; S.onClaims = null; if (cb) cb(m.total | 0, m.list || [], m.usd, m.hist || []); }
         else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
         else if (m.t === 'sqWhisper') onWhisper(m);
     }
@@ -543,6 +548,7 @@
     }
     function onTicket(m) {
         // REJOIN: vuelves a TU partida (ya habias muerto): se entra directo a mirar con tu equipo, sin VS.
+        window._sqSince = m.since != null ? { ms: m.since, at: performance.now() } : null;   // la musica sigue por donde va la sala
         if (m.rejoin) { S.lineupData = null; enter(m.ticket, 'rejoin', m.mode); return; }
         // Te saliste con tu pildora viva: vuelves a llevarla (se quedo en el mapa sin moverse).
         if (m.resume) { S.lineupData = null; enter(m.ticket, 'resume', m.mode); return; }
@@ -783,12 +789,12 @@
             '<div class="bd bb"><div class="row">' + tiles(d.foe, 'foe') + '</div>' + pills('pb') + '</div>' +
             '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + '</div>';
         {
-            // 1V1: en el hueco entre la foto y las pildoras. 2V2/3V3: no cabe ahi y va en el sitio de las pildoras.
-            const n = d.me.length, ancho = n === 1 ? 'left:26%;width:32%' : 'left:60%;width:30%';
-            if (n > 1) el.classList.add('stk3');
-            const linea = k => d.fee > 0 ? (d.fee * k).toLocaleString('en-US') + ' $PILLY' + (d.usd != null ? ' <span class="ap">≈</span> ' + fmtUsd(d.usd * k) : '') : 'FREE';
-            const stk = (cls, k) => '<div class="stk ' + cls + (n > 1 ? ' sm' : '') + (d.fee > 0 ? '' : ' free') + '" style="' + ancho + '"><div class="in">' +
-                (k > 1 ? '<div class="sl">' + (cls === 'a' ? 'YOUR TEAM' : 'RIVALS') + '</div>' : '') + '<div class="sv">' + linea(k) + '</div></div></div>';
+            // Siempre a la derecha (en el sitio de las pildoras), igual en 1V1, 2V2 y 3V3; las fotos se centran a la izquierda.
+            const n = d.me.length, ancho = 'left:60%;width:30%';
+            el.classList.add('stk3');
+            const linea = k => d.fee > 0 ? fmtK(d.fee * k) + ' $PILLY' + (d.usd != null ? ' <span class="ap">≈</span> ' + fmtUsd(d.usd * k) : '') : 'FREE';
+            const stk = (cls, k) => '<div class="stk ' + cls + ' sm' + (d.fee > 0 ? '' : ' free') + '" style="' + ancho + '"><div class="in">' +
+                '<div class="sl">' + (cls === 'a' ? (k > 1 ? 'YOUR TEAM' : 'YOU') : (k > 1 ? 'RIVALS' : 'RIVAL')) + '</div><div class="sv">' + linea(k) + '</div></div></div>';
             el.querySelector('.bd.ba').insertAdjacentHTML('beforeend', stk('a', d.me.length));
             el.querySelector('.bd.bb').insertAdjacentHTML('beforeend', stk('b', d.foe.length));
         }
@@ -806,6 +812,9 @@
             };
             el.querySelectorAll('.pl4').forEach(box => box.querySelectorAll('i').forEach(i => { const cv = document.createElement('canvas'); cv.className = 'px'; dib(cv, box.classList.contains('pa') ? '#e8f6ff' : '#ffffff', box.classList.contains('pa') ? '#1d9bf0' : '#ff4d6d', 6); i.replaceWith(cv); }));
         }
+        // Si la cifra no cabe en su hueco, la letra baja hasta que cabe (nunca se sale ni pisa las fotos).
+        const ajusta = () => { if (!el.isConnected) return requestAnimationFrame(ajusta); el.querySelectorAll('.stk').forEach(b => { const sv = b.querySelector('.sv'); let fs = parseFloat(getComputedStyle(sv).fontSize); while (sv.scrollWidth > b.clientWidth && fs > 7) { fs -= 1; sv.style.fontSize = fs + 'px'; } }); };
+        requestAnimationFrame(ajusta);
         // Sonidos que acompanan la animacion (las bandas entran, cada foto aparece, golpe del VS).
         const fx = (n, t, v) => setTimeout(() => { if (el.isConnected) try { SoundManager.playFx(n, v); } catch (e) {} }, t * 1000);
         fx('vswhoosh', .15, .5); d.me.forEach((x, i) => fx('vspop', .45 + i * .15, .35));
@@ -941,6 +950,20 @@
     // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / FIND RIVALS / MATCH CUSTOM -----
     const arMode = () => 'arcade';   // arenas es un solo modo (con skills elegidas en THE PILL), se entre desde arcade o classic
     function modeTitle() { return 'ARENAS'; }
+    const enHub = () => !!(S.box.rooms && S.box.rooms.closest && S.box.rooms.closest('#ahAr'));
+    // App: titulo y BACK arriba (BACK grande junto a ARENAS; CLOSE siempre en la esquina derecha).
+    function cabecera() {
+        const ph = document.querySelector('#ahAr .ph'); if (!ph) return;
+        let bk = ph.querySelector('.bk');
+        if (!bk) {
+            bk = document.createElement('button'); bk.className = 'px bk'; bk.textContent = 'BACK';
+            ph.insertBefore(bk, ph.querySelector('.px:not(.bk)'));
+            bk.onclick = () => { snd('simpleselect'); if (S.arStep && S.arStep.view) S.arStep.view = null; else S.arStep = null; S.err = ''; render(); };
+        }
+        const P = S.party, st = S.arStep, paso = !!(st && st.view !== 'rivals' && !(P && (P.rc || P.cm || P.state !== 'idle')));
+        bk.style.display = paso ? '' : 'none';
+        const w = ph.querySelector('.w'); if (w) w.textContent = modeTitle() + (paso ? ' · ' + st.size + 'V' + st.size + (st.view === 'price' ? ' · QUICK MATCH' : st.view === 'custom' ? ' · MATCH CUSTOM' : '') : '');
+    }
     const usdLbl = usd => usd ? '$' + usd : 'FREE';
     function roomsHtml() {
         const p = S.party;
@@ -959,7 +982,7 @@
             return '<div class="sq"><div class="sq-row"><span class="sq-lab">' + hint + '</span></div><div class="sq-cards">' + cards + '</div>' + errLine() + '</div>';
         }
         const n = step.size, usd = S.usd | 0;
-        const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + (step.view === 'price' ? ' · QUICK MATCH' : step.view === 'rivals' ? ' · FIND RIVALS' : step.view === 'custom' ? ' · MATCH CUSTOM' : '') + '</span></div>';
+        const head = enHub() && step.view !== 'rivals' ? '' : '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + (step.view === 'price' ? ' · QUICK MATCH' : step.view === 'rivals' ? ' · FIND RIVALS' : step.view === 'custom' ? ' · MATCH CUSTOM' : '') + '</span></div>';
         if (step.view === 'rivals') return '<div class="sq sq-fixed">' + head + '<div class="sq-rl">' + rivalsHtml(n) + '</div>' + errLine() + '</div>';
         if (step.view === 'price') {
             const est = pillOf(usd);
@@ -1001,7 +1024,7 @@
                 const otros = r ? r.ready + r.looking - (aqui ? groupSize() : 0) : 0;
                 const st = r ? '<b>' + r.ready + ' READY' + (yoReady === cents ? ' (YOU)' : '') + '</b> · <i>' + r.looking + ' LOOKING' + (yoLook === cents ? ' (YOU)' : '') + '</i> · ' + r.playing + ' PLAYING' : 'NOBODY YET · BE THE FIRST';
                 const bt = aqui ? '<button class="sq-b sm" disabled>YOU\'RE IN</button>'
-                    : '<button class="sq-b sm ' + (otros > 0 ? 'gold' : 'on') + '" data-play="' + cents + '">' + (otros > 0 ? 'FIGHT' : 'PLAY') + '</button>';
+                    : '<button class="sq-b sm ' + (otros > 0 ? 'gold' : 'on') + '" data-play="' + cents + '">FIGHT</button>';
                 return '<div class="sq-rm' + (r ? '' : ' dim') + '"><span class="pr' + (cents ? '' : ' free') + '">' + (cents ? '$' + usd : 'FREE') + '</span><div class="w"><div class="n">' + (cents ? (real ? real + ' · ' : '') + fmtPill(fee) : 'NO ENTRY') + '</div><div class="s">' + st + '</div></div>' + bt + '</div>';
             };
             const body = rows.length ? rows.map(r => fila(r.cents, r)).join('') : fila(hi * 100, null);
@@ -1121,7 +1144,7 @@
     function render() {
         if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500, center: true }); }
         if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000, center: true }); }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
-        if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); const w = document.querySelector('#ahAr .ph .w'); if (w) w.textContent = modeTitle(); }
+        if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); cabecera(); }
         if (S.box.friends) paint('friends', friendsHtml());
         try { if (window.PWSquadHooks) { if (PWSquadHooks.afterRender) PWSquadHooks.afterRender(); if (PWSquadHooks.badge) PWSquadHooks.badge(badgeCount()); } } catch (e) {}
     }

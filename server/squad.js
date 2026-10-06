@@ -347,7 +347,11 @@ function createSquad(deps) {
             const r = arena.claim(String(msg.id || ''), String(msg.wallet || ''), String(msg.message || ''), Array.isArray(msg.signature) ? msg.signature : []);
             return send(ws, Object.assign({ t: 'sqClaim', id: String(msg.id || '') }, r));
         }
-        if (a === 'claims') { const list = arena.claimsOf(String(msg.wallet || '')); return send(ws, { t: 'sqClaims', list, total: list.reduce((n, c) => n + c.amount, 0), usd: usdOf(list.reduce((n, c) => n + c.amount, 0)) }); }
+        if (a === 'claims') {
+            const w = String(msg.wallet || ''), list = arena.claimsOf(w), total = list.reduce((n, c) => n + c.amount, 0);
+            const hist = arena.historyOf(w).map(h => ({ id: h.id, amount: h.amount, at: h.at, size: h.size, cents: h.cents, claimed: !!h.claimed, usd: usdOf(h.amount) }));
+            return send(ws, { t: 'sqClaims', list, total, usd: usdOf(total), hist });
+        }
         if (a === 'claimall') {
             const r = arena.claimAll(String(msg.wallet || ''), String(msg.message || ''), Array.isArray(msg.signature) ? msg.signature : [], msg.ts);
             return send(ws, Object.assign({ t: 'sqClaim', all: true }, r));
@@ -563,7 +567,7 @@ function createSquad(deps) {
             const pid = me.uid && room.squad.byUid && room.squad.byUid[me.uid];
             const viva = !!(pid && room.sim.players.has(pid) && room.sim.players.get(pid).alive && !room.clients.has(pid));
             tickets.set(ticket, { roomKey: room.key, team, rejoin: !viva, resumePid: viva ? pid : null, name: me.gn || '', idName: me.name, pic: me.pic || '', av: me.av || null, exp: Date.now() + TICKET_TTL_MS });
-            return send(ws, { t: 'sqTicket', kind: 'match', rejoin: !viva, resume: viva, mode: room.mode, ticket, size: room.squad.size, team, lineup: null, startIn: 0 });
+            return send(ws, { t: 'sqTicket', kind: 'match', rejoin: !viva, resume: viva, mode: room.mode, ticket, size: room.squad.size, team, lineup: null, startIn: 0, since: Math.max(0, Date.now() - room.startAt) });
         }
         if (a === 'cancel') {
             if (!leader) return err(ws, 'not_leader');
@@ -776,7 +780,7 @@ function createSquad(deps) {
         if (!sq.practice && (sq.stakes || []).length && !sq.settled) {
             sq.settled = true; liveStakes.delete(room.key);
             const lista = sq.stakes.map(x => { arena.take(x.ref); const st2 = x.playerId && sq.stats[x.playerId]; return { team: x.team, wallet: x.wallet, fee: x.fee, byBot: !!(st2 && st2.byBot) }; });
-            const r = arena.settle(room.key, lista, winner);
+            const r = arena.settle(room.key, lista, winner, { size: sq.size, cents: sq.cents });
             money = { pot: r.pot, share: r.share, usdShare: usdOf(r.share), usdPot: usdOf(r.pot), fee: sq.fee, cents: sq.cents, draw: !!r.draw };
             for (const t of ['A', 'B']) players[t].forEach((pl, i) => { const id = sq.teams[t][i], x = sq.stakes.find(y => y.playerId === id); pl.stake = x ? x.fee : 0; });
             // A cada ganador que pago, su premio para cobrar con CLAIM (por la sala y por el lobby, por si ya se fue).

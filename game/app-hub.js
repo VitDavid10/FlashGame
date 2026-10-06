@@ -286,9 +286,17 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-box .k,.pr-st .k{font-size:.38em;color:var(--mut);letter-spacing:.1em}
 .pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em;cursor:pointer;word-break:break-all}
 .pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
-.pr-mo{display:flex;gap:2.2em;margin-top:1.1em}.pr-mo>div{min-width:0}
-.pr-pzr{display:flex;align-items:center;gap:.7em}.pr-pzr .tb{width:auto;padding-left:1em;padding-right:1em;margin-top:.35em}
-#ahPr .pr-bt{margin-top:1.2em}
+#ahPr .pr-bt{margin-top:1.2em}#ahPr .pr-w{margin-top:.35em}
+.tb .pz-dot{display:inline-block;width:.5em;height:.5em;background:#ffd23a;margin-left:.5em;vertical-align:.15em;box-shadow:.1em .1em 0 #000}
+.pz-l{display:flex;flex-direction:column;gap:.45em;max-height:15em;overflow-y:auto;margin-top:.9em}
+.pz-r{display:flex;align-items:center;gap:1em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.6em .9em}
+.pz-r .m{font-size:.5em;color:#fff;min-width:6.5em}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
+.pz-r .a{font-size:.55em;color:#ffd23a;text-align:right}.pz-r .s{font-size:.36em;min-width:6.5em;text-align:right;letter-spacing:.08em}
+.pz-r .s.ok{color:var(--mut)}.pz-r .s.no{color:#ffd23a}.pz-r.done .a{color:var(--mut)}
+.pz-e{font-size:.45em;color:var(--mut);text-align:center;padding:2.5em 0;line-height:2}
+.pz-f{display:flex;align-items:center;justify-content:space-between;gap:1em;margin-top:.9em}.pz-f .k{font-size:.45em;color:var(--mut)}.pz-f b{color:#ffd23a;font-weight:400}.pz-f .tb{width:auto;padding-left:1.4em;padding-right:1.4em}
+.ph>.px:not(.bk){margin-left:auto}   /* CLOSE siempre en la esquina de arriba a la derecha, en todos los paneles */
+#ahAr .ph .bk{font-size:.8em;padding:.4em 1.1em;color:#fff;border-color:#4a5850}
 .pr-bt{display:flex;gap:.5em;margin-top:.8em}.pr-bt .tb{width:auto;flex:1}
 .pr-st{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;height:3.6em}
 .pr-st .cell{justify-content:center;gap:.4em}.pr-st .v{font-size:.62em;text-shadow:.12em .12em 0 #000}
@@ -614,12 +622,15 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div></div>
   <div class="pr-r">
     <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
-      <div class="pr-mo"><div><div class="k">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div></div>
-        <div id="ahPrPz" style="display:none"><div class="k">ARENA PRIZES</div><div class="pr-pzr"><div class="pr-bal" id="ahPrPzV">0</div><button class="tb on" id="ahPrPzC">CLAIM</button></div></div></div>
-      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button></div></div>
+      <div class="k" style="margin-top:1.1em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
+      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
   <div class="foot">Tap EDIT AVATAR to change your picture</div></div></div></div>
+<div class="ov" id="ahPz"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><button class="tb on">ARENA PRIZES</button><span class="cnt" id="ahPzSp"></span><button class="px">CLOSE</button></div>
+  <div class="pz-l" id="ahPzL"></div>
+  <div class="pz-f"><div class="k">TO CLAIM <b id="ahPzT">0 $PILLY</b></div><button class="tb on" id="ahPzAll">CLAIM ALL</button></div></div></div></div>
 <div class="ov" id="ahSt"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb" data-s="shop">STORE</button><button class="tb" data-s="mine">MY SKINS</button><button class="tb" data-s="conv">CONVERT</button><span class="cnt" id="ahStSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sn" id="ahStG" style="grid-template-columns:repeat(4,1fr)"></div><div class="cv-b" id="ahCv"></div></div>
@@ -1321,14 +1332,29 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         saldoJuego = 0;
         if (w) try { saldoJuego = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
         $('#ahPrBal').textContent = Math.floor(saldoJuego).toLocaleString('en-US');
-        // Premios de arenas sin cobrar (si en VICTORY no se pulso CLAIM): aqui se cobran todos de una vez.
-        const pz = $('#ahPrPz');
-        if (w && window.PWSquad) PWSquad.prizes(w, total => {
-            pz.style.display = total > 0 ? '' : 'none';
-            $('#ahPrPzV').textContent = Math.floor(total).toLocaleString('en-US');
-            $('#ahPrPzC').onclick = () => PWSquad.claimAll(pintaWallet);
-        }); else pz.style.display = 'none';
+        // CLAIM: premios de arenas (historial con lo cobrado y lo pendiente). El punto avisa si hay algo por cobrar.
+        $('#ahPrPzC').style.display = conectada ? '' : 'none';
+        $('#ahPrPzC').onclick = abrePremios;
+        $('#ahPrPzDot').style.display = 'none';
+        if (w && window.PWSquad) PWSquad.prizes(w, total => { $('#ahPrPzDot').style.display = total > 0 ? '' : 'none'; });
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
+    }
+    // Historial de premios de arenas: los cobrados salen CLAIMED; lo pendiente se cobra todo con CLAIM ALL.
+    function abrePremios() {
+        const ov = $('#ahPz'), w = window.GameWallet && GameWallet.address;
+        ov.classList.add('open'); placa($('#ahPz .pnl'), 1);
+        $('#ahPzL').innerHTML = '<div class="pz-e">LOADING...</div>';
+        const fmt = n => Math.floor(n).toLocaleString('en-US');
+        const pinta = (total, list, usd, hist) => {
+            const fecha = t => { const d = new Date(t); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
+                : '<div class="pz-e">EMPTY<br>WIN A PAID ARENA MATCH TO GET PRIZES</div>';
+            $('#ahPzT').textContent = fmt(total) + ' $PILLY';
+            $('#ahPzAll').disabled = !(total > 0);
+            $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); });
+        };
+        if (!w || !window.PWSquad) return pinta(0, [], null, []);
+        PWSquad.prizes(w, pinta);
     }
     function conectaX() { openProfile(); }
     const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
