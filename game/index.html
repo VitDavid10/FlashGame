@@ -796,7 +796,7 @@
             html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-info {
                 width: 268px; max-width: none; padding: 40px 26px 30px;
             }
-            html:not([data-hero]) body.mobile-allowed #roomInfoModal .pw-modal-box.room-info { --ri-l: 216px; --ri-r: 220px; column-gap: 14px; }
+            html:not([data-hero]) body.mobile-allowed #roomInfoModal .pw-modal-box.room-info { --ri-l: 216px; column-gap: 14px; }
             html:not([data-hero]) body.mobile-allowed #roomInfoModal .ri-tab { font-size: 6px; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-head { font-size: 7px; margin-bottom: 10px; letter-spacing: 0; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-line { font-size: 9px; margin: 5px 0; gap: 8px; }
@@ -2912,17 +2912,17 @@
            otros popups porque lleva parrafo de texto, no solo botones. */
         /* ROOM INFO: lo de siempre a la izquierda y una imagen del juego a la derecha; encima de la imagen, las layers.
            El hueco de las pestanas esta siempre (haya una layer o varias), asi el cartel no cambia de tamano. */
-        #roomInfoModal .pw-modal-box.room-info { display: grid; grid-template-columns: var(--ri-l, 342px) var(--ri-r, 320px); column-gap: 24px; width: auto !important; align-items: start; }
-        #roomInfoModal .pw-modal-box.room-info > *:not(.ri-art):not(.hub-placa) { grid-column: 1; }
-        #roomInfoModal .ri-art { grid-column: 2; grid-row: 1 / span 8; align-self: stretch; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }   /* llega de arriba hasta CANCEL */
+        #roomInfoModal .pw-modal-box.room-info { display: grid; grid-template-columns: var(--ri-l, 342px) auto; column-gap: 24px; width: auto !important; align-items: start; }
+        #roomInfoModal .pw-modal-box.room-info > *:not(.ri-art):not(.ri-tabs):not(.hub-placa) { grid-column: 1; }
+        #roomInfoModal .ri-art { grid-column: 2; grid-row: 2 / span 7; align-self: start; display: flex; flex-direction: column; gap: 6px; }   /* de la linea de la sala ($10 ROOM) hasta CANCEL; la imagen, cuadrada (ver riDibujo) */
         #roomInfoModal .pw-modal-box.room-info { padding-right: 30px; }
         #roomInfoModal .pw-modal-cancel { margin-bottom: 12px !important; }
         #roomInfoModal .pw-modal-title { margin-bottom: 12px !important; }
         #roomInfoModal .ri-actions { margin-top: 12px !important; }   /* la imagen es la ultima del cartel: CANCEL perdia su margen de abajo */
-        #roomInfoModal .ri-tabs { height: 26px; display: flex; gap: 4px; flex: none; }
+        #roomInfoModal .ri-tabs { grid-column: 2; grid-row: 1; align-self: center; height: 26px; display: flex; gap: 4px; }   /* L1 L2 a la altura de ROOM INFO */
         #roomInfoModal .ri-tab { flex: none; width: 44px; font-family: 'Press Start 2P', monospace; font-size: 8px; background: #050505; color: #7d8a82; border: 2px solid #2f3d35; cursor: pointer; padding: 0; white-space: nowrap; overflow: hidden; }
         #roomInfoModal .ri-tab.on { color: #04150c; background: var(--hub-ac, #00ff88); border-color: var(--hub-ac, #00ff88); }
-        #roomInfoModal #riArtCv { flex: 1 1 auto; width: 100%; height: 0; min-height: 0;   /* height 0: el lienzo no empuja el alto del cartel, solo rellena */ image-rendering: pixelated; background: #050505; box-shadow: 0 0 0 3px #2f3d35; }
+        #roomInfoModal #riArtCv { flex: none; width: 200px; height: 200px; image-rendering: pixelated; background: #050505; box-shadow: 0 0 0 3px #2f3d35; }
         #roomInfoModal #riLayersBtn, #roomInfoModal #riLayers { display: none !important; }
         .pw-modal-box.room-info { border: none; box-shadow: none; background: transparent url('img/cartel-hero/menu-gris.png') center/100% 100% no-repeat; image-rendering: pixelated; padding: 52px 44px 40px; width: 430px; }
         .ri-head { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; letter-spacing: 1px; margin-bottom: 14px; }
@@ -4292,7 +4292,7 @@
                 <button class="pw-big-btn room" id="riContinue" onclick="confirmRoomInfo()" onmouseenter="SoundManager.playSimpleHover()">CONTINUE</button>
             </div>
             <button class="pw-modal-cancel" onclick="closeRoomInfo()">CANCEL</button>
-            <div class="ri-art"><div class="ri-tabs" id="riTabs"></div><canvas id="riArtCv"></canvas></div>
+            <div class="ri-tabs" id="riTabs"></div><div class="ri-art"><canvas id="riArtCv"></canvas></div>
         </div>
     </div>
 
@@ -9075,7 +9075,14 @@
     }
     // Imagen del juego al lado de ROOM INFO: un trozo de mapa con virus y una pildora cazando a otra (los sprites del juego).
     function riDibujo() {
-        const cv = document.getElementById('riArtCv'); if (!cv || !cv.clientWidth) return;
+        const cv = document.getElementById('riArtCv'); if (!cv) return;
+        // Cuadrada y de la altura justa: desde la linea de la sala ($10 ROOM) hasta el borde de abajo de CANCEL.
+        const body = document.getElementById('riBody'), canc = document.querySelector('#roomInfoModal .pw-modal-cancel'), tabs = document.getElementById('riTabs');
+        if (body && canc && tabs) {
+            const lado = Math.max(120, Math.round(canc.getBoundingClientRect().bottom - body.getBoundingClientRect().top));
+            cv.style.width = cv.style.height = lado + 'px';
+        }
+        if (!cv.clientWidth) return;
         const W = cv.width = Math.round(cv.clientWidth / 2), H = cv.height = Math.round(cv.clientHeight / 2);
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         g.fillStyle = '#050505'; g.fillRect(0, 0, W, H);
