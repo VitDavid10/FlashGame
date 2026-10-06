@@ -69,7 +69,7 @@ function createVirtualFriends(ctx) {
             // atras, carga): hasta que lo vean una vez, o pasen 30 s, esperan.
             const humans = [...room.clients.values()].some(c => !c.ws.virtualGame);
             if (humans) seenHuman = true;
-            else if (seenHuman || Date.now() - t0 > 30000) return stop(true);
+            else if (!(room.squad && !room.squad.practice) && (seenHuman || Date.now() - t0 > 30000)) return stop(true);   // en la practica se van; en una partida de verdad siguen (puedes volver con REJOIN)
             if (room.state === 'playing' && !cli._spawned) { handleInput(room, playerId, { t: 'ready' }); return; }
             const p = room.sim.players.get(playerId), c = p && p.alive && p.cells[0];
             if (!c) return;

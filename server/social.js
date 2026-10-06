@@ -63,7 +63,8 @@ function createSocial(opts) {
     function statusOf(id) {
         if (!online.has(id)) return 'off';
         const pi = partyInfoOf(id);
-        if (pi && (pi.state === 'queued' || pi.state === 'match')) return 'game';
+        if (pi && pi.state === 'match') return 'game';
+        if (pi && pi.state === 'queued') return 'wait';
         if (pi) return 'party';
         return 'on';
     }

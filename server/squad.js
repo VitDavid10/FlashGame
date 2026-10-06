@@ -181,7 +181,7 @@ function createSquad(deps) {
     }
     function issueTo(m, room, team, lineup, stake) {
         const ticket = rnd(16);
-        tickets.set(ticket, { roomKey: room.key, team, name: m.gn || '', idName: m.name, pic: m.pic || '', av: m.av || null, uid: m.uid || null, stakeRef: stake ? stake.ref : null, exp: Date.now() + TICKET_TTL_MS });
+        tickets.set(ticket, { roomKey: room.key, team, name: m.gn || '', idName: m.name, pic: m.pic || '', av: m.av || null, uid: m.uid || null, stakeRef: stake ? stake.key : null, exp: Date.now() + TICKET_TTL_MS });
         send(m.ws, { t: 'sqTicket', kind: room.squad.kind, mode: room.mode, ticket, size: room.squad.size, team, lineup: lineup || null, startIn: Math.max(0, room.startAt - Date.now()), cents: room.squad.cents | 0, fee: room.squad.fee | 0, usd: room.squad.fee ? usdOf(room.squad.fee) : null });
     }
     function issue(party, room, team, lineup) {
@@ -210,7 +210,7 @@ function createSquad(deps) {
         for (const team of ['A', 'B']) for (const m of sides[team]) {
             sq.memberTeam[m.id] = team;
             const pd = paidOf(m);
-            if (pd) stakes.push({ ref: pd.ref, wallet: pd.wallet, fee: pd.fee, team, memberId: m.id, uid: m.uid || null, ws: m.ws, playerId: null });
+            if (pd) stakes.push({ key: rnd(6), ref: pd.ref, wallet: pd.wallet, fee: pd.fee, team, memberId: m.id, uid: m.uid || null, ws: m.ws, playerId: null });
         }
         sq.stakes = stakes; sq.cents = cents | 0;
         sq.fee = stakes.length ? stakes[0].fee : (fee | 0);
@@ -619,7 +619,7 @@ function createSquad(deps) {
             sq.joined++;
             statOf(room, playerId).ident = { name: tk.idName || 'PLAYER', pic: tk.pic || '', av: tk.av || null };
             if (tk.uid) (sq.byUid || (sq.byUid = {}))[tk.uid] = playerId;
-            const stk = tk.stakeRef && (sq.stakes || []).find(x => x.ref === tk.stakeRef);
+            const stk = tk.stakeRef && (sq.stakes || []).find(x => x.key === tk.stakeRef);
             if (stk) stk.playerId = playerId;
         }
         const token = crypto.randomBytes(32).toString('hex');

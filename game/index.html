@@ -1780,6 +1780,9 @@
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 300; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s;
         }
         #sysModal .exit-box { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 40px rgba(0,255,136,0.15); }
+        #sysModal .btn-conf { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px; padding: 12px 18px; margin: 8px 6px 0; border: 3px solid #000; background: #2c3630; color: #cfd8d3; box-shadow: 3px 3px 0 rgba(0,0,0,.5); cursor: pointer; }
+        #sysModal .btn-conf.y { background: #ccff00; color: #0b0f05; }
+        #sysModal .btn-conf:active { transform: translateY(2px); }
         .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
         /* Android pinta un recuadro azul translucido sobre lo que acabas de
            tocar y lo deja ahi un momento: al abrirse un cartel encima (p.ej.
@@ -15005,7 +15008,25 @@
         const _ok = (t === 'DEPOSIT COMPLETE' || t === 'WITHDRAW COMPLETE');
         try { SoundManager.play(_ok ? 'simpleselect' : 'little'); } catch (e) {}
     }
-    function hideSystemMsg() { document.getElementById('sysModal').style.display = 'none'; }
+    function hideSystemMsg() { const m = document.getElementById('sysModal'); m.style.display = 'none'; m.style.zIndex = ''; m.querySelectorAll('.btn-conf').forEach(b => b.remove()); const ok = m.querySelector('.btn-sys'); if (ok) ok.style.display = ''; const acts = m.querySelector('.exit-actions'); if (acts) acts.style.cssText = ''; }
+    // Confirmacion (SI / NO) con el cartel de los avisos: lo usan los avisos de arenas (game/squad.js).
+    window.pwConfirm = function (title, text, yes, no, onYes) {
+        showSystemMsg(text, title);
+        const m = document.getElementById('sysModal'), acts = m.querySelector('.exit-actions'), ok = acts.querySelector('.btn-sys');
+        m.style.zIndex = '10000';   // por encima de los paneles de arenas
+        // Siempre el marco gris de los avisos de wallet, con el titulo en letra pixel blanca.
+        const box = m.querySelector('.exit-box'); if (box) { box.classList.add('sys-gray'); box.classList.remove('sys-green'); }
+        if (!EN_APP) { const t = document.getElementById('sysModalTitle'); t.innerHTML = ''; t.textContent = title; t.style.cssText = "font-family:'Press Start 2P',monospace;font-size:15px;letter-spacing:1px;text-shadow:2px 2px 0 #000;line-height:1.4"; t.style.setProperty('color', '#fff', 'important'); }
+        if (ok) ok.style.display = 'none';
+        acts.style.display = 'flex'; acts.style.justifyContent = 'center'; acts.style.gap = '6px';
+        acts.querySelectorAll('.btn-conf').forEach(b => b.remove());
+        const boton = (txt, accion, cls) => {
+            const b = document.createElement('button'); b.className = 'btn-conf' + cls; b.textContent = txt;
+            b.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} hideSystemMsg(); if (accion) accion(); };
+            acts.appendChild(b);
+        };
+        boton(yes, onYes, ' y'); boton(no, null, '');
+    };
 
     function abandonNet(texto) { cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
 
@@ -15561,6 +15582,8 @@
                 '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,13px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:9px;align-items:flex-start;white-space:nowrap;' +
                 'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:12px 18px}' +
                 '#sqEntry .lw{position:absolute;inset:0}#sqEntry.quick .bar,#sqEntry.quick .lw,#sqEntry.quick .b{display:none}' +
+                '#sqEntry .rjt{display:none}#sqEntry.rj{background:repeating-linear-gradient(0deg,rgba(11,15,5,.12) 0 2px,transparent 2px 40px),repeating-linear-gradient(90deg,rgba(11,15,5,.12) 0 2px,transparent 2px 40px),#ccff00}' +
+                '#sqEntry.rj .rjt{display:block;font-family:\'Press Start 2P\',monospace;font-size:clamp(14px,3.2vw,26px);color:#0b0f05;background:#0b0f05;color:#ccff00;padding:.6em 1em;transform:rotate(-4deg);box-shadow:.25em .25em 0 rgba(0,0,0,.35)}' +
                 '#sqEntry.prac{background:transparent;pointer-events:none}#sqEntry.prac .b,#sqEntry.prac .lw,#sqEntry.prac .bar{display:none}' +
                 '#sqEntry.vs .b{display:none}#sqEntry:not(.vs) .bar{display:none}#sqEntry .bar{z-index:3}' +
                 '#sqEntry .bar{position:absolute;left:50%;transform:translateX(-50%);bottom:4%;width:min(336px,60%);height:22px;background:#050505;box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;overflow:hidden}' +
@@ -15569,7 +15592,7 @@
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
-            ov.innerHTML = '<div class="lw"></div><div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div><div class="bar"><i></i></div>';
+            ov.innerHTML = '<div class="lw"></div><div class="rjt">BACK TO THE MATCH</div><div class="b"><div class="l"></div><div class="l"></div><div class="l"></div></div><div class="bar"><i></i></div>';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
         }
         return ov;
@@ -15585,6 +15608,7 @@
         if (n === 0) window._sqT0 = performance.now();   // los tiempos minimos de cada fase cuentan desde aqui
         const ov = squadOverlay(); ov.style.display = 'flex'; squadMark(ov, n);
         ov.classList.toggle('quick', !!window._sqQuick);
+        ov.classList.toggle('rj', !!window._sqRejoin);   // REJOIN: fondo de la pantalla VS, no negro
         // Practica: se entra directo a la partida (sin pantalla negra ni textos); partida de verdad: pantalla VS en silencio.
         ov.classList.toggle('prac', window._squadKind === 'practice');
         if (n === 0) window._sqHush = window._squadKind === 'match' && !window._sqQuick;
@@ -15952,7 +15976,7 @@
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
             if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : (window._squadKind === 'match' ? () => !!(sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && (SoundManager.listo() || performance.now() - (window._sqT0 || 0) > 5000)) : cargada),   /* el audio se espera como mucho 5 s en total (el movil no siempre precarga) */ () => { window._sqHush = false; if (window._squadKind === 'match' && !window._sqRejoin && sim && sim.isRemote && !sim._readySent) { sim._readySent = true; sim._send({ t: 'ready' }); }   /* partida de verdad: el jugador aparece (con su inmunidad) justo al acabar la pantalla VS, no antes */
-            if (window._squadKind === 'practice' && window.pwHubEnter) { pwHubEnter(); try { pwSquadCloseAll(); } catch (e) {} } SoundManager.playMusic(); if (window._sqRejoin) { if (!window._sqResume) spectateOnline(); } else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
+            if (window._squadKind === 'practice' && window.pwHubEnter) { pwHubEnter(); try { pwSquadCloseAll(); } catch (e) {} } SoundManager.playMusic(); if (window._sqRejoin) { if (!window._sqResume) spectateOnline(); else window._sqGoAt = performance.now() - 30000; /* la partida ya iba: flecha disponible */ } else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al
@@ -16339,7 +16363,9 @@
     function drawAllyMarkers(es) {
         // Flecha roja de caza: apunta siempre al mismo rival (elegido al azar por el servidor) hasta que muere.
         const T = window.pwSquadTarget && window.pwSquadTarget();
-        if (T && !isSpectating && myCells().length) {
+        // Solo pasados 30 s (para que de tiempo a crecer) y con el rival MUY lejos (mas de dos pantallas).
+        const lejos = T && Math.hypot(T.x - camera.x, T.y - camera.y) * es > Math.hypot(width, height);
+        if (T && lejos && window._sqGoAt && performance.now() - window._sqGoAt > 30000 && !isSpectating && myCells().length) {
             const cx = width / 2, cy = height / 2, m = 34;
             const sx = (T.x - camera.x) * es + cx, sy = (T.y - camera.y) * es + cy;
             if (!(sx > 0 && sx < width && sy > 0 && sy < height)) {

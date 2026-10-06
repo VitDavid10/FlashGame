@@ -48,7 +48,7 @@
         no_request: 'That request is gone.', not_friends: 'You can only do that with friends.', no_open_party: 'Invite a friend first.',
         offline: 'That friend is offline.', slow_down: 'Slow down a little.', room_gone: 'That room is no longer available.', price_mismatch: 'That group plays at a different price.',
     };
-    const ST = { on: 'ONLINE', party: 'IN A GROUP', game: 'IN A MATCH', off: 'OFFLINE' };
+    const ST = { on: 'ONLINE', party: 'IN A GROUP', wait: 'WAITING MATCH', game: 'IN A MATCH', off: 'OFFLINE' };
     // Como se ve a alguien en grupos y amigos: su @ de X o, sin X, el resumen de su wallet. (El nombre que pone en THE PILL solo
     // sale sobre su pildora en el mapa.) A los amigos se les puede poner un apodo, solo tuyo.
     const nameOf = o => (o.u ? '@' + o.u : (o.n || 'PLAYER'));
@@ -133,7 +133,7 @@
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em),#2a0d14;--ec:#ff4d6d}
 #sqEnd.win{background-color:#0b2416;--ec:#00ff88}
 #sqEnd.draw{background-color:#241f0b;--ec:#ffd23a}
-#sqEnd.n3 .rw{margin-bottom:.15em}#sqEnd.n3 .rw .ph .sq-pic{width:2.5em;height:2.5em}#sqEnd.n3 .h{margin:.2em 0 .3em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.6em}
+#sqEnd.n3 .rw{margin-bottom:.95em}#sqEnd.n3 .rw .ph .sq-pic{width:2em;height:2em}#sqEnd.n3 .h{margin:.4em 0 1em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.45em}#sqEnd.n3 .rw .nm{font-size:.85em}
 #sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em)}
 #sqEnd.show{display:block;animation:seFade .3s ease both}
 @keyframes seFade{from{opacity:0}to{opacity:1}}
@@ -186,13 +186,15 @@
 .ci .tt{position:absolute;right:3%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
 .ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
 .ci .pz.free{color:#00ff88}
-.ci .stk{position:absolute;top:30%;display:flex;flex-direction:column;gap:.45em;animation:ciPop .35s .9s cubic-bezier(.2,1.4,.3,1) both}
-.ci .bd.bb .stk{animation-delay:2.1s}
+.ci .stk{position:absolute;top:17%;height:50%;display:flex;align-items:center;justify-content:center;text-align:center}
+.ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:.8em;animation:ciPop .35s .9s cubic-bezier(.2,1.4,.3,1) both}
+.ci .bd.bb .stk .in{animation-delay:1.75s}
 .ci.stk3 .pl4{display:none}
 .ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.a .sl{color:#1d9bf0}.ci .stk.b .sl{color:#ff4d6d}
 .ci .stk .sv{font-size:1.9em;color:#ffd23a;text-shadow:.12em .12em 0 #000;white-space:nowrap;line-height:1}
-.ci .stk .sv b{font-weight:400;font-size:1em;color:inherit;margin-left:.4em}
-.ci .stk .su{font-family:'VT323',monospace;font-size:2.4em;line-height:.8;color:#e8e8e8}
+.ci .stk.sm .sv{font-size:1.45em}
+.ci .stk .sv .ap{font-family:'VT323',monospace;font-size:1.5em;line-height:0;vertical-align:-.08em}
+.ci .stk.free .sv{color:#00ff88;font-size:2.4em}
 .ci .pl4 canvas.px{display:block;height:4.2em;image-rendering:pixelated;background:none;box-shadow:none;border:0}
 @keyframes ciIn{from{opacity:0}to{opacity:1}}
 @keyframes ciL{from{transform:translateX(-110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
@@ -236,6 +238,9 @@
 .sq-b.sq-ghost{visibility:hidden}
 .sq-side{display:flex;align-items:center;justify-content:center;gap:2em;width:100%}
 .sq-side .sq-grp{width:auto}
+.sq-side.n3{gap:1.4em}.sq-side.n3 .sq-grp.big{gap:1.2em}.sq-side.n3 .sq-grp.big .sq-av{width:5.6em}.sq-side.n3 .sq-grp.big .sq-av .sq-pic{width:3.8em;height:3.8em}
+.sq-side.n3 .sq-pbox{min-width:6.5em;padding-left:.9em}
+.sq.find .sq-bot{margin-top:.4em}
 .sq-pbox{display:flex;flex-direction:column;align-items:flex-start;gap:.4em;padding:.1em 0 .1em 1.1em;border-left:.14em solid rgba(255,210,58,.55);min-width:8em;text-align:left}
 .sq-pbox .sep{height:.5em}
 .sq-pbox .k{font-size:.36em;letter-spacing:.14em;color:#7d8a82}
@@ -248,11 +253,19 @@
 .sq-cm .vs{font-family:'Press Start 2P',monospace;font-size:.7em;color:#ffd23a}
 .sq-code{font-weight:400;color:#ffd23a;letter-spacing:.2em;user-select:all}
 .sq-av .k.mv{color:#00ff88;border-color:#00ff88;cursor:pointer}
-.sq-cm .sq-grp.small{gap:.5em}
-.sq-cm.n3 .sq-grp.small .sq-av{width:4.4em;gap:.3em}
-.sq-cm.n3 .sq-grp.small .sq-av .sq-pic{width:2em;height:2em;font-size:.8em}
-.sq-cm.n3 .sq-grp.small .sq-av .n{font-size:.32em}.sq-cm.n3 .sq-grp.small .sq-av .l,.sq-cm.n3 .sq-av .k{font-size:.28em}
-.sq-cm.n3 .tm{padding:.35em .3em}
+.sq-cmh{display:flex;align-items:center;justify-content:space-between;width:100%}
+.sq-cmh .sz{display:flex;gap:.4em}
+.sq-cmw{gap:.7em}
+.sq-cm .tm{align-self:stretch;justify-content:center;gap:.8em}
+.sq-cm .sq-grp.small{gap:.8em}
+.sq-cm .sq-grp.small .sq-av{width:6em;gap:.45em}
+.sq-cm .sq-grp.small .sq-av .sq-pic{width:3.4em;height:3.4em;font-size:1.2em}
+.sq-cm .sq-grp.small .sq-av .n{font-size:.42em}
+.sq-cm.n3 .sq-grp.small{gap:.5em}
+.sq-cm.n3 .sq-grp.small .sq-av{width:4.8em;gap:.35em}
+.sq-cm.n3 .sq-grp.small .sq-av .sq-pic{width:2.7em;height:2.7em;font-size:1em}
+.sq-cm.n3 .sq-grp.small .sq-av .n{font-size:.34em}.sq-cm.n3 .sq-grp.small .sq-av .l,.sq-cm.n3 .sq-av .k{font-size:.3em}
+.sq-cm.n3 .tm{padding:.5em .3em}
 .sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0;overflow-y:auto}
 /* pantallas de arenas: cabecera arriba (BACK + modo), filtros debajo y el contenido ocupando el resto */
 .sq-empty{margin:auto;text-align:center;line-height:1.8}
@@ -287,7 +300,7 @@
 .sq-it .n{font-size:.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sq-it .s{font-size:.34em;letter-spacing:.08em;color:#7d8a82;display:flex;align-items:center;gap:.6em}
 .sq-it .s i{width:.9em;height:.9em;background:#56635b;display:inline-block}
-.sq-it .s.on i{background:#00ff66}.sq-it .s.party i{background:#4d9bff}.sq-it .s.game i{background:#ffd23a}
+.sq-it .s.on i{background:#00ff66}.sq-it .s.party i{background:#4d9bff}.sq-it .s.wait i{background:#ffb347}.sq-it .s.wait{color:#ffb347}.sq-it .s.game i{background:#ff4d4d}.sq-it .s.game{color:#ff6a6a}
 .sq-it .a{display:flex;gap:.5em;flex:none}
 .sq-h{font-size:.4em;color:var(--ac,#00ff88);letter-spacing:.14em;text-align:left;width:100%}
 .sq-bd{background:#e5302f;color:#fff;font-family:'Press Start 2P',monospace;font-size:.7em;padding:.3em .45em .2em;box-shadow:0 0 0 .15em #000;margin-left:.5em}
@@ -473,6 +486,7 @@
         render();
     }
     function rcPopup(title, body, yes, no, onYes) {
+        if (typeof window.pwConfirm === 'function') { hideRc(); window.pwConfirm(title, body.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''), yes, no, onYes); snd('alert'); return; }
         let el = document.getElementById('sqRc');
         if (!el) { el = document.createElement('div'); el.id = 'sqRc'; el.innerHTML = '<div class="bx"><div class="a"></div><div class="b"></div><div class="r"><button class="y" data-v="1"></button><button data-v="0"></button></div></div>'; frame().appendChild(el); }
         el.querySelector('.a').textContent = title;
@@ -492,7 +506,11 @@
     function onInvite(m) {
         toast({
             pic: m.from.p, warm: true, ms: 30000, text: esc(nameOf(m.from)) + ' invites you to a group',
-            actions: [['JOIN', () => joinCode(m.code), 1], ['NO', null]],
+            actions: [['JOIN', () => {
+                const P = S.party;
+                if (P && (P.state === 'queued' || P.rc)) { const c = P.rc ? P.rc.cents : P.cents; rcPopup("YOU'RE SEARCHING A " + (c ? '$' + c / 100 : 'FREE') + ' MATCH', 'LEAVE IT TO JOIN ' + nameOf(m.from).toUpperCase() + "'S GROUP?", 'JOIN', 'NO', () => joinCode(m.code)); }
+                else joinCode(m.code);
+            }, 1], ['NO', null]],
         });
     }
     function joinCode(code) {
@@ -602,11 +620,10 @@
         for (const p of m.teams[other]) S.rel.set(p.id, 'foe');
         const el = hud(), me = m.myId;
         const mates = m.teams[mine].filter(p => p.id !== me);
-        const pot = m.pot > 0 ? '<div class="pot">POT ' + fmtPill(m.pot) + (m.usd != null ? '<br><span>≈ ' + fmtUsd(m.usd) + '</span>' : '') + '</div>' : '';
-        el.innerHTML = pot + (m.practice && mates.length ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
+        el.innerHTML = (m.practice && mates.length ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
             '<div class="pf" data-id="' + esc(p.id) + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '<div class="w"><div class="n">' + esc(p.name || 'PLAYER') + '</div><div class="bar"><i></i></div></div></div>').join('');
         hydrate(el);
-        el.classList.toggle('show', mates.length > 0 || m.pot > 0);   // en 1v1 gratis no hay companeros: nada a la izquierda
+        el.classList.toggle('show', mates.length > 0);   // en 1v1 no hay companeros: nada a la izquierda
     }
     // Tamano base en pixeles ENTEROS y pares: con decimales la letra pixel se veia borrosa (sobre todo en PC).
     function nitido(el) {
@@ -764,12 +781,14 @@
         el.innerHTML = '<div class="bd ba"><div class="row">' + tiles(d.me, 'me') + '</div>' + pills('pa') + '</div>' +
             '<div class="vs">VS</div>' +
             '<div class="bd bb"><div class="row">' + tiles(d.foe, 'foe') + '</div>' + pills('pb') + '</div>' +
-            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + (d.fee > 0 ? '' : '<span class="pz free">FREE</span>') + '</div>';
-        if (d.fee > 0) {
-            // A la derecha de las fotos; en 3v3 no cabe ahi y ocupa el sitio de las pildoras (debajo pasaria el VS).
-            const n = d.me.length, pos = n < 3 ? 'left:' + (12 + n * 13.4 + (n - 1) * 2.2 + 5) + '%' : 'right:12%;top:22%;text-align:right;align-items:flex-end';
-            if (n === 3) el.classList.add('stk3');
-            const stk = (cls, k) => '<div class="stk ' + cls + '" style="' + pos + '"><div class="sl">' + (cls === 'a' ? 'YOUR TEAM' : 'RIVALS') + '</div><div class="sv">' + (d.fee * k).toLocaleString('en-US') + '<b>$PILLY</b></div>' + (d.usd != null ? '<div class="su">' + fmtUsd(d.usd * k) + '</div>' : '') + '</div>';
+            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + '</div>';
+        {
+            // 1V1: en el hueco entre la foto y las pildoras. 2V2/3V3: no cabe ahi y va en el sitio de las pildoras.
+            const n = d.me.length, ancho = n === 1 ? 'left:26%;width:32%' : 'left:60%;width:30%';
+            if (n > 1) el.classList.add('stk3');
+            const linea = k => d.fee > 0 ? (d.fee * k).toLocaleString('en-US') + ' $PILLY' + (d.usd != null ? ' <span class="ap">≈</span> ' + fmtUsd(d.usd * k) : '') : 'FREE';
+            const stk = (cls, k) => '<div class="stk ' + cls + (n > 1 ? ' sm' : '') + (d.fee > 0 ? '' : ' free') + '" style="' + ancho + '"><div class="in">' +
+                (k > 1 ? '<div class="sl">' + (cls === 'a' ? 'YOUR TEAM' : 'RIVALS') + '</div>' : '') + '<div class="sv">' + linea(k) + '</div></div></div>';
             el.querySelector('.bd.ba').insertAdjacentHTML('beforeend', stk('a', d.me.length));
             el.querySelector('.bd.bb').insertAdjacentHTML('beforeend', stk('b', d.foe.length));
         }
@@ -876,7 +895,7 @@
         const p = S.party, leader = imLeader();
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
         return '<div class="sq find"><div class="mid"><div class="sq-q">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + p.size + 'V' + p.size + ' · <span id="sqQs">' + secs + 's</span></div>' +
-            '<div class="sq-side">' + groupHtml(false, p.size, true) + priceBox(p.fee, p.usd, p.size) + '</div></div>' +
+            '<div class="sq-side' + (p.size === 3 ? ' n3' : '') + '">' + groupHtml(false, p.size, true) + priceBox(p.fee, p.usd, p.size) + '</div></div>' +
             '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice"' + (S.joining ? ' disabled' : '') + '>' + (S.joining ? 'JOINING...' : p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' + errLine() + '</div></div>';
     }
@@ -889,7 +908,7 @@
             : '<button class="sq-b on" data-a="rok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : paid ? 'PAY & READY' : 'READY') + '</button>';
         const all = leader && rc.size > 1 ? '<button class="sq-b" data-a="remind"' + (falta && !(falta === 1 && !mine) ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
         return '<div class="sq find"><div class="mid"><div class="sq-q">LOBBY · ' + (KIND_TXT[rc.kind] || 'MATCH') + ' · ' + rc.size + 'V' + rc.size + '</div>' +
-            '<div class="sq-side">' + groupHtml(false, p.size, true) + priceBox(rc.fee, rc.usd, rc.size) + '</div></div>' +
+            '<div class="sq-side' + (rc.size === 3 ? ' n3' : '') + '">' + groupHtml(false, p.size, true) + priceBox(rc.fee, rc.usd, rc.size) + '</div></div>' +
             '<div class="sq-bot"><div class="sq-row">' + rok + all +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '<button class="sq-b" data-a="leave">LEAVE</button>') +
             '</div>' + errLine() + '</div></div>';
@@ -914,7 +933,7 @@
         const rok = mine ? '<button class="sq-b" data-a="cmno">NOT READY</button>'
             : '<button class="sq-b on" data-a="cmok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : cm.fee > 0 ? 'PAY & READY' : 'READY') + '</button>';
         const all = leader ? '<button class="sq-b" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
-        return '<div class="sq sq-fixed sq-cmw"><div class="sq-row" style="justify-content:space-between"><span class="sq-lab">MATCH CUSTOM · CODE <b class="sq-code">' + esc(p.code) + '</b></span><span class="sq-row">' + sizes + '</span></div>' +
+        return '<div class="sq sq-fixed sq-cmw"><div class="sq-cmh"><span class="sq-lab">MATCH CUSTOM · CODE <b class="sq-code">' + esc(p.code) + '</b></span><span class="sz">' + sizes + '</span></div>' +
             '<div class="sq-row">' + precio + '</div>' +
             '<div class="sq-cm' + (n === 3 ? ' n3' : '') + '">' + col('A') + '<span class="vs">VS</span>' + col('B') + '</div>' +
             '<div class="sq-row">' + rok + all + '<button class="sq-b" data-a="cminv">INVITE</button>' + (leader ? '<button class="sq-b" data-a="cmclose">BACK</button>' : '<button class="sq-b red" data-a="leave">LEAVE</button>') + '</div>' + errLine() + '</div>';
@@ -925,7 +944,7 @@
     const usdLbl = usd => usd ? '$' + usd : 'FREE';
     function roomsHtml() {
         const p = S.party;
-        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="rejoin">REJOIN</button></div>' + errLine() + '</div></div>';
+        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="rejoin">REJOIN</button><button class="sq-b red" data-a="leave">LEAVE</button></div>' + errLine() + '</div></div>';
         if (p && p.cm) return customHtml();
         if (p && (p.rc || p.state === 'queued') && S.arStep && S.arStep.view === 'rivals') {
             const n = S.arStep.size;
@@ -1070,7 +1089,7 @@
         const grp = '';
         const aviso = searching ? '<div class="sq-note" style="color:#ffb347">You are searching for a match. If a friend accepts your invite, the search is cancelled.</div>' : '';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
-        const order = { on: 0, party: 1, game: 1, off: 2 };
+        const order = { on: 0, party: 1, wait: 1, game: 1, off: 2 };
         const list = F.friends.slice().sort((a, b) => order[a.st] - order[b.st] || nameOf(a).localeCompare(nameOf(b))).map(f =>
             '<div class="sq-it">' + pic(f) + '<div class="w">' + (S.nickEdit === f.id
                 ? '<input class="sq-in" id="sqNick" maxlength="16" placeholder="NICKNAME (ONLY YOU SEE IT)" value="' + esc(nicks[f.id] || '') + '" autocomplete="off">'
