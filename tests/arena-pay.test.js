@@ -46,3 +46,13 @@ test('empate: cada uno recupera su entrada; y lo retenido se devuelve si se canc
     assert.equal(pay.refund(ref), 70); assert.equal(saldo.z, 70);
     assert.equal(pay.refund(ref), 0, 'no se devuelve dos veces');
 });
+
+test('entrada de la casa (bot de prueba, wallet null): si gana el bot su parte vuelve a la casa; si ganas tu, te llevas las dos', () => {
+    const { pay, saldo, casa } = make();
+    let r = pay.settle('m3', [{ team: 'A', wallet: 'h', fee: 100 }, { team: 'B', wallet: null, fee: 100 }], 'B');
+    assert.equal(r.prizes.length, 0); assert.equal(casa.reduce((a, b) => a + b, 0), 200);
+    r = pay.settle('m4', [{ team: 'A', wallet: 'h', fee: 100 }, { team: 'B', wallet: null, fee: 100 }], 'A');
+    assert.equal(r.prizes[0].amount, 200);
+    pay.settle('m5', [{ team: 'A', wallet: 'h', fee: 100 }, { team: 'B', wallet: null, fee: 100 }], null);
+    assert.equal(saldo.h, 100, 'empate: solo vuelve lo tuyo');
+});

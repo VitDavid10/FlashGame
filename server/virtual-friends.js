@@ -38,6 +38,7 @@ function createVirtualFriends(ctx) {
     const { social, handle, join, rooms, handleInput, log } = ctx;
     const READY_MS = ctx.readyMs == null ? 4500 : ctx.readyMs;   // lo que tardan en dar LISTO; con READY ALL contestan casi al momento
     const lobby = [];
+    const bots = FRIENDS.map(f => Object.assign({}, f));   // estado propio de esta instancia (leadFor...)
 
     function say(ws, o) { handle(ws, Object.assign({ t: 'sq' }, o)); }
 
@@ -88,15 +89,17 @@ function createVirtualFriends(ctx) {
         if (libres.length < n) return;
         rivalDe.add(m.code); setTimeout(() => rivalDe.delete(m.code), 120000);
         const [lider, ...resto] = libres.slice(0, n);
-        lider.rival = { resto, n, buscando: false, reta: m.custom ? m.code : null, vs: m.custom ? null : m.code, mode: m.mode };   // sala abierta (custom): la retan; si no, buscan partida
+        lider.rival = { resto, n, buscando: false, reta: m.custom ? m.code : null, vs: m.custom ? null : m.code, mode: m.mode, price: (m.cents | 0) / 100 };   // sala abierta (custom): la retan; si no, buscan partida (al mismo precio)
         say(lider, { a: 'leave' }); say(lider, { a: 'create' });
     }
     function react(ws, f, m) {
+        if (m.t === 'sqParty') { if (!ws.p || ws.p.state !== m.state || ws.p.code !== m.code) ws.since = Date.now(); ws.p = m; }
+        else if (m.t === 'sqGone') { ws.p = null; ws.since = Date.now(); }
         if (m.t === 'sqParty' && ws.rival && m.leader === m.me && !ws.rival.buscando) {
             // el lider rival ya tiene su grupo: los demas entran y, con todos dentro, se pone a buscar
             const r = ws.rival;
             if (m.members.length < r.n) { if (!r.llamados) { r.llamados = true; setTimeout(() => r.resto.forEach(w => say(w, { a: 'join', code: m.code })), 300); } }
-            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, r.reta ? { a: 'challenge', code: r.reta, mode: r.mode } : { a: 'play', mode: r.mode, vs: r.vs }); ws.rival = null; }, 500); }
+            else if (m.state === 'idle') { r.buscando = true; setTimeout(() => { say(ws, r.reta ? { a: 'challenge', code: r.reta, mode: r.mode } : { a: 'play', mode: r.mode, vs: r.vs, price: r.price }); ws.rival = null; }, 500); }
             return;
         }
         if (m.t === 'sqParty' && m.state === 'queued' && m.leader !== m.me) armaRival(m);
@@ -104,7 +107,7 @@ function createVirtualFriends(ctx) {
         else if (m.t === 'sqWhisper' && !m.mine) {
             // Susurrale "lead" y hace de lider: crea el grupo, te invita y, en cuanto entras, lanza el LISTO (para probar el cartel de companero).
             if (/^\s*lead\s*$/i.test(m.text)) {
-                f.leadFor = m.from.id;
+                f.leadFor = m.from.id; f.leadAt = Date.now();
                 setTimeout(() => { say(ws, { a: 'leave' }); say(ws, { a: 'create' }); say(ws, { a: 'pinvite', id: m.from.id }); say(ws, { a: 'whisper', id: m.from.id, text: LEAD_TXT }); }, 500);
             } else setTimeout(() => say(ws, { a: 'whisper', id: m.from.id, text: rnd(REPLIES) }), 900);
         }
@@ -112,12 +115,25 @@ function createVirtualFriends(ctx) {
             f.leadBusy = true;
             setTimeout(() => { f.leadBusy = false; say(ws, { a: 'play', custom: true }); }, 3500);
         }
-        else if (m.t === 'sqInvite') setTimeout(() => say(ws, { a: 'join', code: m.code, name: f.u }), 500);
+        else if (m.t === 'sqInvite') setTimeout(() => { say(ws, { a: 'leave' }); say(ws, { a: 'join', code: m.code, name: f.u }); }, 500);
         else if (m.t === 'sqTicket') setTimeout(() => play(f, m), 350);
         else if (m.t === 'sqReadyCheck') setTimeout(() => say(ws, { a: 'ready', v: true }), m.remind ? 500 : READY_MS);
     }
 
-    for (const f of FRIENDS) {
+    // Libres, cada bot busca un 1v1 a su precio ($1, $2 y $5, solo en devnet): salen en FIND RIVALS y se les puede retar.
+    const PRECIOS = [1, 2, 5];
+    if (ctx.queue && ctx.paid) {   // sin pago (mainnet) no: gratis se emparejarian entre ellos
+        const cola = setInterval(() => {
+            lobby.forEach((ws, i) => {
+                const f = bots[i], p = ws.p;
+                if (ws.rival || (f.leadFor && Date.now() - f.leadAt < 120000) || Date.now() - (ws.since || 0) < 2500) return;   // haciendo de lider para alguien: 2 min fuera de la cola
+                if (!p) { say(ws, { a: 'create' }); return; }
+                if (p.members.length === 1 && p.leader === p.me && p.state === 'idle' && !p.rc && !p.cm) say(ws, { a: 'play', mode: 'arcade', price: PRECIOS[i] });
+            });
+        }, 3000);
+        if (cola.unref) cola.unref();
+    }
+    for (const f of bots) {
         const ws = { readyState: 1, virtual: true, send(raw) { let m; try { m = JSON.parse(raw); } catch (e) { return; } react(ws, f, m); }, close() {} };
         social.hello(ws, token.sign({ id: f.id, u: f.u, n: f.u, p: '', w: '' }), f.av, f.u);   // su nombre en la pildora: icefox, rcer... (sin @)
         ws.fid = f.id; lobby.push(ws);

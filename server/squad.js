@@ -420,6 +420,7 @@ function createSquad(deps) {
             if (p.state !== 'idle' || cm.ready[me.id] || cm.paying[me.id]) return;
             const fee = cm.fee, cents = cm.cents;
             const listo = () => { if (p.cm !== cm || !p.members.has(me.id) || cm.fee !== fee) return; cm.ready[me.id] = true; pushParty(p); cmCheck(p); };
+            if (fee > 0 && me.ws.virtual && deps.botsPay) cm.paid[me.id] = { ref: null, wallet: null, fee };
             if (fee > 0 && !me.ws.virtual) {
                 cm.paying[me.id] = true;
                 Promise.resolve(deps.authorize ? deps.authorize({ comboKey: 'arena_' + cents, key: 'arena_' + p.code, fee, pay: msg.pay }) : { ok: false, reason: 'payments off' })
@@ -499,6 +500,7 @@ function createSquad(deps) {
                 if (Object.values(rc.ready).every(Boolean)) { const act = rc.action, paid = rc.paid; clearRc(p, true); p.paid = Object.assign({}, p.paid, paid); runAction(p, act); }
                 else pushParty(p);
             };
+            if (rc.fee > 0 && me.ws.virtual && deps.botsPay) rc.paid[me.id] = { ref: null, wallet: null, fee: rc.fee };   // bot de prueba (devnet): su entrada la pone la casa
             if (rc.fee > 0 && !me.ws.virtual) {
                 if (rc.paying[me.id]) return;
                 rc.paying[me.id] = true;
@@ -797,7 +799,7 @@ function createSquad(deps) {
     if (gc.unref) gc.unref();
 
     // Amigos de prueba @icefox y @bandit: aparecen al buscarlos, aceptan, contestan y juegan.
-    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log, readyMs: deps.virtualReadyMs, rivals: deps.virtualRivals !== false });
+    const virtual = deps.virtualFriends === false ? null : createVirtualFriends({ social, handle, join, rooms, handleInput, log, readyMs: deps.virtualReadyMs, rivals: deps.virtualRivals !== false, queue: deps.virtualQueue === true, paid: !!deps.botsPay });
 
     return { handle, onClose, join, tick, endOf, onEvent, social, virtual, _internals: { parties, queues, tickets, makeRoom, customRooms } };
 }

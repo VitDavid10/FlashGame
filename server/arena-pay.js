@@ -77,8 +77,8 @@ function createArenaPay(o) {
         const pot = players.reduce((n, p) => n + (p.fee | 0), 0);
         if (!pot) return { pot: 0, comision: 0, share: 0, prizes: [] };
         if (!winner) {
-            // Empate: cada uno recupera lo suyo (sin comision).
-            for (const p of players) try { credit(p.wallet, p.fee); } catch (e) {}
+            // Empate: cada uno recupera lo suyo (sin comision). Lo de la casa (wallet null) no se mueve.
+            for (const p of players) if (p.wallet) try { credit(p.wallet, p.fee); } catch (e) {}
             log(`[arena] ${matchId}: empate, devueltas las entradas (${pot} PILL)`);
             return { pot, comision: 0, share: 0, prizes: [], draw: true };
         }
@@ -90,7 +90,10 @@ function createArenaPay(o) {
         const share = Math.floor(pool / ganadores.length);
         const resto = pool - share * ganadores.length;
         if (comision + resto > 0) treasury(comision + resto, 'arena: comision por bot');
-        const prizes = ganadores.map(p => ({ wallet: p.wallet, amount: share, id: addClaim(p.wallet, share, matchId) }));
+        // La parte de un ganador sin wallet (bot de prueba, entrada de la casa) vuelve a la casa.
+        const casa = ganadores.filter(p => !p.wallet).length * share;
+        if (casa > 0) treasury(casa, 'arena: parte de los bots de prueba');
+        const prizes = ganadores.filter(p => p.wallet).map(p => ({ wallet: p.wallet, amount: share, id: addClaim(p.wallet, share, matchId) }));
         log(`[arena] ${matchId}: bote ${pot} PILL, comision ${comision + resto}, ${ganadores.length} ganadores a ${share} cada uno`);
         return { pot, comision: comision + resto, share, prizes };
     }

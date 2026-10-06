@@ -1299,7 +1299,10 @@ const squad = createSquad({
     treasury: (pill, motivo) => econ.rakeTesoreria(pill, motivo),
     verify: (w, m, sig) => solana.verifySignedMessage(w, m, sig),
     quote: usd => usd * PILL_PER_DOLLAR,
-    pillUsd: () => (PILL_PER_DOLLAR > 0 ? 1 / PILL_PER_DOLLAR : 0),   // la misma tasa que fija el precio (en el split, el host la recibe por IPC)
+    pillUsd: () => (PILL_PER_DOLLAR > 0 ? 1 / PILL_PER_DOLLAR : 0),
+    // Bots de prueba (@icefox, @bandit, @rcer): buscan 1v1 cada uno a su precio; en devnet su entrada la pone la casa.
+    virtualQueue: true,
+    botsPay: /devnet/i.test(solana.RPC || ''),   // la misma tasa que fija el precio (en el split, el host la recibe por IPC)
 });
 
 // --- Acciones de admin de ALCANCE GLOBAL, extraídas a funciones puras (sin ws) ---

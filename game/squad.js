@@ -34,6 +34,7 @@
     const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const snd = n => { try { SoundManager.play(n); } catch (e) {} };
     // Dolares con 2 decimales como mucho ($2, $2.02).
+    const EMOJIS = ['😀', '😂', '😎', '😜', '😡', '😭', '👍', '👎', '🔥', '💀', '🎉', '💊', '🤝', '👀', '🙏', '💰', '🚀', '❤️'];
     const fmtUsd = n => '$' + (Math.round((+n || 0) * 100) / 100).toFixed(2).replace(/\.00$/, '');
     const fmtPill = n => (n | 0).toLocaleString('en-US') + ' $PILLY';
     window.pwUsd = fmtUsd;
@@ -276,6 +277,8 @@
 .sq-chat div{font-family:'VT323',monospace;font-size:1.05em;line-height:1.15;color:#cfd8d3;word-break:break-word}
 .sq-chat div b{color:var(--ac,#00ff88);font-weight:400}
 .sq-chat div.me b{color:#ffd23a}
+.sq-emo{display:flex;flex-wrap:wrap;gap:.25em;width:100%;justify-content:center}
+.sq-emo button{font-size:1em;line-height:1;padding:.2em .25em;background:rgba(0,0,0,.35);border:.07em solid rgba(255,255,255,.1);cursor:pointer;font-family:sans-serif}
 .sq-pcp{position:fixed;inset:0;z-index:120;background:rgba(3,6,4,.88);display:none;align-items:center;justify-content:center}
 .sq-pcp.open{display:flex}
 .sq-pcp .sq-box{position:relative;width:min(48em,94vw);max-height:94vh;overflow:auto;font-size:16px;padding:1.6em 1.4em 1.2em;background:#0b120e;border:.2em solid var(--ac,#00ff88);box-shadow:0 0 0 .2em #000,.4em .4em 0 .2em rgba(0,0,0,.6),0 0 2em rgba(0,255,136,.25)}
@@ -491,7 +494,7 @@
             }
         }
         render();
-        const c = S.box.friends && S.box.friends.querySelector('.sq-chat'); if (c) c.scrollTop = c.scrollHeight;
+        const c = S.box.friends && S.box.friends.querySelector('.sq-chat'); if (c) c.scrollTop = 0;
     }
 
     // ---------------- entrada a sala ----------------
@@ -708,7 +711,12 @@
         S.endMoney = m.money ? { win, money: m.money } : null;
         pintaPremio(el);
         hydrate(el);
-        nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose'); snd(win ? 'finwin' : 'finlose');
+        // El sonido sale cuando la pantalla (la cuadricula roja/verde) ya se esta pintando: al empezar su fundido.
+        let sonado = false;
+        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(win ? 'finwin' : 'finlose'); }, 300); };
+        el.addEventListener('animationstart', sonar, { once: true });
+        setTimeout(sonar, 1500);   // por si el navegador no anima (ahorro de energia)
+        nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose');
     }
     // Pantalla de entrada a la partida (diseno C, animada ~4 s): fondo lima, entra la banda azul con tu equipo,
     // golpe del VS y entra la banda roja con los rivales. index.html la mete en #sqEntry.
@@ -865,7 +873,7 @@
         if (p && p.state === 'queued') return searchingHtml();
         const mine = groupSize(), step = S.arStep;
         if (!step) {
-            const cards = SIZES.map(n => '<div class="sq-card' + (n === mine ? '' : ' dim') + '" data-size="' + n + '"><canvas class="cvc" data-n="' + n + '"></canvas><div class="tag">' + ['DUEL', 'DUO', 'SQUAD'][n - 1] + '</div><div class="big">' + n + 'V' + n + '</div></div>').join('');
+            const cards = SIZES.map(n => '<div class="sq-card" data-size="' + n + '"><canvas class="cvc" data-n="' + n + '"></canvas><div class="tag">' + ['DUEL', 'DUO', 'SQUAD'][n - 1] + '</div><div class="big">' + n + 'V' + n + '</div></div>').join('');
             const hint = mine > 1 ? 'YOUR GROUP · ' + mine + ' PLAYERS · ' + mine + 'V' + mine : 'PLAYING SOLO · FORM A GROUP IN FRIENDS FOR 2V2 / 3V3';
             return '<div class="sq"><div class="sq-row"><span class="sq-lab">' + hint + '</span></div><div class="sq-cards">' + cards + '</div>' + errLine() + '</div>';
         }
@@ -932,22 +940,25 @@
             actions: [['ACCEPT', () => lanzar(m.size, m.cents / 100), 1], ['NO', null]] });
     }
     // QUICK MATCH o FIGHT a un precio: comprueba el grupo (sin grupo, de otro tamano, o no eres el lider -> se propone).
+    // ¿Tu grupo cuadra con esta partida? Si no, avisa (o en 1V1 con grupo, ofrece salir y luego sigue).
+    function grupoOk(n, seguir) {
+        const have = groupSize(), P = S.party;
+        if (P && P.cm) { fail('You are in a custom room. Close it or leave it first.'); return false; }
+        if (P && (P.state !== 'idle' || P.rc)) { fail('Your group is already in a match lobby.'); return false; }
+        if (P && !imLeader()) { if (have !== n) { fail('Your group has ' + have + ' players: propose a ' + have + 'V' + have + '.'); return false; } return true; }
+        if (n === 1 && have > 1) {
+            toast({ text: 'This is a 1V1. Leave your group?', warm: true, center: true, ms: 12000, actions: [['LEAVE GROUP', () => { send({ a: 'leave' }); S.party = null; render(); seguir(); }, 1], ['NO', null]] });
+            return false;
+        }
+        if (have !== n) { fail(have < n ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.'); return false; }
+        return true;
+    }
     function lanzar(n, usd) {
         usd = Math.max(0, Math.min(20, Math.round(usd) || 0));
-        const have = groupSize(), P = S.party;
-        const go = () => { S.usd = usd; try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {} start(() => send({ a: 'play', mode: arMode(), price: usd, ready: !usd })); };   // gratis: pulsar es tu LISTO; de pago: PAY & READY
-        if (P && P.cm) return fail('You are in a custom room. Close it or leave it first.');
-        if (P && (P.state !== 'idle' || P.rc)) return fail('Your group is already in a match lobby.');
-        if (P && !imLeader()) {
-            if (have !== n) return fail('Your group has ' + have + ' players: propose a ' + have + 'V' + have + '.');
-            send({ a: 'propose', price: usd, size: n }); S.note = 'Proposal sent to your leader'; render(); return;
-        }
-        if (n === 1 && have > 1) {
-            toast({ text: 'This is a 1V1. Leave your group?', warm: true, center: true, ms: 12000, actions: [['LEAVE & PLAY', () => { send({ a: 'leave' }); S.party = null; render(); go(); }, 1], ['NO', null]] });
-            return;
-        }
-        if (have !== n) return fail(have < n ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.');
-        go();
+        if (!grupoOk(n, () => lanzar(n, usd))) return;
+        if (S.party && !imLeader()) { send({ a: 'propose', price: usd, size: n }); S.note = 'Proposal sent to your leader'; render(); return; }
+        S.usd = usd; try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {}
+        start(() => send({ a: 'play', mode: arMode(), price: usd, ready: !usd }));   // gratis: pulsar es tu LISTO; de pago: PAY & READY
     }
     function quick() { lanzar(S.arStep ? S.arStep.size : groupSize(), S.usd | 0); }
     // PAY & READY: primero se confirma la entrada (precio exacto) y luego se firma.
@@ -970,10 +981,12 @@
         const canInvite = !p || ((p.state === 'idle' || searching) && p.members.length < p.max && imLeader());
         if (S.chatWith) {
             const f = F.friends.find(x => x.id === S.chatWith) || { u: '?', p: '', st: 'off', id: S.chatWith };
-            const msgs = (S.chat[f.id] || []).map(m => '<div class="' + (m.me ? 'me' : '') + '"><b>' + (m.me ? 'YOU' : esc(friendName(f))) + ':</b> ' + esc(m.text) + '</div>').join('') || '<div>Say hi to ' + esc(friendName(f)) + '.</div>';
+            // Lo ultimo arriba, justo debajo de donde escribes: con el teclado del movil abierto se sigue viendo todo sin mover la ventana.
+            const msgs = (S.chat[f.id] || []).slice().reverse().map(m => '<div class="' + (m.me ? 'me' : '') + '"><b>' + (m.me ? 'YOU' : esc(friendName(f))) + ':</b> ' + esc(m.text) + '</div>').join('') || '<div>Say hi to ' + esc(friendName(f)) + '.</div>';
+            const emo = S.emo ? '<div class="sq-emo">' + EMOJIS.map(e => '<button data-emo="' + e + '">' + e + '</button>').join('') + '</div>' : '';
             return '<div class="sq"><div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="chatx">BACK</button>' + pic(f) + '<span style="font-size:.5em">' + esc(friendName(f)) + '</span></div>' +
-                '<div class="sq-chat" id="sqChat">' + msgs + '</div>' +
-                '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqMsg" maxlength="200" placeholder="Whisper…" autocomplete="off"><button class="sq-b sm on" data-a="wsend">SEND</button></div>' + errLine() + '</div>';
+                '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqMsg" maxlength="200" placeholder="Whisper…" autocomplete="off"><button class="sq-b sm' + (S.emo ? ' on' : '') + '" data-a="emo">😀</button><button class="sq-b sm on" data-a="wsend">SEND</button></div>' +
+                emo + '<div class="sq-chat" id="sqChat">' + msgs + '</div>' + errLine() + '</div>';
         }
         // El grupo solo se enseña cuando de verdad hay alguien mas contigo.
         // Dos pantallas del mismo tamano: FRIENDS (lista) y GROUP (tu grupo). Asi el panel no crece al entrar alguien.
@@ -1011,7 +1024,7 @@
         if (keep != null && box.querySelector('#sqAdd')) box.querySelector('#sqAdd').value = keep;
         if (keepMsg != null && box.querySelector('#sqMsg')) box.querySelector('#sqMsg').value = keepMsg;
         if (focus && box.querySelector('#' + focus)) box.querySelector('#' + focus).focus();
-        const c = box.querySelector('#sqChat'); if (c) c.scrollTop = c.scrollHeight;
+        const c = box.querySelector('#sqChat'); if (c) c.scrollTop = 0;   // lo ultimo esta arriba
         hydrate(box);
         wire(box);
     }
@@ -1080,13 +1093,19 @@
         b.querySelectorAll('[data-w]').forEach(x => x.onclick = () => { S.chatWith = x.dataset.w; S.unread[x.dataset.w] = 0; render(); const i = b.querySelector('#sqMsg'); if (i) i.focus(); });
         const addIn = b.querySelector('#sqAdd');
         if (addIn) addIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="fadd"]').click(); };
+        b.querySelectorAll('[data-emo]').forEach(x => x.onclick = () => {
+            const i = b.querySelector('#sqMsg'); if (!i) return;
+            const a = i.selectionStart == null ? i.value.length : i.selectionStart, z = i.selectionEnd == null ? a : i.selectionEnd;
+            i.value = (i.value.slice(0, a) + x.dataset.emo + i.value.slice(z)).slice(0, 200);
+            i.focus(); const pos = Math.min(i.value.length, a + x.dataset.emo.length); try { i.setSelectionRange(pos, pos); } catch (e) {}
+        });
         const msgIn = b.querySelector('#sqMsg');
         if (msgIn) msgIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="wsend"]').click(); };
         b.querySelectorAll('[data-a]').forEach(x => x.onclick = () => {
             const a = x.dataset.a; snd('simpleselect');
             if (a === 'quick') quick();
             else if (a === 'seerivals') { const P = S.party; S.arStep = { size: P.rc ? P.rc.size : P.size, view: 'rivals' }; render(); send({ a: 'rivals', size: S.arStep.size }); }
-            else if (a === 'qpick') { S.arStep.view = 'price'; render(); }
+            else if (a === 'qpick') { const ver = () => { if (S.arStep) { S.arStep.view = 'price'; render(); } }; if (grupoOk(S.arStep.size, ver)) ver(); }
             else if (a === 'custom') { S.arStep.view = 'custom'; render(); }
             else if (a === 'cmnew') { const n = S.arStep.size; if (S.party && !imLeader()) return fail('Only your group leader can create rooms.'); if (groupSize() > n * 2) return fail('Your group does not fit in a ' + n + 'V' + n + ' room.'); start(() => send({ a: 'cmopen', size: n, price: S.usd | 0 })); }
             else if (a === 'cmjoin') { const v = ((b.querySelector('#sqCode') || {}).value || '').trim().toUpperCase(); if (!v) return fail('Type the room code.'); connect(() => { if (S.party) { send({ a: 'leave' }); S.party = null; } send({ a: 'join', code: v, name: myName() }); }); }
@@ -1104,7 +1123,8 @@
             else if (a === 'cancel') send({ a: 'cancel' });
             else if (a === 'leave') { send({ a: 'leave' }); S.party = null; S.err = ''; render(); }
             else if (a === 'fadd') { const v = (b.querySelector('#sqAdd').value || '').trim(); if (v) { send({ a: 'fadd', u: v }); b.querySelector('#sqAdd').value = ''; S.note = 'Request sent!'; S.err = ''; } }
-            else if (a === 'chatx') { S.chatWith = null; render(); }
+            else if (a === 'chatx') { S.chatWith = null; S.emo = false; render(); }
+            else if (a === 'emo') { S.emo = !S.emo; render(); const i = b.querySelector('#sqMsg'); if (i) i.focus(); }
             else if (a === 'muteall') { S.mute.all = !S.mute.all; try { localStorage.setItem('pw_wmute', JSON.stringify(S.mute)); } catch (e) {} render(); }
             else if (a === 'wsend') { const i = b.querySelector('#sqMsg'), v = (i.value || '').trim(); if (v) { send({ a: 'whisper', id: S.chatWith, text: v }); i.value = ''; } }
             else if (a === 'login') login();

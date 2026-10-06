@@ -198,3 +198,33 @@ test('yendo solo a 1v1 con un bot de amigo, otro bot te reta (y a quien no los t
     const tk = me.last('sqTicket');
     assert.ok(tk && tk.kind === 'match', 'un bot reta al que tiene amigos de prueba');
 });
+
+test('en devnet los bots buscan 1v1 cada uno a su precio y su entrada la pone la casa: retas a bandit a $2 y el bote es doble', async () => {
+    const rooms = new Map(), saldo = { wa: 1000 };
+    const sq = createSquad({
+        rooms, resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000,
+        buildSim: (mode) => { const s = new PillSim.Simulation({ mode, mapSize: 3000, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, botConfig: { enabled: false, count: 0, respawn: false }, fx: { enabled: false } }); s.populate(); return s; },
+        welcomeMsg: () => '{}', refillBots: () => {}, broadcast: () => {}, log: () => {},
+        virtualReadyMs: 60, virtualQueue: true, botsPay: true,
+        startMatch: room => { room.state = 'playing'; },
+        handleInput: (room, pid, m) => { if (m.t === 'ready') { const c = room.clients.get(pid); c._spawned = true; room.sim.spawnPlayer(pid, 0); } },
+        quote: usd => usd * 50, pillUsd: () => 0.02,
+        authorize: ({ fee, pay }) => { saldo[pay.wallet] -= fee; return { ok: true, payWallet: pay.wallet, fee }; },
+        credit: (w, n) => { saldo[w] = (saldo[w] || 0) + n; }, treasury: () => {}, verify: () => true,
+    });
+    await wait(10000);   // crean su grupo y se ponen a buscar (y dan LISTO)
+    sq.handle(fakeWs(), { t: 'sq', a: 'rivals', size: 1 });
+    const cola = [...sq._internals.parties.values()].filter(p => p.state === 'queued').map(p => p.cents).sort((a, b) => a - b);
+    assert.deepEqual(cola, [100, 200, 500], 'cada bot en su precio');
+    const me = human(sq, 'AAAAAAA', 'ana');
+    say(sq, me, { a: 'create' });
+    say(sq, me, { a: 'play', price: 2, ready: false });
+    say(sq, me, { a: 'ready', v: true, pay: { wallet: 'wa' } });
+    await wait(50);
+    const tk = me.last('sqTicket');
+    assert.equal(tk.kind, 'match', 'emparejado con el bot de $2');
+    assert.equal(tk.lineup[tk.team === 'A' ? 'B' : 'A'][0].name, '@bandit');
+    const room = rooms.get([...rooms.keys()].pop());
+    assert.equal(room.squad.pot, 200, 'su entrada (100) + la de la casa (100)');
+    sq.handle(fakeWs(), { t: 'sq', a: 'leave' });
+});
