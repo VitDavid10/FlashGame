@@ -11488,7 +11488,7 @@
     function finishGameSuccess() {
         try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {}
         try { if (window.pwAq) pwAq.lifeEnd(myCells().length > 0 && !isSpectating, _miPuesto, true); } catch (e) {}
-        hideCountdownNumber(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer');
+        hideCountdownNumber(); if (!(typeof netState !== 'undefined' && netState && netState.squad)) SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer');
         isSpectating = true;
         if (saveInterval) clearInterval(saveInterval);
         localStorage.removeItem('pillwars_save');
@@ -11497,7 +11497,9 @@
         // NO abrir también el overlay MATCH FINISHED: duplicaba el resultado
         // (dos carteles a la vez). Aplica a cualquier sala y modo.
         const prizeOpen = document.getElementById('prizeModal').style.display === 'flex';
-        if (!prizeOpen) {
+        // Arenas: el cartel de fin es VICTORY/DEFEAT (game/squad.js, llega con squadEnd); aqui no sale MATCH FINISHED.
+        const enArenas = !!(typeof netState !== 'undefined' && netState && netState.squad);
+        if (!prizeOpen && !enArenas) {
             setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88');
             showResultsUI('matchFinished');
         }
