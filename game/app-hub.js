@@ -408,7 +408,8 @@ html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gm-row b{
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) label{font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.1em;color:var(--hub-ac)!important;display:block;text-align:left;margin-top:4px}
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important;font-size:13px!important}
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;border-image:none!important;filter:none!important;min-height:0!important;border-radius:0!important;box-shadow:none!important;color:#04150c!important;
-  font-family:'Russo One',sans-serif!important;font-size:12px!important;letter-spacing:.12em!important;padding:11px 8px!important;text-shadow:none!important}
+  font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.12em!important;padding:9px 6px!important;text-shadow:none!important;flex:none!important;width:118px!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts{gap:12px;margin-top:16px}
 html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn.ah-gm-close{background:none!important;border:2px solid #2c3630!important;color:#7d8a82!important}
 /* SKIN del editor de avatar: "sin skin" es una casilla del mismo tamano que las demas. */
 
@@ -487,7 +488,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (x && !walHub && !box.querySelector(':scope>.hub-close')) { const b = document.createElement('button'); b.className = 'hub-close'; b.textContent = 'CLOSE'; b.onclick = () => x.click(); box.appendChild(b); }
         let cv = box.querySelector(':scope>canvas.hub-placa');
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
-        requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1); });
+        requestAnimationFrame(() => {
+            cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1);
+            // drawPlacaCaja deja el relleno igual al grosor del marco: se le suma el mismo aire por los cuatro lados.
+            if (walHub && box._placaPad) box.style.setProperty('padding', (box._placaPad + 16) + 'px ' + (box._placaPad + 18) + 'px ' + (box._placaPad + 18) + 'px', 'important');
+        });
     }
     // Mismo alto de caja en todos los carteles de cada tipo: lo que falte se
     // le da al hueco del texto (que va centrado), no a los margenes.

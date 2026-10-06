@@ -492,6 +492,13 @@
         if (pay) send({ a: 'ready', v: true, pay });
         render();
     }
+    // Abre el panel de ARENAS (la sala de espera del grupo, donde se da READY).
+    function abreSala() {
+        if (S.arStep) S.arStep.view = null;
+        const b = document.querySelector('#appHub [data-a="arenas"]');
+        if (b && !isOpen('rooms')) b.click(); else if (!b) openPc('rooms');
+        render();
+    }
     function rcPopup(title, body, yes, no, onYes) {
         if (typeof window.pwConfirm === 'function') { hideRc(); window.pwConfirm(title, body.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''), yes, no, onYes); return; }   // sin sonido
         let el = document.getElementById('sqRc');
@@ -508,7 +515,7 @@
         if (m.you) return;
         const paid = m.fee > 0;
         rcPopup(String(m.leader).toUpperCase() + ' WANTS TO PLAY', (KIND_TXT[m.kind] || 'MATCH') + ' · ' + m.size + 'V' + m.size + '<br>' + (paid ? (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) + ' EACH' : 'FREE'),
-            paid ? 'PAY & READY' : 'READY', 'LATER', () => confirmEntry(m.fee, m.cents, m.usd));
+            'ACCEPT', 'LATER', abreSala);
     }
     function onInvite(m) {
         toast({

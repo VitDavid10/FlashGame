@@ -1780,14 +1780,24 @@
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 300; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.2s;
         }
         #sysModal .exit-box { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 40px rgba(0,255,136,0.15); }
-        /* Avisos SI/NO (diseno C elegido por David): marco gris y botones pixel del mismo tamano, dibujados por CSS
-           como los del juego (luz arriba-izquierda, sombra abajo-derecha, esquinas en escalon). Confirmar gris, cancelar rojo. */
-        #sysModal .btn-conf { font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 0; width: 150px; height: 40px; margin: 8px 7px 0; padding: 0; border: 0 !important; border-image: none !important; border-radius: 0 !important; cursor: pointer;
-            background: #7b7b7b !important; box-shadow: inset 4px 4px 0 #a8a8a8, inset -4px -5px 0 #4b4b4b !important; color: #fff; text-shadow: 2px 2px 0 #000;
-            clip-path: polygon(8px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 4px 100%, 0 calc(100% - 4px), 0 8px); }
-        #sysModal .btn-conf.n { background: #f03434 !important; box-shadow: inset 4px 4px 0 #ff8080, inset -4px -5px 0 #a3172e !important; }
-        #sysModal .btn-conf:hover { filter: brightness(1.12); }
-        #sysModal .btn-conf:active { transform: translateY(2px); }
+        /* Recuadro de los paneles para avisos con opciones (pwConfirm) y para salir de la partida. */
+        #pwConf { position: absolute; inset: 0; z-index: 10001; display: none; align-items: center; justify-content: center; background: rgba(3,6,4,.85); pointer-events: auto; }
+        #pwConf.on { display: flex; }
+        .pw-placa { position: relative !important; box-sizing: border-box; background: none !important; border: none !important; border-image: none !important; box-shadow: none !important; border-radius: 0 !important; }
+        .pw-placa:before, .pw-placa:after { display: none !important; }
+        .pw-placa > canvas.pw-placa-cv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; image-rendering: pixelated; }
+        .pw-placa > .pw-placa-in { position: relative; z-index: 1; padding: 16px 18px 18px; text-align: center; }
+        #pwConf .pc-b { width: 340px; max-width: 92%; }
+        .pw-placa h3, html body #exitModal .exit-box.pw-placa .exit-title { font-family: 'Russo One', sans-serif !important; font-size: 14px !important; letter-spacing: .16em !important; color: #fff !important; text-shadow: none !important; margin: 0 0 10px !important; background: none !important; }
+        .pw-placa p, html body #exitModal .exit-box.pw-placa .exit-desc { font-family: 'Russo One', sans-serif !important; font-size: 11px !important; line-height: 1.7 !important; color: #cfd8d3 !important; margin: 0 0 16px !important; letter-spacing: 0 !important; }
+        .pw-placa .ac, html body #exitModal .exit-box.pw-placa .exit-actions { display: flex !important; gap: 12px !important; justify-content: center !important; margin: 0 !important; }
+        .pw-placa .ac button, html body #exitModal .exit-box.pw-placa .exit-actions button { width: 118px !important; flex: none !important; height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; font-family: 'Russo One', sans-serif !important; font-size: 11px !important; letter-spacing: .12em !important; padding: 9px 6px !important; margin: 0 !important;
+            border: 2px solid #4b5550 !important; border-image: none !important; border-radius: 0 !important; background: #2c3630 !important; background-image: none !important; box-shadow: none !important; color: #e8ecea !important; text-shadow: none !important; clip-path: none !important; transform: none; cursor: pointer; }
+        .pw-placa .ac button.n, html body #exitModal .exit-box.pw-placa .exit-actions .btn-cancel { border-color: #7a2a26 !important; background: #5a1d1a !important; color: #ffb3a8 !important; }
+        html body #exitModal .exit-box.pw-placa .exit-actions .btn-confirm { order: -1; }
+        html body #exitModal .exit-box.pw-placa .exit-actions button:disabled { opacity: .5; }
+        html body #exitModal .exit-box.pw-placa { width: 360px !important; max-width: 92% !important; background: none !important; border: none !important; border-image: none !important; box-shadow: none !important; }
+        html body #exitModal .exit-box.pw-placa:before, html body #exitModal .exit-box.pw-placa:after { display: none !important; }
         .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
         /* Android pinta un recuadro azul translucido sobre lo que acabas de
            tocar y lo deja ahi un momento: al abrirse un cartel encima (p.ej.
@@ -10800,6 +10810,7 @@
         if(modal.style.display === 'flex') { modal.style.display = 'none'; isLoggingOut = false; return; }
         modal.style.display = 'flex';
         if (pixelMode) ensurePixPanelCss();
+        if (EN_APP) pwPlaca(modal.querySelector('.exit-box'));   // app: recuadro de los paneles, como el resto de avisos
         // Titulo del modal: PNG con el arte horneado (warning / secure-cashout)
         // en pixel-pack; texto CSS de siempre en los demas casos.
         const setTitle = (text, pngId) => {
@@ -15018,26 +15029,40 @@
         // igual que INSUFFICIENT BALANCE o CONNECTION FAILED. Los dos exitos
         // usan 'simpleselect', el de confirmacion del menu.
         const _ok = (t === 'DEPOSIT COMPLETE' || t === 'WITHDRAW COMPLETE');
-        if (!window._sysMute) try { SoundManager.play(_ok ? 'simpleselect' : 'little'); } catch (e) {}   // los avisos SI/NO (pwConfirm) no suenan
+        try { SoundManager.play(_ok ? 'simpleselect' : 'little'); } catch (e) {}
     }
-    function hideSystemMsg() { const m = document.getElementById('sysModal'); m.style.display = 'none'; m.style.zIndex = ''; m.querySelectorAll('.btn-conf').forEach(b => b.remove()); const ok = m.querySelector('.btn-sys'); if (ok) ok.style.display = ''; const acts = m.querySelector('.exit-actions'); if (acts) acts.style.cssText = ''; }
+    function hideSystemMsg() { document.getElementById('sysModal').style.display = 'none'; }
     // Confirmacion (SI / NO) con el cartel de los avisos: lo usan los avisos de arenas (game/squad.js).
+    // Recuadro de los paneles (el mismo marco que dibuja drawPlacaCaja) con un margen interior propio:
+    // drawPlacaCaja deja el relleno de la caja igual al grosor del marco, asi que el aire va en .pw-placa-in.
+    function pwPlaca(box) {
+        if (!box || typeof drawPlacaCaja !== 'function') return;
+        box.classList.add('pw-placa');
+        let cv = box.querySelector(':scope>canvas.pw-placa-cv');
+        if (!cv) { cv = document.createElement('canvas'); cv.className = 'pw-placa-cv'; box.prepend(cv); }
+        let inn = box.querySelector(':scope>.pw-placa-in');
+        if (!inn) { inn = document.createElement('div'); inn.className = 'pw-placa-in'; [...box.childNodes].forEach(n => { if (n !== cv) inn.appendChild(n); }); box.appendChild(inn); }
+        const hex = (typeof currentGameMode !== 'undefined' && currentGameMode === 'classic') ? '#00ffaa' : '#ccff00';
+        requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, hex, 1); if (box._placaPad) box.style.setProperty('padding', box._placaPad + 'px', 'important'); });   // el marco ocupa su grosor; el aire va dentro
+    }
+    window.pwPlaca = pwPlaca;
+    // Avisos SI/NO (arenas, desvincular X...): sin sonido; confirmar gris y cancelar rojo, del mismo tamano.
     window.pwConfirm = function (title, text, yes, no, onYes) {
-        window._sysMute = true; showSystemMsg(text, title); window._sysMute = false;
-        const m = document.getElementById('sysModal'), acts = m.querySelector('.exit-actions'), ok = acts.querySelector('.btn-sys');
-        m.style.zIndex = '10000';   // por encima de los paneles de arenas
-        // Siempre el marco gris de los avisos de wallet, con el titulo en letra pixel blanca.
-        const box = m.querySelector('.exit-box'); if (box) { box.classList.add('sys-gray'); box.classList.remove('sys-green'); }
-        if (!EN_APP) { const t = document.getElementById('sysModalTitle'); t.innerHTML = ''; t.textContent = title; t.style.cssText = "font-family:'Press Start 2P',monospace;font-size:15px;letter-spacing:1px;text-shadow:2px 2px 0 #000;line-height:1.4"; t.style.setProperty('color', '#fff', 'important'); }
-        if (ok) ok.style.display = 'none';
-        acts.style.display = 'flex'; acts.style.justifyContent = 'center'; acts.style.gap = '6px';
-        acts.querySelectorAll('.btn-conf').forEach(b => b.remove());
-        const boton = (txt, accion, cls) => {
-            const b = document.createElement('button'); b.className = 'btn-conf' + cls; b.textContent = txt;
-            b.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} hideSystemMsg(); if (accion) accion(); };
-            acts.appendChild(b);
-        };
-        boton(yes, onYes, ' y'); boton(no, null, ' n');
+        let ov = document.getElementById('pwConf');
+        if (!ov) {
+            ov = document.createElement('div'); ov.id = 'pwConf';
+            ov.innerHTML = '<div class="pc-b"><h3></h3><p></p><div class="ac"><button class="y"></button><button class="n"></button></div></div>';
+            (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
+        }
+        const b = ov.querySelector('.pc-b');
+        b.querySelector('h3').textContent = title; b.querySelector('p').innerText = text;
+        const y = b.querySelector('.y'), n = b.querySelector('.n');
+        y.textContent = yes; n.textContent = no;
+        const cierra = () => { ov.classList.remove('on'); };
+        y.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onYes) onYes(); };
+        n.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); };
+        ov.classList.add('on');
+        pwPlaca(b);
     };
 
     function abandonNet(texto) { cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
