@@ -5325,6 +5325,7 @@
         applyMusicVolume: function() { this.music.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER); this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER * 1.875); },
         play: function(name, pos = null) {
             if(this.muted || !this.sounds[name]) return;
+            if (window._sqHush) return;   // pantalla VS de arenas: ningun sonido del juego hasta que acaba
             // Volumen por distancia: lo que entra en pantalla suena fuerte, lo lejano
             // se atenúa, y por encima de ~1.4× el radio del viewport se descarta.
             let vol = 1;
@@ -15406,6 +15407,7 @@
                 '#sqEntry .b{font-family:\'Press Start 2P\',monospace;font-size:clamp(9px,2vw,13px);color:#fff;text-shadow:3px 3px 0 #000;display:flex;flex-direction:column;gap:9px;align-items:flex-start;white-space:nowrap;' +
                 'background:rgba(6,10,8,.92);border:3px solid #00ff88;box-shadow:0 0 18px rgba(0,255,136,.45),4px 4px 0 rgba(0,0,0,.6);padding:12px 18px}' +
                 '#sqEntry .lw{position:absolute;inset:0}#sqEntry.quick .bar,#sqEntry.quick .lw,#sqEntry.quick .b{display:none}' +
+                '#sqEntry.prac{background:transparent;pointer-events:none}#sqEntry.prac .b,#sqEntry.prac .lw,#sqEntry.prac .bar{display:none}' +
                 '#sqEntry.vs .b{display:none}#sqEntry:not(.vs) .bar{display:none}#sqEntry .bar{z-index:3}' +
                 '#sqEntry .bar{position:absolute;left:50%;transform:translateX(-50%);bottom:4%;width:min(336px,60%);height:22px;background:#050505;box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;overflow:hidden}' +
                 /* la misma barra que la pantalla de carga de siempre (bloques en la rejilla), llenandose suave */
@@ -15429,6 +15431,9 @@
         if (n === 0) window._sqT0 = performance.now();   // los tiempos minimos de cada fase cuentan desde aqui
         const ov = squadOverlay(); ov.style.display = 'flex'; squadMark(ov, n);
         ov.classList.toggle('quick', !!window._sqQuick);
+        // Practica: se entra directo a la partida (sin pantalla negra ni textos); partida de verdad: pantalla VS en silencio.
+        ov.classList.toggle('prac', window._squadKind === 'practice');
+        if (n === 0) window._sqHush = window._squadKind === 'match' && !window._sqQuick;
         // La pantalla C se monta UNA vez por entrada (si no, su animacion volvia a empezar en cada fase).
         const lw = ov.querySelector('.lw');
         if (n === 0 || !lw.firstChild) {
@@ -15440,7 +15445,7 @@
         els.loginOverlay.style.display = 'none';   // sin esto el menu sigue "abierto" mientras conecta y el hub vuelve a salir encima
     }
     function hideSquadEntry() {
-        clearTimeout(window._sqGuard); clearInterval(window._sqIv);
+        clearTimeout(window._sqGuard); clearInterval(window._sqIv); window._sqHush = false;
         const ov = document.getElementById('sqEntry'); if (ov) ov.style.display = 'none';
     }
     function showSquadEntry(readyFn, onDone) {
@@ -15453,8 +15458,8 @@
         window._sqIv = setInterval(() => {
             const dt = performance.now() - t0;
             if (fase === 0 && dt >= 800) { fase = 1; squadMark(ov, 1); }
-            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= (window._sqQuick ? 300 : (ov.classList.contains('vs') ? 3800 : 1600))) { listoAt = performance.now(); squadMark(ov, 2); }
-            if (listoAt && performance.now() - listoAt > (window._sqQuick ? 100 : 700)) {
+            if (fase === 1 && !listoAt && (readyFn() || dt > LOADING_MAX_MS) && dt >= (window._sqQuick || ov.classList.contains('prac') ? 0 : (ov.classList.contains('vs') ? 3800 : 1600))) { listoAt = performance.now(); squadMark(ov, 2); }
+            if (listoAt && performance.now() - listoAt > (window._sqQuick || ov.classList.contains('prac') ? 0 : 700)) {
                 clearInterval(window._sqIv);
                 ov.style.display = 'none'; window.__loadingLock = false;
                 if (onDone) onDone();
@@ -15792,7 +15797,7 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
+            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { window._sqHush = false; SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al

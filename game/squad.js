@@ -26,6 +26,7 @@
         ticketTimer: null, practiceTimer: null, enterBusy: false, after: null,
         x: 'unknown', token: null, prof: null, idAt: 0,
         friends: { friends: [], inReq: [], outReq: [] }, rooms: [], chat: {}, chatWith: null, unread: {}, roomsTimer: null,
+        mute: (() => { try { return JSON.parse(localStorage.getItem('pw_wmute')) || { all: false, ids: {} }; } catch (e) { return { all: false, ids: {} }; } })(),
     };
     const EN_APP = document.documentElement.classList.contains('pw-app');
     const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -270,7 +271,9 @@
 #sqRc button.y{background:#00ff88;color:#04150c}
 #sqRc.pulse .bx{animation:sqPulse .5s steps(2) 3}
 @keyframes sqPulse{50%{box-shadow:0 0 28px rgba(255,210,58,.9),4px 4px 0 rgba(0,0,0,.6)}}
-#sqToast .t{pointer-events:auto;background:rgba(8,12,10,.96);border:2px solid #4d9bff;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(77,155,255,.35);padding:9px 10px;font-size:8px;line-height:1.7;color:#fff;display:flex;flex-direction:column;gap:7px}
+#sqToastC{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:310;display:flex;flex-direction:column;align-items:center;gap:8px;max-width:min(420px,92vw);font-family:'Press Start 2P',monospace;pointer-events:none}
+#sqToastC .t{text-align:center}
+#sqToast .t,#sqToastC .t{pointer-events:auto;background:rgba(8,12,10,.96);border:2px solid #4d9bff;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(77,155,255,.35);padding:9px 10px;font-size:8px;line-height:1.7;color:#fff;display:flex;flex-direction:column;gap:7px}
 #sqToast .t.w{border-color:#ffd23a;box-shadow:3px 3px 0 rgba(0,0,0,.6),0 0 14px rgba(255,210,58,.3)}
 #sqToast .t .r{display:flex;gap:6px;align-items:center}
 #sqToast .t img{width:22px;height:22px;border-radius:50%;object-fit:cover}
@@ -367,8 +370,9 @@
         return f;
     }
     function toast(o) {
-        let box = document.getElementById('sqToast');
-        if (!box) { box = document.createElement('div'); box.id = 'sqToast'; frame().appendChild(box); }
+        const bid = o.center ? 'sqToastC' : 'sqToast';   // los avisos cortos van centrados; susurros e invitaciones a la izquierda
+        let box = document.getElementById(bid);
+        if (!box) { box = document.createElement('div'); box.id = bid; frame().appendChild(box); }
         const el = document.createElement('div'); el.className = 't' + (o.warm ? ' w' : '');
         el.innerHTML = '<div class="r">' + (o.pic ? '<img src="' + esc(o.pic) + '" alt="" referrerpolicy="no-referrer">' : '') + '<div>' + o.text + '</div></div>' + (o.actions ? '<div class="r">' + o.actions.map((a, i) => '<button data-i="' + i + '" class="' + (a[2] ? 'y' : '') + '">' + a[0] + '</button>').join('') + '</div>' : '');
         const kill = () => { clearTimeout(tm); el.remove(); };
@@ -415,7 +419,8 @@
             const viewing = S.chatWith === other.id && isOpen('friends');
             if (!viewing) {
                 S.unread[other.id] = (S.unread[other.id] || 0) + 1;
-                toast({ pic: other.p, text: esc(friendName(other)) + ': ' + esc(m.text.slice(0, 80)), actions: [['REPLY', () => { S.chatWith = other.id; S.unread[other.id] = 0; openFriends(); }, 1], ['X', null]], ms: 9000 });
+                // Silenciado (todos o este amigo): no sale el popup; el WHISPER sigue parpadeando con el mensaje sin leer.
+                if (!(S.mute.all || S.mute.ids[other.id])) toast({ pic: other.p, text: esc(friendName(other)) + ': ' + esc(m.text.slice(0, 80)), actions: [['REPLY', () => { S.chatWith = other.id; S.unread[other.id] = 0; openFriends(); }, 1], ['X', null]], ms: 9000 });
             }
         }
         render();
@@ -529,10 +534,9 @@
             const bot = tipo === 'win' ? COL[i % COL.length] : tipo === 'draw' ? '#ffd23a' : '#2a2a2a';
             const o = spr(6, top, bot, -Math.PI / 4, true), q = { c: o.cv || o, ph: Math.random() * 6.28 };
             if (tipo === 'win') {
-                // VICTORIA: salen disparadas desde el centro hacia todos los lados y se quedan flotando por la pantalla
-                // destino: por toda la franja de arriba y la de abajo (lo que no tapa la banda), de lado a lado
-                q.x0 = W / 2; q.y0 = H * 0.15; q.tx = 6 + Math.random() * (W - 12);
-                q.ty = Math.random() < 0.7 ? 4 + Math.random() * H * 0.2 : H * (0.9 + Math.random() * 0.08);
+                // VICTORIA: confeti. Salen disparadas desde el titulo en todas direcciones, frenan y caen
+                const a = Math.random() * 6.28, v = 60 + Math.random() * 160;
+                q.x = W / 2 + (Math.random() - .5) * W * .3; q.y = H * 0.16; q.vx = Math.cos(a) * v; q.vy = Math.sin(a) * v - 60; q.dl = Math.random() * 400;
             } else if (tipo === 'lose') {
                 // DERROTA: caen despacio por toda la pantalla
                 q.x = Math.random() * W; q.y = Math.random() * H; q.vy = 4 + Math.random() * 6;
@@ -541,13 +545,20 @@
         }
         cancelAnimationFrame(S.fxRaf);
         const t0 = performance.now(); let tAnt = t0;
+        cv.style.zIndex = tipo === 'win' ? '3' : '0';   // el confeti pasa por delante; las de la derrota caen por detras de la banda
         const paso = t => {
             if (!el.classList.contains('show')) return;
-            const dt = Math.min(0.05, (t - tAnt) / 1000), k = Math.min(1, (t - t0) / 900), sale = 1 - Math.pow(1 - k, 3); tAnt = t;
+            const dt = Math.min(0.05, (t - tAnt) / 1000); tAnt = t;
             g.clearRect(0, 0, W, H);
             for (const q of pills) {
                 let x, y;
-                if (tipo === 'win') { x = q.x0 + (q.tx - q.x0) * sale; y = q.y0 + (q.ty - q.y0) * sale + Math.sin(t / 600 + q.ph) * 3 * k; }
+                if (tipo === 'win') {
+                    if (t - t0 < q.dl) continue;
+                    q.vx *= Math.pow(0.35, dt); q.vy = q.vy * Math.pow(0.35, dt) + 90 * dt;   // aire y gravedad
+                    q.x += q.vx * dt; q.y += q.vy * dt;
+                    if (q.y > H + 10) { q.y = -10; q.x = Math.random() * W; q.vx = (Math.random() - .5) * 20; q.vy = 10 + Math.random() * 15; }   // luego sigue cayendo confeti suave
+                    x = q.x + Math.sin(t / 300 + q.ph) * 3; y = q.y;
+                }
                 else if (tipo === 'lose') { q.y += q.vy * dt; if (q.y > H + 10) { q.y = -10; q.x = Math.random() * W; } x = q.x + Math.sin(t / 900 + q.ph) * 2; y = q.y; }
                 else { x = q.x; y = q.y + Math.sin(t / 700 + q.ph) * 2; }
                 g.drawImage(q.c, Math.round(x - q.c.width / 2), Math.round(y - q.c.height / 2));
@@ -753,9 +764,9 @@
                 : '<div class="n">' + esc(friendName(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div>') +
             '<div class="s ' + f.st + '"><i></i>' + ST[f.st] + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
             (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
-            '<div class="a">' + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
+            '<div class="a">' + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm' + (S.mute.ids[f.id] ? ' on' : '') + '" data-mu="' + f.id + '">' + (S.mute.ids[f.id] ? 'UNMUTE' : 'MUTE') + '</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
         return '<div class="sq sq-fixed">' + tabs + grp + aviso +
-            '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button></div>' +
+            '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button><button class="sq-b sm' + (S.mute.all ? ' red' : '') + '" data-a="muteall">' + (S.mute.all ? 'POPUPS OFF' : 'POPUPS ON') + '</button></div>' +
             reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
             '<div class="sq-list">' + (list || '<div class="sq-note" style="padding:.8em">No friends yet. Add someone by their @X name, wallet address or friend code (it is in your profile). They need to have opened Arenas or Friends once.</div>') + '</div>' +
             (F.outReq.length ? '<div class="sq-note">Pending: ' + F.outReq.map(r => esc(nameOf(r))).join(', ') + '</div>' : '') + errLine() + '</div>';
@@ -774,8 +785,8 @@
         wire(box);
     }
     function render() {
-        if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500 }); }
-        if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000 }); }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
+        if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500, center: true }); }
+        if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000, center: true }); }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
         if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); const w = document.querySelector('#ahAr .ph .w'); if (w) w.textContent = modeTitle(); }
         if (S.box.friends) paint('friends', friendsHtml());
         try { if (window.PWSquadHooks) { if (PWSquadHooks.afterRender) PWSquadHooks.afterRender(); if (PWSquadHooks.badge) PWSquadHooks.badge(badgeCount()); } } catch (e) {}
@@ -805,6 +816,8 @@
             start(() => send({ a: 'challenge', code: x.dataset.join, mode: arMode() }));
         });
         b.querySelectorAll('[data-k]').forEach(x => x.onclick = () => send({ a: 'kick', id: x.dataset.k }));
+        const guardaMute = () => { try { localStorage.setItem('pw_wmute', JSON.stringify(S.mute)); } catch (e) {} };
+        b.querySelectorAll('[data-mu]').forEach(x => x.onclick = () => { snd('simpleselect'); const id = x.dataset.mu; if (S.mute.ids[id]) delete S.mute.ids[id]; else S.mute.ids[id] = 1; guardaMute(); render(); });
         b.querySelectorAll('[data-tab]').forEach(x => x.onclick = () => { if (x.disabled) return; snd('simpleselect'); S.frTab = x.dataset.tab; render(); });
         b.querySelectorAll('[data-nk]').forEach(x => x.onclick = () => { S.nickEdit = x.dataset.nk; render(); const i = b.querySelector('#sqNick'); if (i) i.focus(); });
         b.querySelectorAll('[data-nks]').forEach(x => x.onclick = () => { const i = b.querySelector('#sqNick'); setNick(x.dataset.nks, i ? i.value : ''); S.nickEdit = null; render(); });
@@ -841,6 +854,7 @@
             else if (a === 'leave') { send({ a: 'leave' }); S.party = null; S.err = ''; render(); }
             else if (a === 'fadd') { const v = (b.querySelector('#sqAdd').value || '').trim(); if (v) { send({ a: 'fadd', u: v }); b.querySelector('#sqAdd').value = ''; S.note = 'Request sent!'; S.err = ''; } }
             else if (a === 'chatx') { S.chatWith = null; render(); }
+            else if (a === 'muteall') { S.mute.all = !S.mute.all; try { localStorage.setItem('pw_wmute', JSON.stringify(S.mute)); } catch (e) {} render(); }
             else if (a === 'wsend') { const i = b.querySelector('#sqMsg'), v = (i.value || '').trim(); if (v) { send({ a: 'whisper', id: S.chatWith, text: v }); i.value = ''; } }
             else if (a === 'login') login();
             else if (a === 'recheck') loadIdentity(true).then(() => { if (S.x === 'linked') { if (S.ws) { S.ws.close(); } connect(() => send({ a: 'friends' })); } else S.err = 'Not signed in yet.'; render(); });
