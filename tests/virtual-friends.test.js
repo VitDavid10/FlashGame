@@ -28,7 +28,8 @@ function human(sq, id, u) {
     sq.handle(ws, { t: 'sq', a: 'hello', token: token.sign({ id, u, n: u, p: '' }) });
     return ws;
 }
-const say = (sq, ws, o) => sq.handle(ws, Object.assign({ t: 'sq' }, o));
+// El lider tambien da LISTO: en estas pruebas (gratis) va dentro del mismo 'play'.
+const say = (sq, ws, o) => sq.handle(ws, Object.assign({ t: 'sq' }, (o.a === 'play' || o.a === 'challenge') && o.ready === undefined ? { ready: true } : {}, o));
 
 test('@icefox y @bandit no salen en ninguna lista hasta que los buscas', () => {
     const { sq } = make();

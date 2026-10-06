@@ -14027,6 +14027,11 @@
             const RL = rr && window._riLayer && (rr.layers || []).find(L => L.layerIdx === window._riLayer);
             if (RL && RL.pillFee > 0) fee = RL.pillFee;
         } catch (e) {}
+        return firmaEntrada(`${mode}_${roomName}`, fee, 'You must sign the entry payment to join a paid room.');
+    }
+    // Saldo suficiente (o depositar lo que falta) y firma "PillWars enter <combo> paying <fee> PILLY @ <ts>": es lo que
+    // el servidor comprueba y cobra (authorizeEntry). La usan las salas de pago y las arenas de pago.
+    async function firmaEntrada(combo, fee, motivo) {
         const leeSaldo = async () => {
             try { return (await (await fetch('/api/warbalance?wallet=' + GameWallet.address)).json()).pill || 0; } catch (e) { return 0; }
         };
@@ -14051,12 +14056,28 @@
         }
         try {
             const ts = Date.now();
-            const message = `PillWars enter ${mode}_${roomName} paying ${fee} PILLY @ ${ts}`;
+            const message = `PillWars enter ${combo} paying ${fee} PILLY @ ${ts}`;
             const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
             const sigBytes = res && res.signature ? res.signature : res;
             return { pay: { wallet: GameWallet.address, message, ts, signature: Array.from(sigBytes) } };
-        } catch (e) { showSystemMsg('You must sign the entry payment to join a paid room.', 'PAYMENT CANCELLED'); return null; }
+        } catch (e) { showSystemMsg(motivo, 'PAYMENT CANCELLED'); return null; }
     }
+    // Arenas de pago: al dar LISTO (game/squad.js). La entrada la fijo el servidor al entrar en el tramo de precio.
+    window.pwArenaPay = async function (fee, cents) {
+        if (!(await GameWallet.ensure())) { showSystemMsg('Connect your wallet first on the home page, then come back to play paid matches.', 'WALLET REQUIRED'); return null; }
+        const r = await firmaEntrada('arena_' + cents, fee, 'You must sign the entry to play a paid match.');
+        return r && r.pay;
+    };
+    // CLAIM del premio de una arena: firma "PillWars claim arena <id>" y el servidor lo abona al saldo del juego.
+    window.pwArenaClaim = async function (id) {
+        if (!(await GameWallet.ensure())) { showSystemMsg('Connect the wallet you played with to claim your prize.', 'WALLET REQUIRED'); return null; }
+        try {
+            const message = 'PillWars claim arena ' + id;
+            const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
+            const sig = res && res.signature ? res.signature : res;
+            return { wallet: GameWallet.address, message, signature: Array.from(sig) };
+        } catch (e) { return null; }
+    };
 
     // Lock global para evitar que un doble click (o un click mientras Phantom muestra
     // el popup de firma) dispare dos preparePayment en paralelo y haga firmar dos veces.
@@ -14164,6 +14185,7 @@
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
         // REJOIN (te fuiste al morir y vuelves a tu partida): entras sin pantalla de VS y a mirar a tu equipo.
         window._sqGoAt = 0;
+        window._sqResume = kind === 'resume'; if (window._sqResume) kind = 'rejoin';   // vuelves a llevar tu pildora (sin VS y sin mirar)
         window._sqRejoin = kind === 'rejoin'; if (window._sqRejoin) { kind = 'match'; window._sqAgain = true; }
         window._squadTicket = ticket; window._squadKind = kind; window._squadMode = mode === 'classic' ? 'classic' : 'arcade';
         window._sqQuick = !!window._sqAgain; window._sqAgain = false;   // TRY AGAIN de la practica: sin mensajes de carga
@@ -15071,7 +15093,12 @@
             if (!netState || netState._matchOver) return;
             if (msg.t === 'squadRoster') { if (window.PWSquad) PWSquad.onRoster(msg); return; }
             if (msg.t === 'squadAllies') { if (window.PWSquad) PWSquad.onAllies(msg); return; }
-            if (msg.t === 'squadKill') { setLobbyBanner(msg.by ? msg.victim + ' WAS EATEN BY ' + msg.by : msg.victim + ' WAS EATEN BY A BOT', 'found'); clearTimeout(window._sqKillT); window._sqKillT = setTimeout(() => setLobbyBanner(null), 3000); return; }
+            if (msg.t === 'squadPrize') { if (window.PWSquad) PWSquad.onPrize(msg); return; }
+            if (msg.t === 'squadKill') {
+                // Arena de pago: lo que llevaba el que cae (para el equipo que gana, luego se reparte).
+                let dinero = '';
+                if (msg.pill > 0 && msg.usd != null && window.pwUsd) { const yo = window.PWSquad && PWSquad.state.roster ? PWSquad.state.roster.me : null; dinero = msg.team && yo && msg.team !== yo ? ' · +' + pwUsd(msg.usd) + ' FOR YOUR TEAM' : ' · -' + pwUsd(msg.usd); }
+                setLobbyBanner((msg.by ? msg.victim + ' WAS EATEN BY ' + msg.by : msg.victim + ' WAS EATEN BY A BOT') + dinero, 'found'); clearTimeout(window._sqKillT); window._sqKillT = setTimeout(() => setLobbyBanner(null), 3000); return; }
             if (msg.t === 'squadNote') { setLobbyBanner(msg.text, 'found'); SoundManager.play('alert'); setTimeout(() => setLobbyBanner(null), 3500); return; }
             if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); return; }
             if (msg.t === 'squadBad') { abandonNet('That match is no longer available.'); return; }
@@ -15871,7 +15898,7 @@
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
             if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : (window._squadKind === 'match' ? () => !!(sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && (SoundManager.listo() || performance.now() - (window._sqT0 || 0) > 5000)) : cargada),   /* el audio se espera como mucho 5 s en total (el movil no siempre precarga) */ () => { window._sqHush = false; if (window._squadKind === 'match' && !window._sqRejoin && sim && sim.isRemote && !sim._readySent) { sim._readySent = true; sim._send({ t: 'ready' }); }   /* partida de verdad: el jugador aparece (con su inmunidad) justo al acabar la pantalla VS, no antes */
-            if (window._squadKind === 'practice' && window.pwHubEnter) { pwHubEnter(); try { pwSquadCloseAll(); } catch (e) {} } SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
+            if (window._squadKind === 'practice' && window.pwHubEnter) { pwHubEnter(); try { pwSquadCloseAll(); } catch (e) {} } SoundManager.playMusic(); if (window._sqRejoin) { if (!window._sqResume) spectateOnline(); } else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al

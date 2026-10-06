@@ -1,0 +1,129 @@
+'use strict';
+/*
+ * Dinero de las ARENAS de pago (server/squad.js lo usa).
+ *
+ *  - Precio: el grupo elige de 0 a 20 $. El precio en $PILLY de cada "bracket" (modo + tamano + dolares) se FIJA en
+ *    cuanto alguien entra en el y se queda asi mientras haya alguien dentro; al vaciarse, el siguiente que entre lo fija
+ *    otra vez con el precio vivo del token. Asi los dos grupos que se enfrentan pagan exactamente lo mismo.
+ *  - Cobro: al dar LISTO cada jugador firma la entrada (la misma firma que las salas normales, ver authorizeEntry) y se
+ *    le resta del saldo del juego. Esa entrada queda RETENIDA (hold) hasta que la partida acaba o se devuelve.
+ *  - Lo retenido se guarda en disco: si el servidor se reinicia con dinero retenido, al arrancar se devuelve todo.
+ *  - Reparto: el equipo ganador se lleva el bote a partes iguales. Por cada jugador que se comio un BOT (y no otro
+ *    jugador) la casa se queda el 10 % de su entrada. Empate: cada uno recupera lo suyo.
+ *  - Premios: quedan como "claims" y se cobran con una firma (CLAIM en la pantalla de victoria). Si nadie lo cobra en
+ *    24 h se abona solo, para que el dinero nunca se pierda.
+ */
+const fs = require('fs');
+
+const BOT_FEE = 0.10;
+const AUTO_CLAIM_MS = 24 * 60 * 60 * 1000;
+
+function createArenaPay(o) {
+    const file = o.file || null;
+    const credit = o.credit;            // (wallet, pill) -> abona al saldo del juego
+    const treasury = o.treasury || (() => {});   // (pill, motivo)
+    const verify = o.verify || (() => false);    // (wallet, message, signature[]) -> bool
+    const log = o.log || (() => {});
+    const now = o.now || (() => Date.now());
+
+    let db = { holds: {}, claims: {} };
+    if (file) { try { db = Object.assign(db, JSON.parse(fs.readFileSync(file, 'utf8')) || {}); } catch (e) {} }
+    let dirty = false;
+    const save = () => { if (!file || !dirty) return; dirty = false; try { fs.writeFileSync(file + '.tmp', JSON.stringify(db)); fs.renameSync(file + '.tmp', file); } catch (e) {} };
+    const timer = setInterval(() => { autoClaims(); save(); }, 5000); if (timer.unref) timer.unref();
+    if (file) for (const sig of ['SIGTERM', 'SIGINT', 'beforeExit']) process.once(sig, () => { try { dirty = true; save(); } catch (e) {} });
+
+    // Al arrancar: lo que quedo retenido de antes del reinicio se devuelve entero.
+    const viejos = Object.keys(db.holds);
+    if (viejos.length) {
+        for (const ref of viejos) { const h = db.holds[ref]; try { credit(h.wallet, h.fee); } catch (e) {} log(`[arena] reinicio: devuelto ${h.fee} PILL a ${h.wallet.slice(0, 6)}…`); }
+        db.holds = {}; dirty = true; save();
+    }
+
+    let seq = 0;
+    const newRef = () => now().toString(36) + '-' + (++seq).toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+
+    // ---------- precio fijado por bracket ----------
+    const brackets = new Map();   // key -> { fee, users }
+    function feeOf(key, usd, quote) {
+        if (!(usd > 0)) return 0;
+        let b = brackets.get(key);
+        if (!b || b.users <= 0) { b = { fee: Math.max(1, Math.round(quote(usd))), users: 0 }; brackets.set(key, b); }
+        return b.fee;
+    }
+    function useBracket(key, d) { const b = brackets.get(key); if (b) { b.users = Math.max(0, b.users + d); if (!b.users) brackets.delete(key); } }
+    const bracketFee = key => (brackets.get(key) || {}).fee || 0;
+
+    // ---------- retenciones ----------
+    function hold(wallet, fee, info) {
+        const ref = newRef();
+        db.holds[ref] = { wallet, fee, at: now(), info: info || '' }; dirty = true;
+        return ref;
+    }
+    function refund(ref, why) {
+        const h = db.holds[ref]; if (!h) return 0;
+        delete db.holds[ref]; dirty = true;
+        try { credit(h.wallet, h.fee); } catch (e) {}
+        log(`[arena] devuelto ${h.fee} PILL a ${h.wallet.slice(0, 6)}… (${why || 'cancelado'})`);
+        return h.fee;
+    }
+    // La retencion pasa a ser parte del bote de una partida (ya no se devuelve sola).
+    function take(ref) { const h = db.holds[ref]; if (!h) return null; delete db.holds[ref]; dirty = true; return h; }
+
+    // ---------- reparto al acabar ----------
+    // players: [{ team, wallet, fee, byBot }] (solo los que pagaron); winner: 'A' | 'B' | null.
+    // Devuelve { pot, fee, share, prizes: [{ wallet, amount, id }] }.
+    function settle(matchId, players, winner) {
+        const pot = players.reduce((n, p) => n + (p.fee | 0), 0);
+        if (!pot) return { pot: 0, comision: 0, share: 0, prizes: [] };
+        if (!winner) {
+            // Empate: cada uno recupera lo suyo (sin comision).
+            for (const p of players) try { credit(p.wallet, p.fee); } catch (e) {}
+            log(`[arena] ${matchId}: empate, devueltas las entradas (${pot} PILL)`);
+            return { pot, comision: 0, share: 0, prizes: [], draw: true };
+        }
+        let comision = 0;
+        for (const p of players) if (p.byBot) comision += Math.floor(p.fee * BOT_FEE);
+        const ganadores = players.filter(p => p.team === winner);
+        const pool = pot - comision;
+        if (!ganadores.length) { treasury(pot, 'arena sin ganadores que pagaran'); return { pot, comision: pot, share: 0, prizes: [] }; }
+        const share = Math.floor(pool / ganadores.length);
+        const resto = pool - share * ganadores.length;
+        if (comision + resto > 0) treasury(comision + resto, 'arena: comision por bot');
+        const prizes = ganadores.map(p => ({ wallet: p.wallet, amount: share, id: addClaim(p.wallet, share, matchId) }));
+        log(`[arena] ${matchId}: bote ${pot} PILL, comision ${comision + resto}, ${ganadores.length} ganadores a ${share} cada uno`);
+        return { pot, comision: comision + resto, share, prizes };
+    }
+
+    // ---------- premios por cobrar ----------
+    function addClaim(wallet, amount, matchId) {
+        const id = newRef();
+        db.claims[id] = { wallet, amount, matchId: matchId || '', at: now() }; dirty = true;
+        return id;
+    }
+    const claimMessage = id => `PillWars claim arena ${id}`;
+    function claim(id, wallet, message, signature) {
+        const c = db.claims[id];
+        if (!c) return { ok: false, reason: 'already_claimed' };
+        if (c.wallet !== wallet || message !== claimMessage(id)) return { ok: false, reason: 'bad_claim' };
+        if (!verify(wallet, message, signature)) return { ok: false, reason: 'bad_signature' };
+        delete db.claims[id]; dirty = true;
+        try { credit(wallet, c.amount); } catch (e) {}
+        log(`[arena] premio cobrado: ${c.amount} PILL a ${wallet.slice(0, 6)}…`);
+        return { ok: true, amount: c.amount };
+    }
+    function autoClaims() {
+        const t = now();
+        for (const [id, c] of Object.entries(db.claims)) {
+            if (t - c.at < AUTO_CLAIM_MS) continue;
+            delete db.claims[id]; dirty = true;
+            try { credit(c.wallet, c.amount); } catch (e) {}
+            log(`[arena] premio sin cobrar abonado solo: ${c.amount} PILL a ${c.wallet.slice(0, 6)}…`);
+        }
+    }
+    const claimsOf = wallet => Object.entries(db.claims).filter(([, c]) => c.wallet === wallet).map(([id, c]) => ({ id, amount: c.amount, at: c.at }));
+
+    return { feeOf, useBracket, bracketFee, hold, refund, take, settle, claim, claimMessage, claimsOf, flush: () => { dirty = true; save(); }, _db: () => db, BOT_FEE };
+}
+
+module.exports = { createArenaPay, BOT_FEE };

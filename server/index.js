@@ -1291,6 +1291,15 @@ const squad = createSquad({
     directory: q => airdrop.lookup(q),   // encuentra a gente del airdrop que aun no ha abierto Arenas
     // Amigos y perfiles: solo el proceso que de verdad sirve las arenas los guarda.
     socialFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'social.json') : null,
+    // Arenas de pago: la entrada se firma y cobra como en las salas normales; lo retenido y los premios por cobrar
+    // se guardan en arena-pay.json (solo el proceso que sirve las arenas).
+    arenaFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'arena-pay.json') : null,
+    authorize: p => director.authorizeEntry(p),
+    credit: (w, pill) => econ.credit(w, pill),
+    treasury: (pill, motivo) => econ.rakeTesoreria(pill, motivo),
+    verify: (w, m, sig) => solana.verifySignedMessage(w, m, sig),
+    quote: usd => usd * PILL_PER_DOLLAR,
+    pillUsd: () => (PILL_PER_DOLLAR > 0 ? 1 / PILL_PER_DOLLAR : 0),   // la misma tasa que fija el precio (en el split, el host la recibe por IPC)
 });
 
 // --- Acciones de admin de ALCANCE GLOBAL, extraídas a funciones puras (sin ws) ---

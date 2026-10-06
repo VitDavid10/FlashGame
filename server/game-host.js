@@ -456,7 +456,8 @@ function createGameHost(deps) {
             room.clients.delete(playerId);
             if (!room.pendingRemovals.has(playerId)) {
                 room.pendingRemovals.set(playerId, {
-                    deadline: Date.now() + RESUME_GRACE_MS,
+                    // Arenas: tu pildora se queda en el mapa (AFK) y puedes volver cuando quieras, sin limite de tiempo.
+                    deadline: (room.squad && !room.squad.practice) ? Infinity : Date.now() + RESUME_GRACE_MS,
                     econ: enGracia ? {
                         carry: cli.carry | 0, payWallet: cli.payWallet, paidFee: cli.paidFee | 0,
                         cid: cli.cid || null, isTester: !!cli.isTester,

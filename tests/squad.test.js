@@ -26,7 +26,8 @@ const party = (sq, name, n = 1) => {
     for (let i = 1; i < n; i++) { const w = fakeWs(); sq.handle(w, { t: 'sq', a: 'join', code: ws.last('sqParty').code, name: name + i }); members.push(w); }
     return members;
 };
-const say = (sq, ws, o) => sq.handle(ws, Object.assign({ t: 'sq' }, o));
+// El lider tambien da LISTO: en estas pruebas (gratis) va dentro del mismo 'play'.
+const say = (sq, ws, o) => sq.handle(ws, Object.assign({ t: 'sq' }, (o.a === 'play' || o.a === 'challenge') && o.ready === undefined ? { ready: true } : {}, o));
 
 test('la sala la fija cuantos sois: un grupo de 2 busca 2v2 y uno de 1 busca 1v1', () => {
     const { sq } = make();
@@ -345,4 +346,47 @@ test('QUICK MATCH entra en una sala abierta del mismo tamano y modo; y se puede 
     const end = w2.last('squadEnd');
     assert.ok(end && end.winner, 'el que volvio recibe el resultado');
     assert.equal(end.players[room.clients.get(r2.playerId).team][0].name, 'ana');
+});
+
+test('arena de pago 1v1: precio fijado, cada uno paga al dar LISTO, bote en la sala y el ganador cobra con CLAIM', async () => {
+    const rooms = new Map(), saldo = { wa: 1000, wb: 1000 };
+    const sq = createSquad({
+        rooms, resumeTokens: new Map(), PillSim, MATCH_MS: 230000, SPAWN_IMMUNE_MS: 3000,
+        buildSim: (mode) => { const s = new PillSim.Simulation({ mode, mapSize: 3000, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 }, botConfig: { enabled: false, count: 0, respawn: false }, fx: { enabled: false } }); s.populate(); return s; },
+        welcomeMsg: (room, id, token, type, extra) => JSON.stringify(Object.assign({ t: type || 'welcome', id }, extra)),
+        refillBots: () => {}, broadcast: (room, o) => { for (const c of room.clients.values()) c.ws.send(JSON.stringify(o)); }, log: () => {},
+        quote: usd => usd * 50, pillUsd: () => 0.02,
+        authorize: ({ fee, pay }) => { const w = pay && pay.wallet; if (!w || saldo[w] < fee) return { ok: false, reason: 'saldo' }; saldo[w] -= fee; return { ok: true, payWallet: w, fee }; },
+        credit: (w, n) => { saldo[w] += n; }, treasury: () => {}, verify: () => true,
+    });
+    const a = party(sq, 'ana', 1)[0], b = party(sq, 'bea', 1)[0];
+    say(sq, a, { a: 'play', price: 2, ready: false });
+    const rc = a.last('sqReadyCheck');
+    assert.equal(rc.fee, 100, '2 $ a 50 PILL/$');
+    assert.equal(a.last('sqParty').state, 'idle', 'hasta el LISTO no busca');
+    say(sq, a, { a: 'ready', v: true, pay: { wallet: 'wa' } });
+    await new Promise(r => setTimeout(r, 10));
+    assert.equal(saldo.wa, 900);
+    assert.equal(a.last('sqParty').state, 'queued');
+    say(sq, b, { a: 'play', price: 2, ready: false });
+    say(sq, b, { a: 'ready', v: true, pay: { wallet: 'wb' } });
+    await new Promise(r => setTimeout(r, 10));
+    const ja = fakeWs(), jb = fakeWs();
+    const ra = sq.join(ja, 'x', { t: 'join', squad: a.last('sqTicket').ticket });
+    const rb = sq.join(jb, 'x', { t: 'join', squad: b.last('sqTicket').ticket });
+    const room = ra.room;
+    assert.equal(ja.last('squadRoster').pot, 200, 'bote: los dos equipos');
+    for (const r of [ra, rb]) { room.clients.get(r.playerId)._spawned = true; room.sim.spawnPlayer(r.playerId, 0); }
+    room.state = 'playing'; room.endsAt = Date.now() + 100000;
+    room.sim.players.get(rb.playerId).alive = false;
+    sq.tick(room, Date.now());
+    sq.endOf(room);
+    const end = ja.last('squadEnd');
+    assert.equal(end.winner, 'A');
+    assert.equal(end.money.pot, 200);
+    const prize = ja.last('squadPrize');
+    assert.equal(prize.amount, 200, 'murio por nada (no un bot): sin comision');
+    say(sq, a, { a: 'claim', id: prize.id, wallet: 'wa', message: 'PillWars claim arena ' + prize.id, signature: [1] });
+    assert.equal(a.last('sqClaim').ok, true);
+    assert.equal(saldo.wa, 1100);
 });

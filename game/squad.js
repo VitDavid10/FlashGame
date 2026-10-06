@@ -22,6 +22,8 @@
     const SLOTS = 3;   // tarjetas por columna en la lista de salas
     const S = {
         ws: null, conn: 'idle', party: null, me: null, err: '', note: '',
+        usd: (() => { try { return Math.max(0, Math.min(20, parseInt(localStorage.getItem('pw_arusd'), 10) || 0)); } catch (e) { return 0; } })(),   // precio elegido para QUICK MATCH (0 = gratis)
+        rivals: [], quote: [], pillUsd: 0, prize: null, endMoney: null,
         box: { rooms: null, friends: null }, pc: {}, roster: null, rel: null,
         ticketTimer: null, practiceTimer: null, enterBusy: false, after: null,
         x: 'unknown', token: null, prof: null, idAt: 0,
@@ -31,14 +33,19 @@
     const EN_APP = document.documentElement.classList.contains('pw-app');
     const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const snd = n => { try { SoundManager.play(n); } catch (e) {} };
+    // Dolares con 2 decimales como mucho ($2, $2.02).
+    const fmtUsd = n => '$' + (Math.round((+n || 0) * 100) / 100).toFixed(2).replace(/\.00$/, '');
+    const fmtPill = n => (n | 0).toLocaleString('en-US') + ' $PILLY';
+    window.pwUsd = fmtUsd;
     const ERRS = {
+        pay_failed: 'The entry payment failed.',
         no_party: 'That group is gone.', party_full: 'That group is full (3 players).', party_busy: "You can't do that while your group is searching.",
         not_leader: 'Only the group leader can do that.', size_mismatch: 'Your group size does not match that room.', already_in_party: 'You are already in a group.',
         bad_token: 'Could not verify your account. Reopen this panel.', need_x: 'Connect your wallet to use friends.',
         no_such_user: 'Nobody with that X name or wallet has opened Arenas yet.', self: "That's you!", already_friends: 'You are already friends.',
         already_requested: 'Request already sent.', friends_full: 'Friends list is full.', requests_full: 'That player has too many pending requests.',
         no_request: 'That request is gone.', not_friends: 'You can only do that with friends.', no_open_party: 'Invite a friend first.',
-        offline: 'That friend is offline.', slow_down: 'Slow down a little.', room_gone: 'That room is no longer available.',
+        offline: 'That friend is offline.', slow_down: 'Slow down a little.', room_gone: 'That room is no longer available.', price_mismatch: 'That group plays at a different price.',
     };
     const ST = { on: 'ONLINE', party: 'IN A GROUP', game: 'IN A MATCH', off: 'OFFLINE' };
     // Como se ve a alguien en grupos y amigos: su @ de X o, sin X, el resumen de su wallet. (El nombre que pone en THE PILL solo
@@ -151,6 +158,10 @@
 #sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
 #sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8;border-width:.18em}
 #sqEnd .bts button{box-sizing:border-box}
+#sqEnd .prz .pt.gold{color:#ffd23a}#sqEnd .prz .pa{font-family:'VT323',monospace;font-size:3.4em;color:#ffd23a;line-height:1}
+#sqEnd .prz .pu{font-family:'VT323',monospace;font-size:2em;color:#e8e8e8;margin:.2em 0 .9em}
+#sqEnd .prz .cl{font-family:'Press Start 2P',monospace;font-size:1.1em;padding:0 1.6em;height:2.8em;border:0.3em solid #0b0f05;background:#ffd23a;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
+#sqEnd .prz .cl:disabled{background:#2c3630;color:#9fb0a6;cursor:default}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
 .ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
@@ -193,6 +204,19 @@
 .sq-chip{font-size:.4em;letter-spacing:.1em;padding:.4em .8em;border:.12em solid #2f3d35;color:#7d8a82}
 .sq-chip.on{border-color:var(--ac,#00ff88);color:var(--ac,#00ff88)}
 .sq-chip.off{opacity:.55}
+/* Arenas de pago: selector de precio (0-20 $) y FIND RIVALS por tramos */
+.sq-price{display:flex;align-items:center;justify-content:center;gap:.8em;width:78%}
+.sq-price .sq-b{font-size:.9em;min-width:0;padding:.35em .8em}
+.sq-price .v{flex:1;text-align:center;display:flex;flex-direction:column;gap:.35em}
+.sq-price .v b{font-family:'Russo One',sans-serif;font-weight:400;font-size:1.25em;letter-spacing:.08em;color:#ffd23a}
+.sq-price .v b.free{color:var(--ac,#00ff88)}
+.sq-price .v span{font-size:.36em;color:#7d8a82;letter-spacing:.12em}
+.sq-rv-h{font-size:.4em;letter-spacing:.14em;color:#ffd23a;margin:.5em 0 .1em;text-align:left}
+.sq-rv-h.free{color:var(--ac,#00ff88)}
+.sq-rm .pr{font-family:'Russo One',sans-serif;font-size:.62em;color:#ffd23a;min-width:3.2em;text-align:left}
+.sq-rm .pr.free{color:var(--ac,#00ff88)}
+.sq-rm .s b{color:#00ff88;font-weight:400}.sq-rm .s i{font-style:normal;color:#ffb347}
+.sq-rm.dim{opacity:.55}
 .sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0;overflow-y:auto}
 /* pantallas de arenas: cabecera arriba (BACK + modo), filtros debajo y el contenido ocupando el resto */
 .sq-empty{margin:auto;text-align:center;line-height:1.8}
@@ -254,6 +278,7 @@
 #sqHud{position:absolute;left:8px;top:64px;z-index:56;display:none;width:118px;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.4;pointer-events:none;text-shadow:1px 1px 0 #000}
 #sqHud.show{display:block}
 #sqHud .h{color:#8aa096;margin-bottom:4px;font-size:6px}
+#sqHud .pot{background:rgba(6,10,8,.7);border-left:3px solid #ffd23a;padding:4px 5px;margin-bottom:6px;color:#ffd23a;line-height:1.7}#sqHud .pot span{color:#e8e8e8}
 #sqHud .pf{display:flex;align-items:center;gap:5px;background:rgba(6,10,8,.6);border-left:3px solid #3fa0ff;padding:3px 5px;margin-bottom:4px}
 #sqHud .pf .sq-pic{width:20px;height:20px;font-size:8px}
 #sqHud .pf .w{flex:1;min-width:0}
@@ -351,7 +376,7 @@
     function onMsg(m) {
         if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
-        else if (m.t === 'sqErr') { if (S.joining) { S.joining = false; clearTimeout(S.joinT); } if (m.reason === 'slow_down') return; S.err = ERRS[m.reason] || 'Something went wrong.'; S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
+        else if (m.t === 'sqErr') { if (S.joining) { S.joining = false; clearTimeout(S.joinT); } if (m.reason === 'slow_down') return; S.paying = false; S.err = (ERRS[m.reason] || 'Something went wrong.') + (m.reason === 'pay_failed' && m.detail ? ' (' + m.detail + ')' : ''); S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
         else if (m.t === 'sqMe') { S.prof = m.me; }
         else if (m.t === 'sqFriends') { S.friends = { friends: m.friends, inReq: m.inReq, outReq: m.outReq }; S.note = ''; render(); }
@@ -361,6 +386,10 @@
         else if (m.t === 'sqFriendReq') { toast({ pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
+        else if (m.t === 'sqRivals') { S.rivals = m.list || []; S.pillUsd = m.pillUsd || 0; S.quote = m.quote || []; render(); }
+        else if (m.t === 'sqBracket') onBracket(m);
+        else if (m.t === 'squadPrize') onPrize(m);
+        else if (m.t === 'sqClaim') onClaim(m);
         else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
         else if (m.t === 'sqWhisper') onWhisper(m);
     }
@@ -393,13 +422,27 @@
     // Cartel de LISTO para los companeros: el lider ha pulsado buscar o unirse y hay que confirmar.
     const RC_TXT = { quick: 'QUICK MATCH', room: 'NEW ROOM', join: 'JOINING A ROOM' };
     function hideRc() { const el = document.getElementById('sqRc'); if (el) el.classList.remove('show'); clearInterval(S.rcTimer); }
+    // Arena de pago: al dar LISTO se firma la entrada y se cobra del saldo del juego (index.html: pwArenaPay).
+    async function readyPay(fee, cents) {
+        if (!(fee > 0)) { send({ a: 'ready', v: true }); return; }
+        if (S.paying || typeof window.pwArenaPay !== 'function') return;
+        S.paying = true; render();
+        let pay = null;
+        try { pay = await window.pwArenaPay(fee, cents); } catch (e) {}
+        S.paying = false;
+        if (pay) send({ a: 'ready', v: true, pay });
+        render();
+    }
     function onReadyCheck(m) {
         let el = document.getElementById('sqRc');
         if (!el) { el = document.createElement('div'); el.id = 'sqRc'; el.innerHTML = '<div class="bx"><div class="a"></div><div class="b"></div><div class="r"><button class="y" data-v="1">READY</button><button data-v="0">NOT READY</button></div></div>'; frame().appendChild(el); }
-        el.querySelector('.a').textContent = String(m.leader).toUpperCase() + ' WANTS TO START';
-        const paint = () => { const s = Math.max(0, Math.round((m.exp - Date.now()) / 1000)); el.querySelector('.b').innerHTML = RC_TXT[m.kind] + ' · ' + m.size + 'V' + m.size + '<br>' + s + 's'; if (s <= 0) hideRc(); };
+        const paid = m.fee > 0;
+        el.querySelector('.a').textContent = m.you ? 'CONFIRM YOUR ENTRY' : String(m.leader).toUpperCase() + ' WANTS TO START';
+        el.querySelector('.y').textContent = paid ? 'PAY & READY' : 'READY';
+        const precio = paid ? '<br>ENTRY ' + (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) : '';
+        const paint = () => { const s = Math.max(0, Math.round((m.exp - Date.now()) / 1000)); el.querySelector('.b').innerHTML = RC_TXT[m.kind] + ' · ' + m.size + 'V' + m.size + precio + '<br>' + s + 's'; if (s <= 0) hideRc(); };
         paint(); clearInterval(S.rcTimer); S.rcTimer = setInterval(paint, 500);
-        el.querySelectorAll('button').forEach(b => b.onclick = () => { send({ a: 'ready', v: b.dataset.v === '1' }); hideRc(); });
+        el.querySelectorAll('button').forEach(b => b.onclick = () => { hideRc(); if (b.dataset.v === '1') readyPay(m.fee, m.cents); else send({ a: 'ready', v: false }); });
         el.classList.add('show'); el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
         snd('alert');
     }
@@ -440,6 +483,8 @@
     function onTicket(m) {
         // REJOIN: vuelves a TU partida (ya habias muerto): se entra directo a mirar con tu equipo, sin VS.
         if (m.rejoin) { S.lineupData = null; enter(m.ticket, 'rejoin', m.mode); return; }
+        // Te saliste con tu pildora viva: vuelves a llevarla (se quedo en el mapa sin moverse).
+        if (m.resume) { S.lineupData = null; enter(m.ticket, 'resume', m.mode); return; }
         if (m.kind === 'practice') {
             S.lineup = null; S.lineupData = null;
             // El jugador pidio practicar mientras espera. Si ya hay una partida de equipo en curso no se pisa.
@@ -506,6 +551,7 @@
         }
     }
     function onRoster(m) {
+        if (!S.roster || S.roster.myId !== m.myId) { S.prize = null; S.endMoney = null; }
         S.roster = m; S.allies = null; setTimeout(rivalsBanner, 0);
         S.rel = new Map();
         const mine = m.me === 'A' ? 'A' : 'B', other = mine === 'A' ? 'B' : 'A';
@@ -513,10 +559,11 @@
         for (const p of m.teams[other]) S.rel.set(p.id, 'foe');
         const el = hud(), me = m.myId;
         const mates = m.teams[mine].filter(p => p.id !== me);
-        el.innerHTML = (m.practice && mates.length ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
+        const pot = m.pot > 0 ? '<div class="pot">POT ' + fmtPill(m.pot) + (m.usd != null ? '<br><span>≈ ' + fmtUsd(m.usd) + '</span>' : '') + '</div>' : '';
+        el.innerHTML = pot + (m.practice && mates.length ? '<div class="h">PRACTICE</div>' : '') + mates.map(p =>
             '<div class="pf" data-id="' + esc(p.id) + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '<div class="w"><div class="n">' + esc(p.name || 'PLAYER') + '</div><div class="bar"><i></i></div></div></div>').join('');
         hydrate(el);
-        el.classList.toggle('show', mates.length > 0);   // en 1v1 no hay companeros: nada a la izquierda
+        el.classList.toggle('show', mates.length > 0 || m.pot > 0);   // en 1v1 gratis no hay companeros: nada a la izquierda
     }
     // Tamano base en pixeles ENTEROS y pares: con decimales la letra pixel se veia borrosa (sobre todo en PC).
     function nitido(el) {
@@ -581,6 +628,39 @@
         clearTimeout(S.endT);
         S.endT = setTimeout(() => mostrarFin(m), 1000);   // el aviso de la ultima muerte se ve 3 s en pantalla y sigue visible un poco con el fundido
     }
+    // Premio del equipo ganador: llega aparte (squadPrize) y se cobra con una firma (CLAIM) al saldo del juego.
+    function onPrize(m) {
+        if (S.prize && S.prize.id === m.id) return;
+        S.prize = { id: m.id, amount: m.amount, usd: m.usd, claimed: false };
+        const el = document.getElementById('sqEnd'); if (el && el.classList.contains('show')) pintaPremio(el);
+    }
+    function onClaim(m) {
+        S.claiming = false;
+        if (m.ok) { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 4000, center: true }); }
+        else if (m.reason === 'already_claimed') { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; }
+        else toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
+        const el = document.getElementById('sqEnd'); if (el) pintaPremio(el);
+        try { if (window.GameWallet && GameWallet.refreshBalance) GameWallet.refreshBalance(); } catch (e) {}
+    }
+    async function claimPrize() {
+        const pz = S.prize; if (!pz || pz.claimed || S.claiming || typeof window.pwArenaClaim !== 'function') return;
+        S.claiming = true; const el = document.getElementById('sqEnd'); if (el) pintaPremio(el);
+        let sig = null; try { sig = await window.pwArenaClaim(pz.id); } catch (e) {}
+        if (!sig) { S.claiming = false; if (el) pintaPremio(el); return; }
+        connect(() => send(Object.assign({ a: 'claim', id: pz.id }, sig)));
+    }
+    function pintaPremio(el) {
+        const box = el.querySelector('.prz'), e = S.endMoney;
+        if (!e) { box.innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid match</b><br>and win their <b>$PILLY</b>.</div>'; return; }
+        const mo = e.money, potTxt = '<div class="pd">POT <b>' + fmtPill(mo.pot) + '</b>' + (mo.usdPot != null ? '<br>≈ ' + fmtUsd(mo.usdPot) : '') + '</div>';
+        if (mo.draw) { box.innerHTML = '<div class="pt">DRAW</div><div class="pd">Your entry is back<br>in your <b>balance</b>.</div>'; return; }
+        if (!e.win) { box.innerHTML = '<div class="pt">POT LOST</div>' + potTxt; return; }
+        const pz = S.prize;
+        if (!pz) { box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(mo.share) + '</div><div class="pu">' + (mo.usdShare != null ? '≈ ' + fmtUsd(mo.usdShare) : '') + '</div>'; return; }
+        box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(pz.amount) + '</div><div class="pu">' + (pz.usd != null ? '≈ ' + fmtUsd(pz.usd) : '') + '</div>' +
+            '<button class="cl"' + (pz.claimed || S.claiming ? ' disabled' : '') + '>' + (pz.claimed ? 'CLAIMED' : S.claiming ? 'SIGNING...' : 'CLAIM') + '</button>';
+        const b = box.querySelector('.cl'); if (b) b.onclick = () => { snd('simpleselect'); claimPrize(); };
+    }
     function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
         let el = document.getElementById('sqEnd');
@@ -604,8 +684,8 @@
             '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + p.peak.toLocaleString('en-US') + ' PEAK</span></div>';   // comido por un bot: tachado en rojo
         const list = (t, cls) => ((m.players && m.players[t]) || []).map(p => row(p, cls)).join('');
         el.querySelector('.tms').innerHTML = '<div><div class="h me">YOUR TEAM</div>' + list(mine, 'me') + '</div><div><div class="h foe">RIVALS</div>' + list(other, 'foe') + '</div>';
-        // Arenas gratis: se recuerda que en las salas de pago se gana $PILLY (con $PILLY en juego ira la cantidad y CLAIM).
-        el.querySelector('.prz').innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid room</b><br>and ' + (win ? 'take' : 'win') + ' their <b>$PILLY</b>.</div>';
+        S.endMoney = m.money ? { win, money: m.money } : null;
+        pintaPremio(el);
         hydrate(el);
         nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose'); snd(win ? 'finwin' : 'finlose');
     }
@@ -687,7 +767,7 @@
     function searchingHtml() {
         const p = S.party, leader = imLeader();
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
-        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + secs + 's</div>' +
+        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqQ">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + priceTag(p) + ' · ' + secs + 's</div>' +
             groupHtml(false, p.size, true) + '</div>' +
             '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice"' + (S.joining ? ' disabled' : '') + '>' + (S.joining ? 'JOINING...' : p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' + errLine() + '</div></div>';
@@ -697,11 +777,13 @@
         const p = S.party, leader = imLeader(), mine = p.rc.ready[S.me];
         const s = Math.max(0, Math.round((p.rc.exp - Date.now()) / 1000));
         const falta = Object.values(p.rc.ready).filter(v => !v).length;
-        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqRcQ">' + (leader ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[p.rc.kind] + ' · ' + s + 's</div>' +
+        const paid = p.rc.fee > 0, rok = '<button class="sq-b on" data-a="rok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : paid ? 'PAY & READY' : 'READY') + '</button>';
+        const precio = paid ? ' · ' + (p.rc.usd != null ? fmtUsd(p.rc.usd) + ' · ' : '') + fmtPill(p.rc.fee) : '';
+        return '<div class="sq find"><div class="mid"><div class="sq-q" id="sqRcQ">' + (leader ? 'WAITING FOR YOUR TEAM' : 'READY CHECK') + ' · ' + RC_TXT[p.rc.kind] + precio + ' · ' + s + 's</div>' +
             groupHtml(false, p.size, true) + '</div>' +
             '<div class="sq-bot"><div class="sq-row">' +
-            (leader ? '<button class="sq-b on" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button><button class="sq-b" data-a="cancel">CANCEL</button>'
-                : (mine ? '<span class="sq-q">READY · WAITING FOR THE OTHERS</span>' : '<button class="sq-b on" data-a="rok">READY</button><button class="sq-b" data-a="rno">NOT READY</button>')) +
+            (leader ? (mine ? '' : rok) + '<button class="sq-b' + (mine ? ' on' : '') + '" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button><button class="sq-b" data-a="cancel">CANCEL</button>'
+                : (mine ? '<span class="sq-q">READY · WAITING FOR THE OTHERS</span>' : rok + '<button class="sq-b" data-a="rno">NOT READY</button>')) +
             '</div>' + errLine() + '</div></div>';
     }
     // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / CREATE ROOM / JOIN ROOM -----
@@ -724,15 +806,49 @@
         }
         const n = step.size, live = S.rooms.filter(r => r.size === n && (r.mode || 'arcade') === arMode());
         const head = '<div class="sq-row" style="justify-content:flex-start"><button class="sq-b sm" data-a="stepx">BACK</button><span class="sq-lab">' + n + 'V' + n + '</span></div>';
-        if (step.view === 'join') {
-            const list = live.map(roomCard).join('') || '<div class="sq-note sq-empty">No open ' + n + 'V' + n + ' rooms right now.<br>Create one!</div>';
-            return '<div class="sq sq-fixed">' + head + '<div class="sq-row"><span class="sq-chip on">ALL</span><span class="sq-chip on">FREE</span><span class="sq-chip off">$ SOON</span></div><div class="sq-rl">' + list + '</div>' + errLine() + '</div>';
-        }
+        if (step.view === 'rivals') return '<div class="sq sq-fixed">' + head + '<div class="sq-rl">' + rivalsHtml(n) + '</div>' + errLine() + '</div>';
+        const usd = S.usd | 0, est = pillOf(usd);
         return '<div class="sq sq-fixed">' + head + '<div class="sq-menu">' +
-            '<button class="sq-b on big" data-a="quick">QUICK MATCH · FREE</button>' +
-            '<button class="sq-b big" data-a="create">CREATE ROOM</button>' +
-            '<button class="sq-b big" data-a="joinv">JOIN ROOM' + (live.length ? ' · ' + live.length : '') + '</button></div>' +
-            '<div class="sq-row"><span class="sq-chip off">QUICK MATCH $ · SOON</span></div>' + errLine() + '</div>';
+            '<div class="sq-price"><button class="sq-b" data-pr="-1"' + (usd > 0 ? '' : ' disabled') + '>-</button><div class="v"><b' + (usd ? '' : ' class="free"') + '>' + (usd ? '$' + usd : 'FREE') + '</b><span>' + (usd ? (est ? '≈ ' + fmtPill(est) + ' PER PLAYER' : 'ENTRY PER PLAYER') : 'ENTRY PRICE · UP TO $20') + '</span></div><button class="sq-b" data-pr="1"' + (usd < 20 ? '' : ' disabled') + '>+</button></div>' +
+            '<button class="sq-b on big" data-a="quick">QUICK MATCH · ' + (usd ? '$' + usd : 'FREE') + '</button>' +
+            '<button class="sq-b big" data-a="rivals">FIND RIVALS</button>' +
+            '<button class="sq-b big" disabled>MATCH CUSTOM · SOON</button></div>' + errLine() + '</div>';
+    }
+    // Precio en dolares -> $PILLY aproximado (el real lo fija el servidor al entrar en el tramo).
+    function pillOf(usd) {
+        if (!usd) return 0;
+        const q = (S.quote || []).find(x => x.usd === usd); if (q) return q.fee;
+        const k = (S.quote || []).find(x => x.usd === 1); return k ? Math.round(k.fee * usd) : 0;
+    }
+    function priceTag(p) { return (p.cents | 0) > 0 ? ' · $' + (p.cents / 100) : ''; }
+    // FIND RIVALS: tramos de precio (FREE, UP TO $2, UP TO $5, UP TO $10, UP TO $20) con quien esta LISTO, mirando o jugando.
+    const TRAMOS = [[0, 0], [1, 2], [3, 5], [6, 10], [11, 20]];
+    function rivalsHtml(n) {
+        const lst = (S.rivals || []).filter(r => r.size === n);
+        return TRAMOS.map(([lo, hi]) => {
+            const rows = lst.filter(r => r.cents >= lo * 100 && r.cents <= hi * 100);
+            const fila = (cents, r) => {
+                const usd = cents / 100, fee = r && r.fee ? r.fee : pillOf(usd), real = r && r.fee && S.pillUsd ? fmtUsd(r.fee * S.pillUsd) : null;
+                const st = r ? '<b>' + r.ready + ' READY</b> · <i>' + r.looking + ' LOOKING</i> · ' + r.playing + ' PLAYING' : 'NOBODY YET · BE THE FIRST';
+                return '<div class="sq-rm' + (r ? '' : ' dim') + '"><span class="pr' + (cents ? '' : ' free') + '">' + (cents ? '$' + usd : 'FREE') + '</span><div class="w"><div class="n">' + (cents ? (real ? real + ' · ' : '') + fmtPill(fee) : 'NO ENTRY') + '</div><div class="s">' + st + '</div></div>' +
+                    '<button class="sq-b sm ' + (r && r.ready ? 'gold' : 'on') + '" data-play="' + cents + '">' + (r && r.ready ? 'CHALLENGE' : 'SEARCH') + '</button></div>';
+            };
+            const body = rows.length ? rows.map(r => fila(r.cents, r)).join('') : fila(hi * 100, null);
+            return '<div class="sq-rv-h' + (hi ? '' : ' free') + '">' + (hi ? 'UP TO $' + hi : 'FREE') + '</div>' + body;
+        }).join('');
+    }
+    // Alguien ha entrado en tu tramo de precio (buscando o mirando): aviso con boton para ir a por el.
+    function onBracket(m) {
+        if (S.party && S.party.state !== 'idle') return;
+        const precio = m.cents ? '$' + (m.cents / 100) : 'FREE';
+        toast({ text: esc(m.who) + (m.ready ? ' is READY for ' : ' is looking for ') + m.size + 'V' + m.size + ' · ' + precio, warm: true, ms: 9000,
+            actions: [['PLAY', () => { if (groupSize() !== m.size || !imLeader()) return; S.usd = m.cents / 100; quick(); }, 1], ['X', null]] });
+        snd('alert');
+    }
+    function quick() {
+        const usd = S.usd | 0;
+        try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {}
+        start(() => send({ a: 'play', mode: arMode(), price: usd, ready: !usd }));   // gratis: pulsar es tu LISTO; de pago: firmas en el aviso de LISTO
     }
 
     // ----- panel AMIGOS: grupo, amigos y susurros -----
@@ -817,6 +933,7 @@
             const n = +x.dataset.size, have = groupSize();
             if (have !== n) return fail(have === 1 ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.');
             S.err = ''; S.arStep = { size: n, view: null }; render();
+            connect(() => send({ a: 'rivals', size: S.arStep ? S.arStep.size : 1 }));   // cotizacion del $PILLY para el precio
         });
         b.querySelectorAll('[data-join]').forEach(x => x.onclick = () => {
             snd('simpleselect');
@@ -826,6 +943,19 @@
             start(() => send({ a: 'challenge', code: x.dataset.join, mode: arMode() }));
         });
         b.querySelectorAll('[data-k]').forEach(x => x.onclick = () => send({ a: 'kick', id: x.dataset.k }));
+        b.querySelectorAll('[data-pr]').forEach(x => x.onclick = () => {
+            snd('simpleselect');
+            S.usd = Math.max(0, Math.min(20, (S.usd | 0) + (+x.dataset.pr)));
+            try { localStorage.setItem('pw_arusd', String(S.usd)); } catch (e) {}
+            render();
+            // Los del mismo tramo ven que estas mirando (FIND RIVALS: LOOKING) y les llega el aviso.
+            clearTimeout(S.wantT); S.wantT = setTimeout(() => { if (S.party && S.party.state === 'idle') send({ a: 'want', cents: (S.usd | 0) * 100 }); }, 700);
+        });
+        b.querySelectorAll('[data-play]').forEach(x => x.onclick = () => {
+            snd('simpleselect');
+            if (!imLeader()) return fail('Only your group leader can start a search.');
+            S.usd = (+x.dataset.play) / 100; quick();
+        });
         const guardaMute = () => { try { localStorage.setItem('pw_wmute', JSON.stringify(S.mute)); } catch (e) {} };
         b.querySelectorAll('[data-mu]').forEach(x => x.onclick = () => { snd('simpleselect'); const id = x.dataset.mu; if (S.mute.ids[id]) delete S.mute.ids[id]; else S.mute.ids[id] = 1; guardaMute(); render(); });
         b.querySelectorAll('[data-tab]').forEach(x => x.onclick = () => { if (x.disabled) return; snd('simpleselect'); S.frTab = x.dataset.tab; render(); });
@@ -851,14 +981,15 @@
         if (msgIn) msgIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="wsend"]').click(); };
         b.querySelectorAll('[data-a]').forEach(x => x.onclick = () => {
             const a = x.dataset.a; snd('simpleselect');
-            if (a === 'quick') start(() => send({ a: 'play', mode: arMode() }));
+            if (a === 'quick') quick();
+            else if (a === 'rivals') { S.arStep.view = 'rivals'; render(); connect(() => send({ a: 'rivals', size: S.arStep ? S.arStep.size : 1 })); }
             else if (a === 'create') { const n = S.arStep.size; if (!imLeader()) return fail('Only your group leader can create rooms.'); start(() => send({ a: 'play', custom: true, size: n, mode: arMode() })); }
             else if (a === 'joinv') { S.arStep.view = 'join'; render(); }
             else if (a === 'stepx') { if (S.arStep && S.arStep.view) S.arStep.view = null; else S.arStep = null; S.err = ''; render(); }
             else if (a === 'rejoin') { send({ a: 'rejoin' }); }
             else if (a === 'practice') { if (S.joining) return; S.joining = true; render(); clearTimeout(S.joinT); S.joinT = setTimeout(() => { S.joining = false; render(); }, 20000); send({ a: 'practice' }); }   // el boton pasa a JOINING... hasta que la partida arranca
             else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Ready check sent to everyone'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
-            else if (a === 'rok') { send({ a: 'ready', v: true }); hideRc(); }
+            else if (a === 'rok') { hideRc(); readyPay(S.party && S.party.rc ? S.party.rc.fee : 0, S.party && S.party.rc ? S.party.rc.cents : 0); }
             else if (a === 'rno') { send({ a: 'ready', v: false }); hideRc(); }
             else if (a === 'cancel') send({ a: 'cancel' });
             else if (a === 'leave') { send({ a: 'leave' }); S.party = null; S.err = ''; render(); }
@@ -906,7 +1037,7 @@
     function watchRooms() {
         clearInterval(S.roomsTimer);
         send({ a: 'rooms' });
-        S.roomsTimer = setInterval(() => { if (isOpen('rooms') && !(S.party && S.party.state !== 'idle')) send({ a: 'rooms' }); }, 4000);
+        S.roomsTimer = setInterval(() => { if (isOpen('rooms') && !(S.party && S.party.state !== 'idle')) { send({ a: 'rooms' }); if (S.arStep && S.arStep.view === 'rivals') send({ a: 'rivals', size: S.arStep ? S.arStep.size : 1 }); } }, 4000);
     }
     // La app monta cada panel dentro del suyo (el hub llama con su contenedor).
     function mountIn(kind, box) {
@@ -967,7 +1098,7 @@
     window.pwSquadFrame = frame;
     window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);

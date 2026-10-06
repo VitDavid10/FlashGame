@@ -24,7 +24,8 @@ function user(sq, id, u) {
     sq.handle(ws, { t: 'sq', a: 'hello', token: token.sign({ id, u, n: u.toUpperCase(), p: 'https://pbs.twimg.com/profile_images/' + u + '.png' }) });
     return ws;
 }
-const say = (sq, ws, o) => sq.handle(ws, Object.assign({ t: 'sq' }, o));
+// El lider tambien da LISTO: en estas pruebas (gratis) va dentro del mismo 'play'.
+const say = (sq, ws, o) => sq.handle(ws, Object.assign({ t: 'sq' }, (o.a === 'play' || o.a === 'challenge') && o.ready === undefined ? { ready: true } : {}, o));
 
 test('la ficha firmada se verifica y una manipulada o caducada no', () => {
     const t = token.sign({ id: 'ABC1234', u: 'david', n: 'David', p: '' });
