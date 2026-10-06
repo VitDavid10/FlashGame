@@ -323,11 +323,13 @@ function createSquad(deps) {
         }
         if (a === 'practice') { practiceFor(p, me); return; }
         // Te saliste al morir: vuelves a mirar la partida de tu grupo (siguiendo a tus companeros).
-        if (a === 'spectate') {
+        if (a === 'rejoin') {
             const room = p.state === 'match' && rooms.get(p.matchRoom);
             if (!room || room.state === 'ended') return err(ws, 'room_gone');
             const team = room.squad.groups[0] === p.code ? 'A' : 'B';
-            return send(ws, { t: 'sqSpectate', room: room.key, mode: room.mode, allies: (room.squad.teams[team] || []).slice() });
+            const ticket = rnd(16);
+            tickets.set(ticket, { roomKey: room.key, team, rejoin: true, name: me.gn || '', idName: me.name, pic: me.pic || '', av: me.av || null, exp: Date.now() + TICKET_TTL_MS });
+            return send(ws, { t: 'sqTicket', kind: 'match', rejoin: true, mode: room.mode, ticket, size: room.squad.size, team, lineup: null, startIn: 0 });
         }
         if (a === 'cancel') {
             if (!leader) return err(ws, 'not_leader');
@@ -374,17 +376,21 @@ function createSquad(deps) {
             startSkills: Array.isArray(msg.startSkills) ? msg.startSkills.slice(0, 2).map(n => n | 0) : undefined,
             team: tk.team,
         };
-        room.sim.addPlayer(playerId, opts);
-        sq.teams[tk.team].push(playerId);
-        sq.joined++;
+        if (!tk.rejoin) {
+            room.sim.addPlayer(playerId, opts);
+            sq.teams[tk.team].push(playerId);
+            sq.joined++;
+            statOf(room, playerId).ident = { name: tk.idName || 'PLAYER', pic: tk.pic || '', av: tk.av || null };
+        }
         const token = crypto.randomBytes(32).toString('hex');
         resumeTokens.set(token, { roomKey: room.key, playerId });
         const binV = msg.bin === true ? 1 : Math.max(0, Math.min(2, msg.bin | 0));
         const useBin = binV >= 1;
         const aspect = (typeof msg.aspect === 'number' && msg.aspect > 0) ? Math.max(0.5, Math.min(4, msg.aspect)) : 1;
         const cid = (typeof msg.cid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(msg.cid)) ? msg.cid : null;
-        if (deps.recordEntry && cid && !ws.virtualGame) { try { deps.recordEntry({ comboKey: 'squad_Free', key: room.key, mode: room.mode, playerId, name: '', cid, ip, tester: false }); } catch (e) {} }
+        if (deps.recordEntry && cid && !ws.virtualGame && !tk.rejoin) { try { deps.recordEntry({ comboKey: 'squad_Free', key: room.key, mode: room.mode, playerId, name: '', cid, ip, tester: false }); } catch (e) {} }
         room.clients.set(playerId, { ws, ip, name, idName: tk.idName || 'PLAYER', pic: tk.pic || '', av: tk.av || null, joinedAt: Date.now(), token, opts, cid, paidFee: 0, payWallet: null, carry: 0, isTester: false, useBin, binV, aspect, _spawned: false, entrySig: null, team: tk.team });
+        if (tk.rejoin) { const c = room.clients.get(playerId); c.rejoin = true; c._spawned = true; c.team = tk.team; }   // nunca spawnea: mira
         tickets.delete(String(msg.squad));
         ws.send(welcomeMsg(room, playerId, token, undefined, Object.assign(useBin ? { useBin: true, binV } : {}, { squad: { team: tk.team, size: sq.size, practice: sq.practice } })));
         if (room.state === 'playing') refillBots(room);
@@ -411,11 +417,11 @@ function createSquad(deps) {
     function teamScore(room, team) {
         let s = 0, alive = 0, seen = 0, n = 0;
         for (const id of room.squad.teams[team]) {
-            const p = room.sim.players.get(id), cli = room.clients.get(id);
-            if (!p) continue;
+            // Quien murio y se fue sigue contando como del equipo (muerto): antes, al irse, la partida ya no acababa nunca.
+            const p = room.sim.players.get(id), st = room.squad.stats[id];
             n++;
-            if (cli && cli._spawned) seen++;
-            if (p.alive) { alive++; for (const c of p.cells) s += c.mass; }
+            if (st && st.spawnAt) seen++;
+            if (p && p.alive) { alive++; for (const c of p.cells) s += c.mass; }
         }
         return { score: Math.round(s), alive, seen, n };
     }
@@ -448,7 +454,7 @@ function createSquad(deps) {
     }
     function tick(room, now) {
         const sq = room.squad;
-        for (const [pid, cli] of room.clients) if (cli._spawned) { const st = statOf(room, pid); if (!st.spawnAt) st.spawnAt = now; }
+        for (const [pid, cli] of room.clients) if (cli._spawned && !cli.rejoin) { const st = statOf(room, pid); if (!st.spawnAt) st.spawnAt = now; }
         if (room.tickCount % 10 === 0) sendAllies(room);
         // Sin reloj: se gana eliminando al otro equipo. Solo un tope invisible para que una sala no viva para siempre.
         if (room.state === 'playing' && !sq.capped) { sq.capped = true; room.endsAt = now + SQUAD_CAP_MS; room.sim.config.botSplitFrom = room.sim.now + BOT_SPLIT_FROM_MS; }
@@ -469,7 +475,7 @@ function createSquad(deps) {
             const cli = room.clients.get(id), p = room.sim.players.get(id), st = sq.stats[id] || {};
             const fin = st.diedAt || now;
             players[t].push({
-                name: (cli && cli.idName) || 'PLAYER', pic: (cli && cli.pic) || '', av: (cli && cli.av) || null,
+                name: (cli && cli.idName) || (st.ident && st.ident.name) || 'PLAYER', pic: (cli && cli.pic) || (st.ident && st.ident.pic) || '', av: (cli && cli.av) || (st.ident && st.ident.av) || null,
                 kills: st.kills | 0, pieces: st.pieces | 0, peak: p ? Math.round(p.peakMass || 0) : 0,
                 secs: st.spawnAt ? Math.max(0, Math.round((fin - st.spawnAt) / 1000)) : 0, alive: !!(p && p.alive),
             });

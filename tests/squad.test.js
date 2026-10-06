@@ -323,7 +323,26 @@ test('QUICK MATCH entra en una sala abierta del mismo tamano y modo; y se puede 
     assert.equal(sq._internals.customRooms.size, 1);
     say(sq, b, { a: 'play', mode: 'arcade' });
     assert.equal(b.last('sqTicket').kind, 'match', 'quick match se une a la sala abierta');
-    say(sq, a, { a: 'spectate' });
-    const s = a.last('sqSpectate');
-    assert.ok(s && rooms.has(s.room) && s.mode === 'arcade' && Array.isArray(s.allies));
+    // REJOIN: el que se fue al morir vuelve a su partida a mirar con su equipo, sin contar como jugador nuevo
+    const wa = fakeWs(), wb = fakeWs();
+    const ra = sq.join(wa, 'x', { t: 'join', squad: a.last('sqTicket').ticket });
+    const rb = sq.join(wb, 'x', { t: 'join', squad: b.last('sqTicket').ticket });
+    const room = ra.room;
+    for (const r of [ra, rb]) { room.clients.get(r.playerId)._spawned = true; room.sim.spawnPlayer(r.playerId, 0); }
+    room.state = 'playing'; sq.tick(room, Date.now());
+    room.sim.players.get(ra.playerId).alive = false; room.clients.delete(ra.playerId); room.sim.removePlayer(ra.playerId);   // murio y se fue
+    say(sq, a, { a: 'rejoin' });
+    const t = a.last('sqTicket');
+    assert.ok(t && t.rejoin && t.kind === 'match');
+    const w2 = fakeWs(), r2 = sq.join(w2, 'x', { t: 'join', squad: t.ticket });
+    assert.ok(r2 && r2.room === room);
+    assert.equal(room.sim.players.has(r2.playerId), false, 'no vuelve a jugar');
+    assert.equal(room.squad.teams.A.length + room.squad.teams.B.length, 2, 'no cuenta como jugador nuevo');
+    // y como su equipo se quedo sin nadie vivo, la partida acaba (antes, al irse, ya no acababa)
+    sq.tick(room, Date.now());
+    assert.ok(room.endsAt <= Date.now());
+    sq.endOf(room);
+    const end = w2.last('squadEnd');
+    assert.ok(end && end.winner, 'el que volvio recibe el resultado');
+    assert.equal(end.players[room.clients.get(r2.playerId).team][0].name, 'ana');
 });

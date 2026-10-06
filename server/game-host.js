@@ -263,9 +263,7 @@ function createGameHost(deps) {
         // Puede pedir una layer concreta (?layer=2 del panel admin); si no existe, cae a L1.
         const layerIdx = Math.max(1, Math.min(LAYERS_PER_COMBO, parseInt(msg.layer, 10) || 1));
         const key = layerKeyOf(mode, roomName, layerIdx);
-        // Arenas: un jugador que se salio al morir vuelve a mirar su partida (clave de sala de squad.js).
-        const sqSala = typeof msg.sqRoom === 'string' ? rooms.get(msg.sqRoom.slice(0, 40)) : null;
-        const sala = (sqSala && sqSala.squad && sqSala.state !== 'ended') ? sqSala : (rooms.get(key) || rooms.get(layerKeyOf(mode, roomName, 1)));
+        const sala = rooms.get(key) || rooms.get(layerKeyOf(mode, roomName, 1));
         if (!sala) { ws.send(JSON.stringify({ t: 'specEmpty' })); return null; }
         sala.spectators.add(ws);
         // welcome sin id de jugador → el cliente entra como espectador puro

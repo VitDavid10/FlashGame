@@ -1439,7 +1439,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // Arenas por equipos (squad.js): repinta la placa del panel cada vez que cambia su contenido.
         window.pwHubMode = () => mode;
         window.pwAqShow = on => aqHud(!!on);
-        window.pwHubHide = () => { hide(); _enPartida = true; aqHud(false); };
         window.PWSquadHooks = {
             afterRender() { ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
             badge(n) { const b = $('#ahFrB'); if (b) b.textContent = n ? String(Math.min(n, 99)) : ''; },

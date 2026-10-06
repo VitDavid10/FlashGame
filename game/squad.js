@@ -338,7 +338,6 @@
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
         else if (m.t === 'sqFriendReq') { toast({ pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
-        else if (m.t === 'sqSpectate') { closeAll(); S.rel = new Map((m.allies || []).map(id => [id, 'ally'])); if (typeof window.pwSquadSpectate === 'function') window.pwSquadSpectate(m.room, m.mode); }
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
         else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
         else if (m.t === 'sqWhisper') onWhisper(m);
@@ -415,6 +414,8 @@
         if (typeof window.pwSquadEnter === 'function') window.pwSquadEnter(ticket, kind, mode);
     }
     function onTicket(m) {
+        // REJOIN: vuelves a TU partida (ya habias muerto): se entra directo a mirar con tu equipo, sin VS.
+        if (m.rejoin) { S.lineupData = null; enter(m.ticket, 'rejoin', m.mode); return; }
         if (m.kind === 'practice') {
             S.lineup = null; S.lineupData = null;
             // El jugador pidio practicar mientras espera. Si ya hay una partida de equipo en curso no se pisa.
@@ -636,7 +637,7 @@
         const p = S.party;
         if (p && p.rc) return readyCheckHtml();
         if (p && p.state === 'queued') return searchingHtml();
-        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="spectate">SPECTATE YOUR TEAM</button></div>' + errLine() + '</div></div>';
+        if (p && p.state === 'match') return '<div class="sq find"><div class="mid"><div class="sq-q">MATCH IN PROGRESS</div>' + groupHtml(false, p.size, true) + '</div><div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="rejoin">REJOIN</button></div>' + errLine() + '</div></div>';
         const mine = groupSize(), step = S.arStep;
         if (!step) {
             const cards = SIZES.map(n => '<div class="sq-card' + (n === mine ? '' : ' dim') + '" data-size="' + n + '"><canvas class="cvc" data-n="' + n + '"></canvas><div class="tag">' + ['DUEL', 'DUO', 'SQUAD'][n - 1] + '</div><div class="big">' + n + 'V' + n + '</div></div>').join('');
@@ -765,7 +766,7 @@
             else if (a === 'create') { const n = S.arStep.size; if (!imLeader()) return fail('Only your group leader can create rooms.'); start(() => send({ a: 'play', custom: true, size: n, mode: arMode() })); }
             else if (a === 'joinv') { S.arStep.view = 'join'; render(); }
             else if (a === 'stepx') { if (S.arStep && S.arStep.view) S.arStep.view = null; else S.arStep = null; S.err = ''; render(); }
-            else if (a === 'spectate') { send({ a: 'spectate' }); }
+            else if (a === 'rejoin') { send({ a: 'rejoin' }); }
             else if (a === 'practice') send({ a: 'practice' });
             else if (a === 'remind') { send({ a: 'remind' }); S.note = 'Ready check sent to everyone'; render(); setTimeout(() => { S.note = ''; render(); }, 1500); }
             else if (a === 'rok') { send({ a: 'ready', v: true }); hideRc(); }
@@ -867,7 +868,6 @@
     // Las barras y las marcas de companeros solo existen dentro de la partida de arenas.
     setInterval(() => {
         const h = document.getElementById('sqHud');
-        if (Date.now() - (window._sqSpecAt || 0) < 15000) return;
         if ((h && h.classList.contains('show') || S.rel) && !(typeof gameRunning !== 'undefined' && gameRunning)) { if (h) h.classList.remove('show'); S.rel = null; S.allies = null; rivalsBanner(); }
     }, 700);
     window.pwSquadGuard = guardPlay;

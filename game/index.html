@@ -14088,6 +14088,8 @@
     // Si hay una partida en curso (la practica mientras se espera rival) se abandona antes.
     window.pwSquadEnter = function (ticket, kind, mode) {
         if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
+        // REJOIN (te fuiste al morir y vuelves a tu partida): entras sin pantalla de VS y a mirar a tu equipo.
+        window._sqRejoin = kind === 'rejoin'; if (window._sqRejoin) { kind = 'match'; window._sqAgain = true; }
         window._squadTicket = ticket; window._squadKind = kind; window._squadMode = mode === 'classic' ? 'classic' : 'arcade';
         window._sqQuick = !!window._sqAgain; window._sqAgain = false;   // TRY AGAIN de la practica: sin mensajes de carga
         _joinInFlight = false;
@@ -15786,7 +15788,7 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(cargada, () => { showGoSplash(); SoundManager.playMusic(); });
+            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else showGoSplash(); });
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al
@@ -16796,46 +16798,6 @@
         ws.onerror = () => setLobbyBanner('⚠ Could not connect to the server to spectate.');
         return true;
     }
-
-    // Arenas: volver a MIRAR la partida de tu grupo (te saliste al morir). Sigue a un companero (pwSquadRel).
-    window.pwSquadSpectate = function (roomKey, mode) {
-        window._sqSpecAt = Date.now();
-        if (gameRunning || netState || practiceMode) { try { returnToMenu(); } catch (e) {} }
-        if (window.pwHubHide) pwHubHide();
-        els.modeScreen.style.display = 'none'; els.modeScreen.style.pointerEvents = 'none'; els.loginOverlay.style.display = 'none';
-        const qsServer = new URLSearchParams(location.search).get('server');
-        let saved = null; try { saved = localStorage.getItem('pw_server'); } catch (e) {}
-        const base = qsServer || saved || (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://localhost:8080');
-        const go = url => {
-            const ws = new WebSocket(url);
-            ws.onopen = () => ws.send(JSON.stringify({ t: 'spectate', sqRoom: roomKey, mode }));
-            ws.onmessage = (e) => {
-                let msg; try { msg = JSON.parse(e.data); } catch (err) { return; }
-                if (msg.t === 'specWelcome') {
-                    sim = new RemoteSim(ws, msg); sim._camInit = true;
-                    MAP_SIZE = msg.mapSize; currentGameMode = msg.mode; currentServer = msg.roomName;
-                    isSpectating = true; onlineSpectator = true; gameRunning = true;
-                    document.getElementById('ui').style.display = 'flex';
-                    document.getElementById('leaderboard').style.display = 'block';
-                    document.getElementById('timerDisplay').style.display = 'block';
-                    document.getElementById('exitGameBtn').style.display = 'flex';
-                    camera.scale = 0.45; lastFrameTime = Date.now();
-                    window.__loadingLock = false;
-                } else if (msg.t === 'specEmpty') { try { returnToMenu(); showSystemMsg('That match is over.', 'ARENAS'); } catch (e) {} }
-                else if (msg.t === 'squadEnd') { if (window.PWSquad) PWSquad.onEnd(msg); }
-                else if (sim && sim.isRemote && sim.ws === ws) sim.onMessage(msg);
-            };
-            ws.onclose = () => { if (gameRunning && sim && sim.ws === ws) { try { returnToMenu(); } catch (e) {} } };
-        };
-        // El squad vive en el host 0: se pregunta al matchmaker igual que al entrar a jugar.
-        let hostQ = ''; try { const x = new URL(base); hostQ = (base.startsWith('wss://') ? 'https://' : 'http://') + x.host; } catch (e) {}
-        fetch(hostQ + '/match?mode=squad&price=Free', { cache: 'no-store' }).then(r => r.json()).then(mj => {
-            let u = base;
-            if (!mj || !mj.ok) return go(base);
-            try { const x = new URL(base); if (base.startsWith('wss://') && mj.path) u = 'wss://' + x.host + mj.path + '/'; else if (!base.startsWith('wss://') && mj.port && String(mj.port) !== (x.port || '80')) u = 'ws://' + x.hostname + ':' + mj.port; } catch (e) {}
-            go(u);
-        }).catch(() => go(base));
-    };
 
     // Mandos del panel de control dentro del espectador (usan el mismo WebSocket)
     function specSend(o) { if (sim && sim.ws && sim.ws.readyState === 1) sim.ws.send(JSON.stringify(o)); }
