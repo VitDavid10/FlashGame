@@ -5341,7 +5341,7 @@
         applyMusicVolume: function() { this.music.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER); this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER * 1.875); },
         play: function(name, pos = null) {
             if(this.muted || !this.sounds[name]) return;
-            if (window._sqHush) return;   // pantalla VS de arenas: ningun sonido del juego hasta que acaba
+            if (window._sqHush && performance.now() < (window._sqHushUntil || 0)) return;   // pantalla VS de arenas: ningun sonido del juego hasta que acaba (con tope por si algo falla)
             // Volumen por distancia: lo que entra en pantalla suena fuerte, lo lejano
             // se atenúa, y por encima de ~1.4× el radio del viewport se descarta.
             let vol = 1;
@@ -5383,6 +5383,12 @@
         // music may start in the background. See resumeActiveMusic.
         hiddenOnPhone: function() { return document.hidden && document.body.classList.contains('mobile-allowed'); },
         playMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); if(!this.musicMuted) { if(this.startTimer) clearTimeout(this.startTimer); this.startTimer = setTimeout(() => { if (!this.hiddenOnPhone()) this.music.play().catch(e=>{}); this.startTimer = null; }, MUSIC_START_DELAY); } },
+        // Todos los sonidos y las dos musicas descargados (o con error): la pantalla de carga de arenas espera a esto para que nada falle al empezar.
+        listo: function() {
+            const ok = a => !a || a.error || a.readyState >= 3;
+            for (const k in this.sounds) if (!ok(this.sounds[k])) return false;
+            return ok(this.music);
+        },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
         playMenuMusic: function(delayMs) { this.activeMusic = 'menu'; this.syncMusicBtn(); if(this.menuMusicMuted) return; this.stopMusic(); clearTimeout(this._menuMusicTimer); const d = (typeof delayMs === 'number') ? delayMs : 0; this._menuMusicTimer = setTimeout(() => { if(!this.menuMusicMuted && !this.hiddenOnPhone()) this.menuMusic.play().catch(e=>{}); }, d); },
         stopMenuMusic: function() { this.activeMusic = 'game'; this.syncMusicBtn(); clearTimeout(this._menuMusicTimer); this.menuMusic.pause(); this.menuMusic.currentTime = 0; },
@@ -15493,7 +15499,7 @@
         ov.classList.toggle('quick', !!window._sqQuick);
         // Practica: se entra directo a la partida (sin pantalla negra ni textos); partida de verdad: pantalla VS en silencio.
         ov.classList.toggle('prac', window._squadKind === 'practice');
-        if (n === 0) window._sqHush = window._squadKind === 'match' && !window._sqQuick;
+        if (n === 0) { window._sqHush = window._squadKind === 'match' && !window._sqQuick; window._sqHushUntil = performance.now() + 20000; }
         // La pantalla C se monta UNA vez por entrada (si no, su animacion volvia a empezar en cada fase).
         const lw = ov.querySelector('.lw');
         if (n === 0 || !lw.firstChild) {
@@ -15857,7 +15863,8 @@
             };
             // Arenas por equipos: la sala ya esta en marcha, asi que no hay pantalla de carga ni GO!:
             // un cartel pequeno (generando sala, cargando jugadores, listo) y se entra directo.
-            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : cargada, () => { window._sqHush = false; if (window._squadKind === 'practice' && window.pwHubEnter) pwHubEnter(); SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
+            if (netState && netState.squad) showSquadEntry(window._sqRejoin ? () => !!(sim && sim.snaps && sim.snaps.length) : (window._squadKind === 'match' ? () => !!(sim && sim.isRemote && sim.snaps && sim.snaps.length > 0 && SoundManager.listo()) : cargada), () => { window._sqHush = false; if (window._squadKind === 'match' && !window._sqRejoin && sim && sim.isRemote && !sim._readySent) { sim._readySent = true; sim._send({ t: 'ready' }); }   /* partida de verdad: el jugador aparece (con su inmunidad) justo al acabar la pantalla VS, no antes */
+            if (window._squadKind === 'practice' && window.pwHubEnter) { pwHubEnter(); try { pwSquadCloseAll(); } catch (e) {} } SoundManager.playMusic(); if (window._sqRejoin) spectateOnline(); else { if (window._squadKind === 'match') showGoSplash(); window._sqGoAt = performance.now(); window._sqNextPick = 15; } });   // GO solo en partidas de verdad, no en la practica
             else showLoadingScreen(LOADING_MS,
                 cargada,
                 // GO! cuando acaba LOADED, no encima. El cartel de carga se queda al

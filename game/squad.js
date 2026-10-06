@@ -127,7 +127,8 @@
 #sqEnd.draw{background-color:#241f0b;--ec:#ffd23a}
 #sqEnd.n3 .rw{margin-bottom:.15em}#sqEnd.n3 .rw .ph .sq-pic{width:2.5em;height:2.5em}#sqEnd.n3 .h{margin:.2em 0 .3em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.6em}
 #sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em)}
-#sqEnd.show{display:block}
+#sqEnd.show{display:block;animation:seFade .9s ease both}
+@keyframes seFade{from{opacity:0}to{opacity:1}}
 #sqEnd canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;z-index:0}
 #sqEnd .band{z-index:1}#sqEnd .bts{z-index:2}
 #sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;background:#0b0f05;transform:rotate(-4deg);border-top:0.7em solid var(--ec);border-bottom:0.7em solid var(--ec)}
@@ -433,7 +434,7 @@
     function enter(ticket, kind, mode) {
         if (S.enterBusy) return;
         S.enterBusy = true; setTimeout(() => { S.enterBusy = false; }, 2500);
-        closeAll();
+        if (kind !== 'practice') closeAll();   // en la practica las ventanas se quedan hasta que la partida ya se ve (no se cierran y luego sale el juego)
         if (typeof window.pwSquadEnter === 'function') window.pwSquadEnter(ticket, kind, mode);
     }
     function onTicket(m) {
@@ -576,6 +577,11 @@
             // La practica acabo: si el grupo sigue buscando, se vuelve a ofrecer sin meter a nadie a la fuerza.
             return;
         }
+        // Se deja ver (y leer) el aviso de la ultima muerte antes de pasar al cartel, con un fundido; antes salia de golpe.
+        clearTimeout(S.endT);
+        S.endT = setTimeout(() => mostrarFin(m), 3800);
+    }
+    function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
         let el = document.getElementById('sqEnd');
         if (!el) {
@@ -958,6 +964,7 @@
     window.pwSquadIntro = intro;
     window.pwSquadLineup = () => { if (!S.lineup) return null; const d = document.createElement('div'); d.innerHTML = S.lineup; hydrate(d); return d.firstChild; };
     window.pwSquadFrame = frame;
+    window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
     window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
