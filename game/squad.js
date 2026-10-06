@@ -145,9 +145,9 @@
 #sqEnd .pt{font-size:1.1em;margin-bottom:1.4em}
 #sqEnd .pd{font-family:'VT323',monospace;font-size:2.2em;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
 #sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
-#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;width:11.5em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:.25em solid #0b0f05;outline:.15em solid #ccff00;background:#ccff00;color:#0b0f05;box-shadow:.3em .3em 0 rgba(0,0,0,.45);cursor:pointer}   /* los dos botones del mismo tamano y el mismo borde */
+#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;padding:0 2em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}   /* el estilo de siempre; solo se iguala la altura de los dos */
 #sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
-#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8;outline-color:#0b0f05}
+#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
 .ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
