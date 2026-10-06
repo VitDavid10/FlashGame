@@ -127,6 +127,8 @@
 #sqEnd.n3 .rw{margin-bottom:.15em}#sqEnd.n3 .rw .ph .sq-pic{width:2.5em;height:2.5em}#sqEnd.n3 .h{margin:.2em 0 .3em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.6em}
 #sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em)}
 #sqEnd.show{display:block}
+#sqEnd canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;z-index:0}
+#sqEnd .band{z-index:1}#sqEnd .bts{z-index:2}
 #sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;background:#0b0f05;transform:rotate(-4deg);border-top:0.7em solid var(--ec);border-bottom:0.7em solid var(--ec)}
 #sqEnd .t{position:absolute;left:0;right:0;top:-36%;text-align:center;font-size:5.6em;color:var(--ec);-webkit-text-stroke:.07em #0b0f05;paint-order:stroke fill;text-shadow:.125em .125em 0 #0b0f05;animation:seT .5s cubic-bezier(.2,1.4,.3,1) both}
 #sqEnd .cols{position:absolute;inset:5% 8% 6% 9%;display:flex;gap:4%;align-items:flex-start}
@@ -513,6 +515,25 @@
         el.style.fontSize = Math.max(10, 2 * Math.round(Math.min(M * 0.0125, m * 0.027) / 2)) + 'px';
     }
     addEventListener('resize', () => document.querySelectorAll('#sqEnd,.ci').forEach(nitido));
+    // Pildoras de fondo como en el diseno: confeti de colores arriba en la victoria, grises "comidas" abajo en la derrota,
+    // unas pocas amarillas en el empate. Con los sprites del juego y siempre en diagonal.
+    function fondoFin(el, tipo) {
+        const cv = el.querySelector('canvas.fx'), spr = window.pwPillSprite; if (!cv || !spr) return;
+        const W = cv.width = Math.round(el.clientWidth / 2), H = cv.height = Math.round(el.clientHeight / 2);
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H);
+        const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#ff5fd2'];
+        let sd = 9; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+        const n = tipo === 'win' ? 18 : 10;
+        for (let i = 0; i < n; i++) {
+            const top = tipo === 'win' ? '#ffffff' : tipo === 'draw' ? '#fff3c4' : '#5a5a5a';
+            const bot = tipo === 'win' ? COL[i % COL.length] : tipo === 'draw' ? '#ffd23a' : '#2a2a2a';
+            const o = spr(6, top, bot, -Math.PI / 4, true), c = o.cv || o;
+            // a los lados del titulo, sin taparlo
+            const lado = rnd() < .5 ? rnd() * .22 : .78 + rnd() * .22;
+            const x = 8 + lado * (W - 16), y = 6 + rnd() * H * 0.2;   // abajo quedaban tapadas por la banda
+            g.drawImage(c, Math.round(x - c.width / 2), Math.round(y - c.height / 2));
+        }
+    }
     function onEnd(m) {
         hud().classList.remove('show');
         S.rel = null; S.allies = null; rivalsBanner();
@@ -524,7 +545,7 @@
         let el = document.getElementById('sqEnd');
         if (!el) {
             el = document.createElement('div'); el.id = 'sqEnd';
-            el.innerHTML = '<div class="band"><div class="t"></div><div class="cols"><div class="tms"></div><div class="prz"></div></div></div><div class="bts"><button data-e="again">PLAY AGAIN</button><button data-e="menu" class="o">MENU</button></div>';
+            el.innerHTML = '<canvas class="fx"></canvas><div class="band"><div class="t"></div><div class="cols"><div class="tms"></div><div class="prz"></div></div></div><div class="bts"><button data-e="again">PLAY AGAIN</button><button data-e="menu" class="o">MENU</button></div>';
             frame().appendChild(el);
             el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { returnToMenu(); } catch (e) {} };
             // PLAY AGAIN: vuelta a la pantalla del grupo; hay que dar LISTO otra vez.
@@ -545,7 +566,7 @@
         // Arenas gratis: se recuerda que en las salas de pago se gana $PILLY (con $PILLY en juego ira la cantidad y CLAIM).
         el.querySelector('.prz').innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid room</b><br>and ' + (win ? 'take' : 'win') + ' their <b>$PILLY</b>.</div>';
         hydrate(el);
-        nitido(el); el.classList.add('show'); snd(win ? 'select' : 'alert');
+        nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose'); snd(win ? 'select' : 'alert');
     }
     // Pantalla de entrada a la partida (diseno C, animada ~4 s): fondo lima, entra la banda azul con tu equipo,
     // golpe del VS y entra la banda roja con los rivales. index.html la mete en #sqEntry.
