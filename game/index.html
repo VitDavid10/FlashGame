@@ -796,7 +796,6 @@
             html:not([data-hero]) body.mobile-allowed .pw-modal-box.room-info {
                 width: 268px; max-width: none; padding: 40px 26px 30px;
             }
-            html:not([data-hero]) body.mobile-allowed #roomInfoModal .pw-modal-box.room-info { --ri-l: 216px; column-gap: 14px; }
             html:not([data-hero]) body.mobile-allowed #roomInfoModal .ri-tab { font-size: 6px; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-head { font-size: 7px; margin-bottom: 10px; letter-spacing: 0; }
             html:not([data-hero]) body.mobile-allowed .room-info .ri-line { font-size: 9px; margin: 5px 0; gap: 8px; }
@@ -8997,6 +8996,12 @@
         const aforo = (LP && LP.maxPlayers) || r.maxPlayers || r.cap || 0;   // aforo de la sala a la que entras, no la suma de todas las layers
         html += `<div class="ri-line"><span>PLAYERS</span><b>${dentro} / ${aforo}</b></div>`;
 
+        if (gratis) {
+            // La FREE con el mismo cartel que las de pago: entrada 0, sin valor y para que sirve.
+            html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">0 $PILLY</b></div>`;
+            html += `<div class="ri-line"><span>WORTH NOW</span><b>FREE</b></div>`;
+            html += `<div class="ri-note">This room is free: you will not lose or win any $PILLY here. Use it to practice.</div>`;
+        }
         if (!gratis) {
             html += `<div class="ri-line"><span>ENTRY</span><b class="ri-fee">${fee.toLocaleString('en-US')} $PILLY</b></div>`;
             html += `<div class="ri-line"><span>WORTH NOW</span><b>$${usdReal.toFixed(2)}</b></div>`;
