@@ -115,6 +115,21 @@ function createArenaPay(o) {
         log(`[arena] premio cobrado: ${c.amount} PILL a ${wallet.slice(0, 6)}…`);
         return { ok: true, amount: c.amount };
     }
+    // Cobrar TODO lo pendiente de una wallet con una sola firma (PROFILE / REWARDS).
+    const claimAllMessage = ts => `PillWars claim arena prizes @ ${ts}`;
+    function claimAll(wallet, message, signature, ts) {
+        ts = Number(ts) || 0;
+        if (message !== claimAllMessage(ts) || Math.abs(now() - ts) > 120000) return { ok: false, reason: 'bad_claim' };
+        const ids = Object.keys(db.claims).filter(id => db.claims[id].wallet === wallet);
+        if (!ids.length) return { ok: false, reason: 'already_claimed' };
+        if (!verify(wallet, message, signature)) return { ok: false, reason: 'bad_signature' };
+        let amount = 0;
+        for (const id of ids) { amount += db.claims[id].amount; delete db.claims[id]; }
+        dirty = true;
+        try { credit(wallet, amount); } catch (e) {}
+        log(`[arena] premios cobrados de golpe: ${amount} PILL (${ids.length}) a ${wallet.slice(0, 6)}…`);
+        return { ok: true, amount, n: ids.length };
+    }
     function autoClaims() {
         const t = now();
         for (const [id, c] of Object.entries(db.claims)) {
@@ -126,7 +141,7 @@ function createArenaPay(o) {
     }
     const claimsOf = wallet => Object.entries(db.claims).filter(([, c]) => c.wallet === wallet).map(([id, c]) => ({ id, amount: c.amount, at: c.at }));
 
-    return { feeOf, useBracket, bracketFee, hold, refund, take, settle, claim, claimMessage, claimsOf, flush: () => { dirty = true; save(); }, _db: () => db, BOT_FEE };
+    return { feeOf, useBracket, bracketFee, hold, refund, take, settle, claim, claimMessage, claimAll, claimAllMessage, claimsOf, flush: () => { dirty = true; save(); }, _db: () => db, BOT_FEE };
 }
 
 module.exports = { createArenaPay, BOT_FEE };

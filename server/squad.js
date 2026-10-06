@@ -182,7 +182,7 @@ function createSquad(deps) {
     function issueTo(m, room, team, lineup, stake) {
         const ticket = rnd(16);
         tickets.set(ticket, { roomKey: room.key, team, name: m.gn || '', idName: m.name, pic: m.pic || '', av: m.av || null, uid: m.uid || null, stakeRef: stake ? stake.ref : null, exp: Date.now() + TICKET_TTL_MS });
-        send(m.ws, { t: 'sqTicket', kind: room.squad.kind, mode: room.mode, ticket, size: room.squad.size, team, lineup: lineup || null, startIn: Math.max(0, room.startAt - Date.now()) });
+        send(m.ws, { t: 'sqTicket', kind: room.squad.kind, mode: room.mode, ticket, size: room.squad.size, team, lineup: lineup || null, startIn: Math.max(0, room.startAt - Date.now()), cents: room.squad.cents | 0, fee: room.squad.fee | 0, usd: room.squad.fee ? usdOf(room.squad.fee) : null });
     }
     function issue(party, room, team, lineup) {
         for (const m of party.members.values()) issueTo(m, room, team, lineup);
@@ -343,6 +343,15 @@ function createSquad(deps) {
         if (a === 'rooms') return send(ws, { t: 'sqRooms', rooms: roomsList() });
         // FIND RIVALS y la cotizacion del precio: se puede mirar sin grupo.
         if (a === 'rivals') { const n = Math.max(1, Math.min(3, msg.size | 0 || 1)); return send(ws, { t: 'sqRivals', list: rivalsList(), pillUsd: deps.pillUsd ? deps.pillUsd() : 0, quote: [1, 2, 5, 10, 20].map(u => ({ usd: u, fee: arena.bracketFee(bkey('arcade', n, u * 100)) || Math.round(quote(u)) })) }); }
+        if (a === 'claim') {
+            const r = arena.claim(String(msg.id || ''), String(msg.wallet || ''), String(msg.message || ''), Array.isArray(msg.signature) ? msg.signature : []);
+            return send(ws, Object.assign({ t: 'sqClaim', id: String(msg.id || '') }, r));
+        }
+        if (a === 'claims') { const list = arena.claimsOf(String(msg.wallet || '')); return send(ws, { t: 'sqClaims', list, total: list.reduce((n, c) => n + c.amount, 0), usd: usdOf(list.reduce((n, c) => n + c.amount, 0)) }); }
+        if (a === 'claimall') {
+            const r = arena.claimAll(String(msg.wallet || ''), String(msg.message || ''), Array.isArray(msg.signature) ? msg.signature : [], msg.ts);
+            return send(ws, Object.assign({ t: 'sqClaim', all: true }, r));
+        }
         if (a === 'create') {
             if (me) return err(ws, 'already_in_party');
             const code = newCode(parties);
@@ -482,7 +491,7 @@ function createSquad(deps) {
         }
         // Un companero propone una partida (FIND RIVALS / QUICK MATCH): al lider le sale el aviso.
         if (a === 'propose') {
-            if (leader || p.state !== 'idle') return;
+            if (leader || p.state === 'match') return;
             if (Date.now() - (me.lastProp || 0) < 3000) return;
             me.lastProp = Date.now();
             const lead = p.members.get(p.leader);
@@ -527,10 +536,6 @@ function createSquad(deps) {
             pushParty(p);
             if (p.want != null) avisaBracket(p);
             return;
-        }
-        if (a === 'claim') {
-            const r = arena.claim(String(msg.id || ''), String(msg.wallet || ''), String(msg.message || ''), Array.isArray(msg.signature) ? msg.signature : []);
-            return send(ws, Object.assign({ t: 'sqClaim', id: String(msg.id || '') }, r));
         }
         // El lider avisa de nuevo a quien aun no ha contestado.
         if (a === 'remind' && p.cm) {

@@ -4058,6 +4058,14 @@
                             </div>
                             <button class="rw-claim" id="rwClaim" disabled onclick="RewardsUI.claim()">CLAIM</button>
                         </div>
+                        <div class="rw-mine" id="rwArena" style="display:none">
+                            <div class="rw-mine-l">
+                                <span class="rw-mine-lbl">ARENA PRIZES</span>
+                                <span class="rw-mine-val" id="rwArenaV">0</span>
+                                <span class="rw-mine-lbl">$PILLY</span>
+                            </div>
+                            <button class="rw-claim" id="rwArenaC" onclick="if (window.PWSquad) PWSquad.claimAll(() => RewardsUI.arena())">CLAIM</button>
+                        </div>
                         <div class="rw-note" id="rwNota"></div>
                     </div>
                 </div>
@@ -5300,6 +5308,7 @@
             money: gameAudio('../snd/money.mp3'),     // caja registradora del botin de la kill
             go: gameAudio('../snd/GO.mp3'),
             finwin: gameAudio('../snd/fin-win.mp3'), finlose: gameAudio('../snd/fin-lose.mp3'),   // VICTORY / DEFEAT de arenas (mismo golpe de inicio, final distinto)
+            vswhoosh: gameAudio('../snd/vs-whoosh.mp3'), vspop: gameAudio('../snd/vs-pop.mp3'), vsslam: gameAudio('../snd/vs-slam.mp3'),   // pantalla VS de arenas (bandas, fotos y golpe del VS)
             contador: gameAudio('../snd/contador.mp3')
         },
         music: gameAudio('../snd/music.mp3'), startTimer: null,
@@ -5314,6 +5323,7 @@
             // Landing background: nothing plays, so nothing is downloaded (see gameAudio).
             if (!IS_HERO_BACKGROUND) { for (let key in this.sounds) { this.sounds[key].load(); } this.music.load(); this.menuMusic.load(); }
             this.cargaPrepara();
+            this.sfxPrepara();
         },
         // El icono del boton refleja el mute de la musica que toca ahora mismo.
         syncMusicBtn: function() {
@@ -5367,10 +5377,39 @@
             // sonidos de ACTIVAR una skill (sprint/tp/iman/shield) no se tocan.
             if (name === 'timer') vol *= 0.33;
             if (name === 'finwin' || name === 'finlose') vol *= 0.4;   // los jingles de VICTORY/DEFEAT sonaban muy fuertes
-            const s = this.sounds[name]; s.currentTime = 0; s.volume = Math.min(1, vol * SFX_MASTER); s.play().catch(e => {});
+            this._suena(name, Math.min(1, vol * SFX_MASTER));
         },
-        stop: function(name) { if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
-        stopAllSfx: function() { for (const k in this.sounds) { try { this.sounds[k].pause(); this.sounds[k].currentTime = 0; } catch (e) {} } },
+        // Efectos que acompanan una animacion (pantalla VS): suenan aunque el resto del juego este callado.
+        playFx: function(name, vol = 1) { if (this.muted || !this.sounds[name]) return; this._suena(name, Math.min(1, vol * SFX_MASTER)); },
+        /*
+         * Efectos por Web Audio: se descargan y decodifican al arrancar (sfxPrepara) y suenan al instante.
+         * Con <audio> el movil no siempre los precarga: el primer GO, o los primeros segundos de la primera
+         * partida, se quedaban mudos mientras el fichero aun bajaba. Si el buffer no esta (o el contexto no
+         * arranco aun), se usa el <audio> de siempre. Como antes, el mismo sonido no se pisa: vuelve a empezar.
+         */
+        _sfx: {}, _sfxSrc: {},
+        sfxPrepara: function() {
+            const ctx = this._ctx; if (!ctx || IS_HERO_BACKGROUND) return;
+            for (const k in this.sounds) {
+                fetch(this.sounds[k].src).then(r => r.ok ? r.arrayBuffer() : null)
+                    .then(ab => ab && new Promise((ok, ko) => ctx.decodeAudioData(ab, ok, ko)))
+                    .then(buf => { if (buf) this._sfx[k] = buf; }).catch(() => {});
+            }
+        },
+        _suena: function(name, v) {
+            const ctx = this._ctx, buf = this._sfx[name];
+            if (ctx && buf && ctx.state === 'running') {
+                try { const old = this._sfxSrc[name]; if (old) old.stop(); } catch (e) {}
+                const src = ctx.createBufferSource(), g = ctx.createGain();
+                src.buffer = buf; g.gain.value = v; src.connect(g); g.connect(ctx.destination); src.start();
+                this._sfxSrc[name] = src; src.onended = () => { if (this._sfxSrc[name] === src) delete this._sfxSrc[name]; };
+                return;
+            }
+            if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+            const s = this.sounds[name]; s.currentTime = 0; s.volume = v; s.play().catch(e => {});
+        },
+        stop: function(name) { try { if (this._sfxSrc[name]) { this._sfxSrc[name].stop(); delete this._sfxSrc[name]; } } catch (e) {} if (this.sounds[name]) { this.sounds[name].pause(); this.sounds[name].currentTime = 0; } },
+        stopAllSfx: function() { for (const k in this._sfxSrc) { try { this._sfxSrc[k].stop(); } catch (e) {} } this._sfxSrc = {}; for (const k in this.sounds) { try { this.sounds[k].pause(); this.sounds[k].currentTime = 0; } catch (e) {} } },
         playSimpleHover: function() { if (Date.now() - this.lastSimpleHoverTime < 100) return; this.lastSimpleHoverTime = Date.now(); this.play('simplehover'); },
         // Solo kill1: kill2 nunca ha existido en snd/, asi que la mitad de las
         // muertes sonaban mudas y ademas soltaban un 404 en la consola.
@@ -5389,7 +5428,7 @@
         // Todos los sonidos y las dos musicas descargados (o con error): la pantalla de carga de arenas espera a esto para que nada falle al empezar.
         listo: function() {
             const ok = a => !a || a.error || a.readyState >= 3;
-            for (const k in this.sounds) if (!ok(this.sounds[k])) return false;
+            for (const k in this.sounds) if (!this._sfx[k] && !ok(this.sounds[k])) return false;
             return ok(this.music);
         },
         stopMusic: function() { if(this.startTimer) { clearTimeout(this.startTimer); this.startTimer = null; } this.music.pause(); this.music.currentTime = 0; },
@@ -12905,6 +12944,7 @@
             try { this.lb = await (await fetch('/api/leaderboard')).json(); } catch (e) { this.lb = null; }
             try { await GameWalletUI.refreshClaims(); } catch (e) {}
             this.pinta();
+            this.arena();
             /*
              * El marco se dibuja DESPUES de pintar y a reintentos.
              *
@@ -12919,6 +12959,12 @@
             this.reintentaMarco();
         },
         close() { document.getElementById('rwOverlay').classList.remove('on'); },
+        // Premios de arenas sin cobrar: solo sale la fila si hay algo.
+        arena() {
+            const w = window.GameWallet && GameWallet.address, fila = document.getElementById('rwArena');
+            if (!w || !window.PWSquad) { fila.style.display = 'none'; return; }
+            PWSquad.prizes(w, total => { fila.style.display = total > 0 ? '' : 'none'; document.getElementById('rwArenaV').textContent = this.fmt(total); });
+        },
 
         /*
          * Un ranking de ejemplo para cuando el dia todavia no tiene a nadie.
@@ -14067,6 +14113,16 @@
         if (!(await GameWallet.ensure())) { showSystemMsg('Connect your wallet first on the home page, then come back to play paid matches.', 'WALLET REQUIRED'); return null; }
         const r = await firmaEntrada('arena_' + cents, fee, 'You must sign the entry to play a paid match.');
         return r && r.pay;
+    };
+    // CLAIM de todos los premios pendientes de arenas (PROFILE / REWARDS): una sola firma con la hora.
+    window.pwArenaClaimAll = async function () {
+        if (!(await GameWallet.ensure())) { showSystemMsg('Connect the wallet you played with to claim your prizes.', 'WALLET REQUIRED'); return null; }
+        try {
+            const ts = Date.now(), message = 'PillWars claim arena prizes @ ' + ts;
+            const res = await GameWallet.provider.signMessage(new TextEncoder().encode(message), 'utf8');
+            const sig = res && res.signature ? res.signature : res;
+            return { wallet: GameWallet.address, message, ts, signature: Array.from(sig) };
+        } catch (e) { return null; }
     };
     // CLAIM del premio de una arena: firma "PillWars claim arena <id>" y el servidor lo abona al saldo del juego.
     window.pwArenaClaim = async function (id) {

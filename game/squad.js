@@ -135,7 +135,7 @@
 #sqEnd.draw{background-color:#241f0b;--ec:#ffd23a}
 #sqEnd.n3 .rw{margin-bottom:.15em}#sqEnd.n3 .rw .ph .sq-pic{width:2.5em;height:2.5em}#sqEnd.n3 .h{margin:.2em 0 .3em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.6em}
 #sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em)}
-#sqEnd.show{display:block;animation:seFade .9s ease both}
+#sqEnd.show{display:block;animation:seFade .3s ease both}
 @keyframes seFade{from{opacity:0}to{opacity:1}}
 #sqEnd canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;z-index:0}
 #sqEnd .band{z-index:1}#sqEnd .bts{z-index:2}
@@ -163,6 +163,7 @@
 #sqEnd .prz .pu{font-family:'VT323',monospace;font-size:2em;color:#e8e8e8;margin:.2em 0 .9em}
 #sqEnd .prz .cl{font-family:'Press Start 2P',monospace;font-size:1.1em;padding:0 1.6em;height:2.8em;border:0.3em solid #0b0f05;background:#ffd23a;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
 #sqEnd .prz .cl:disabled{background:#2c3630;color:#9fb0a6;cursor:default}
+#sqEnd .prz .pl{font-family:'VT323',monospace;font-size:1.5em;color:#9fb0a6;margin-top:.7em}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
 .ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
@@ -181,7 +182,11 @@
 .ci .pl4 i{display:block;width:1.6em;height:3.2em;border-radius:0.9em;transform:rotate(-45deg);box-shadow:0 0 0 0.2em #000}
 .ci .pl4.pa i{background:linear-gradient(#e8f6ff 50%,#1d9bf0 50%)}.ci .pl4.pb i{background:linear-gradient(#fff 50%,#ff4d6d 50%)}
 .ci .vs{position:absolute;left:58%;top:40%;font-size:7.8em;color:#fff;-webkit-text-stroke:.064em #0b0f05;paint-order:stroke fill;text-shadow:.1em .1em 0 #0b0f05;transform:rotate(-4deg);animation:ciVs .45s 1.05s cubic-bezier(.2,1.6,.3,1) both;z-index:2}
-.ci .tt{position:absolute;right:3%;top:3%;font-size:1.3em;color:#0b0f05}
+.ci .tt{position:absolute;right:3%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
+.ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
+.ci .pz.free{color:#00ff88}
+.ci .pz .pp{height:1.6em;image-rendering:pixelated}
+.ci .pl4 canvas.px{display:block;height:4.2em;image-rendering:pixelated;filter:drop-shadow(.2em .2em 0 #000)}
 @keyframes ciIn{from{opacity:0}to{opacity:1}}
 @keyframes ciL{from{transform:translateX(-110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
 @keyframes ciR{from{transform:translateX(110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
@@ -224,7 +229,8 @@
 .sq-b.sq-ghost{visibility:hidden}
 .sq-side{display:flex;align-items:center;justify-content:center;gap:2em;width:100%}
 .sq-side .sq-grp{width:auto}
-.sq-pbox{display:flex;flex-direction:column;align-items:center;gap:.45em;padding:.6em .9em;border:.07em solid rgba(255,210,58,.35);background:rgba(0,0,0,.3);min-width:8em}
+.sq-pbox{display:flex;flex-direction:column;align-items:flex-start;gap:.4em;padding:.1em 0 .1em 1.1em;border-left:.14em solid rgba(255,210,58,.55);min-width:8em;text-align:left}
+.sq-pbox .sep{height:.5em}
 .sq-pbox .k{font-size:.36em;letter-spacing:.14em;color:#7d8a82}
 .sq-pbox .u{font-family:'Russo One',sans-serif;font-size:1em;color:#ffd23a}.sq-pbox .u.free{color:var(--ac,#00ff88)}
 .sq-pbox .t{font-family:'Russo One',sans-serif;font-size:.48em;letter-spacing:.06em;color:#cfd8d3}.sq-pbox .t.g{color:#ffd23a}
@@ -411,6 +417,7 @@
         else if (m.t === 'sqPropose') onPropose(m);
         else if (m.t === 'squadPrize') onPrize(m);
         else if (m.t === 'sqClaim') onClaim(m);
+        else if (m.t === 'sqClaims') { const cb = S.onClaims; S.onClaims = null; if (cb) cb(m.total | 0, m.list || [], m.usd); }
         else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
         else if (m.t === 'sqWhisper') onWhisper(m);
     }
@@ -524,7 +531,7 @@
         // Fotos de tu equipo VS fotos del rival, con su nombre de X o de wallet: asi sabes con quien juegas.
         const side = (list, cls) => '<div class="side ' + cls + '">' + (list || []).map(x => '<div class="p">' + pic({ p: x.pic, av: x.av, n: x.name }) + '<span class="nm">' + esc(x.name) + '</span></div>').join('') + '</div>';
         const mine = m.team === 'B' ? 'B' : 'A', other = mine === 'A' ? 'B' : 'A';
-        S.lineupData = m.lineup ? { me: m.lineup[mine], foe: m.lineup[other] } : null; S.lastSize = m.size;
+        S.lineupData = m.lineup ? { me: m.lineup[mine], foe: m.lineup[other], fee: m.fee | 0, usd: m.usd } : null; S.lastSize = m.size;
         S.lineup = m.lineup ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>' : null;
         el.querySelector('.c').innerHTML = m.lineup
             ? '<div class="lu">' + side(m.lineup[mine], 'me') + '<span class="vs">VS</span>' + side(m.lineup[other], 'foe') + '</div>'
@@ -658,8 +665,24 @@
         S.prize = { id: m.id, amount: m.amount, usd: m.usd, claimed: false };
         const el = document.getElementById('sqEnd'); if (el && el.classList.contains('show')) pintaPremio(el);
     }
+    function prizes(wallet, cb) { if (!wallet) return cb(0, []); S.onClaims = cb; connect(() => send({ a: 'claims', wallet })); }
+    async function claimAll(after) {
+        if (S.claiming || typeof window.pwArenaClaimAll !== 'function') return;
+        S.claiming = true; S.afterAll = after || null;
+        let sig = null; try { sig = await window.pwArenaClaimAll(); } catch (e) {}
+        if (!sig) { S.claiming = false; return; }
+        connect(() => send(Object.assign({ a: 'claimall' }, sig)));
+    }
     function onClaim(m) {
         S.claiming = false;
+        if (m.all) {
+            if (m.ok) { if (S.prize) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 4000, center: true }); }
+            else if (m.reason !== 'already_claimed') toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
+            const cb = S.afterAll; S.afterAll = null; if (cb) cb();
+            const el0 = document.getElementById('sqEnd'); if (el0) pintaPremio(el0);
+            try { if (window.GameWallet && GameWallet.refreshBalance) GameWallet.refreshBalance(); } catch (e) {}
+            return;
+        }
         if (m.ok) { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 4000, center: true }); }
         else if (m.reason === 'already_claimed') { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; }
         else toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
@@ -682,7 +705,8 @@
         const pz = S.prize;
         if (!pz) { box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(mo.share) + '</div><div class="pu">' + (mo.usdShare != null ? '≈ ' + fmtUsd(mo.usdShare) : '') + '</div>'; return; }
         box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(pz.amount) + '</div><div class="pu">' + (pz.usd != null ? '≈ ' + fmtUsd(pz.usd) : '') + '</div>' +
-            '<button class="cl"' + (pz.claimed || S.claiming ? ' disabled' : '') + '>' + (pz.claimed ? 'CLAIMED' : S.claiming ? 'SIGNING...' : 'CLAIM') + '</button>';
+            '<button class="cl"' + (pz.claimed || S.claiming ? ' disabled' : '') + '>' + (pz.claimed ? 'CLAIMED' : S.claiming ? 'SIGNING...' : 'CLAIM') + '</button>' +
+            (pz.claimed ? '' : '<div class="pl">OR LATER IN PROFILE</div>');
         const b = box.querySelector('.cl'); if (b) b.onclick = () => { snd('simpleselect'); claimPrize(); };
     }
     function mostrarFin(m) {
@@ -713,7 +737,7 @@
         hydrate(el);
         // El sonido sale cuando la pantalla (la cuadricula roja/verde) ya se esta pintando: al empezar su fundido.
         let sonado = false;
-        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(win ? 'finwin' : 'finlose'); }, 300); };
+        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(win ? 'finwin' : 'finlose'); }, 120); };
         el.addEventListener('animationstart', sonar, { once: true });
         setTimeout(sonar, 1500);   // por si el navegador no anima (ahorro de energia)
         nitido(el); el.classList.add('show'); fondoFin(el, !m.winner ? 'draw' : win ? 'win' : 'lose');
@@ -728,8 +752,20 @@
         el.innerHTML = '<div class="bd ba"><div class="row">' + tiles(d.me, 'me') + '</div>' + pills('pa') + '</div>' +
             '<div class="vs">VS</div>' +
             '<div class="bd bb"><div class="row">' + tiles(d.foe, 'foe') + '</div>' + pills('pb') + '</div>' +
-            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + '</div>';
+            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + (d.fee > 0 ? '<span class="pz"><canvas class="pp"></canvas>' + (d.fee | 0).toLocaleString('en-US') + (d.usd != null ? ' · ' + fmtUsd(d.usd) : '') + '</span>' : '<span class="pz free">FREE</span>') + '</div>';
         hydrate(el);
+        // Pildoras pixel (los sprites del juego) en lugar de las de CSS.
+        const spr = window.pwPillSprite;
+        if (spr) {
+            const dib = (cv, top, bot, r) => { const o = spr(r, top, bot, -Math.PI / 4, true), src = o.cv || o; cv.width = src.width; cv.height = src.height; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0); };
+            el.querySelectorAll('.pl4').forEach(box => box.querySelectorAll('i').forEach(i => { const cv = document.createElement('canvas'); cv.className = 'px'; dib(cv, box.classList.contains('pa') ? '#e8f6ff' : '#ffffff', box.classList.contains('pa') ? '#1d9bf0' : '#ff4d6d', 6); i.replaceWith(cv); }));
+            const pp = el.querySelector('.pz .pp'); if (pp) dib(pp, '#ffffff', '#ffd23a', 4);
+        }
+        // Sonidos que acompanan la animacion (las bandas entran, cada foto aparece, golpe del VS).
+        const fx = (n, t, v) => setTimeout(() => { if (el.isConnected) try { SoundManager.playFx(n, v); } catch (e) {} }, t * 1000);
+        fx('vswhoosh', .15, .5); d.me.forEach((x, i) => fx('vspop', .45 + i * .15, .35));
+        fx('vsslam', 1.2, .7);
+        fx('vswhoosh', 1.45, .5); d.foe.forEach((x, i) => fx('vspop', 1.75 + i * .15, .35));
         return el;
     }
     // Dibujo de cada tarjeta 1V1/2V2/3V3: un trozo de mapa (cuadricula y comida) con las pildoras del juego enfrentadas.
@@ -806,7 +842,7 @@
     // Lo que hay en juego, al lado del grupo (arriba hacia crecer la ventana).
     function priceBox(fee, usd, size) {
         const body = fee > 0
-            ? '<div class="k">ENTRY</div><div class="u">' + (usd != null ? fmtUsd(usd) : '') + '</div><div class="t">' + fmtPill(fee) + ' EACH</div><div class="k">POT</div><div class="t g">' + fmtPill(fee * size * 2) + '</div>'
+            ? '<div class="k">ENTRY</div><div class="u">' + (usd != null ? fmtUsd(usd) : '') + '</div><div class="t">' + fmtPill(fee) + ' EACH</div><div class="sep"></div><div class="k">POT</div><div class="t g">' + fmtPill(fee * size * 2) + '</div>'
             : '<div class="u free">FREE</div><div class="t">NO ENTRY</div>';
         return '<div class="sq-pbox">' + body + seeRivals + '</div>';
     }
@@ -944,8 +980,14 @@
     function grupoOk(n, seguir) {
         const have = groupSize(), P = S.party;
         if (P && P.cm) { fail('You are in a custom room. Close it or leave it first.'); return false; }
-        if (P && (P.state !== 'idle' || P.rc)) { fail('Your group is already in a match lobby.'); return false; }
+        if (P && P.state === 'match') { fail('Your group is in a match right now.'); return false; }
         if (P && !imLeader()) { if (have !== n) { fail('Your group has ' + have + ' players: propose a ' + have + 'V' + have + '.'); return false; } return true; }
+        if (P && (P.state === 'queued' || P.rc)) {
+            const c = P.rc ? P.rc.cents : P.cents, lbl = c ? '$' + (c / 100) : 'FREE';
+            toast({ text: (have > 1 ? 'Your group is searching a ' : "You're searching a ") + lbl + ' match. It will be cancelled to continue.', warm: true, center: true, ms: 12000,
+                actions: [['CONTINUE', () => { send({ a: 'cancel' }); P.rc = null; P.state = 'idle'; render(); seguir(); }, 1], ['NO', null]] });
+            return false;
+        }
         if (n === 1 && have > 1) {
             toast({ text: 'This is a 1V1. Leave your group?', warm: true, center: true, ms: 12000, actions: [['LEAVE GROUP', () => { send({ a: 'leave' }); S.party = null; render(); seguir(); }, 1], ['NO', null]] });
             return false;
@@ -958,6 +1000,7 @@
         if (!grupoOk(n, () => lanzar(n, usd))) return;
         if (S.party && !imLeader()) { send({ a: 'propose', price: usd, size: n }); S.note = 'Proposal sent to your leader'; render(); return; }
         S.usd = usd; try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {}
+        if (S.arStep) S.arStep.view = null;   // se abre el grupo con su sala de espera
         start(() => send({ a: 'play', mode: arMode(), price: usd, ready: !usd }));   // gratis: pulsar es tu LISTO; de pago: PAY & READY
     }
     function quick() { lanzar(S.arStep ? S.arStep.size : groupSize(), S.usd | 0); }
@@ -1225,7 +1268,7 @@
     window.pwSquadFrame = frame;
     window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);
