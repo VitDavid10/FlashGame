@@ -221,6 +221,13 @@
 .sq-pl b{font-weight:400;color:#ffd23a}.sq-pl.free{color:var(--ac,#00ff88)}
 .sq-row .sq-pl{flex:1}
 .sq-b.sq-ghost{visibility:hidden}
+.sq-side{display:flex;align-items:center;justify-content:center;gap:2em;width:100%}
+.sq-side .sq-grp{width:auto}
+.sq-pbox{display:flex;flex-direction:column;align-items:center;gap:.45em;padding:.6em .9em;border:.07em solid rgba(255,210,58,.35);background:rgba(0,0,0,.3);min-width:8em}
+.sq-pbox .k{font-size:.36em;letter-spacing:.14em;color:#7d8a82}
+.sq-pbox .u{font-family:'Russo One',sans-serif;font-size:1em;color:#ffd23a}.sq-pbox .u.free{color:var(--ac,#00ff88)}
+.sq-pbox .t{font-family:'Russo One',sans-serif;font-size:.48em;letter-spacing:.06em;color:#cfd8d3}.sq-pbox .t.g{color:#ffd23a}
+.sq-pbox .sq-b{margin-top:.3em}
 .sq-cm{display:flex;align-items:center;justify-content:center;gap:1em;width:100%;flex:1;min-height:0}
 .sq-cm .tm{flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em;padding:.5em;border:.07em solid rgba(255,255,255,.1);background:rgba(0,0,0,.25)}
 .sq-cm .tm .h{font-size:.42em;letter-spacing:.14em}.sq-cm .tm.a .h{color:#3fa0ff}.sq-cm .tm.b .h{color:#ff6a5a}
@@ -788,11 +795,18 @@
     const ghost = txt => '<button class="sq-b sq-ghost" tabindex="-1">' + txt + '</button>';
     // Desde la sala de espera o buscando tambien se puede mirar FIND RIVALS (y ahi sales como (YOU)).
     const seeRivals = '<button class="sq-b sm" data-a="seerivals">FIND RIVALS</button>';
+    // Lo que hay en juego, al lado del grupo (arriba hacia crecer la ventana).
+    function priceBox(fee, usd, size) {
+        const body = fee > 0
+            ? '<div class="k">ENTRY</div><div class="u">' + (usd != null ? fmtUsd(usd) : '') + '</div><div class="t">' + fmtPill(fee) + ' EACH</div><div class="k">POT</div><div class="t g">' + fmtPill(fee * size * 2) + '</div>'
+            : '<div class="u free">FREE</div><div class="t">NO ENTRY</div>';
+        return '<div class="sq-pbox">' + body + seeRivals + '</div>';
+    }
     function searchingHtml() {
         const p = S.party, leader = imLeader();
         const secs = Math.max(0, Math.round((Date.now() - (p.queuedAt || Date.now())) / 1000));
         return '<div class="sq find"><div class="mid"><div class="sq-q">' + (p.custom ? 'ROOM OPEN · WAITING FOR A RIVAL' : 'SEARCHING FOR A RIVAL') + ' · ' + p.size + 'V' + p.size + ' · <span id="sqQs">' + secs + 's</span></div>' +
-            priceLine(p.fee, p.usd, p.size) + groupHtml(false, p.size, true) + seeRivals + '</div>' +
+            '<div class="sq-side">' + groupHtml(false, p.size, true) + priceBox(p.fee, p.usd, p.size) + '</div></div>' +
             '<div class="sq-bot"><div class="sq-row"><button class="sq-b on" data-a="practice"' + (S.joining ? ' disabled' : '') + '>' + (S.joining ? 'JOINING...' : p.practice ? 'JOIN PRACTICE' : 'PLAY WHILE YOU WAIT') + '</button>' +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '') + '</div>' + errLine() + '</div></div>';
     }
@@ -805,7 +819,7 @@
             : '<button class="sq-b on" data-a="rok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : paid ? 'PAY & READY' : 'READY') + '</button>';
         const all = leader && rc.size > 1 ? '<button class="sq-b" data-a="remind"' + (falta && !(falta === 1 && !mine) ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
         return '<div class="sq find"><div class="mid"><div class="sq-q">LOBBY · ' + (KIND_TXT[rc.kind] || 'MATCH') + ' · ' + rc.size + 'V' + rc.size + '</div>' +
-            priceLine(rc.fee, rc.usd, rc.size) + groupHtml(false, p.size, true) + seeRivals + '</div>' +
+            '<div class="sq-side">' + groupHtml(false, p.size, true) + priceBox(rc.fee, rc.usd, rc.size) + '</div></div>' +
             '<div class="sq-bot"><div class="sq-row">' + rok + all +
             (leader ? '<button class="sq-b" data-a="cancel">CANCEL</button>' : '<button class="sq-b" data-a="leave">LEAVE</button>') +
             '</div>' + errLine() + '</div></div>';
