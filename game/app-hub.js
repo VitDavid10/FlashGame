@@ -286,7 +286,6 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-box .k,.pr-st .k{font-size:.38em;color:var(--mut);letter-spacing:.1em}
 .pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em;cursor:pointer;word-break:break-all}
 .pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
-.pr-pz{display:flex;align-items:center;gap:.6em;margin-top:.6em}.pr-pz b{font-weight:400;font-size:.55em;color:#ffd23a;flex:1}.pr-pz .tb{width:auto}
 .pr-bt{display:flex;gap:.5em;margin-top:.8em}.pr-bt .tb{width:auto;flex:1}
 .pr-st{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;height:3.6em}
 .pr-st .cell{justify-content:center;gap:.4em}.pr-st .v{font-size:.62em;text-shadow:.12em .12em 0 #000}
@@ -613,8 +612,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="pr-r">
     <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div>
       <div class="k" style="margin-top:.9em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
-      <div class="pr-pz" id="ahPrPz" style="display:none"><span class="k">ARENA PRIZES</span><b id="ahPrPzV">0</b><button class="tb on" id="ahPrPzC">CLAIM</button></div>
-      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button></div></div>
+      <div id="ahPrPz" style="display:none"><div class="k" style="margin-top:.7em">ARENA PRIZES TO CLAIM</div><div class="pr-bal" id="ahPrPzV">0</div></div>
+      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC" style="display:none">CLAIM</button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
   <div class="foot">Tap EDIT AVATAR to change your picture</div></div></div></div>
@@ -1322,10 +1321,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // Premios de arenas sin cobrar (si en VICTORY no se pulso CLAIM): aqui se cobran todos de una vez.
         const pz = $('#ahPrPz');
         if (w && window.PWSquad) PWSquad.prizes(w, total => {
-            pz.style.display = total > 0 ? '' : 'none';
-            $('#ahPrPzV').textContent = Math.floor(total).toLocaleString('en-US') + ' $PILLY';
+            pz.style.display = $('#ahPrPzC').style.display = total > 0 ? '' : 'none';
+            $('#ahPrPzV').textContent = Math.floor(total).toLocaleString('en-US');
             $('#ahPrPzC').onclick = () => PWSquad.claimAll(pintaWallet);
-        }); else pz.style.display = 'none';
+        }); else pz.style.display = $('#ahPrPzC').style.display = 'none';
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
     }
     function conectaX() { openProfile(); }

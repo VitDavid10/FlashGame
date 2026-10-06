@@ -25,6 +25,15 @@ const FRIENDS = [
     { id: 'TESTBAN', u: 'bandit', av: { t: 'bag', bg: '#ff2a55' }, top: '#2b2b2b', bot: '#ff2a55' },
     { id: 'TESTRCE', u: 'rcer', av: { t: 'spook', bg: '#ffb347' }, top: '#fff3d6', bot: '#ffb347' },
 ];
+// Jugadores de prueba "random" (solo en devnet, con salas de pago): buscan partida solos, en duo o en trio, cada grupo
+// a un precio distinto para que no se emparejen entre ellos. Salen en FIND RIVALS y se les puede retar en 1v1, 2v2 y 3v3.
+const RANDOS = [
+    ['TESTR01', 'pixelpete', '#7cff6b'], ['TESTR02', 'nyx', '#b86bff'], ['TESTR03', 'grumpy', '#ff8a3d'], ['TESTR04', 'lunar', '#9cc4ff'],
+    ['TESTR05', 'vortex', '#2ee6d6'], ['TESTR06', 'mochi', '#ff5fd2'], ['TESTR07', 'zed', '#ffd23a'], ['TESTR08', 'kira', '#ff4d6d'],
+    ['TESTR09', 'bolt', '#ccff00'], ['TESTR10', 'echo', '#e8e8e8'],
+].map(([id, u, c]) => ({ id, u, av: { t: 'pill', bg: '#14181a', top: '#ffffff', bot: c }, top: '#ffffff', bot: c }));
+// [indices en RANDOS, precio en $]
+const GRUPOS_RANDOS = [[[0], 0], [[1], 3], [[2], 10], [[3, 4], 0], [[5, 6], 2], [[7, 8, 9], 1]];
 const LEAD_TXT = "OK! I'll lead. Join my group and I'll start a ready check in a few seconds.";
 const REPLIES = [
     "hey! I'm a test friend. Invite me to a group and press play.",
@@ -122,16 +131,29 @@ function createVirtualFriends(ctx) {
 
     // Libres, cada bot busca un 1v1 a su precio ($1, $2 y $5, solo en devnet): salen en FIND RIVALS y se les puede retar.
     const PRECIOS = [1, 2, 5];
+    const randos = [];
+    // Un grupo de bots en cola: el primero lo crea, los demas entran con el codigo y, completo, busca a su precio.
+    function enCola(lider, f, resto, price) {
+        const p = lider.p;
+        if (lider.rival || (f.leadFor && Date.now() - f.leadAt < 120000) || Date.now() - (lider.since || 0) < 2500) return;   // haciendo de lider para alguien: 2 min fuera de la cola
+        if (!p) { say(lider, { a: 'create' }); return; }
+        if (p.leader !== p.me || p.state !== 'idle' || p.rc || p.cm) return;
+        const libre = w => !w.p || (w.p.members.length === 1 && w.p.state === 'idle' && !w.p.rc);
+        for (const w of resto) if (!(w.p && w.p.code === p.code) && libre(w) && !w.rival) { if (w.p) say(w, { a: 'leave' }); say(w, { a: 'join', code: p.code }); }
+        if (p.members.length === resto.length + 1) say(lider, { a: 'play', mode: 'arcade', price });
+    }
     if (ctx.queue && ctx.paid) {   // sin pago (mainnet) no: gratis se emparejarian entre ellos
         const cola = setInterval(() => {
-            lobby.forEach((ws, i) => {
-                const f = bots[i], p = ws.p;
-                if (ws.rival || (f.leadFor && Date.now() - f.leadAt < 120000) || Date.now() - (ws.since || 0) < 2500) return;   // haciendo de lider para alguien: 2 min fuera de la cola
-                if (!p) { say(ws, { a: 'create' }); return; }
-                if (p.members.length === 1 && p.leader === p.me && p.state === 'idle' && !p.rc && !p.cm) say(ws, { a: 'play', mode: 'arcade', price: PRECIOS[i] });
-            });
+            lobby.forEach((ws, i) => enCola(ws, bots[i], [], PRECIOS[i]));
+            for (const [idx, price] of GRUPOS_RANDOS) enCola(randos[idx[0]], RANDOS_F[idx[0]], idx.slice(1).map(k => randos[k]), price);
         }, 3000);
         if (cola.unref) cola.unref();
+    }
+    const RANDOS_F = RANDOS.map(f => Object.assign({}, f));
+    if (ctx.queue && ctx.paid) for (const f of RANDOS_F) {
+        const ws = { readyState: 1, virtual: true, send(raw) { let m; try { m = JSON.parse(raw); } catch (e) { return; } react(ws, f, m); }, close() {} };
+        social.hello(ws, token.sign({ id: f.id, u: f.u, n: f.u, p: '', w: '' }), f.av, f.u);
+        ws.fid = f.id; randos.push(ws);
     }
     for (const f of bots) {
         const ws = { readyState: 1, virtual: true, send(raw) { let m; try { m = JSON.parse(raw); } catch (e) { return; } react(ws, f, m); }, close() {} };

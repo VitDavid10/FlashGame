@@ -11564,7 +11564,7 @@
         }
         MAX_BOT_CELLS = (currentGameMode === 'classic') ? 8 : 16;
     }
-    function hideGameHUD() { crowdHint = null; _vistoEnemigoAt = 0; _flechaObj = null; document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
+    function hideGameHUD() { try { if (window.PWSquad) PWSquad.leaveGame(); } catch (e) {} crowdHint = null; _vistoEnemigoAt = 0; _flechaObj = null; document.getElementById('ui').style.display = 'none'; document.getElementById('actionBar').style.display = 'none'; document.getElementById('leaderboard').style.display = 'none'; document.getElementById('buffTable').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; document.getElementById('skillChoiceOverlay').style.display = 'none'; els.buffList.innerHTML = ""; if (typeof EconHUD!=='undefined') { EconHUD.carry=0; EconHUD.pot=0; EconHUD.entry=0; document.getElementById('econHud').style.display='none'; } updatePentakillHint(0); }
     // El split también vive en la sim: solo encolamos la acción con el objetivo del ratón.
     function splitPlayer() {
         if (!gameRunning || !sim || isSpectating) return;

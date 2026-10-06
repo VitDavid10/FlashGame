@@ -212,10 +212,11 @@ test('en devnet los bots buscan 1v1 cada uno a su precio y su entrada la pone la
         authorize: ({ fee, pay }) => { saldo[pay.wallet] -= fee; return { ok: true, payWallet: pay.wallet, fee }; },
         credit: (w, n) => { saldo[w] = (saldo[w] || 0) + n; }, treasury: () => {}, verify: () => true,
     });
-    await wait(10000);   // crean su grupo y se ponen a buscar (y dan LISTO)
-    sq.handle(fakeWs(), { t: 'sq', a: 'rivals', size: 1 });
-    const cola = [...sq._internals.parties.values()].filter(p => p.state === 'queued').map(p => p.cents).sort((a, b) => a - b);
-    assert.deepEqual(cola, [100, 200, 500], 'cada bot en su precio');
+    await wait(13000);   // crean su grupo, entran los companeros y se ponen a buscar (y dan LISTO)
+    const cola = n => [...sq._internals.parties.values()].filter(p => p.state === 'queued' && p.qsize === n).map(p => p.cents).sort((a, b) => a - b);
+    assert.deepEqual(cola(1), [0, 100, 200, 300, 500, 1000], 'cada 1v1 en su precio');
+    assert.deepEqual(cola(2), [0, 200], 'los duos');
+    assert.deepEqual(cola(3), [100], 'el trio');
     const me = human(sq, 'AAAAAAA', 'ana');
     say(sq, me, { a: 'create' });
     say(sq, me, { a: 'play', price: 2, ready: false });

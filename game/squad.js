@@ -163,7 +163,8 @@
 #sqEnd .prz .pu{font-family:'VT323',monospace;font-size:2em;color:#e8e8e8;margin:.2em 0 .9em}
 #sqEnd .prz .cl{font-family:'Press Start 2P',monospace;font-size:1.1em;padding:0 1.6em;height:2.8em;border:0.3em solid #0b0f05;background:#ffd23a;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
 #sqEnd .prz .cl:disabled{background:#2c3630;color:#9fb0a6;cursor:default}
-#sqEnd .prz .pl{font-family:'VT323',monospace;font-size:1.5em;color:#9fb0a6;margin-top:.7em}
+#sqEnd .prz .clr{display:flex;align-items:center;justify-content:center;gap:1em}
+#sqEnd .prz .pl{font-family:'VT323',monospace;font-size:1.5em;line-height:1;color:#9fb0a6;text-align:left}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
 .ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
@@ -185,8 +186,14 @@
 .ci .tt{position:absolute;right:3%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
 .ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
 .ci .pz.free{color:#00ff88}
-.ci .pz .pp{height:1.6em;image-rendering:pixelated}
-.ci .pl4 canvas.px{display:block;height:4.2em;image-rendering:pixelated;filter:drop-shadow(.2em .2em 0 #000)}
+.ci .stk{position:absolute;top:30%;display:flex;flex-direction:column;gap:.45em;animation:ciPop .35s .9s cubic-bezier(.2,1.4,.3,1) both}
+.ci .bd.bb .stk{animation-delay:2.1s}
+.ci.stk3 .pl4{display:none}
+.ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.a .sl{color:#1d9bf0}.ci .stk.b .sl{color:#ff4d6d}
+.ci .stk .sv{font-size:1.9em;color:#ffd23a;text-shadow:.12em .12em 0 #000;white-space:nowrap;line-height:1}
+.ci .stk .sv b{font-weight:400;font-size:1em;color:inherit;margin-left:.4em}
+.ci .stk .su{font-family:'VT323',monospace;font-size:2.4em;line-height:.8;color:#e8e8e8}
+.ci .pl4 canvas.px{display:block;height:4.2em;image-rendering:pixelated;background:none;box-shadow:none;border:0}
 @keyframes ciIn{from{opacity:0}to{opacity:1}}
 @keyframes ciL{from{transform:translateX(-110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
 @keyframes ciR{from{transform:translateX(110%) rotate(-4deg)}to{transform:translateX(0) rotate(-4deg)}}
@@ -241,6 +248,11 @@
 .sq-cm .vs{font-family:'Press Start 2P',monospace;font-size:.7em;color:#ffd23a}
 .sq-code{font-weight:400;color:#ffd23a;letter-spacing:.2em;user-select:all}
 .sq-av .k.mv{color:#00ff88;border-color:#00ff88;cursor:pointer}
+.sq-cm .sq-grp.small{gap:.5em}
+.sq-cm.n3 .sq-grp.small .sq-av{width:4.4em;gap:.3em}
+.sq-cm.n3 .sq-grp.small .sq-av .sq-pic{width:2em;height:2em;font-size:.8em}
+.sq-cm.n3 .sq-grp.small .sq-av .n{font-size:.32em}.sq-cm.n3 .sq-grp.small .sq-av .l,.sq-cm.n3 .sq-av .k{font-size:.28em}
+.sq-cm.n3 .tm{padding:.35em .3em}
 .sq-rl{width:100%;display:flex;flex-direction:column;gap:.5em;flex:1;min-height:0;overflow-y:auto}
 /* pantallas de arenas: cabecera arriba (BACK + modo), filtros debajo y el contenido ocupando el resto */
 .sq-empty{margin:auto;text-align:center;line-height:1.8}
@@ -705,8 +717,8 @@
         const pz = S.prize;
         if (!pz) { box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(mo.share) + '</div><div class="pu">' + (mo.usdShare != null ? '≈ ' + fmtUsd(mo.usdShare) : '') + '</div>'; return; }
         box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(pz.amount) + '</div><div class="pu">' + (pz.usd != null ? '≈ ' + fmtUsd(pz.usd) : '') + '</div>' +
-            '<button class="cl"' + (pz.claimed || S.claiming ? ' disabled' : '') + '>' + (pz.claimed ? 'CLAIMED' : S.claiming ? 'SIGNING...' : 'CLAIM') + '</button>' +
-            (pz.claimed ? '' : '<div class="pl">OR LATER IN PROFILE</div>');
+            '<div class="clr"><button class="cl"' + (pz.claimed || S.claiming ? ' disabled' : '') + '>' + (pz.claimed ? 'CLAIMED' : S.claiming ? 'SIGNING...' : 'CLAIM') + '</button>' +
+            (pz.claimed ? '' : '<span class="pl">OR LATER<br>IN PROFILE</span>') + '</div>';
         const b = box.querySelector('.cl'); if (b) b.onclick = () => { snd('simpleselect'); claimPrize(); };
     }
     function mostrarFin(m) {
@@ -729,7 +741,7 @@
         el.className = (!m.winner ? 'draw' : win ? 'win' : 'lose') + (n3 ? ' n3' : '');   // n3: 3v3, filas mas bajas para que quepan
         el.querySelector('.t').textContent = !m.winner ? 'DRAW' : win ? 'VICTORY!' : 'DEFEAT';
         const row = (p, cls) => '<div class="rw' + (p.alive ? '' : ' dead') + '"><span class="ph ' + cls + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '</span><span class="nm">' + esc(p.name) + '</span>' +
-            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + p.peak.toLocaleString('en-US') + ' PEAK</span></div>';   // comido por un bot: tachado en rojo
+            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + (m.money && p.stake ? fmtPill(p.stake) : p.peak.toLocaleString('en-US') + ' PEAK') + '</span></div>';   // comido por un bot: tachado en rojo
         const list = (t, cls) => ((m.players && m.players[t]) || []).map(p => row(p, cls)).join('');
         el.querySelector('.tms').innerHTML = '<div><div class="h me">YOUR TEAM</div>' + list(mine, 'me') + '</div><div><div class="h foe">RIVALS</div>' + list(other, 'foe') + '</div>';
         S.endMoney = m.money ? { win, money: m.money } : null;
@@ -752,14 +764,28 @@
         el.innerHTML = '<div class="bd ba"><div class="row">' + tiles(d.me, 'me') + '</div>' + pills('pa') + '</div>' +
             '<div class="vs">VS</div>' +
             '<div class="bd bb"><div class="row">' + tiles(d.foe, 'foe') + '</div>' + pills('pb') + '</div>' +
-            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + (d.fee > 0 ? '<span class="pz"><canvas class="pp"></canvas>' + (d.fee | 0).toLocaleString('en-US') + (d.usd != null ? ' · ' + fmtUsd(d.usd) : '') + '</span>' : '<span class="pz free">FREE</span>') + '</div>';
+            '<div class="tt">ARENAS · ' + d.me.length + 'V' + d.me.length + (d.fee > 0 ? '' : '<span class="pz free">FREE</span>') + '</div>';
+        if (d.fee > 0) {
+            // A la derecha de las fotos; en 3v3 no cabe ahi y ocupa el sitio de las pildoras (debajo pasaria el VS).
+            const n = d.me.length, pos = n < 3 ? 'left:' + (12 + n * 13.4 + (n - 1) * 2.2 + 5) + '%' : 'right:12%;top:22%;text-align:right;align-items:flex-end';
+            if (n === 3) el.classList.add('stk3');
+            const stk = (cls, k) => '<div class="stk ' + cls + '" style="' + pos + '"><div class="sl">' + (cls === 'a' ? 'YOUR TEAM' : 'RIVALS') + '</div><div class="sv">' + (d.fee * k).toLocaleString('en-US') + '<b>$PILLY</b></div>' + (d.usd != null ? '<div class="su">' + fmtUsd(d.usd * k) + '</div>' : '') + '</div>';
+            el.querySelector('.bd.ba').insertAdjacentHTML('beforeend', stk('a', d.me.length));
+            el.querySelector('.bd.bb').insertAdjacentHTML('beforeend', stk('b', d.foe.length));
+        }
         hydrate(el);
         // Pildoras pixel (los sprites del juego) en lugar de las de CSS.
         const spr = window.pwPillSprite;
         if (spr) {
-            const dib = (cv, top, bot, r) => { const o = spr(r, top, bot, -Math.PI / 4, true), src = o.cv || o; cv.width = src.width; cv.height = src.height; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0); };
+            // La sombra va pintada dentro del canvas (con filter: drop-shadow el WebView del movil le ponia un cuadrado detras).
+            const dib = (cv, top, bot, r) => {
+                const o = spr(r, top, bot, -Math.PI / 4, true), src = o.cv || o;
+                cv.width = src.width + 1; cv.height = src.height + 1;
+                const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+                g.drawImage(src, 1, 1); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
+                g.globalCompositeOperation = 'source-over'; g.drawImage(src, 0, 0);
+            };
             el.querySelectorAll('.pl4').forEach(box => box.querySelectorAll('i').forEach(i => { const cv = document.createElement('canvas'); cv.className = 'px'; dib(cv, box.classList.contains('pa') ? '#e8f6ff' : '#ffffff', box.classList.contains('pa') ? '#1d9bf0' : '#ff4d6d', 6); i.replaceWith(cv); }));
-            const pp = el.querySelector('.pz .pp'); if (pp) dib(pp, '#ffffff', '#ffd23a', 4);
         }
         // Sonidos que acompanan la animacion (las bandas entran, cada foto aparece, golpe del VS).
         const fx = (n, t, v) => setTimeout(() => { if (el.isConnected) try { SoundManager.playFx(n, v); } catch (e) {} }, t * 1000);
@@ -890,8 +916,8 @@
         const all = leader ? '<button class="sq-b" data-a="remind"' + (falta ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
         return '<div class="sq sq-fixed sq-cmw"><div class="sq-row" style="justify-content:space-between"><span class="sq-lab">MATCH CUSTOM · CODE <b class="sq-code">' + esc(p.code) + '</b></span><span class="sq-row">' + sizes + '</span></div>' +
             '<div class="sq-row">' + precio + '</div>' +
-            '<div class="sq-cm">' + col('A') + '<span class="vs">VS</span>' + col('B') + '</div>' +
-            '<div class="sq-row">' + rok + all + '<button class="sq-b" data-a="cminv">INVITE</button>' + (leader ? '<button class="sq-b red" data-a="cmclose">CLOSE</button>' : '<button class="sq-b red" data-a="leave">LEAVE</button>') + '</div>' + errLine() + '</div>';
+            '<div class="sq-cm' + (n === 3 ? ' n3' : '') + '">' + col('A') + '<span class="vs">VS</span>' + col('B') + '</div>' +
+            '<div class="sq-row">' + rok + all + '<button class="sq-b" data-a="cminv">INVITE</button>' + (leader ? '<button class="sq-b" data-a="cmclose">BACK</button>' : '<button class="sq-b red" data-a="leave">LEAVE</button>') + '</div>' + errLine() + '</div>';
     }
     // ----- panel ARENAS: modo (1V1/2V2/3V3) -> QUICK MATCH / FIND RIVALS / MATCH CUSTOM -----
     const arMode = () => 'arcade';   // arenas es un solo modo (con skills elegidas en THE PILL), se entre desde arcade o classic
@@ -984,12 +1010,12 @@
         if (P && !imLeader()) { if (have !== n) { fail('Your group has ' + have + ' players: propose a ' + have + 'V' + have + '.'); return false; } return true; }
         if (P && (P.state === 'queued' || P.rc)) {
             const c = P.rc ? P.rc.cents : P.cents, lbl = c ? '$' + (c / 100) : 'FREE';
-            toast({ text: (have > 1 ? 'Your group is searching a ' : "You're searching a ") + lbl + ' match. It will be cancelled to continue.', warm: true, center: true, ms: 12000,
-                actions: [['CONTINUE', () => { send({ a: 'cancel' }); P.rc = null; P.state = 'idle'; render(); seguir(); }, 1], ['NO', null]] });
+            rcPopup(have > 1 ? 'YOUR GROUP IS SEARCHING' : "YOU'RE SEARCHING", 'A ' + lbl + ' MATCH<br>IT WILL BE CANCELLED TO CONTINUE', 'CONTINUE', 'NO',
+                () => { send({ a: 'cancel' }); P.rc = null; P.state = 'idle'; render(); seguir(); });
             return false;
         }
         if (n === 1 && have > 1) {
-            toast({ text: 'This is a 1V1. Leave your group?', warm: true, center: true, ms: 12000, actions: [['LEAVE GROUP', () => { send({ a: 'leave' }); S.party = null; render(); seguir(); }, 1], ['NO', null]] });
+            rcPopup('THIS IS A 1V1', 'LEAVE YOUR GROUP TO PLAY IT?', 'LEAVE GROUP', 'NO', () => { send({ a: 'leave' }); S.party = null; render(); seguir(); });
             return false;
         }
         if (have !== n) { fail(have < n ? 'To play ' + n + 'V' + n + ' you need a group of ' + n + '. Invite friends in FRIENDS.' : 'Your group has ' + have + ' players: pick ' + have + 'V' + have + '.'); return false; }
@@ -1063,7 +1089,9 @@
         const box = S.box[kind]; if (!box) return;
         const add = box.querySelector('#sqAdd'), msg = box.querySelector('#sqMsg');
         const keep = add ? add.value : null, keepMsg = msg ? msg.value : null, focus = document.activeElement && box.contains(document.activeElement) ? document.activeElement.id : null;
+        const rl = box.querySelector('.sq-rl, .sq-list'), scr = rl ? rl.scrollTop : 0;
         box.innerHTML = html;
+        const rl2 = box.querySelector('.sq-rl, .sq-list'); if (rl2 && scr) rl2.scrollTop = scr;
         if (keep != null && box.querySelector('#sqAdd')) box.querySelector('#sqAdd').value = keep;
         if (keepMsg != null && box.querySelector('#sqMsg')) box.querySelector('#sqMsg').value = keepMsg;
         if (focus && box.querySelector('#' + focus)) box.querySelector('#' + focus).focus();
@@ -1268,7 +1296,8 @@
     window.pwSquadFrame = frame;
     window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    function leaveGame() { const h = document.getElementById('sqHud'); if (h) { h.classList.remove('show'); h.innerHTML = ''; } S.rel = null; S.allies = null; rivalsBanner(); }
+    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);
