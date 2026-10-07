@@ -436,6 +436,22 @@ function logAdmin(sala, accion, objetivo) {
     fs.appendFile(ADMINLOG_FILE, JSON.stringify(entry) + '\n', () => {});
 }
 
+// Avisos de sistema escritos desde el panel de admin (placa SYSTEM del menu). Solo en
+// memoria: un reinicio los borra, que es lo que se quiere de un aviso de minutos.
+// El cliente los pide con GET /api/sysmsg?after=<id> y los pone en su cola.
+const sysMsgs = [];
+let sysMsgSeq = 0;
+const SYSMSG_VIDA_MS = 10 * 60 * 1000;
+function sysMsgPush(text, ms) {
+    const t = String(text || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 160);
+    if (!t) return null;
+    const dur = Math.max(3, Math.min(120, Math.round(Number(ms) || 8))) * 1000;
+    const m = { id: ++sysMsgSeq, text: t, ms: dur, ts: Date.now() };
+    sysMsgs.push(m);
+    while (sysMsgs.length > 20) sysMsgs.shift();
+    return m;
+}
+
 const PLAYERS_FILE = path.join(__dirname, 'players.json');
 const roomStats = loadJson(STATS_FILE, {});     // roomKey → { entradas, muertes }
 const roomRules = loadJson(RULES_FILE, {});     // roomKey → { speed, food, virus, botsEnabled, botCount }
@@ -2652,6 +2668,14 @@ const httpServer = http.createServer(async (req, res) => {
     // interno y SUMA simple, igual criterio que _dirAgg.conectados — no dedup
     // entre hosts (un jugador que entrara a dos price-tiers distintos el mismo
     // día contaría dos veces; caso raro, aceptable para un contador informativo).
+    // --- Avisos de sistema del admin (placa SYSTEM): solo los de los ultimos 10 min y mas nuevos que ?after ---
+    if (urlPath === '/api/sysmsg') {
+        const after = parseInt(query.get('after'), 10) || 0;
+        const now = Date.now();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ last: sysMsgSeq, msgs: sysMsgs.filter(m => m.id > after && now - m.ts < SYSMSG_VIDA_MS).map(m => ({ id: m.id, text: m.text, ms: m.ms })) }));
+        return;
+    }
     if (urlPath === '/api/publicstats') {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         if (PW_ROLE === 'director') {
@@ -4012,6 +4036,13 @@ wss.on('connection', (ws, req) => {
                 questsDirty = true;
                 logAdmin('-', 'Reseteó las quests de todos', cuantos + ' jugadores');
                 log(`ADMIN reseteó quests (${cuantos} jugadores)`);
+            } else if (msg.cmd === 'sysMsg') {
+                const m = sysMsgPush(msg.text, msg.secs);
+                if (m) {
+                    logAdmin('-', 'Aviso de sistema', m.text.slice(0, 60) + ' (' + (m.ms / 1000) + ' s)');
+                    log(`ADMIN envio aviso de sistema #${m.id} (${m.ms / 1000} s): ${m.text}`);
+                    try { ws.send(JSON.stringify({ t: 'sysMsgOk', id: m.id })); } catch (e) {}
+                }
             } else if (msg.cmd === 'resetStats') {
                 const scope = msg.scope || 'counters';
                 for (const k of Object.keys(roomStats)) { roomStats[k] = { entradas: 0, muertes: 0, entradasReal: 0, muertesReal: 0 }; }

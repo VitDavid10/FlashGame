@@ -140,6 +140,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
   box-shadow:0 0 0 .14em #000,inset 0 0 0 .12em #000,.15em .25em 0 .12em rgba(0,0,0,.55)}
 .ah-play span{font-size:1.3em;letter-spacing:.3em;margin-left:.3em;text-shadow:.1em .1em 0 var(--acL)}
 .ah-play:active{transform:translateY(.12em)}
+.ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:7;display:none;padding:.55em 1em .45em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
+.ah-sys.on{display:block}
+.ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
+.ah-sys span{display:block;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
 .ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.9);z-index:5}
 .ov.open{display:flex}
 .pnl{position:relative;box-sizing:border-box}
@@ -616,6 +620,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-it" data-a="store" style="top:13.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:18.4em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
+<div class="ah-sys" id="ahSys"><b>SYSTEM</b><span></span></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
@@ -981,7 +986,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             let r = null;
             try { r = tengo ? await paisPoner(puesta === code ? null : code) : await paisComprar(code, 'sp'); } catch (e) {}
             go.disabled = false;
-            if (r && r.ok === false) { try { showSystemMsg(r.error === 'not enough SP' ? 'You need ' + PAIS_PRECIO_SP + ' SP. Earn SP with quests or convert $PILLY in CONVERT.' : (r.error || 'Could not do it.'), 'STORE'); } catch (e) {} return; }
+            if (r && r.ok === false) {
+                if (r.error === 'not enough SP') { SysQ.push('You need ' + PAIS_PRECIO_SP + ' SP. Earn SP with quests or convert $PILLY in CONVERT.', 8000, 1); return; }
+                try { showSystemMsg(r.error || 'Could not do it.', 'STORE'); } catch (e) {} return;
+            }
             try { SoundManager.play('select'); } catch (e) {}
             try { renderMenuPill(); } catch (e) {}
             sv.classList.remove('open'); renderStore(); paintStatic();
@@ -1523,8 +1531,48 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         };
     }
 
+    // Placa SYSTEM: avisos del juego en cola, uno a la vez, cada uno el tiempo que se le da.
+    // prio 0 = importante (pasa delante), 1 = normal, 2 = consejo. Solo corre con el hub a la vista.
+    const SysQ = (() => {
+        const q = []; let cur = null, n = 0;
+        function next() {
+            if (cur || !q.length || !hub.classList.contains('on')) return;
+            q.sort((a, b) => a.prio - b.prio || a.n - b.n);
+            const e = $('#ahSys'); if (!e) return;
+            cur = q.shift();
+            e.querySelector('span').textContent = cur.text; e.classList.add('on');
+            setTimeout(() => { e.classList.remove('on'); cur = null; setTimeout(next, 400); }, cur.ms);
+        }
+        return { next, push(text, ms, prio) { if (!text) return; q.push({ text: String(text), ms: ms || 8000, prio: prio == null ? 1 : prio, n: n++ }); next(); } };
+    })();
+    window.PWSys = { push: SysQ.push };
+    // Avisos que escribe el admin: se piden al servidor mientras el menu esta abierto; el ultimo visto se recuerda.
+    let sysLast = 0; try { sysLast = parseInt(localStorage.getItem('pw_sys_seen'), 10) || 0; } catch (e) {}
+    async function sysPoll() {
+        try {
+            const j = await (await fetch('/api/sysmsg?after=' + sysLast, { cache: 'no-store' })).json();
+            if (!j || !Array.isArray(j.msgs)) return;
+            j.msgs.forEach(m => { if (m.id > sysLast) sysLast = m.id; SysQ.push(m.text, m.ms, 0); });
+            if (j.last > sysLast) sysLast = j.last;
+            try { localStorage.setItem('pw_sys_seen', String(sysLast)); } catch (e) {}
+        } catch (e) {}
+    }
+    setInterval(() => { if (hub.classList.contains('on')) sysPoll(); }, 20000);
+    // Una sola vez por sesion al entrar al menu: consejo del dia (una vez al dia) y premios sin cobrar.
+    let sysEntro = false;
+    function sysEntrada() {
+        sysPoll(); SysQ.next();
+        if (sysEntro) return; sysEntro = true;
+        setTimeout(() => {
+            try { const d = new Date().toISOString().slice(0, 10); if (localStorage.getItem('pw_sys_tip') !== d) { localStorage.setItem('pw_sys_tip', d); SysQ.push('Tip of the day: tap INFO under a skill in THE PILL to see what it does.', 6000, 2); } } catch (e) {}
+            const w = xWallet || (window.GameWallet && GameWallet.address);
+            if (w && window.PWSquad) { try { PWSquad.prizes(w, total => { if (total > 0) SysQ.push('You have ' + Math.floor(total).toLocaleString('en-US') + ' $PILLY waiting to be claimed.', 10000, 0); }); } catch (e) {} }
+        }, 2500);
+    }
+
     function show(m) {
         mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on');
+        sysEntrada();
         scale(); paintStatic(); pullRooms(); requestAnimationFrame(loop);
         try { if (window.PWSquad) PWSquad.boot(); } catch (e) {}   // amigos: invitaciones y susurros aunque el panel este cerrado
         try { aqRetry(); } catch (e) {}   // misiones hechas sin red o sin cuenta: se cobran al volver

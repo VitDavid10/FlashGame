@@ -724,6 +724,14 @@
                     <span style="color:#666; font-size: 12px;">Each player only receives what is near their pill. Cuts traffic ~5× and kills the maphack.</span>
                 </div>
             </div>
+            <h2 class="section">System message</h2>
+            <div class="usage" style="padding:18px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <input id="sysMsgText" maxlength="160" placeholder="Text players will see in the SYSTEM plate of the menu" style="flex:1;min-width:260px;background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:8px 10px">
+                <label style="font-weight:600">Seconds:</label>
+                <input id="sysMsgSecs" type="number" min="3" max="120" value="10" style="width:70px;background:#111;color:#fff;border:1px solid #333;border-radius:6px;padding:8px 10px">
+                <button class="b" onclick="enviarSysMsg()">Send</button>
+                <span style="color:#666;font-size:12px;width:100%">Shown once to every player in the menu, one message at a time (they queue). Between 3 and 120 seconds, 160 characters max. Kept in memory: a server restart clears it.</span>
+            </div>
             <!-- director: una fila de control POR HOST (override independiente) -->
             <div id="perfHosts" style="display:none"></div>
         </div>
@@ -807,6 +815,15 @@ function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(Object.
 function pedir() { send({ cmd: 'state' }); }
 let realOnly = false;
 function toggleRealOnly() { realOnly = !realOnly; document.getElementById('realOnlyToggle').classList.toggle('on', realOnly); }
+function enviarSysMsg() {
+    const t = (document.getElementById('sysMsgText').value || '').trim();
+    const secs = parseInt(document.getElementById('sysMsgSecs').value, 10) || 10;
+    if (!t) { toast('<strong>Write the message first</strong>', 'warn'); return; }
+    if (!confirm('Send this to EVERY player in the menu for ' + Math.max(3, Math.min(120, secs)) + ' s?\n\n' + t)) return;
+    send({ cmd: 'sysMsg', text: t, secs });
+    document.getElementById('sysMsgText').value = '';
+    toast('<strong>System message sent</strong>', 'ok');
+}
 function resetStats() { if (confirm('Reset entry/death counters and the connection log?\n(The player ranking is kept)')) { send({ cmd: 'resetStats', scope: 'counters' }); } }
 function resetStatsAll() { if (confirm('Reset EVERYTHING: counters + ranking + log?\nThis cannot be undone.')) { send({ cmd: 'resetStats', scope: 'all' }); } }
 // Refresco más rápido para que los cambios y el cronómetro se vean al instante
