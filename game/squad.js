@@ -454,7 +454,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
         if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc && !(m.cm && !m.cm.ready[m.me])) hideRc(); rivalsBanner(); render(); }
-        else if (m.t === 'sqGone') { S.party = null; S.err = m.reason === 'kicked' ? 'You were removed from the group.' : ''; render(); }
+        else if (m.t === 'sqGone') { S.party = null; S.err = ''; render(); }
         else if (m.t === 'sqErr') { if (S.joining) { S.joining = false; clearTimeout(S.joinT); } if (m.reason === 'slow_down') return; S.paying = false; S.err = (ERRS[m.reason] || 'Something went wrong.') + (m.reason === 'pay_failed' && m.detail ? ' (' + m.detail + ')' : ''); S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
         else if (m.t === 'sqMe') { S.prof = m.me; }
@@ -471,7 +471,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         else if (m.t === 'squadPrize') onPrize(m);
         else if (m.t === 'sqClaim') onClaim(m);
         else if (m.t === 'sqClaims') { const cb = S.onClaims; S.onClaims = null; if (cb) cb(m.total | 0, m.list || [], m.usd, m.hist || []); }
-        else if (m.t === 'sqReadyEnd') { hideRc(); toast({ text: esc(m.why || 'Search cancelled'), warm: true, ms: 6000 }); }
+        else if (m.t === 'sqReadyEnd') { hideRc(); if (m.why && m.why !== 'Cancelled') toast({ text: esc(m.why), warm: true, ms: 6000 }); }   // 'Cancelled' a secas no se avisa: la pantalla ya lo muestra
         else if (m.t === 'sqWhisper') onWhisper(m);
     }
 
