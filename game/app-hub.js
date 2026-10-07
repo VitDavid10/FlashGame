@@ -11,8 +11,8 @@
     const U = 360;                      // 1em = 16px con 360 de alto
     const MODES = { classic: '#00ffaa', arcade: '#ccff00' };
     const THEME = {
-        classic: { bg: '#00130c', line: '#0b3326', top: 'rgba(0,10,6,.9)', inner: '#0f2c22', inner2: '#06120d', edge: '#1d4a3b', shade: '2,8,5', mut: '#8fbfae' },
-        arcade: { bg: '#0d1200', line: '#28330a', top: 'rgba(8,10,0,.9)', inner: '#232a08', inner2: '#0d1003', edge: '#3d4a14', shade: '7,9,0', mut: '#b7c28a' },
+        classic: { bg: '#00130c', line: '#0b3326', top: 'rgba(0,10,6,.9)', inner: '#0f2c22', inner2: '#06120d', edge: '#1d4a3b', shade: '2,8,5', mut: '#8fbfae', bar: '#255f4c', p1: '#0a1a13', p2: '#04100b' },
+        arcade: { bg: '#0d1200', line: '#28330a', top: 'rgba(8,10,0,.9)', inner: '#232a08', inner2: '#0d1003', edge: '#3d4a14', shade: '7,9,0', mut: '#b7c28a', bar: '#4d5f17', p1: '#0b0e01', p2: '#050700' },
     };
     const PRICES = ['Free', '2$', '5$', '10$', '20$'];
     const SWATCH = ['#ffffff', '#c8ccd2', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'];
@@ -107,11 +107,14 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sp{display:flex;align-items:center;gap:.5em;margin-right:.5em;font-size:.62em;letter-spacing:.06em;text-shadow:.15em .15em 0 #000}
 .ah-sp .u{color:var(--ac)}
 .ah-sp[hidden]{display:none}
-.ah-it{position:absolute;left:3.6em;display:flex;align-items:center;gap:.9em;cursor:pointer}
+.ah-it{position:absolute;left:3.6em;z-index:0;display:flex;align-items:center;gap:.9em;cursor:pointer}
+.ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:19.4em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
+.ah-it .med{box-shadow:inset 0 0 0 .12em #000}
 .ah-it .t{font-size:.78em;letter-spacing:.06em;text-shadow:.16em .16em 0 #000}
 .ah-it .s{font-size:.44em;color:var(--mut);margin-top:.9em;display:flex;align-items:center;gap:.5em;text-shadow:.16em .16em 0 #000}
-.ah-it .s img{width:2.6em;height:2.6em;image-rendering:pixelated;background:var(--in2);box-shadow:0 0 0 .25em var(--edge)}
+.ah-it .s img{width:3.1em;height:3.1em;image-rendering:pixelated;background:var(--in2);box-shadow:0 0 0 .25em var(--edge)}
 .ah-it .s img[src=""]{display:none}
+#ahPillSub{gap:1.15em;margin-left:.3em}
 .ah-it .bar{width:8.5em;height:.4em;background:#000;margin-top:.55em;outline:.12em solid var(--edge)}
 .ah-it .bar i{display:block;height:100%;background:var(--ac)}
 .ah-it:active .t{color:var(--ac)}
@@ -665,7 +668,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         hub.style.setProperty('--acD', shade(ac, -0.45));
         document.body.style.setProperty('--hub-ac', ac);
         const th = THEME[mode];
-        [['--bg', th.bg], ['--top', th.top], ['--in1', th.inner], ['--in2', th.inner2], ['--edge', th.edge], ['--sh', th.shade], ['--mut', th.mut]].forEach(([k, v]) => hub.style.setProperty(k, v));
+        [['--bg', th.bg], ['--top', th.top], ['--in1', th.inner], ['--in2', th.inner2], ['--edge', th.edge], ['--sh', th.shade], ['--mut', th.mut], ['--bar', th.bar], ['--p1', th.p1], ['--p2', th.p2]].forEach(([k, v]) => hub.style.setProperty(k, v));
         const word = mode === 'classic' ? 'CLASSIC' : 'ARCADE';
         $('#ahRooms .mw').src = 'img/mode-title/' + word + '-word.png';
         drawPill($('#ahPillIco'), 64, 0.78);

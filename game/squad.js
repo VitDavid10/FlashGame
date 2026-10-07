@@ -135,72 +135,93 @@
 .sq.find .sq-bot{margin-bottom:0}
 .sq-err:empty{display:none}
 /* FIN DE PARTIDA (diseno C): fondo oscuro, banda en diagonal, VICTORY verde / DEFEAT rojo */
-#sqEnd{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;font-family:'Press Start 2P',monospace;color:#fff;overflow:hidden;
-  background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em),#2a0d14;--ec:#ff4d6d}
-#sqEnd.win{background-color:#0b2416;--ec:#00ff88}
-#sqEnd.draw{background-color:#241f0b;--ec:#ffd23a}
-#sqEnd.n3 .rw{margin-bottom:.95em}#sqEnd.n3 .rw .ph .sq-pic{width:2em;height:2em}#sqEnd.n3 .h{margin:.4em 0 1em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.45em}#sqEnd.n3 .rw .nm{font-size:.85em}
-#sqEnd:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 0.2em,transparent 0.2em 4em)}
+#sqEnd{--bgc:#090b00;--grid:rgba(60,75,8,.55);--acc:#ccff00;--acL:#e6ff80;--acD:#708c00;--p1:#0b0e01;--p2:#050700;--mb1:#5d6e2a;--mb2:#232d08;
+  --ec:#ff4d6d;--ecd:#661f2c;--t1:#2e0d1a;--t2:#1b0711;--pc:#ff4d6d;
+  font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;z-index:300;pointer-events:auto;display:none;font-family:'Press Start 2P',monospace;color:#fff;overflow:hidden;
+  background-color:var(--bgc);background-image:linear-gradient(var(--grid) .083em,transparent .083em),linear-gradient(90deg,var(--grid) .083em,transparent .083em);background-size:2.667em 2.667em;background-position:.583em 1.25em}
+body[data-modo="classic"] #sqEnd{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00ffaa;--acL:#80ffd5;--acD:#008c5e;--p1:#0a1a13;--p2:#04100b;--mb1:#2c6a55;--mb2:#0f2a20}   /* el fondo sigue al modo desde el que se entro */
+#sqEnd.win{--ec:#00ff88;--ecd:#00663a;--t1:#0a2e1e;--t2:#061c13;--pc:#ffd23a}
+#sqEnd.draw{--ec:#ffd23a;--ecd:#66540f;--t1:#2e280a;--t2:#1c1706;--pc:#ffd23a}
 #sqEnd.show{display:block;animation:seFade .3s ease both}
 @keyframes seFade{from{opacity:0}to{opacity:1}}
 #sqEnd canvas.fx{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none;z-index:0}
 #sqEnd .band{z-index:1}#sqEnd .bts{z-index:2}
-#sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;background:#0b0f05;transform:rotate(-4deg);border-top:0.7em solid var(--ec);border-bottom:0.7em solid var(--ec)}
-#sqEnd .t{position:absolute;left:0;right:0;top:-36%;text-align:center;font-size:5.6em;color:var(--ec);-webkit-text-stroke:.07em #0b0f05;paint-order:stroke fill;text-shadow:.125em .125em 0 #0b0f05;animation:seT .5s cubic-bezier(.2,1.4,.3,1) both}
-#sqEnd .cols{position:absolute;inset:5% 8% 6% 9%;display:flex;gap:4%;align-items:flex-start}
-#sqEnd .tms{flex:1.25;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:space-evenly}
-#sqEnd .h{font-size:0.9em;margin:0.6em 0 0.8em}#sqEnd .h.me{color:#3fa0ff}#sqEnd .h.foe{color:#ff6a5a}
-#sqEnd .rw{display:flex;align-items:center;gap:1.2em;margin-bottom:.55em}
-#sqEnd .rw.dead{opacity:.55}
-#sqEnd .rw .ph .sq-pic{width:3.5em;height:3.5em;border-radius:0;box-shadow:0 0 0 0.3em #3fa0ff,0.3em 0.3em 0 0.3em #000}
-#sqEnd .rw .ph.foe .sq-pic{box-shadow:0 0 0 0.3em #ff6a5a,0.3em 0.3em 0 0.3em #000}
+#sqEnd .band{position:absolute;left:-4%;right:-4%;top:27%;height:58%;transform:rotate(-4deg);border-top:0.7em solid transparent;border-bottom:0.7em solid transparent;background:linear-gradient(var(--ec),var(--ec)) top/100% .22em no-repeat,linear-gradient(var(--ec),var(--ec)) bottom/100% .22em no-repeat,linear-gradient(180deg,var(--t1),var(--t2));background-origin:border-box;background-clip:border-box;box-shadow:0 .3em 0 rgba(0,0,0,.6)}
+#sqEnd .t{position:absolute;left:0;right:0;top:-36%;text-align:center;font-size:5.6em;color:var(--ec);text-shadow:.07em .07em 0 var(--ecd);animation:seT .5s cubic-bezier(.2,1.4,.3,1) both}   /* 3D: sombra del mismo color en tono oscuro, sin contorno ni recuadro */
+#sqEnd .cols{position:absolute;inset:2% 8% 3% 9%;display:flex;gap:4%;align-items:flex-start}
+#sqEnd .tms{flex:1.25;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:space-between}
+#sqEnd:not(.n2):not(.n3) .tms{justify-content:center;gap:3em}
+#sqEnd .tms>div{position:relative;padding-top:2.7em}
+#sqEnd.n2 .tms>div,#sqEnd.n3 .tms>div{padding-top:2.5em}
+/* YOUR TEAM / RIVALS: pestaña de color por encima de la primera barra */
+#sqEnd .h{position:absolute;left:4.6em;top:.15em;margin:0;display:inline-block;font-size:.72em;letter-spacing:.12em;color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000;z-index:2}
+#sqEnd .h.me{background:#1d9bf0}#sqEnd .h.foe{background:#ff4d6d}
+/* cada jugador = barra del menu con la foto saliendo por la izquierda; todos iluminados */
+#sqEnd .rw{position:relative;display:flex;align-items:center;gap:1.2em;margin-bottom:1.15em}
+#sqEnd .tms>div .rw:last-child{margin-bottom:0}
+#sqEnd .rw.me{--tc:#1d9bf0}#sqEnd .rw.foe{--tc:#ff4d6d}
+#sqEnd .rw:before{content:"";position:absolute;left:1.5em;right:-.5em;top:50%;height:calc(100% + .7em);transform:translateY(-50%);background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--tc);box-shadow:.2em .3em 0 rgba(0,0,0,.6);z-index:0}
+#sqEnd .rw>*{position:relative;z-index:1}
+#sqEnd .rw .ph .sq-pic{width:3.5em;height:3.5em;border-radius:0;box-shadow:0 0 0 .3em var(--tc),.3em .3em 0 .3em #000}
 #sqEnd .rw .nm{width:34%;font-size:1em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #sqEnd .rw .k{font-family:'VT323',monospace;font-size:1.9em;color:#ffce3d;width:22%;white-space:nowrap}
 #sqEnd .rw .pk{font-family:'VT323',monospace;font-size:1.9em;color:#e8e8e8;white-space:nowrap}
-#sqEnd .prz{flex:1;text-align:center;padding-top:5%}
-#sqEnd .pt{font-size:1.1em;margin-bottom:1.4em}
-#sqEnd .pd{font-family:'VT323',monospace;font-size:2.2em;line-height:1.15;color:#e8e8e8}#sqEnd .pd b{font-weight:400;color:#ffce3d}
-#sqEnd .bts{position:absolute;left:0;right:0;bottom:4%;display:flex;justify-content:center;gap:1.6em}
-#sqEnd .bts button{font-family:'Press Start 2P',monospace;font-size:1.4em;padding:0 2em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border:0.3em solid #0b0f05;background:#ccff00;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}   /* el estilo de siempre; solo se iguala la altura de los dos */
-#sqEnd .rw .pk.bot{text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:.12em;color:#ff8a9a}
-#sqEnd .bts button.o{background:#0b0f05;color:#e8e8e8;border-color:#e8e8e8;border-width:.18em}
-#sqEnd .bts button{box-sizing:border-box}
-#sqEnd .prz .pt.gold{color:#ffd23a}#sqEnd .prz .pa{font-family:'VT323',monospace;font-size:3.4em;color:#ffd23a;line-height:1}
-#sqEnd .prz .pu{font-family:'VT323',monospace;font-size:2em;color:#e8e8e8;margin:.2em 0 .9em}
-#sqEnd .prz .cl{font-family:'Press Start 2P',monospace;font-size:1.1em;padding:0 1.6em;height:2.8em;border:0.3em solid #0b0f05;background:#ffd23a;color:#0b0f05;box-shadow:0.4em 0.4em 0 rgba(0,0,0,.45);cursor:pointer}
-#sqEnd .prz .cl:disabled{background:#2c3630;color:#9fb0a6;cursor:default}
-#sqEnd .prz .clr{display:flex;align-items:center;justify-content:center;gap:1em}
-#sqEnd .prz .pl{font-family:'VT323',monospace;font-size:1.5em;line-height:1;color:#9fb0a6;text-align:left}
+#sqEnd .rw .pk.bot{color:#ff3b3b}   /* comido por un bot: en rojo (ya con el 10 % de casa descontado) */
+#sqEnd.n2 .rw .ph .sq-pic{width:3em;height:3em}
+#sqEnd.n2 .rw{margin-bottom:.95em}#sqEnd.n2 .rw:before{height:calc(100% + .45em)}
+#sqEnd.n3 .rw{margin-bottom:.85em}#sqEnd.n3 .rw:before{height:calc(100% + .35em)}
+#sqEnd.n3 .rw .ph .sq-pic{width:2em;height:2em}#sqEnd.n3 .rw .k,#sqEnd.n3 .rw .pk{font-size:1.45em}#sqEnd.n3 .rw .nm{font-size:.85em}
+/* premio / perdido / gratis: barra de una linea centrada en su zona; CLAIM cuelga debajo sin mover la barra */
+#sqEnd .prz{position:relative;flex:1;align-self:stretch;display:flex;align-items:center;justify-content:center}
+#sqEnd .pw{position:relative}
+#sqEnd .pbar{position:relative;display:inline-flex;align-items:center;justify-content:center;height:3.9em;padding:0 1.7em;white-space:nowrap;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--pc);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
+#sqEnd.n3 .pbar{height:3.5em}
+#sqEnd .pbar:before{content:attr(data-t);position:absolute;left:1em;top:0;transform:translateY(-62%);font-size:.72em;letter-spacing:.12em;background:var(--pc);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
+#sqEnd .pbar .line{display:block;line-height:1}
+#sqEnd .pbar .pa{display:inline;font-family:'VT323',monospace;font-weight:400;font-size:2.1em;line-height:1;color:#ffd23a}
+#sqEnd .pbar .pu{display:inline;margin-left:.7em;font-family:'VT323',monospace;font-size:1.7em;line-height:1;color:#e8e8e8}
+#sqEnd .pbar .pf{font-family:'VT323',monospace;font-size:1.55em;line-height:1;color:#e8e8e8}#sqEnd .pbar .pf b{font-weight:400;color:#ffd23a}
+#sqEnd .pw .clr{position:absolute;left:50%;top:calc(100% + 1.1em);transform:translateX(-50%);display:flex;align-items:center;gap:1em;white-space:nowrap}
+#sqEnd .prz .cl{font-family:'Press Start 2P',monospace;font-size:1.1em;padding:0 1.6em;height:2.8em;border-radius:1.3em;border:.18em solid;border-color:#ffe98a #9a7a10 #9a7a10 #ffe98a;background:#ffd23a;color:#0b0f05;box-shadow:0 0 0 .12em #000,.12em .2em 0 .1em rgba(0,0,0,.55);cursor:pointer}
+#sqEnd .prz .cl:disabled{background:#2c3630;color:#9fb0a6;border-color:#4a554e #1c231f #1c231f #4a554e;cursor:default}
+#sqEnd .prz .pl{font-family:'Press Start 2P',monospace;font-size:1em;line-height:1.1;color:#fff;text-align:left}
+/* botones como el PLAY del menu, abajo a la derecha (no cruzan el borde de la franja) */
+#sqEnd .bts{position:absolute;left:0;right:2.2%;bottom:3%;display:flex;justify-content:flex-end;gap:1.6em}
+#sqEnd .bts button{box-sizing:border-box;font-family:'Press Start 2P',monospace;font-size:1.4em;padding:0 2em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border-radius:1.7em;background:var(--acc);color:#04150c;border:.2em solid;border-color:var(--acL) var(--acD) var(--acD) var(--acL);box-shadow:0 0 0 .14em #000,inset 0 0 0 .12em #000,.15em .25em 0 .12em rgba(0,0,0,.55);cursor:pointer}
+#sqEnd .bts button.o{background:linear-gradient(180deg,var(--p1),var(--p2));color:#e8e8e8;border-color:var(--mb1) var(--mb2) var(--mb2) var(--mb1)}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
-.ci{font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
-  background:repeating-linear-gradient(0deg,rgba(11,15,5,.12) 0 0.2em,transparent 0.2em 4em),#ccff00;animation:ciIn .3s both}
-.ci:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(11,15,5,.12) 0 0.2em,transparent 0.2em 4em)}
-.ci .bd{position:absolute;left:-6%;right:-6%;height:36%;background:#0b0f05;transform:rotate(-4deg)}
-.ci .bd.ba{top:13%;border-top:0.6em solid #1d9bf0;animation:ciL .5s .15s cubic-bezier(.2,.9,.3,1) both}
-.ci .bd.bb{top:55%;border-top:0.6em solid #ff4d6d;animation:ciR .5s 1.45s cubic-bezier(.2,.9,.3,1) both}
-.ci .row{position:absolute;left:12%;top:8%;display:flex;justify-content:center;gap:5%;width:44.8%}   /* 3 fotos llenan el hueco; 1 o 2 quedan centradas en el */
-.ci .ti{display:flex;flex-direction:column;align-items:center;gap:0.8em;width:30%;flex:none;animation:ciPop .35s cubic-bezier(.2,1.4,.3,1) both}
-.ci .ti .sq-pic{width:11em;height:11em;border-radius:0}
+.ci{--bgc:#090b00;--grid:rgba(60,75,8,.55);--acc:#ccff00;--edge:#3d4a14;--p1:#0b0e01;--p2:#050700;
+  font-size:min(1.25vmax,2.7vmin);position:absolute;inset:0;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;
+  background-color:var(--bgc);background-image:linear-gradient(var(--grid) .083em,transparent .083em),linear-gradient(90deg,var(--grid) .083em,transparent .083em);background-size:2.667em 2.667em;background-position:.583em 1.25em;animation:ciIn .3s both}
+body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00ffaa;--edge:#1d4a3b;--p1:#0a1a13;--p2:#04100b}   /* el fondo sigue al modo desde el que se entro (arenas es el mismo juego) */
+.ci:before{display:none}
+.ci .bd{position:absolute;left:-6%;right:-6%;height:calc(36% + .16em);box-sizing:content-box;background:#0b0f05;transform:rotate(-4deg);box-shadow:0 .3em 0 rgba(0,0,0,.6)}
+.ci .bd.ba{top:calc(13% - 1.667em);background:linear-gradient(180deg,#0c2438,#071827);border-top:.22em solid #1d9bf0;border-bottom:.22em solid #1d9bf0;animation:ciL .5s .15s cubic-bezier(.2,.9,.3,1) both}
+.ci .bd.bb{top:calc(55% - 1.667em);background:linear-gradient(180deg,#2e0d1a,#1b0711);border-top:.22em solid #ff4d6d;border-bottom:.22em solid #ff4d6d;animation:ciR .5s 1.45s cubic-bezier(.2,.9,.3,1) both}
+.ci .row{position:absolute;left:8%;top:-.79em;display:flex;justify-content:center;gap:5%;width:44.8%}   /* 3 fotos llenan el hueco; 1 o 2 quedan centradas en el; la foto sobresale por arriba de la franja */
+.ci .ti{position:relative;display:flex;flex-direction:column;align-items:center;gap:0.8em;width:30%;flex:none;animation:ciPop .35s cubic-bezier(.2,1.4,.3,1) both}
+.ci .ti .sq-pic{width:10.5em;height:10.5em;border-radius:0}
 .ci .ti.me .sq-pic{box-shadow:0 0 0 0.5em #1d9bf0,0.6em 0.6em 0 0.5em #000,0 0 2.2em rgba(29,155,240,.5)}
 .ci .ti.foe .sq-pic{box-shadow:0 0 0 0.5em #ff4d6d,0.6em 0.6em 0 0.5em #000,0 0 2.2em rgba(255,77,109,.5)}
-.ci .ti .nm{font-size:0.9em;text-shadow:0.2em 0.2em 0 #000;max-width:120%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci .ti.me{--c:#1d9bf0}.ci .ti.foe{--c:#ff4d6d}
+.ci .ti .nm{position:absolute;left:50%;top:calc(100% + 1.76em);transform:translateX(-50%);z-index:2;font-size:.71em;max-width:190%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--c);padding:.5em .8em .45em;box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
 .ci .pl4{position:absolute;right:12%;top:30%;display:flex;gap:1.6em}
 .ci .pl4 i{display:block;width:1.6em;height:3.2em;border-radius:0.9em;transform:rotate(-45deg);box-shadow:0 0 0 0.2em #000}
 .ci .pl4.pa i{background:linear-gradient(#e8f6ff 50%,#1d9bf0 50%)}.ci .pl4.pb i{background:linear-gradient(#fff 50%,#ff4d6d 50%)}
-.ci .vs{position:absolute;left:58%;top:40%;font-size:7.8em;color:#fff;-webkit-text-stroke:.064em #0b0f05;paint-order:stroke fill;text-shadow:.1em .1em 0 #0b0f05;transform:rotate(-4deg);animation:ciVs .45s 1.05s cubic-bezier(.2,1.6,.3,1) both;z-index:2}
-.ci .tt{position:absolute;right:20%;top:3%;font-size:1.3em;color:#0b0f05;display:flex;align-items:center;gap:.8em}
+.ci .vs{position:absolute;left:58%;top:calc(40% - .214em);font-size:7.8em;color:#fff;-webkit-text-stroke:.064em #0b0f05;paint-order:stroke fill;text-shadow:.1em .1em 0 #0b0f05;transform:rotate(-4deg);animation:ciVs .45s 1.05s cubic-bezier(.2,1.6,.3,1) both;z-index:2}
+.ci .tt{position:absolute;left:2.5%;top:1.29em;font-size:1.15em;color:#fff;text-shadow:.16em .16em 0 #000;display:flex;align-items:center;gap:.8em}
 .ci .pz{display:inline-flex;align-items:center;gap:.4em;background:#0b0f05;color:#ffd23a;padding:.35em .6em;font-size:.8em}
 .ci .pz.free{color:#00ff88}
 .ci .stk{position:absolute;left:61%;width:33%;height:33%;display:flex;align-items:center;justify-content:center;text-align:center;z-index:3;opacity:0;transform:rotate(-4deg) scale(.5);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.3,1)}
 .ci .stk.on{opacity:1;transform:rotate(-4deg) scale(1)}   /* lo enciende un temporizador (intro): con retardo de CSS, en el movil la de abajo no llegaba a salir */
-.ci .stk.sk-me{top:7%}.ci .stk.sk-foe{top:49%}   /* ojo: nada de clases sueltas 'a'/'b' aqui, #sqEntry oculta cualquier .b en la VS */
-.ci .stk .in{display:flex;flex-direction:column;align-items:center;gap:1.5em;max-width:100%}
+.ci .stk.sk-me{top:calc(7% - 1.667em);--c:#1d9bf0}.ci .stk.sk-foe{top:calc(58% - 1.667em);--c:#ff4d6d}   /* ojo: nada de clases sueltas 'a'/'b' aqui, #sqEntry oculta cualquier .b en la VS */
+.ci .stk .in{position:relative;display:flex;flex-direction:column;align-items:center;padding:1.55em 1.5em .95em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.16em solid var(--c);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
 .ci.stk3 .pl4{display:none}
-.ci .stk .sl{font-size:.75em;letter-spacing:.12em}.ci .stk.sk-me .sl{color:#1d9bf0}.ci .stk.sk-foe .sl{color:#ff4d6d}
+.ci .stk .sl{position:absolute;left:1em;top:0;transform:translateY(-62%);font-size:.7em;letter-spacing:.12em;background:var(--c);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
 .ci .stk .sv{font-size:1.9em;color:#ffd23a;text-shadow:.12em .12em 0 #000;white-space:nowrap;line-height:1}
 .ci .stk.sm .sv{font-size:1.45em}
-.ci .stk .sv .ap{font-family:'VT323',monospace;font-size:1.5em;line-height:0;vertical-align:-.08em}
+.ci .stk .sv .ap{font-family:'VT323',monospace;font-size:1.5em;line-height:0;vertical-align:-.08em;color:#fff}
 .ci .stk.free .sv{color:#00ff88;font-size:2.4em}
 .ci .pl4 canvas.px{display:block;height:4.2em;image-rendering:pixelated;background:none;box-shadow:none;border:0}
 @keyframes ciIn{from{opacity:0}to{opacity:1}}
@@ -653,18 +674,39 @@
         const W = cv.width = Math.round(el.clientWidth / 2), H = cv.height = Math.round(el.clientHeight / 2);
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#ff5fd2'];
-        const n = tipo === 'win' ? 30 : tipo === 'lose' ? 34 : 10, pills = [];
+        const n = tipo === 'win' ? 64 : tipo === 'lose' ? 70 : 10, pills = [];
+        // Zona sin pildoras alrededor de VICTORY / DEFEAT: la caja del texto a su tamaño final (la animacion de entrada lo escala) mas un margen,
+        // y fuera de ella la densidad sube poco a poco hasta la normal para que el corte no sea brusco.
+        const tt = el.querySelector('.t'), an = tt ? tt.style.animation : '';
+        if (tt) tt.style.animation = 'none';
+        let tb = { left: 0, right: 0, top: 0, bottom: 0 };
+        if (tt) { const rg = document.createRange(); rg.selectNodeContents(tt); tb = rg.getBoundingClientRect(); tt.style.animation = an; }
+        const er = el.getBoundingClientRect(), kx = W / (er.width || 1), ky = H / (er.height || 1), M = 14;
+        const zx0 = (tb.left - er.left - M) * kx, zx1 = (tb.right - er.left + M) * kx, zy0 = (tb.top - er.top - M) * ky, zy1 = (tb.bottom - er.top + M) * ky;
+        const RAMP = 260 * kx;   // a esta distancia del titulo la densidad ya es la normal
+        const enZona = (x, y) => x > zx0 && x < zx1 && y > zy0 && y < zy1;
+        const dist = (x, y) => Math.hypot(Math.max(zx0 - x, 0, x - zx1), Math.max(zy0 - y, 0, y - zy1));
+        // la franja oscura tapa el lienzo: 3 de cada 4 se colocan fuera de ella para que se vean
+        const enBanda = (x, y) => { const X = x / kx, Y = y / ky, top = er.height * .27 + (er.width / 2 - X) * 0.0699; return Y > top - 8 && Y < top + er.height * .62; };
+        const lugar = i => {
+            for (let t = 0; t < 400; t++) {
+                const x = Math.random() * W, y = Math.random() * H;
+                if (enZona(x, y) || Math.random() > Math.min(1, dist(x, y) / RAMP) || (enBanda(x, y) && i % 4)) continue;
+                return [x, y];
+            }
+            return [Math.random() * W, H * .92];
+        };
         for (let i = 0; i < n; i++) {
-            const top = tipo === 'win' ? '#ffffff' : tipo === 'draw' ? '#fff3c4' : '#5a5a5a';
-            const bot = tipo === 'win' ? COL[i % COL.length] : tipo === 'draw' ? '#ffd23a' : '#2a2a2a';
+            const top = tipo === 'win' ? '#ffffff' : tipo === 'draw' ? '#fff3c4' : '#f4f4f4';
+            const bot = tipo === 'win' ? COL[i % COL.length] : tipo === 'draw' ? '#ffd23a' : '#3a3a3a';
             const o = spr(6, top, bot, -Math.PI / 4, true), q = { c: o.cv || o, ph: Math.random() * 6.28 };
             if (tipo === 'win') {
-                // VICTORIA: confeti. Salen disparadas desde el titulo en todas direcciones, frenan y caen
+                // VICTORIA: confeti repartido por los lados; frena y cae
                 const a = Math.random() * 6.28, v = 60 + Math.random() * 160;
-                q.x = W / 2 + (Math.random() - .5) * W * .3; q.y = H * 0.16; q.vx = Math.cos(a) * v; q.vy = Math.sin(a) * v - 60; q.dl = Math.random() * 400;
+                [q.x, q.y] = lugar(i); q.vx = Math.cos(a) * v; q.vy = Math.sin(a) * v - 60; q.dl = Math.random() * 400;
             } else if (tipo === 'lose') {
-                // DERROTA: caen despacio por toda la pantalla
-                q.x = Math.random() * W; q.y = Math.random() * H; q.vy = 4 + Math.random() * 6;
+                // DERROTA: caen despacio por toda la pantalla (menos por el titulo)
+                [q.x, q.y] = lugar(i); q.vy = 4 + Math.random() * 6;
             } else { q.x = 8 + (Math.random() < .5 ? Math.random() * .22 : .78 + Math.random() * .22) * (W - 16); q.y = 6 + Math.random() * H * 0.2; }
             pills.push(q);
         }
@@ -686,6 +728,7 @@
                 }
                 else if (tipo === 'lose') { q.y += q.vy * dt; if (q.y > H + 10) { q.y = -10; q.x = Math.random() * W; } x = q.x + Math.sin(t / 900 + q.ph) * 2; y = q.y; }
                 else { x = q.x; y = q.y + Math.sin(t / 700 + q.ph) * 2; }
+                if (tipo !== 'draw' && enZona(x, y)) continue;   // nunca se pinta una pildora sobre el titulo
                 g.drawImage(q.c, Math.round(x - q.c.width / 2), Math.round(y - q.c.height / 2));
             }
             S.fxRaf = requestAnimationFrame(paso);
@@ -741,16 +784,20 @@
         connect(() => send(Object.assign({ a: 'claim', id: pz.id }, sig)));
     }
     function pintaPremio(el) {
-        const box = el.querySelector('.prz'), e = S.endMoney;
-        if (!e) { box.innerHTML = '<div class="pt">FREE MATCH</div><div class="pd">Next time play a <b>paid match</b><br>and win their <b>$PILLY</b>.</div>'; return; }
-        const mo = e.money, potTxt = '<div class="pd">POT <b>' + fmtPill(mo.pot) + '</b>' + (mo.usdPot != null ? '<br>≈ ' + fmtUsd(mo.usdPot) : '') + '</div>';
-        if (mo.draw) { box.innerHTML = '<div class="pt">DRAW</div><div class="pd">Your entry is back<br>in your <b>balance</b>.</div>'; return; }
-        if (!e.win) { box.innerHTML = '<div class="pt">POT LOST</div>' + potTxt; return; }
+        // Barra de una linea con pestaña (YOUR PRIZE / TEAM PRIZE, YOU LOST / TEAM LOST, FREE MATCH, DRAW); CLAIM cuelga debajo.
+        const box = el.querySelector('.prz'), e = S.endMoney, team = !!(e && e.team), nT = (e && e.nTeam) || 1;
+        const barra = (tab, inner, extra) => '<div class="pw"><div class="pbar" data-t="' + tab + '">' + inner + '</div>' + (extra || '') + '</div>';
+        const linea = (amt, usd) => '<span class="line"><b class="pa">' + fmtPill(amt) + '</b>' + (usd != null ? '<span class="pu">≈ ' + fmtUsd(usd) + '</span>' : '') + '</span>';
+        if (!e) { box.innerHTML = barra('FREE MATCH', '<span class="pf">Next time play a <b>paid match</b> and win their <b>$PILLY</b>.</span>'); return; }
+        const mo = e.money;
+        if (mo.draw) { box.innerHTML = barra('DRAW', '<span class="pf">Your entry is back in your <b>balance</b>.</span>'); return; }
+        if (!e.win) { box.innerHTML = barra(team ? 'TEAM LOST' : 'YOU LOST', linea(mo.pot, mo.usdPot)); return; }
+        const tab = team ? 'TEAM PRIZE' : 'YOUR PRIZE', k = team ? nT : 1;   // en equipo se enseña lo que gana el equipo entero; CLAIM cobra tu parte
         const pz = S.prize;
-        if (!pz) { box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(mo.share) + '</div><div class="pu">' + (mo.usdShare != null ? '≈ ' + fmtUsd(mo.usdShare) : '') + '</div>'; return; }
-        box.innerHTML = '<div class="pt gold">YOUR PRIZE</div><div class="pa">' + fmtPill(pz.amount) + '</div><div class="pu">' + (pz.usd != null ? '≈ ' + fmtUsd(pz.usd) : '') + '</div>' +
+        if (!pz) { box.innerHTML = barra(tab, linea(mo.share * k, mo.usdShare != null ? mo.usdShare * k : null)); return; }
+        box.innerHTML = barra(tab, linea(pz.amount * k, pz.usd != null ? pz.usd * k : null),
             '<div class="clr"><button class="cl"' + (pz.claimed || S.claiming ? ' disabled' : '') + '>' + (pz.claimed ? 'CLAIMED' : S.claiming ? 'SIGNING...' : 'CLAIM') + '</button>' +
-            (pz.claimed ? '' : '<span class="pl">OR LATER<br>IN PROFILE</span>') + '</div>';
+            (pz.claimed ? '' : '<span class="pl">OR LATER<br>IN PROFILE</span>') + '</div>');
         const b = box.querySelector('.cl'); if (b) b.onclick = () => { snd('simpleselect'); claimPrize(); };
     }
     function mostrarFin(m) {
@@ -769,14 +816,16 @@
             };
         }
         const mine = S.roster ? S.roster.me : 'A', other = mine === 'A' ? 'B' : 'A', win = m.winner === mine;
-        const n3 = Math.max(((m.players || {}).A || []).length, ((m.players || {}).B || []).length) >= 3;
-        el.className = (!m.winner ? 'draw' : win ? 'win' : 'lose') + (n3 ? ' n3' : '');   // n3: 3v3, filas mas bajas para que quepan
+        const nMax = Math.max(((m.players || {}).A || []).length, ((m.players || {}).B || []).length), n3 = nMax >= 3, n2 = nMax === 2;
+        el.className = (!m.winner ? 'draw' : win ? 'win' : 'lose') + (n3 ? ' n3' : n2 ? ' n2' : '');   // n3/n2: filas mas bajas para que quepan
         el.querySelector('.t').textContent = !m.winner ? 'DRAW' : win ? 'VICTORY!' : 'DEFEAT';
-        const row = (p, cls) => '<div class="rw' + (p.alive ? '' : ' dead') + '"><span class="ph ' + cls + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '</span><span class="nm">' + esc(p.name) + '</span>' +
-            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + (m.money && p.stake ? fmtPill(p.stake) : p.peak.toLocaleString('en-US') + ' PEAK') + '</span></div>';   // comido por un bot: tachado en rojo
+        const BOT_FEE = 0.10;   // el mismo 10 % de casa que server/arena-pay.js: al comido por un bot se le cobra eso de su entrada
+        const mostrado = p => p.byBot ? p.stake - Math.floor(p.stake * BOT_FEE) : p.stake;
+        const row = (p, cls) => '<div class="rw ' + cls + '"><span class="ph ' + cls + '">' + pic({ p: p.pic, av: p.av, n: p.name }) + '</span><span class="nm">' + esc(p.name) + '</span>' +
+            '<span class="k">' + p.kills + ' KILL' + (p.kills === 1 ? '' : 'S') + '</span><span class="pk' + (p.byBot ? ' bot' : '') + '">' + (m.money && p.stake ? fmtPill(mostrado(p)) : p.peak.toLocaleString('en-US') + ' PEAK') + '</span></div>';   // comido por un bot: tachado en rojo
         const list = (t, cls) => ((m.players && m.players[t]) || []).map(p => row(p, cls)).join('');
         el.querySelector('.tms').innerHTML = '<div><div class="h me">YOUR TEAM</div>' + list(mine, 'me') + '</div><div><div class="h foe">RIVALS</div>' + list(other, 'foe') + '</div>';
-        S.endMoney = m.money ? { win, money: m.money } : null;
+        S.endMoney = m.money ? { win, money: m.money, nTeam: ((m.players || {})[mine] || []).length, team: ((m.players || {})[mine] || []).length > 1 } : null;
         pintaPremio(el);
         hydrate(el);
         // El sonido sale cuando la pantalla (la cuadricula roja/verde) ya se esta pintando: al empezar su fundido.

@@ -15618,9 +15618,10 @@
                 '#sqEntry.rj .rjt{display:block;font-family:\'Press Start 2P\',monospace;font-size:clamp(14px,3.2vw,26px);color:#0b0f05;background:#0b0f05;color:#ccff00;padding:.6em 1em;transform:rotate(-4deg);box-shadow:.25em .25em 0 rgba(0,0,0,.35)}' +
                 '#sqEntry.prac{background:transparent;pointer-events:none}#sqEntry.prac .b,#sqEntry.prac .lw,#sqEntry.prac .bar{display:none}' +
                 '#sqEntry.vs .b{display:none}#sqEntry:not(.vs) .bar{display:none}#sqEntry .bar{z-index:3}' +
-                '#sqEntry .bar{position:absolute;left:50%;transform:translateX(-50%);bottom:1.2%;width:min(336px,60%);height:22px;background:#050505;box-shadow:0 0 0 3px #000,inset 0 0 0 3px #1b2a22;overflow:hidden}' +
+                '#sqEntry .bar{--edge:#3d4a14;--acc:#ccff00;position:absolute;left:50%;transform:translateX(-50%);bottom:3.6%;width:min(420px,60%);height:28px;background:#050505;box-shadow:0 0 0 4px #000,inset 0 0 0 4px var(--edge);overflow:hidden}' +
+                'body[data-modo="classic"] #sqEntry .bar{--edge:#1d4a3b;--acc:#00ffaa}' +
                 /* la misma barra que la pantalla de carga de siempre (bloques en la rejilla), llenandose suave */
-                '#sqEntry .bar i{display:block;position:absolute;left:5px;top:5px;bottom:5px;width:0;max-width:calc(100% - 10px);background-image:linear-gradient(90deg,#eaf6f0 0 12px,transparent 12px 16px);background-size:16px 100%;background-repeat:repeat-x;transition:width 1.4s linear}' +
+                '#sqEntry .bar i{display:block;position:absolute;left:7px;top:7px;bottom:7px;width:0;max-width:calc(100% - 14px);background-image:linear-gradient(90deg,var(--acc) 0 16px,transparent 16px 21px);background-size:21px 100%;background-repeat:repeat-x;transition:width 1.4s linear}' +
                 '#sqEntry .l{color:#4d5a53;letter-spacing:1px}#sqEntry .l.on{color:#9bbfff}#sqEntry .l.ok{color:#00ff88}';
             document.head.appendChild(st);
             ov = document.createElement('div'); ov.id = 'sqEntry';
