@@ -763,14 +763,14 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     function onClaim(m) {
         S.claiming = false;
         if (m.all) {
-            if (m.ok) { if (S.prize) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 4000, center: true }); }
+            if (m.ok) { if (S.prize) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 5000, center: true }); }
             else if (m.reason !== 'already_claimed') toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
             const cb = S.afterAll; S.afterAll = null; if (cb) cb();
             const el0 = document.getElementById('sqEnd'); if (el0) pintaPremio(el0);
             try { if (window.GameWallet && GameWallet.refreshBalance) GameWallet.refreshBalance(); } catch (e) {}
             return;
         }
-        if (m.ok) { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 4000, center: true }); }
+        if (m.ok) { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 5000, center: true }); }
         else if (m.reason === 'already_claimed') { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; }
         else toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
         const el = document.getElementById('sqEnd'); if (el) pintaPremio(el);
