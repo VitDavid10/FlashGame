@@ -687,9 +687,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const word = mode === 'classic' ? 'CLASSIC' : 'ARCADE';
         $('#ahRooms .mw').src = 'img/mode-title/' + word + '-word.png';
         drawPill($('#ahPillIco'), 64, 0.78);
-        $('#ahPillSub').innerHTML = mode === 'arcade'
-            ? '<img src="' + skIcon(picks[0]) + '"><img src="' + skIcon(picks[1]) + '">' + (picks[0] && picks[1] ? '' : 'PICK 2 SKILLS')
-            : 'COLOR · SKIN · SKILLS';
+        $('#ahPillSub').innerHTML = '<img src="' + skIcon(picks[0]) + '"><img src="' + skIcon(picks[1]) + '">' + (picks[0] && picks[1] ? '' : 'PICK 2 SKILLS');
         $('#ahRoomV').innerHTML = word + ' · <b class="' + (room === 'Free' || room === 'offline' ? '' : 'usd') + '">' + (room === 'offline' ? 'OFFLINE' : room === 'Free' ? 'FREE' : '$' + room.replace('$', '')) + '</b>';
         try {
             // Barra = misiones hechas hoy sobre las 3 que se pueden marcar; la insignia = las que aun puedes marcar.
@@ -823,14 +821,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         renderPill(); paintStatic();
     }
     function renderPill() {
-        const arc = mode === 'arcade';
         // Las 2 skills de salida: en arcade valen siempre; en classic se eligen igual pero solo cuentan en ARENAS.
         hub.querySelectorAll('#ahSk .tb').forEach(b => { b.classList.toggle('on', b.dataset.t === pillTab); b.style.display = ''; });
         $('#ahSk .sk-slots').style.display = $('#ahSk .sk-lab').style.display = '';
         $('#ahSkG').style.display = pillTab === 'skills' ? '' : 'none';
         $('#ahCo').style.display = pillTab === 'color' ? '' : 'none';
         $('#ahSn').style.display = pillTab === 'skins' ? '' : 'none';
-        $('#ahSkFoot').textContent = pillTab === 'skills' ? (arc ? 'You start the match with these two skills' : 'These skills are only for ARENAS') : pillTab === 'color' ? 'Tap a color to paint that half' : 'Tap a skin to wear it';
+        $('#ahSkFoot').textContent = pillTab === 'skills' ? 'You start the match with these two skills' : pillTab === 'color' ? 'Tap a color to paint that half' : 'Tap a skin to wear it';
         $('#ahSkSp').textContent = $('#ahSp').textContent + ' SP';
         drawPill($('#ahSkPill'), 96, 0.92);
         hub.querySelectorAll('.sk-slot').forEach(sl => {

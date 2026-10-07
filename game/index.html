@@ -4471,11 +4471,11 @@
              panel es una cara con rotateY fija y .flip gira cual mira a camara,
              efecto tarjeta-que-se-da-la-vuelta. Las flechas y el aviso solo se
              ven ahi tambien. -->
-        <div id="modeWheel">
-            <!-- wheel-on de partida: en movil la rueda arranca por ARCADE (es
-                 el modo que ya trae por defecto el diseño de escritorio). La
+        <div id="modeWheel" class="flip">
+            <!-- wheel-on de partida: en movil la rueda arranca por CLASSIC (igual
+                 que el escritorio, ver initMenuState). La
                  clase no pinta nada fuera del media query de la rueda. -->
-            <div id="panelArcade" class="mode-panel mode-arcade wheel-on" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
+            <div id="panelArcade" class="mode-panel mode-arcade" onmouseenter="tryPlayHover('arcade',event); setHoverMode('arcade',event.clientY)" onclick="selectMode('arcade')">
                 <div id="contentArcade" class="mode-content">
                     <div class="mode-sub">ROGUELIKE MECHANICS</div>
                     <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
@@ -4486,7 +4486,7 @@
                     </div>
                 </div>
             </div>
-            <div id="panelClassic" class="mode-panel mode-classic" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
+            <div id="panelClassic" class="mode-panel mode-classic wheel-on" onmouseenter="tryPlayHover('classic',event); setHoverMode('classic',event.clientY)" onclick="selectMode('classic')">
                 <div id="contentClassic" class="mode-content">
                     <div class="mode-sub">STANDARD MODE</div>
                     <div class="mode-title"><span class="mt-txt">CLASSIC</span><img class="mt-img mt-placa" src="img/mode-title/CLASSIC-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
@@ -7320,16 +7320,16 @@
         if (!wheel || !arc || !cla) return;
         [arc, cla].forEach(p => p.classList.remove('wheel-in', 'wheel-out', 'wheel-on'));
         if (rueda) {
-            const enCuadro = lastHoveredMode === 'classic' ? cla : arc;
+            const enCuadro = lastHoveredMode === 'arcade' ? arc : cla;
             enCuadro.classList.add('wheel-on');
-            wheel.classList.toggle('flip', lastHoveredMode === 'classic');
+            wheel.classList.toggle('flip', lastHoveredMode !== 'arcade');
         } else {
             wheel.classList.remove('flip');
         }
     }
     addEventListener('resize', ajustaSelectorModos);
     function mobileWheelToggle() {
-        const next = (lastHoveredMode === 'classic') ? 'arcade' : 'classic';
+        const next = (lastHoveredMode === 'arcade') ? 'classic' : 'arcade';
         const wheel = document.getElementById('modeWheel');
         if (wheel) {
             wheel.classList.toggle('flip', next === 'classic');   // color de la flecha
@@ -16982,10 +16982,10 @@
     const fpsInterval = 1000 / 60; let then = performance.now();
     function loop() { requestAnimationFrame(loop); const now = performance.now(); const elapsed = now - then; if (elapsed > fpsInterval) { then = now - (elapsed % fpsInterval); timeScale = elapsed / (1000 / 60); if (timeScale > 3) timeScale = 3; updateGame(); draw(); } }
     // Sin estado "neutral" (los dos portales a la vez): el selector de modo
-    // arranca SIEMPRE en ARCADE, a peticion de David — ya no restaura el
+    // arranca SIEMPRE en CLASSIC, a peticion de David — ya no restaura el
     // ultimo modo usado (pw_lastMode se sigue guardando por si hace falta
     // en el futuro, pero initMenuState ya no lo lee).
-    function initMenuState() { ajustaSelectorModos(); els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('arcade'); document.getElementById('contentArcade').style.opacity = '1'; document.getElementById('contentClassic').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1';
+    function initMenuState() { ajustaSelectorModos(); els.modeScreen.style.pointerEvents = 'auto'; document.getElementById('panelClassic').classList.remove('expanded', 'hidden'); document.getElementById('panelArcade').classList.remove('expanded', 'hidden'); setHoverMode('classic'); document.getElementById('contentClassic').style.opacity = '1'; document.getElementById('contentArcade').style.opacity = '0.7'; document.querySelector('.diagonal-divider').style.opacity = '1';
         // En la app, TAP TO START tapa este menu durante un rato: la musica no
         // arranca aqui, sino al salir de esa pantalla (ver pantallaInicio).
         if (!EN_APP) SoundManager.playMenuMusic(2000); }
