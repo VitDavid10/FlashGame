@@ -483,6 +483,11 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         return f;
     }
     function toast(o) {
+        // Con el menu a la vista, los avisos sin botones van a la placa SYSTEM del hub (cola, un aviso a la vez).
+        if (!o.actions && !o.pic && window.PWSys && document.body.classList.contains('hub-on')) {
+            const d = document.createElement('div'); d.innerHTML = o.text;
+            window.PWSys.push(d.textContent, Math.max(o.ms || 5000, 5000), 1); snd('alert'); return;
+        }
         const bid = (o.center || (!o.actions && !o.pic)) ? 'sqToastC' : 'sqToast';   // los avisos sin botones (CANCELLED, premios...) van centrados; susurros e invitaciones a la izquierda
         let box = document.getElementById(bid);
         if (!box) { box = document.createElement('div'); box.id = bid; frame().appendChild(box); }
