@@ -10,13 +10,12 @@
  *  - Lo retenido se guarda en disco: si el servidor se reinicia con dinero retenido, al arrancar se devuelve todo.
  *  - Reparto: el equipo ganador se lleva el bote a partes iguales. Por cada jugador que se comio un BOT (y no otro
  *    jugador) la casa se queda el 10 % de su entrada. Empate: cada uno recupera lo suyo.
- *  - Premios: quedan como "claims" y se cobran con una firma (CLAIM en la pantalla de victoria). Si nadie lo cobra en
- *    24 h se abona solo, para que el dinero nunca se pierda.
+ *  - Premios: quedan como "claims" y se cobran con una firma (CLAIM en la pantalla de victoria o en el PROFILE).
+ *    No caducan ni se abonan solos: se quedan guardados hasta que el jugador los cobra.
  */
 const fs = require('fs');
 
 const BOT_FEE = 0.10;
-const AUTO_CLAIM_MS = 24 * 60 * 60 * 1000;
 
 function createArenaPay(o) {
     const file = o.file || null;
@@ -32,7 +31,7 @@ function createArenaPay(o) {
     const marcaCobrado = id => { const h = db.hist.find(x => x.id === id); if (h) h.claimed = now(); };
     let dirty = false;
     const save = () => { if (!file || !dirty) return; dirty = false; try { fs.writeFileSync(file + '.tmp', JSON.stringify(db)); fs.renameSync(file + '.tmp', file); } catch (e) {} };
-    const timer = setInterval(() => { autoClaims(); save(); }, 5000); if (timer.unref) timer.unref();
+    const timer = setInterval(() => { save(); }, 5000); if (timer.unref) timer.unref();
     if (file) for (const sig of ['SIGTERM', 'SIGINT', 'beforeExit']) process.once(sig, () => { try { dirty = true; save(); } catch (e) {} });
 
     // Al arrancar: lo que quedo retenido de antes del reinicio se devuelve entero.
@@ -135,15 +134,6 @@ function createArenaPay(o) {
         try { credit(wallet, amount); } catch (e) {}
         log(`[arena] premios cobrados de golpe: ${amount} PILL (${ids.length}) a ${wallet.slice(0, 6)}…`);
         return { ok: true, amount, n: ids.length };
-    }
-    function autoClaims() {
-        const t = now();
-        for (const [id, c] of Object.entries(db.claims)) {
-            if (t - c.at < AUTO_CLAIM_MS) continue;
-            delete db.claims[id]; marcaCobrado(id); dirty = true;
-            try { credit(c.wallet, c.amount); } catch (e) {}
-            log(`[arena] premio sin cobrar abonado solo: ${c.amount} PILL a ${c.wallet.slice(0, 6)}…`);
-        }
     }
     const claimsOf = wallet => Object.entries(db.claims).filter(([, c]) => c.wallet === wallet).map(([id, c]) => ({ id, amount: c.amount, at: c.at }));
 
