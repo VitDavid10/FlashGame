@@ -79,18 +79,18 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #ahShade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(var(--sh),.9) 0,rgba(var(--sh),.6) 19em,rgba(var(--sh),0) 32em)}
 .ah-top{position:absolute;left:0;right:0;top:0;height:3.4em;background:var(--top)}
 .ah-top:after{content:"";position:absolute;left:0;right:0;bottom:0;height:.15em;background:var(--edge);opacity:.7}
-.ah-line{position:absolute;left:4.4em;top:3.25em;width:16em;height:.25em;background:var(--ac);box-shadow:0 .12em 0 #000}
+.ah-line{position:absolute;left:5.1em;top:3.25em;width:15.3em;height:.25em;background:var(--ac);box-shadow:0 .12em 0 #000}
 .ah-line:after{content:"";position:absolute;right:-.4em;top:-.28em;width:.55em;height:.55em;background:var(--ac);transform:rotate(45deg);box-shadow:.1em .1em 0 #000}
 .med{position:relative;flex:none;width:3.2em;height:3.2em;border-radius:50%;box-sizing:border-box;border:.2em solid;
   border-color:var(--acL) var(--acD) var(--acD) var(--acL);background:radial-gradient(circle at 38% 32%,var(--in1) 0,var(--in2) 62%);
   box-shadow:0 0 0 .12em #000,inset 0 0 0 .12em #000,.12em .2em 0 .1em rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#eaf5ef}
 .med svg{width:1.45em;height:1.45em;filter:drop-shadow(.08em .1em 0 #000)}
 .med canvas{width:2.7em;height:2.7em}
-.ah-ava{position:absolute;left:.7em;top:1.05em;width:3.4em;height:3.4em;overflow:hidden}
+.ah-ava{position:absolute;left:.5em;top:.1em;width:4.5em;height:4.5em;overflow:hidden}
 .ah-ava img{width:100%;height:100%;border-radius:50%;object-fit:cover}
-.ah-ava .npc{display:flex;color:var(--mut)}.ah-ava .npc svg{width:2.1em;height:2.1em}
+.ah-ava .npc{display:flex;color:var(--mut)}.ah-ava .npc svg{width:2.8em;height:2.8em}
 .ah-ava{cursor:pointer}
-.ah-who{position:absolute;left:5.1em;top:1.3em;display:flex;flex-direction:column;gap:.45em;cursor:pointer}
+.ah-who{position:absolute;left:5.6em;top:1.3em;display:flex;flex-direction:column;gap:.45em;cursor:pointer}
 .ah-name{font-size:.72em;letter-spacing:.08em;text-shadow:.15em .15em 0 #000}
 .ah-lv{font-size:.45em;color:var(--ac);display:flex;align-items:center;gap:.8em}
 .ah-lv i{display:block;width:9em;height:.8em;background:#000;outline:.25em solid var(--edge)}.ah-lv i b{display:block;height:100%;width:62%;background:var(--ac)}
@@ -108,7 +108,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sp .u{color:var(--ac)}
 .ah-sp[hidden]{display:none}
 .ah-it{position:absolute;left:3.6em;z-index:0;display:flex;align-items:center;gap:.9em;cursor:pointer}
-.ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:19.4em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
+.ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:15.2em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
 .ah-it .med{box-shadow:inset 0 0 0 .12em #000}
 .ah-it .t{font-size:.78em;letter-spacing:.06em;text-shadow:.16em .16em 0 #000}
 .ah-it .s{font-size:.44em;color:var(--mut);margin-top:.9em;display:flex;align-items:center;gap:.5em;text-shadow:.16em .16em 0 #000}
@@ -319,6 +319,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sk-g .cell img{width:2.6em;height:2.6em;image-rendering:pixelated}
 .sk-g .cell .nm{font-size:.4em;letter-spacing:.06em}
 .sk-g .cell.used{opacity:.35}
+#ahSkSp,#ahStSp,#ahQSp,#ahPrSp{display:none!important}
+.sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
+.sk-g .cell .inf:active{color:var(--ac)}
+.sk-g.sk-inf{display:flex;flex-direction:column;gap:.5em;padding:.2em .3em}
+.sk-inf .ih{display:flex;align-items:center;gap:.8em}
+.sk-inf .ih img{width:3.4em;height:3.4em;image-rendering:pixelated;box-shadow:0 0 0 .15em var(--edge);background:#000}
+.sk-inf .ih b{font-weight:400;font-size:.7em;letter-spacing:.08em;flex:1;text-shadow:.15em .15em 0 #000}
+.sk-inf .ih button{font-family:'Russo One',sans-serif;font-size:.4em;letter-spacing:.08em;padding:.5em 1.2em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
+.sk-inf .id{font-size:.4em;line-height:1.7;color:var(--mut)}
+.sk-inf video{flex:1;min-height:0;width:100%;background:#000;object-fit:contain;box-shadow:0 0 0 .15em var(--edge)}
 `;
     const cssModales = `
 body.hub-on .pw-modal{background:rgba(3,6,4,.9)!important}
@@ -840,10 +850,23 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         }
         if (pillTab === 'skills') {
             const g = $('#ahSkG'); g.innerHTML = '';
+            g.classList.toggle('sk-inf', !!skInfo);
+            const SID = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
+            const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
+            if (skInfo && dat(skInfo)) {
+                const d = dat(skInfo), nm = (SKILLS.find(x => x[0] === skInfo) || [0, d.name])[1];
+                g.innerHTML = '<div class="ih"><img src="' + skIcon(skInfo) + '"><b>' + nm + '</b><button>BACK</button></div><div class="id"></div><video autoplay loop muted playsinline></video>';
+                g.querySelector('.id').textContent = d.desc;
+                g.querySelector('video').src = d.video;
+                g.querySelector('button').onclick = () => { skInfo = null; try { SoundManager.play('simpleselect'); } catch (e) {} renderPill(); };
+                return placa($('#ahSk .pnl'), 1);
+            }
             SKILLS.forEach(([id, nm]) => {
                 const c = document.createElement('div');
                 c.className = 'cell' + (picks.includes(id) ? ' used' : '');
-                c.innerHTML = '<img src="' + skIcon(id) + '"><div class="nm">' + nm + '</div>';
+                c.innerHTML = '<img src="' + skIcon(id) + '"><div class="nm">' + nm + '</div>' + (dat(id) ? '<button class="inf">INFO</button>' : '');
+                const bi = c.querySelector('.inf');
+                if (bi) bi.onclick = ev => { ev.stopPropagation(); skInfo = id; try { SoundManager.play('simpleselect'); } catch (e) {} renderPill(); };
                 c.onclick = () => {
                     const was = picks.indexOf(id);
                     if (was !== -1) { picks[was] = null; slotSel = was; }
@@ -858,7 +881,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (pillTab === 'skins') renderSkins();
         placa($('#ahSk .pnl'), 1);
     }
-    let skinPage = 0;
+    let skinPage = 0, skInfo = null;
     function renderSkins(sn, pgHost) {
         sn = sn || $('#ahSn'); pgHost = pgHost || $('#ahSk .pin'); sn.innerHTML = '';
         let mias = [];
@@ -1205,6 +1228,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function openPill(tab) {
         $('#ahName').value = ((document.getElementById('playerNameInput') || {}).value || '');
         $('#ahSk .pin .pg') && $('#ahSk .pin .pg').remove();
+        skInfo = null;
         pillTab = tab || (mode === 'arcade' ? 'skills' : 'color');
         slotSel = picks[0] ? (picks[1] ? 0 : 1) : 0;
         $('#ahSk').classList.add('open'); renderPill();
@@ -1253,7 +1277,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function pintaX() {
         const w = xWallet || (window.GameWallet && GameWallet.address);
         avPonX($('.ah-ava'), avatar(), 64);
-        $('#ahX').textContent = w ? (xUser ? '@' + xUser.u + ' · ' : 'WALLET ') + w.slice(0, 4) + '...' + w.slice(-4) : 'TAP TO CONNECT';
+        $('#ahX').textContent = xUser ? '@' + xUser.u : (w ? 'CONNECT X' : 'TAP TO CONNECT');
     }
     // Sesion del juego (la firma de wallet del airdrop): este movil pasa a esa cuenta.
     async function syncX() {
@@ -1476,7 +1500,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         hub.querySelectorAll('.sk-slot').forEach(sl => sl.onclick = () => { slotSel = +sl.dataset.s; pillTab = 'skills'; renderPill(); });
         hub.querySelectorAll('#ahSk .tb').forEach(b => b.onclick = () => {
             const pg = $('#ahSk .pin .pg'); if (pg) pg.remove();
-            pillTab = b.dataset.t; renderPill();
+            pillTab = b.dataset.t; skInfo = null; renderPill();
         });
         $('.ah-play').onclick = async () => {
             const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
