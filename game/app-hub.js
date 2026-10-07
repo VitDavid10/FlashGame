@@ -208,6 +208,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 /* Gente jugando en el modo: punto animado + numero sobre las espadas (sin texto). */
 .ah-pl{position:absolute;right:calc(100% + .45em);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:.3em;font-size:.78em;text-shadow:.12em .12em 0 #000}
 .ah-pl b{font-weight:400;color:#fff;font-size:.8em}
+.ah-on{display:inline-flex;align-items:center;gap:.5em;margin-left:1.1em;font-size:.7em;vertical-align:.1em;text-shadow:.15em .15em 0 #000}
+.ah-on b{font-weight:400;color:#fff}
 /* $PILLY tras la partida: verde con + si ganaste, rojo con - si perdiste, parpadeando unos segundos */
 .ah-py.py-up #ahPy,.ah-py.py-dn #ahPy{animation:pyBlink .5s steps(2) 12}
 .ah-py.py-up #ahPy{color:#00ff88}.ah-py.py-dn #ahPy{color:#ff4d6d}
@@ -610,11 +612,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
   <div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.9em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
-<div class="ah-it" data-a="arenas" style="top:9.4em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS</div><div class="s"><span class="ah-dot"></span>1V1 · 2V2 · 3V3</div></div></div>
+<div class="ah-it" data-a="arenas" style="top:9.4em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="store" style="top:13.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:18.4em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
-<div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span><span class="ah-pl"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="v" id="ahRoomV"></div></div>
+<div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
