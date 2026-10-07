@@ -462,7 +462,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         else if (m.t === 'sqPresence') { const f = S.friends.friends.find(x => x.id === m.id); if (f) { f.st = m.st; render(); } }
         else if (m.t === 'sqRooms') { S.rooms = m.rooms; render(); }
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
-        else if (m.t === 'sqFriendReq') { toast({ pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
+        else if (m.t === 'sqFriendReq') { toast({ kind: 'friend', pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
         else if (m.t === 'sqRivals') { S.rivals = m.list || []; S.pillUsd = m.pillUsd || 0; S.quote = m.quote || []; render(); }
@@ -484,9 +484,9 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     function toast(o) {
         // Con el menu a la vista, los avisos sin botones van a la placa SYSTEM del hub (cola, un aviso a la vez).
-        if (!o.actions && !o.pic && window.PWSys && document.body.classList.contains('hub-on')) {
+        if (window.PWSys && document.body.classList.contains('hub-on') && (o.kind || (!o.actions && !o.pic))) {
             const d = document.createElement('div'); d.innerHTML = o.text;
-            window.PWSys.push(d.textContent, Math.max(o.ms || 5000, 5000), 1); snd('alert'); return;
+            window.PWSys.push(d.textContent, o.kind ? (o.ms || 14000) : Math.max(o.ms || 5000, 5000), o.kind ? 0 : 1, o.kind ? { kind: o.kind, pic: o.pic, actions: o.actions } : undefined); snd('alert'); return;
         }
         const bid = (o.center || (!o.actions && !o.pic)) ? 'sqToastC' : 'sqToast';   // los avisos sin botones (CANCELLED, premios...) van centrados; susurros e invitaciones a la izquierda
         let box = document.getElementById(bid);
@@ -545,7 +545,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     function onInvite(m) {
         toast({
-            pic: m.from.p, warm: true, ms: 30000, text: esc(nameOf(m.from)) + ' invites you to a group',
+            kind: 'invite', pic: m.from.p, warm: true, ms: 30000, text: esc(nameOf(m.from)) + ' invites you to a group',
             actions: [['JOIN', () => {
                 const P = S.party;
                 if (P && (P.state === 'queued' || P.rc)) { const c = P.rc ? P.rc.cents : P.cents; rcPopup("YOU'RE SEARCHING", 'Your ' + (c ? '$' + c / 100 : 'free') + ' match queue will be cancelled to join ' + nameOf(m.from) + "'s group.", 'JOIN', 'NO', () => joinCode(m.code)); }
@@ -567,7 +567,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             if (!viewing) {
                 S.unread[other.id] = (S.unread[other.id] || 0) + 1;
                 // Silenciado (todos o este amigo): no sale el popup; el WHISPER sigue parpadeando con el mensaje sin leer.
-                if (!(S.mute.all || S.mute.ids[other.id])) toast({ pic: other.p, text: esc(friendName(other)) + ': ' + esc(m.text.slice(0, 80)), actions: [['REPLY', () => { S.chatWith = other.id; S.unread[other.id] = 0; openFriends(); }, 1], ['X', null]], ms: 9000 });
+                if (!(S.mute.all || S.mute.ids[other.id])) toast({ kind: 'whisper', pic: other.p, text: esc(friendName(other)) + ': ' + esc(m.text.slice(0, 80)), actions: [['REPLY', () => { S.chatWith = other.id; S.unread[other.id] = 0; openFriends(); }, 1], ['X', null]], ms: 9000 });
             }
         }
         render();

@@ -144,7 +144,20 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:7;display:none;padding:.55em 1em .45em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
 .ah-sys.on{display:block}
 .ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
-.ah-sys span{display:block;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
+.ah-sys span{display:block;flex:1;min-width:0;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
+.ah-sys.on{display:flex;align-items:center;gap:1em}
+.ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;margin-top:.35em}
+.ah-sys.pic .pic{display:block}
+.ah-sys .acts{display:none;flex:none;gap:.6em}
+.ah-sys.act{pointer-events:auto}.ah-sys.act .acts{display:flex}
+.ah-sys .acts button{font-family:'Russo One',sans-serif;font-size:.45em;letter-spacing:.1em;padding:.5em 1.1em;margin-top:.3em;background:var(--kb,#c8ff00);color:#050505;border:none;cursor:pointer}
+.ah-sys .acts button.n{background:none;border:.15em solid var(--kd,#4d5f17);color:var(--kb,#c8ff00)}
+.ah-sys.k-whisper{--kb:#3fa0ff;--kd:#2d6fb5;border-color:#2d6fb5;background:linear-gradient(180deg,#050b14,#02060c)}
+.ah-sys.k-whisper b{background:#3fa0ff}
+.ah-sys.k-friend{--kb:#b57bff;--kd:#7a55b0;border-color:#7a55b0;background:linear-gradient(180deg,#0d0814,#06030a)}
+.ah-sys.k-friend b{background:#b57bff}
+.ah-sys.k-invite{--kb:#ff5a4a;--kd:#a8453a;border-color:#a8453a;background:linear-gradient(180deg,#140706,#0a0302)}
+.ah-sys.k-invite b{background:#ff5a4a}
 .ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.9);z-index:5}
 .ov.open{display:flex}
 .pnl{position:relative;box-sizing:border-box}
@@ -683,7 +696,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-it" data-a="store" style="top:13.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:18.4em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
-<div class="ah-sys" id="ahSys"><b>SYSTEM</b><span></span></div>
+<div class="ah-sys" id="ahSys"><b>SYSTEM</b><i class="pic"></i><span></span><div class="acts"></div></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
@@ -1655,17 +1668,51 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 
     // Placa SYSTEM: avisos del juego en cola, uno a la vez, cada uno el tiempo que se le da.
     // prio 0 = importante (pasa delante), 1 = normal, 2 = consejo. Solo corre con el hub a la vista.
+    const TIPS = [
+        'Tip: tap INFO under a skill in THE PILL to see what it does.',
+        'Tip: pick your 2 starting skills in THE PILL before you hit PLAY.',
+        'Tip: daily quests give SP. Open QUESTS to see today\'s.',
+        'Tip: quests reset every day at 00:00 UTC.',
+        'Tip: play 2v2 and 3v3 with friends. Add them in FRIENDS and form a group.',
+        'Tip: split launches half your mass forward to eat enemies. You can split into up to 16 pieces.',
+        'Tip: touching a virus splits you in three but gives a mass bonus.',
+        'Tip: paid rooms take the entry from your in-game $PILLY.',
+        'Tip: spend your SP in STORE on new skins.',
+        'Tip: change your pill color and skin in THE PILL.',
+        'Tip: tap the gear to see HOW TO PLAY and every skill.'
+    ];
+    const TAGS = { sys: 'SYSTEM', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
     const SysQ = (() => {
-        const q = []; let cur = null, n = 0;
-        function next() {
-            if (cur || !q.length || !hub.classList.contains('on')) return;
-            q.sort((a, b) => a.prio - b.prio || a.n - b.n);
-            const e = $('#ahSys'); if (!e) return;
-            cur = q.shift();
-            e.querySelector('span').textContent = cur.text; e.classList.add('on');
-            setTimeout(() => { e.classList.remove('on'); cur = null; setTimeout(next, 400); }, cur.ms);
+        const q = []; let cur = null, n = 0, tm = null, tipN = Math.floor(Math.random() * TIPS.length);
+        const el = () => $('#ahSys');
+        function pinta(m) {
+            const e = el(); if (!e) return;
+            e.className = 'ah-sys on k-' + (m.kind || 'sys') + (m.pic ? ' pic' : '') + (m.actions ? ' act' : '');
+            e.querySelector('b').textContent = TAGS[m.kind || 'sys'];
+            e.querySelector('span').textContent = m.text;
+            e.querySelector('.pic').style.backgroundImage = m.pic ? 'url("' + String(m.pic).replace(/"/g, '') + '")' : '';
+            const ac = e.querySelector('.acts'); ac.innerHTML = '';
+            (m.actions || []).forEach(a => { const b = document.createElement('button'); b.textContent = a[0]; if (!a[2]) b.className = 'n'; b.onclick = ev => { ev.stopPropagation(); try { SoundManager.play('simpleselect'); } catch (x) {} fin(); if (a[1]) a[1](); }; ac.appendChild(b); });
         }
-        return { next, push(text, ms, prio) { if (!text) return; q.push({ text: String(text), ms: ms || 8000, prio: prio == null ? 1 : prio, n: n++ }); next(); } };
+        function fin() {
+            clearTimeout(tm); const e = el(); if (e) e.classList.remove('on', 'act');
+            cur = null; tm = setTimeout(next, 400);
+        }
+        function next() {
+            if (cur || !hub.classList.contains('on')) return;
+            if (!q.length) { cur = { text: TIPS[tipN++ % TIPS.length], ms: 9000, kind: 'sys', tip: true }; if (!pcTips() && /gear/.test(cur.text)) { cur = null; return next(); } }
+            else { q.sort((a, b) => a.prio - b.prio || a.n - b.n); cur = q.shift(); }
+            pinta(cur); tm = setTimeout(fin, cur.ms);
+        }
+        const pcTips = () => hub.classList.contains('pc');
+        return {
+            next,
+            push(text, ms, prio, o) {
+                if (!text) return;
+                q.push(Object.assign({ text: String(text), ms: ms || 8000, prio: prio == null ? 1 : prio, n: n++ }, o || {}));
+                if (cur && cur.tip) fin(); else next();   // un aviso de verdad corta el consejo que haya
+            }
+        };
     })();
     window.PWSys = { push: SysQ.push };
     // Avisos que escribe el admin: se piden al servidor mientras el menu esta abierto; el ultimo visto se recuerda.
@@ -1686,7 +1733,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         sysPoll(); SysQ.next();
         if (sysEntro) return; sysEntro = true;
         setTimeout(() => {
-            try { const d = new Date().toISOString().slice(0, 10); if (localStorage.getItem('pw_sys_tip') !== d) { localStorage.setItem('pw_sys_tip', d); SysQ.push('Tip of the day: tap INFO under a skill in THE PILL to see what it does.', 6000, 2); } } catch (e) {}
             const w = xWallet || (window.GameWallet && GameWallet.address);
             if (w && window.PWSquad) { try { PWSquad.prizes(w, total => { if (total > 0) SysQ.push('You have ' + Math.floor(total).toLocaleString('en-US') + ' $PILLY waiting to be claimed.', 10000, 0); }); } catch (e) {} }
         }, 2500);
