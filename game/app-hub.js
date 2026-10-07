@@ -108,11 +108,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sp .u{color:var(--ac)}
 .ah-sp[hidden]{display:none}
 .ah-it{position:absolute;left:3.6em;z-index:0;display:flex;align-items:center;gap:.9em;cursor:pointer}
-.ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:16.5em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
+.ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:15.8em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
 .ah-it .med{box-shadow:inset 0 0 0 .12em #000}
 .ah-it[data-a=pill]{--c:#c8ff00}.ah-it[data-a=arenas]{--c:#ff5a4a}.ah-it[data-a=store]{--c:#ffc83a}.ah-it[data-a=quests]{--c:#3fc4ff}
-.ah-it:before{width:16.5em;background:linear-gradient(90deg,var(--p1) 0,var(--p1) 45%,color-mix(in srgb,var(--c) 24%,#000) 100%)}
-.ah-it:after{content:"";position:absolute;z-index:-1;left:18.1em;top:-.35em;width:.5em;height:3.9em;background:var(--c)}
+.ah-it:before{width:15.8em;background:linear-gradient(90deg,var(--p1) 0,var(--p1) 45%,color-mix(in srgb,var(--c) 24%,#000) 100%)}
+.ah-it:after{content:"";position:absolute;z-index:-1;left:17.4em;top:-.35em;width:1.2em;height:3.9em;background:var(--c)}
 .ah-it:not([data-a=pill]) .med svg{color:var(--c)}
 .ah-it .t{font-size:.78em;letter-spacing:.06em;text-shadow:.16em .16em 0 #000}
 .ah-it .s{font-size:.44em;color:var(--mut);margin-top:.9em;display:flex;align-items:center;gap:.5em;text-shadow:.16em .16em 0 #000}
