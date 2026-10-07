@@ -28,6 +28,7 @@
         ticketTimer: null, practiceTimer: null, enterBusy: false, after: null,
         x: 'unknown', token: null, prof: null, idAt: 0,
         friends: { friends: [], inReq: [], outReq: [] }, rooms: [], chat: {}, chatWith: null, unread: {}, roomsTimer: null,
+        invites: [],
         mute: (() => { try { return JSON.parse(localStorage.getItem('pw_wmute')) || { all: false, ids: {} }; } catch (e) { return { all: false, ids: {} }; } })(),
     };
     const EN_APP = document.documentElement.classList.contains('pw-app');
@@ -451,7 +452,10 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         });
     }
     setInterval(() => { if (S.ws && S.ws.readyState === 1) S.ws.send('{"t":"ping","ts":' + Date.now() + '}'); }, 25000);
-    function badgeCount() { return S.friends.inReq.length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
+    // Invitaciones a grupo pendientes: se acumulan aqui (10 min) aunque no salga el aviso, y se ven en FRIENDS.
+    const liveInvites = () => (S.invites = S.invites.filter(i => Date.now() - i.ts < 600000));
+    const dropInvite = id => { S.invites = S.invites.filter(i => i.from.id !== id); render(); };
+    function badgeCount() { return S.friends.inReq.length + liveInvites().length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
         if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc && !(m.cm && !m.cm.ready[m.me])) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = ''; render(); }
@@ -462,7 +466,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         else if (m.t === 'sqPresence') { const f = S.friends.friends.find(x => x.id === m.id); if (f) { f.st = m.st; render(); } }
         else if (m.t === 'sqRooms') { S.rooms = m.rooms; render(); }
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
-        else if (m.t === 'sqFriendReq') { toast({ kind: 'friend', pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
+        else if (m.t === 'sqFriendReq') { if (!S.mute.all) toast({ kind: 'friend', pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
         else if (m.t === 'sqRivals') { S.rivals = m.list || []; S.pillUsd = m.pillUsd || 0; S.quote = m.quote || []; render(); }
@@ -486,7 +490,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         // Con el menu a la vista, los avisos sin botones van a la placa SYSTEM del hub (cola, un aviso a la vez).
         if (window.PWSys && document.body.classList.contains('hub-on') && (o.kind || (!o.actions && !o.pic))) {
             const d = document.createElement('div'); d.innerHTML = o.text;
-            window.PWSys.push(d.textContent, o.kind ? (o.ms || 14000) : Math.max(o.ms || 5000, 5000), o.kind ? 0 : 1, o.kind ? { kind: o.kind, pic: o.pic, actions: o.actions } : undefined); snd('alert'); return;
+            window.PWSys.push(d.textContent, 12000, o.kind ? 0 : 1, o.kind ? { kind: o.kind, pic: o.pic, actions: o.actions } : undefined); snd('alert'); return;
         }
         const bid = (o.center || (!o.actions && !o.pic)) ? 'sqToastC' : 'sqToast';   // los avisos sin botones (CANCELLED, premios...) van centrados; susurros e invitaciones a la izquierda
         let box = document.getElementById(bid);
@@ -543,15 +547,19 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         rcPopup(String(m.leader).toUpperCase() + ' WANTS TO PLAY', (m.kind === 'custom' ? 'Custom match' : 'Quick match') + ' · ' + m.size + 'V' + m.size + ' · ' + (paid ? (m.usd != null ? fmtUsd(m.usd) + ' · ' : '') + fmtPill(m.fee) + ' each.' : 'free.'),
             'ACCEPT', 'LATER', abreSala);
     }
+    function joinInvite(m) {
+        const P = S.party;
+        if (P && (P.state === 'queued' || P.rc)) { const c = P.rc ? P.rc.cents : P.cents; rcPopup("YOU'RE SEARCHING", 'Your ' + (c ? '$' + c / 100 : 'free') + ' match queue will be cancelled to join ' + nameOf(m.from) + "'s group.", 'JOIN', 'NO', () => joinCode(m.code)); }
+        else joinCode(m.code);
+    }
     function onInvite(m) {
-        toast({
-            kind: 'invite', pic: m.from.p, warm: true, ms: 30000, text: esc(nameOf(m.from)) + ' invites you to a group',
-            actions: [['JOIN', () => {
-                const P = S.party;
-                if (P && (P.state === 'queued' || P.rc)) { const c = P.rc ? P.rc.cents : P.cents; rcPopup("YOU'RE SEARCHING", 'Your ' + (c ? '$' + c / 100 : 'free') + ' match queue will be cancelled to join ' + nameOf(m.from) + "'s group.", 'JOIN', 'NO', () => joinCode(m.code)); }
-                else joinCode(m.code);
-            }, 1], ['NO', null]],
+        S.invites = S.invites.filter(i => i.from.id !== m.from.id); S.invites.push({ from: m.from, code: m.code, ts: Date.now() });
+        // Silenciado (todos o este amigo): no sale el aviso; la invitacion espera en FRIENDS.
+        if (!(S.mute.all || S.mute.ids[m.from.id])) toast({
+            kind: 'invite', pic: m.from.p, warm: true, ms: 12000, text: esc(nameOf(m.from)) + ' invites you to a group',
+            actions: [['JOIN', () => { dropInvite(m.from.id); joinInvite(m); }, 1], ['NO', () => dropInvite(m.from.id)]],
         });
+        render();
     }
     function joinCode(code) {
         if (S.party) { send({ a: 'leave' }); S.party = null; }
@@ -1177,6 +1185,8 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         }
         const grp = '';
         const aviso = searching ? '<div class="sq-note" style="color:#ffb347">You are searching for a match. If a friend accepts your invite, the search is cancelled.</div>' : '';
+        const invs = liveInvites();
+        const invHtml = invs.length ? '<div class="sq-h">GROUP INVITES</div><div class="sq-list">' + invs.map(i => '<div class="sq-it">' + pic(i.from) + '<div class="w"><div class="n">' + esc(nameOf(i.from)) + '</div><div class="s">invites you to a group</div></div><div class="a"><button class="sq-b sm on" data-ij="' + esc(i.from.id) + '">JOIN</button><button class="sq-b sm" data-ix="' + esc(i.from.id) + '">NO</button></div></div>').join('') + '</div>' : '';
         const reqs = F.inReq.length ? '<div class="sq-h">REQUESTS</div><div class="sq-list">' + F.inReq.map(r => '<div class="sq-it">' + pic(r) + '<div class="w"><div class="n">' + esc(nameOf(r)) + '</div></div><div class="a"><button class="sq-b sm on" data-ac="' + r.id + '">ACCEPT</button><button class="sq-b sm" data-dc="' + r.id + '">NO</button></div></div>').join('') + '</div>' : '';
         const order = { on: 0, party: 1, wait: 1, game: 1, off: 2 };
         const list = F.friends.slice().sort((a, b) => order[a.st] - order[b.st] || nameOf(a).localeCompare(nameOf(b))).map(f =>
@@ -1188,7 +1198,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             '<div class="a">' + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm' + (S.mute.ids[f.id] ? ' on' : '') + '" data-mu="' + f.id + '">' + (S.mute.ids[f.id] ? 'UNMUTE' : 'MUTE') + '</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
         return '<div class="sq sq-fixed">' + tabs + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button><button class="sq-b sm' + (S.mute.all ? ' red' : '') + '" data-a="muteall">' + (S.mute.all ? 'POPUPS OFF' : 'POPUPS ON') + '</button></div>' +
-            reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
+            invHtml + reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
             '<div class="sq-list">' + (list || '<div class="sq-note" style="padding:.8em">No friends yet. Add someone by their @X name, wallet address or friend code (it is in your profile). They need to have opened Arenas or Friends once.</div>') + '</div>' +
             (F.outReq.length ? '<div class="sq-note">Pending: ' + F.outReq.map(r => esc(nameOf(r))).join(', ') + '</div>' : '') + errLine() + '</div>';
     }
@@ -1259,6 +1269,8 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         b.querySelectorAll('[data-nkc]').forEach(x => x.onclick = () => { S.nickEdit = null; render(); });
         const nkIn = b.querySelector('#sqNick');
         if (nkIn) nkIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-nks]').click(); };
+        b.querySelectorAll('[data-ij]').forEach(x => x.onclick = () => { const inv = S.invites.find(i => i.from.id === x.dataset.ij); if (!inv) return; snd('simpleselect'); S.invites = S.invites.filter(i => i !== inv); joinInvite(inv); });
+        b.querySelectorAll('[data-ix]').forEach(x => x.onclick = () => { snd('simpleselect'); dropInvite(x.dataset.ix); });
         b.querySelectorAll('[data-ac]').forEach(x => x.onclick = () => send({ a: 'faccept', id: x.dataset.ac }));
         b.querySelectorAll('[data-dc]').forEach(x => x.onclick = () => send({ a: 'fdecline', id: x.dataset.dc }));
         b.querySelectorAll('[data-rm]').forEach(x => x.onclick = () => { if (x.dataset.sure === '1') send({ a: 'fremove', id: x.dataset.rm }); else { x.dataset.sure = '1'; x.textContent = 'SURE?'; setTimeout(() => { if (x.isConnected) { x.dataset.sure = ''; x.textContent = 'X'; } }, 2500); } });

@@ -145,7 +145,12 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys.on{display:block}
 .ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 .ah-sys span{display:block;flex:1;min-width:0;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
-.ah-sys.on{display:flex;align-items:center;gap:1em}
+.ah-sys.on{display:flex;align-items:center;gap:1em;animation:ahSysIn .4s cubic-bezier(.2,.9,.3,1) both}
+.ah-sys.on.out{animation:ahSysOut .35s ease-in both}
+@keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
+@keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
+.ah-avb{left:4.1em;top:3.6em;right:auto;z-index:6}
+#appHub.pc .ah-avb{left:4.5em;top:3.9em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
 .ah-sys .acts{display:none;flex:none;gap:.6em;align-self:center;transform:translateY(-.17em)}
@@ -704,13 +709,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     hub.innerHTML = `
 <canvas id="ahBg"></canvas><div id="ahShade"></div>
 <div class="ah-top"></div><div class="ah-line"></div>
-<div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div>
+<div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div><i class="ah-fb ah-avb" id="ahAvB"></i>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
   <div class="ah-btn" data-a="htp">${svg('gear')}</div><div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.7em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="arenas" style="top:8.3em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
-<div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}</div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
+<div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}<i class="ah-fb" id="ahFrB2"></i></div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
 <div class="ah-it" data-a="store" style="top:11.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:15.5em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
@@ -1087,7 +1092,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             try { r = tengo ? await paisPoner(puesta === code ? null : code) : await paisComprar(code, 'sp'); } catch (e) {}
             go.disabled = false;
             if (r && r.ok === false) {
-                if (r.error === 'not enough SP') { SysQ.push('You need ' + PAIS_PRECIO_SP + ' SP. Earn SP with quests or convert $PILLY in CONVERT.', 8000, 1); return; }
+                if (r.error === 'not enough SP') { SysQ.push('You need ' + PAIS_PRECIO_SP + ' SP. Earn SP with quests or convert $PILLY in CONVERT.', 12000, 1); return; }
                 try { showSystemMsg(r.error || 'Could not do it.', 'STORE'); } catch (e) {} return;
             }
             try { SoundManager.play('select'); } catch (e) {}
@@ -1521,7 +1526,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 : '<div class="pz-e">EMPTY<br>WIN A PAID ARENA MATCH TO GET PRIZES</div>';
             $('#ahPzT').textContent = fmt(total) + ' $PILLY';
             $('#ahPzAll').disabled = !(total > 0);
-            $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); });
+            $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); refreshClaims(false); });
         };
         if (!w || !window.PWSquad) return pinta(0, [], null, []);
         PWSquad.prizes(w, pinta);
@@ -1686,18 +1691,27 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 
     // Placa SYSTEM: avisos del juego en cola, uno a la vez, cada uno el tiempo que se le da.
     // prio 0 = importante (pasa delante), 1 = normal, 2 = consejo. Solo corre con el hub a la vista.
+    // Consejos que rotan en la placa cuando no hay avisos. Los que dependen de datos del dia se calculan al sacarlos.
     const TIPS = [
-        'Tip: tap INFO under a skill in THE PILL to see what it does.',
-        'Tip: pick your 2 starting skills in THE PILL before you hit PLAY.',
-        'Tip: daily quests give SP. Open QUESTS to see today\'s.',
-        'Tip: quests reset every day at 00:00 UTC.',
-        'Tip: play 2v2 and 3v3 with friends. Add them in FRIENDS and form a group.',
-        'Tip: split launches half your mass forward to eat enemies. You can split into up to 16 pieces.',
-        'Tip: touching a virus splits you in three but gives a mass bonus.',
-        'Tip: paid rooms take the entry from your in-game $PILLY.',
-        'Tip: spend your SP in STORE on new skins.',
-        'Tip: change your pill color and skin in THE PILL.',
-        'Tip: tap the gear to see HOW TO PLAY and every skill.'
+        () => 'Tip: in ARENAS you can play solo or with up to 3 friends against other players.',
+        () => 'Tip: in ARENAS, if a bot eats an enemy you still receive 90% of the tokens they were carrying.',
+        () => { const l = aqList(); return 'Tip: complete the ' + l.length + ' daily quests to earn up to ' + l.reduce((a, m) => a + (m.pts || 0), 0) + ' SP.'; },
+        () => 'Tip: tap up to 3 quests in QUESTS to follow them during the match.',
+        () => 'Tip: quests reset every day at 00:00 UTC.',
+        () => 'Tip: you choose 2 skills at the start of every ARENAS and ARCADE match. Pick them in THE PILL.',
+        () => hub.classList.contains('pc') ? 'Tip: tap INFO in THE PILL or open HOW TO PLAY (the gear) to see how each skill works.' : 'Tip: tap INFO in THE PILL to see how each skill works.',
+        () => 'Tip: add friends in FRIENDS to form a group for 2v2 and 3v3.',
+        () => 'Tip: mute a friend in FRIENDS to stop their popups. Their whispers and invites pile up there instead.',
+        () => 'Tip: in ARCADE the top players of the room share the prize when the match ends, after about 3 minutes and 50 seconds.',
+        () => 'Tip: in CLASSIC, when you eat someone you take everything they were carrying.',
+        () => 'Tip: leaving CLASSIC early costs a penalty: 20% with no kills, 10% with one kill, none from 2 kills.',
+        () => 'Tip: in CLASSIC your match ends when you reach 5 kills (pentakill), when you leave, or at the 15 minute limit.',
+        () => 'Tip: split launches half your mass forward to eat enemies. You can split into up to 16 pieces.',
+        () => 'Tip: touching a virus splits you in three but gives a mass bonus.',
+        () => 'Tip: paid rooms take the entry from your in-game $PILLY.',
+        () => 'Tip: spend your SP in STORE on new skins.',
+        () => 'Tip: change your pill color and skin in THE PILL.',
+        () => 'Tip: customize your profile and connect it to X.'
     ];
     const TAGS = { sys: 'SYSTEM', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
     const SysQ = (() => {
@@ -1712,23 +1726,24 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const ac = e.querySelector('.acts'); ac.innerHTML = '';
             (m.actions || []).forEach(a => { const b = document.createElement('button'); b.textContent = a[0]; if (!a[2]) b.className = 'n'; b.onclick = ev => { ev.stopPropagation(); try { SoundManager.play('simpleselect'); } catch (x) {} fin(); if (a[1]) a[1](); }; ac.appendChild(b); });
         }
+        // Al acabar un aviso se funde; si hay otro esperando sale enseguida, y si no, la placa descansa 5 s antes del siguiente consejo.
         function fin() {
-            clearTimeout(tm); const e = el(); if (e) e.classList.remove('on', 'act');
-            cur = null; tm = setTimeout(next, 400);
+            clearTimeout(tm); const e = el(); if (e) e.classList.add('out');
+            cur = null;
+            tm = setTimeout(() => { if (e && !cur) e.classList.remove('on', 'act', 'out'); if (!cur) tm = setTimeout(next, q.length ? 150 : 5000); }, 350);
         }
         function next() {
             if (cur || !hub.classList.contains('on')) return;
-            if (!q.length) { cur = { text: TIPS[tipN++ % TIPS.length], ms: 9000, kind: 'sys', tip: true }; if (!pcTips() && /gear/.test(cur.text)) { cur = null; return next(); } }
+            if (!q.length) { cur = { text: TIPS[tipN++ % TIPS.length](), ms: 12000, kind: 'sys', tip: true }; }
             else { q.sort((a, b) => a.prio - b.prio || a.n - b.n); cur = q.shift(); }
             pinta(cur); tm = setTimeout(fin, cur.ms);
         }
-        const pcTips = () => hub.classList.contains('pc');
         return {
             next,
             push(text, ms, prio, o) {
                 if (!text) return;
                 q.push(Object.assign({ text: String(text), ms: ms || 8000, prio: prio == null ? 1 : prio, n: n++ }, o || {}));
-                if (cur && cur.tip) fin(); else next();   // un aviso de verdad corta el consejo que haya
+                if (cur && cur.tip) { clearTimeout(tm); const e = el(); if (e) e.classList.add('out'); cur = null; tm = setTimeout(() => { if (e && !cur) e.classList.remove('on', 'act', 'out'); next(); }, 350); } else next();   // un aviso de verdad corta el consejo que haya
             }
         };
     })();
@@ -1746,13 +1761,27 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     setInterval(() => { if (hub.classList.contains('on')) sysPoll(); }, 20000);
     // Una sola vez por sesion al entrar al menu: consejo del dia (una vez al dia) y premios sin cobrar.
+    // Premios de arenas por cobrar: el numerito del avatar (perfil) y, una vez por sesion, el aviso en la placa.
+    let claimAvisado = false;
+    function refreshClaims(avisa) {
+        const w = xWallet || (window.GameWallet && GameWallet.address);
+        if (!w || !window.PWSquad) return;
+        try {
+            PWSquad.prizes(w, (total, list) => {
+                const n = (list || []).length, b = $('#ahAvB');
+                if (b) b.textContent = n ? String(Math.min(n, 99)) : '';
+                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + Math.floor(total).toLocaleString('en-US') + ' $PILLY waiting to be claimed.', 12000, 0); }
+            });
+        } catch (e) {}
+    }
+    setInterval(() => { if (hub.classList.contains('on')) refreshClaims(false); }, 120000);
     let sysEntro = false;
     function sysEntrada() {
         sysPoll(); SysQ.next();
         if (sysEntro) return; sysEntro = true;
         setTimeout(() => {
             const w = xWallet || (window.GameWallet && GameWallet.address);
-            if (w && window.PWSquad) { try { PWSquad.prizes(w, total => { if (total > 0) SysQ.push('You have ' + Math.floor(total).toLocaleString('en-US') + ' $PILLY waiting to be claimed.', 10000, 0); }); } catch (e) {} }
+            refreshClaims(true);
         }, 2500);
     }
 
@@ -1797,7 +1826,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             afterRender() {
                 try { const fl = (PWSquad.state.friends && PWSquad.state.friends.friends) || []; const on = fl.filter(f => f.st && f.st !== 'off').length; const el = $('#ahFrSub'); if (el) el.textContent = on + ' ONLINE'; } catch (e) {}
                 ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
-            badge(n) { const b = $('#ahFrB'); if (b) b.textContent = n ? String(Math.min(n, 99)) : ''; },
+            badge(n) { ['#ahFrB', '#ahFrB2'].forEach(id => { const b = $(id); if (b) b.textContent = n ? String(Math.min(n, 99)) : ''; }); },
         };
         // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
         // cuelga de <body> (con shadow DOM cerrado): se marca para poder girarlo.
