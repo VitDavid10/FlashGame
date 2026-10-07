@@ -146,11 +146,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 .ah-sys span{display:block;flex:1;min-width:0;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
 .ah-sys.on{display:flex;align-items:center;gap:1em}
-.ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;margin-top:.35em}
+.ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
-.ah-sys .acts{display:none;flex:none;gap:.6em}
+.ah-sys .acts{display:none;flex:none;gap:.6em;align-self:center;transform:translateY(-.17em)}
 .ah-sys.act{pointer-events:auto}.ah-sys.act .acts{display:flex}
-.ah-sys .acts button{font-family:'Russo One',sans-serif;font-size:.45em;letter-spacing:.1em;padding:.5em 1.1em;margin-top:.3em;background:var(--kb,#c8ff00);color:#050505;border:none;cursor:pointer}
+.ah-sys .acts button{font-family:'Russo One',sans-serif;font-size:.45em;letter-spacing:.1em;padding:.5em 1.1em;margin:0;background:var(--kb,#c8ff00);color:#050505;border:none;cursor:pointer}
 .ah-sys .acts button.n{background:none;border:.15em solid var(--kd,#4d5f17);color:var(--kb,#c8ff00)}
 .ah-sys.k-whisper{--kb:#3fa0ff;--kd:#2d6fb5;border-color:#2d6fb5;background:linear-gradient(180deg,#050b14,#02060c)}
 .ah-sys.k-whisper b{background:#3fa0ff}
@@ -373,8 +373,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) .ah-sys{left:3.6em;right:auto;width:20.8em;top:auto;bottom:.9em;padding:.62em .9em .3em}
 #appHub:not(.pc) .ah-sys span{font-size:.38em;line-height:1.5}
 #appHub:not(.pc) .ah-sys b{font-size:.32em}
-#appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em;margin-top:.1em}
-#appHub:not(.pc) .ah-sys .acts button{font-size:.36em;padding:.4em .9em;margin-top:.1em}
+#appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em}
+#appHub:not(.pc) .ah-sys .acts,#appHub:not(.pc) .ah-sys .pic{transform:translateY(-.16em)}
+#appHub:not(.pc) .ah-sys .acts button{font-size:.36em;padding:.4em .9em}
 
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
