@@ -40,6 +40,7 @@
         bag: '<path d="M9 3.6h6c.6 0 1 .5.8 1.1-.2.6-.7 1-1.3 1H9.5c-.6 0-1.1-.4-1.3-1-.2-.6.2-1.1.8-1.1z"/><path d="M6.2 9.6c0-1.9 1.6-3.4 3.5-3.4h4.6c1.9 0 3.5 1.5 3.5 3.4v4.2H6.2z"/><circle cx="12" cy="9.8" r="1.7" fill="#000"/><rect x="6.2" y="14.9" width="11.6" height="5.6" rx="1.4"/>',
         ghost: '<path d="M12 2.8a7.2 7.2 0 00-7.2 7.2v11l2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8V10A7.2 7.2 0 0012 2.8z"/><circle cx="9.3" cy="10.2" r="1.4" fill="#07140f"/><circle cx="14.7" cy="10.2" r="1.4" fill="#07140f"/>',
         back: '<path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>',
+        gear: '<path fill-rule="evenodd" d="M19.64,9.64 L22.45,10.21 L22.45,13.79 L19.64,14.36 L19.08,15.73 L20.66,18.12 L18.12,20.66 L15.73,19.08 L14.36,19.64 L13.79,22.45 L10.21,22.45 L9.64,19.64 L8.27,19.08 L5.88,20.66 L3.34,18.12 L4.92,15.73 L4.36,14.36 L1.55,13.79 L1.55,10.21 L4.36,9.64 L4.92,8.27 L3.34,5.88 L5.88,3.34 L8.27,4.92 L9.64,4.36 L10.21,1.55 L13.79,1.55 L14.36,4.36 L15.73,4.92 L18.12,3.34 L20.66,5.88 L19.08,8.27Z M12,8.6 a3.4,3.4 0 1,0 .01,0Z"/>',
         music: '<path d="M9 17.5V5.2l10-2v11.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.6" cy="17.6" r="2.6"/><circle cx="16.6" cy="15" r="2.6"/>',
         sound: '<path d="M3.5 9h4l5-4v14l-5-4h-4z"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     };
@@ -329,6 +330,67 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sk-g .cell .nm{font-size:.4em;letter-spacing:.06em}
 .sk-g .cell.used{opacity:.35}
 #ahSkSp,#ahStSp,#ahQSp,#ahPrSp{display:none!important}
+.ah-btn[data-a=htp],.ah-it[data-a=friends]{display:none}
+.ah-it[data-a=friends]{--c:#b57bff}
+.htp{height:14.4em;display:flex;flex-direction:column;gap:.6em;margin-top:.8em}
+.htp-g{display:grid;grid-template-columns:repeat(4,1fr);gap:.5em;flex:1}
+.htp-g .cell{justify-content:center;gap:.4em;padding:.4em}
+.htp-g .cell img{width:3em;height:3em;image-rendering:pixelated}
+.htp-g .cell .nm{font-size:.4em;letter-spacing:.06em}
+.htp .hh{font-size:.62em;letter-spacing:.08em;text-align:center;color:#fff}
+.htp .ht{font-size:.82em;letter-spacing:.06em;text-shadow:.12em .12em 0 #000}
+.htp .hd{font-size:.42em;line-height:1.8;color:var(--mut)}
+.htp video{flex:1;min-height:0;width:100%;background:#000;object-fit:contain;box-shadow:0 0 0 .15em var(--edge)}
+.htp .hb{align-self:flex-end;font-family:'Russo One',sans-serif;font-size:.4em;letter-spacing:.08em;padding:.5em 1.2em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
+.htp-n{display:flex;align-items:center;justify-content:space-between;margin-top:.5em;border-top:.07em solid rgba(255,255,255,.07);padding-top:.5em}
+.hn{font-family:'Russo One',sans-serif;font-size:.66em;letter-spacing:.1em;padding:.45em 1em;border:.14em solid #2c3630;color:#7d8a82;background:none;cursor:pointer}.hn:active{color:var(--ac)}
+.htp-n span{display:flex;gap:.7em}.htp-n i{width:.6em;height:.6em;border-radius:50%;background:#2c3630}.htp-n i.on{background:var(--ac)}
+
+/* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
+#appHub.pc .ah-btn[data-a=htp]{display:flex}
+#appHub.pc .ah-btn[data-a=friends]{display:none}
+#appHub.pc .ah-it[data-a=friends]{display:flex}
+#appHub.pc .ah-top{height:3.9em}
+#appHub.pc .ah-ava{left:.6em;top:.38em;width:4.7em;height:4.7em;z-index:5}
+#appHub.pc .ah-who{left:5.9em;top:.9em;gap:.5em}
+#appHub.pc .ah-name{font-size:.74em}
+#appHub.pc .ah-lv{font-size:.44em}
+#appHub.pc .ah-line{left:5.9em;top:3.75em;width:18em}
+#appHub.pc .ah-ico{top:.8em;right:1.1em;gap:.5em}
+#appHub.pc .ah-btn{width:2.25em;height:2.25em}
+#appHub.pc .ah-btn svg{width:1.05em;height:1.05em}
+#appHub.pc .ah-sp{font-size:.56em}
+#appHub.pc .ah-it{left:3.2em}
+#appHub.pc .ah-it[data-a=pill]{top:5.5em!important}
+#appHub.pc .ah-it[data-a=arenas]{top:9.05em!important}
+#appHub.pc .ah-it[data-a=friends]{top:12.6em!important}
+#appHub.pc .ah-it[data-a=store]{top:16.15em!important}
+#appHub.pc .ah-it[data-a=quests]{top:19.7em!important}
+#appHub.pc .ah-it:before{left:1.4em;top:-.15em;width:12em;height:3em}
+#appHub.pc .ah-it:after{left:13.4em;top:-.15em;width:.5em;height:3em}
+#appHub.pc .ah-it .med{width:2.7em;height:2.7em}
+#appHub.pc .ah-it .med svg{width:1.25em;height:1.25em}
+#appHub.pc .ah-it .med canvas{width:2.3em;height:2.3em}
+#appHub.pc .ah-it .t{font-size:.6em}
+#appHub.pc .ah-it .s{font-size:.4em;margin-top:.8em}
+#appHub.pc .ah-it .bar{width:7em}
+#appHub.pc #ahPillSub{position:absolute;left:23em;top:1.45em;margin:0;gap:1.2em}
+#appHub.pc #ahPillSub img{width:3.9em;height:3.9em}
+#appHub.pc .ah-it.sel:before{border-color:var(--ac);background:linear-gradient(180deg,#0b0e01,#050700)}
+#appHub.pc .ah-it.sel:after{background:#1d2913;left:13.54em}
+#appHub.pc .ah-it.sel .t{color:var(--ac)}
+#appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
+#appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
+#appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
+#appHub.pc .ah-room{right:17.6em;bottom:1.6em;z-index:6}
+#appHub.pc .ah-room .med{width:2.7em;height:2.7em}
+#appHub.pc .ah-room .med>svg{width:1.3em;height:1.3em}
+#appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:28.7em;top:auto;bottom:2em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:5.375em 0 0 17.5em;pointer-events:none}
+#appHub.pc .ov.open .pnl{pointer-events:auto}
+#appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:38.6em!important;height:22.5em;font-size:.765em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
 .sk-g .cell .inf:active{color:var(--ac)}
 .sk-g.sk-inf{display:flex;flex-direction:column;gap:.5em;padding:.2em .3em}
@@ -614,9 +676,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
-  <div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
+  <div class="ah-btn" data-a="htp">${svg('gear')}</div><div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.9em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="arenas" style="top:9.4em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
+<div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}</div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
 <div class="ah-it" data-a="store" style="top:13.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:18.4em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
@@ -638,6 +701,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ov" id="ahUn"><div class="pnl" style="width:24em"><canvas></canvas><div class="pin un-b">
   <div class="un-t">SKIN UNLOCKED!</div><div class="un-st"><canvas id="ahUnPill"></canvas><b style="left:12%;top:20%"></b><b style="left:82%;top:16%;animation-delay:.35s"></b><b style="left:20%;top:78%;animation-delay:.7s"></b><b style="left:76%;top:74%;animation-delay:1.05s"></b><b style="left:50%;top:6%;animation-delay:.5s"></b></div>
   <div class="un-n" id="ahUnN"></div><div class="sv-bt"><button class="tb" id="ahUnClose">CLOSE</button><button class="tb on" id="ahUnWear">WEAR IT</button></div></div></div></div>
+<div class="ov" id="ahHtp"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><span class="w">HOW TO PLAY</span><button class="px">CLOSE</button></div>
+  <div class="htp" id="ahHtpB"></div>
+  <div class="htp-n"><button class="hn" id="ahHtpP">&lt;</button><span id="ahHtpD"></span><button class="hn" id="ahHtpN">&gt;</button></div></div></div></div>
 <div class="ov" id="ahAr"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><span class="w">ARENAS</span><button class="px">CLOSE</button></div>
   <div id="ahArBody"></div></div></div></div>
@@ -678,7 +745,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 
     function scale() {
         const girado = document.body.classList.contains('mobile-allowed');
-        hub.style.fontSize = ((girado ? Math.min(innerWidth, innerHeight) : innerHeight) / U * 16) + 'px';
+        // PC (ventana ancha, sin girar): el mismo hub repartido en 48em x 27em (1em = 40px a 1920x1080).
+        hub.classList.toggle('pc', !girado);
+        hub.style.fontSize = (girado ? Math.min(innerWidth, innerHeight) / U * 16 : Math.min(innerHeight / 27, innerWidth / 48)) + 'px';
     }
     const skIcon = id => id ? 'img/skill-icons-pixel/' + id + '.png' : '';
     function paintStatic() {
@@ -1470,11 +1539,61 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         return !!(await GameWalletUI.pedirDeposito(fee, bal));
     }
 
+    // PC: los paneles salen a la derecha de las barras, uno a la vez (los pequeños IC/UN/SV son avisos y no cuentan).
+    const PANELES = '.ov:not(#ahIc):not(#ahUn):not(#ahSv)';
+    function cierraPaneles() {
+        hub.querySelectorAll(PANELES + '.open').forEach(o => {
+            o.classList.remove('open');
+            if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests();
+            const pg = o.querySelector('.pg'); if (pg) pg.remove();
+        });
+    }
+    // Pagina de HOW TO PLAY: 0 = las 8 skills (tocar una enseña su INFO), 1.. = las guias del juego (guideSlides).
+    let htpPag = 0, htpSk = null;
+    function renderHtp() {
+        const slides = typeof guideSlides !== 'undefined' ? guideSlides : [];
+        const body = $('#ahHtpB'); body.innerHTML = '';
+        const SID = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
+        const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
+        if (htpPag === 0 && htpSk && dat(htpSk)) {
+            const d = dat(htpSk), nm = (SKILLS.find(x => x[0] === htpSk) || [0, d.name])[1];
+            body.innerHTML = '<div class="ih"><img src="' + skIcon(htpSk) + '" style="width:3.4em;height:3.4em;image-rendering:pixelated"><span class="ht" style="flex:1"></span><button class="hb">BACK</button></div><div class="hd"></div><video autoplay loop muted playsinline></video>';
+            body.querySelector('.ih').style.cssText = 'display:flex;align-items:center;gap:.8em';
+            body.querySelector('.ht').textContent = nm; body.querySelector('.hd').textContent = d.desc; body.querySelector('video').src = d.video;
+            body.querySelector('.hb').onclick = () => { htpSk = null; renderHtp(); };
+        } else if (htpPag === 0) {
+            body.innerHTML = '<div class="hh">SKILL ARSENAL - TAP A SKILL</div><div class="htp-g"></div><div class="hd" style="text-align:center">8 skills, drafted every 30s in a match</div>';
+            const g = body.querySelector('.htp-g');
+            SKILLS.forEach(([id, nm]) => {
+                const c = document.createElement('div'); c.className = 'cell';
+                c.innerHTML = '<img src="' + skIcon(id) + '"><div class="nm">' + nm + '</div>';
+                c.onclick = () => { htpSk = id; try { SoundManager.play('simpleselect'); } catch (e) {} renderHtp(); };
+                g.appendChild(c);
+            });
+        } else {
+            const sl = slides[htpPag - 1];
+            if (sl) {
+                body.innerHTML = '<div class="ht"></div><div class="hd"></div><video autoplay loop muted playsinline></video>';
+                body.querySelector('.ht').textContent = sl.title; body.querySelector('.hd').textContent = sl.desc; body.querySelector('video').src = sl.video;
+            }
+        }
+        const n = slides.length + 1;
+        $('#ahHtpD').innerHTML = Array.from({ length: n }, (_, i) => '<i class="' + (i === htpPag ? 'on' : '') + '"></i>').join('');
+        placa($('#ahHtp .pnl'), 1);
+    }
+    // La barra del menu abierto se marca (contorno lima, interior oscuro).
+    const BARRA_DE = { ahSk: 'pill', ahAr: 'arenas', ahFr: 'friends', ahSt: 'store', ahQ: 'quests' };
+    function marcaBarra() {
+        const abierto = Object.keys(BARRA_DE).find(id => $('#' + id) && $('#' + id).classList.contains('open'));
+        hub.querySelectorAll('.ah-it').forEach(b => b.classList.toggle('sel', !!abierto && b.dataset.a === BARRA_DE[abierto]));
+    }
     function tap(e) {
         const it = e.target.closest('[data-a]'); if (!it) return;
         const a = it.dataset.a;
         try { SoundManager.play('simpleselect'); } catch (x) {}
         if (a === 'x') { conectaX(); return; }
+        if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp'].includes(a)) cierraPaneles();
+        if (a === 'htp') { htpPag = 0; htpSk = null; $('#ahHtp').classList.add('open'); renderHtp(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
         if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('rooms', $('#ahArBody')); placa($('#ahAr .pnl'), 1); }
         else if (a === 'friends') { const fr = $('#ahFr'); fr.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('friends', $('#ahFrBody')); placa($('#ahFr .pnl'), 1); }
@@ -1488,6 +1607,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     function wire() {
         hub.addEventListener('click', tap);
+        $('#ahHtpP').onclick = () => { const n = (typeof guideSlides !== 'undefined' ? guideSlides.length : 0) + 1; htpPag = (htpPag + n - 1) % n; htpSk = null; renderHtp(); };
+        $('#ahHtpN').onclick = () => { const n = (typeof guideSlides !== 'undefined' ? guideSlides.length : 0) + 1; htpPag = (htpPag + 1) % n; htpSk = null; renderHtp(); };
+        new MutationObserver(marcaBarra).observe(hub, { subtree: true, attributes: true, attributeFilter: ['class'] });
         $('#ahPill').addEventListener('click', () => { try { SoundManager.play('simpleselect'); } catch (x) {} openPill('color'); });
         const cerrar = o => { o.classList.remove('open');
             if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests(); if (o.id === 'ahSk' || o.id === 'ahSt') { const pg = o.querySelector('.pg'); if (pg) pg.remove(); } };
@@ -1608,7 +1730,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         window.pwHubEnter = () => entra();
         window.pwAqShow = on => aqHud(!!on);
         window.PWSquadHooks = {
-            afterRender() { ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
+            afterRender() {
+                try { const fl = (PWSquad.state.friends && PWSquad.state.friends.friends) || []; const on = fl.filter(f => f.st && f.st !== 'off').length; const el = $('#ahFrSub'); if (el) el.textContent = on + ' ONLINE'; } catch (e) {}
+                ['#ahAr', '#ahFr'].forEach(id => { const o = $(id); if (o && o.classList.contains('open')) requestAnimationFrame(() => placa($(id + ' .pnl'), 1)); }); },
             badge(n) { const b = $('#ahFrB'); if (b) b.textContent = n ? String(Math.min(n, 99)) : ''; },
         };
         // Contenedor de los avisos de MWA: un <div> sin id ni clase que la libreria
