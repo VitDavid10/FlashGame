@@ -359,6 +359,23 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .hn{font-family:'Russo One',sans-serif;font-size:.66em;letter-spacing:.1em;padding:.45em 1em;border:.14em solid #2c3630;color:#7d8a82;background:none;cursor:pointer}.hn:active{color:var(--ac)}
 .htp-n span{display:flex;gap:.7em}.htp-n i{width:.6em;height:.6em;border-radius:50%;background:#2c3630}.htp-n i.on{background:var(--ac)}
 
+/* ===== MOVIL: barras mas bajas para dejar el hueco de la placa SYSTEM debajo ===== */
+#appHub:not(.pc) .ah-it:before{left:1.4em;top:-.15em;width:18.5em;height:3em}
+#appHub:not(.pc) .ah-it:after{left:19.9em;top:-.15em;height:3em}
+#appHub:not(.pc) .ah-it .med{width:2.7em;height:2.7em}
+#appHub:not(.pc) .ah-it .med svg{width:1.25em;height:1.25em}
+#appHub:not(.pc) .ah-it .med canvas{width:2.3em;height:2.3em}
+#appHub:not(.pc) .ah-it .t{font-size:.62em}
+#appHub:not(.pc) .ah-it .s{font-size:.4em;margin-top:.7em}
+#appHub:not(.pc) #ahPillSub{margin-top:.5em}
+#appHub:not(.pc) #ahPillSub img{width:3.4em;height:3.4em}
+#appHub:not(.pc) .ah-it .bar{width:7em}
+#appHub:not(.pc) .ah-sys{left:3.6em;right:auto;width:20.8em;top:auto;bottom:.9em;padding:.3em .9em .25em}
+#appHub:not(.pc) .ah-sys span{font-size:.38em;line-height:1.5}
+#appHub:not(.pc) .ah-sys b{font-size:.32em}
+#appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em;margin-top:.1em}
+#appHub:not(.pc) .ah-sys .acts button{font-size:.36em;padding:.4em .9em;margin-top:.1em}
+
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
@@ -690,11 +707,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
   <div class="ah-btn" data-a="htp">${svg('gear')}</div><div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
-<div class="ah-it" data-a="pill" style="top:4.9em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
-<div class="ah-it" data-a="arenas" style="top:9.4em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
+<div class="ah-it" data-a="pill" style="top:4.7em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
+<div class="ah-it" data-a="arenas" style="top:8.3em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}</div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
-<div class="ah-it" data-a="store" style="top:13.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
-<div class="ah-it" data-a="quests" style="top:18.4em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
+<div class="ah-it" data-a="store" style="top:11.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
+<div class="ah-it" data-a="quests" style="top:15.5em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <canvas id="ahPill"></canvas>
 <div class="ah-sys" id="ahSys"><b>SYSTEM</b><i class="pic"></i><span></span><div class="acts"></div></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
