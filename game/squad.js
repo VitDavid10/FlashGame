@@ -224,7 +224,6 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
 .ci .stk .sl{position:absolute;left:1em;top:0;transform:translateY(-62%);font-size:.7em;letter-spacing:.12em;background:var(--c);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
 .ci .stk .sv{font-size:1.9em;color:#ffd23a;text-shadow:.12em .12em 0 #000;white-space:nowrap;line-height:1}
 .ci .stk.sm .sv{font-size:1.45em}
-.ci .stk .sv .ap{font-family:'VT323',monospace;font-size:1.5em;line-height:0;vertical-align:-.08em;color:#fff}
 .ci .stk.free .sv{color:#00ff88;font-size:2.4em}
 .ci .pl4 canvas.px{display:block;height:4.2em;image-rendering:pixelated;background:none;box-shadow:none;border:0}
 @keyframes ciIn{from{opacity:0}to{opacity:1}}
@@ -697,23 +696,24 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
         const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#ff5fd2'];
         const n = tipo === 'win' ? 64 : tipo === 'lose' ? 70 : 10, pills = [];
-        // Zona sin pildoras alrededor de VICTORY / DEFEAT: la caja del texto a su tamaño final (la animacion de entrada lo escala) mas un margen,
-        // y fuera de ella la densidad sube poco a poco hasta la normal para que el corte no sea brusco.
+        // Alrededor de VICTORY / DEFEAT hay menos pildoras, solo muy cerca del texto (su caja a tamaño final, la animacion de entrada lo escala)
+        // y de forma gradual: las que caen pasan por ahi y se van apagando y encendiendo, nunca desaparecen de golpe ni se quedan arriba.
         const tt = el.querySelector('.t'), an = tt ? tt.style.animation : '';
         if (tt) tt.style.animation = 'none';
         let tb = { left: 0, right: 0, top: 0, bottom: 0 };
         if (tt) { const rg = document.createRange(); rg.selectNodeContents(tt); tb = rg.getBoundingClientRect(); tt.style.animation = an; }
         const er = el.getBoundingClientRect(), kx = W / (er.width || 1), ky = H / (er.height || 1), M = 14;
         const zx0 = (tb.left - er.left - M) * kx, zx1 = (tb.right - er.left + M) * kx, zy0 = (tb.top - er.top - M) * ky, zy1 = (tb.bottom - er.top + M) * ky;
-        const RAMP = 260 * kx;   // a esta distancia del titulo la densidad ya es la normal
+        const CERCA = 70 * kx;   // a esta distancia del titulo ya se ven del todo
         const enZona = (x, y) => x > zx0 && x < zx1 && y > zy0 && y < zy1;
         const dist = (x, y) => Math.hypot(Math.max(zx0 - x, 0, x - zx1), Math.max(zy0 - y, 0, y - zy1));
+        const dens = (x, y) => enZona(x, y) ? 0.15 : Math.min(1, 0.15 + 0.85 * dist(x, y) / CERCA);
         // la franja oscura tapa el lienzo: 3 de cada 4 se colocan fuera de ella para que se vean
         const enBanda = (x, y) => { const X = x / kx, Y = y / ky, top = er.height * .27 + (er.width / 2 - X) * 0.0699; return Y > top - 8 && Y < top + er.height * .62; };
         const lugar = i => {
             for (let t = 0; t < 400; t++) {
                 const x = Math.random() * W, y = Math.random() * H;
-                if (enZona(x, y) || Math.random() > Math.min(1, dist(x, y) / RAMP) || (enBanda(x, y) && i % 4)) continue;
+                if (Math.random() > dens(x, y) || (enBanda(x, y) && i % 4)) continue;
                 return [x, y];
             }
             return [Math.random() * W, H * .92];
@@ -750,9 +750,10 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
                 }
                 else if (tipo === 'lose') { q.y += q.vy * dt; if (q.y > H + 10) { q.y = -10; q.x = Math.random() * W; } x = q.x + Math.sin(t / 900 + q.ph) * 2; y = q.y; }
                 else { x = q.x; y = q.y + Math.sin(t / 700 + q.ph) * 2; }
-                if (tipo !== 'draw' && enZona(x, y)) continue;   // nunca se pinta una pildora sobre el titulo
+                g.globalAlpha = tipo === 'draw' ? 1 : dens(x, y);
                 g.drawImage(q.c, Math.round(x - q.c.width / 2), Math.round(y - q.c.height / 2));
             }
+            g.globalAlpha = 1;
             S.fxRaf = requestAnimationFrame(paso);
         };
         S.fxRaf = requestAnimationFrame(paso);
@@ -809,7 +810,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         // Barra de una linea con pestaña (YOUR PRIZE / TEAM PRIZE, YOU LOST / TEAM LOST, FREE MATCH, DRAW); CLAIM cuelga debajo.
         const box = el.querySelector('.prz'), e = S.endMoney, team = !!(e && e.team), nT = (e && e.nTeam) || 1;
         const barra = (tab, inner, extra) => '<div class="pw"><div class="pbar" data-t="' + tab + '">' + inner + '</div>' + (extra || '') + '</div>';
-        const linea = (amt, usd) => '<span class="line"><b class="pa">' + fmtPill(amt) + '</b>' + (usd != null ? '<span class="pu">≈ ' + fmtUsd(usd) + '</span>' : '') + '</span>';
+        const linea = (amt, usd) => '<span class="line"><b class="pa">' + fmtPill(amt) + '</b>' + (usd != null ? '<span class="pu">(' + fmtUsd(usd) + ')</span>' : '') + '</span>';
         if (!e) { box.innerHTML = barra('FREE MATCH', '<span class="pf">Next time play a <b>paid match</b> and win their <b>$PILLY</b>.</span>'); return; }
         const mo = e.money;
         if (mo.draw) { box.innerHTML = barra('DRAW', '<span class="pf">Your entry is back in your <b>balance</b>.</span>'); return; }
@@ -872,7 +873,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             // Siempre a la derecha (en el sitio de las pildoras), igual en 1V1, 2V2 y 3V3; las fotos se centran a la izquierda.
             const n = d.me.length, ancho = '';
             el.classList.add('stk3');
-            const linea = k => d.fee > 0 ? fmtK(d.fee * k) + ' $PILLY' + (d.usd != null ? ' <span class="ap">≈</span> ' + fmtUsd(d.usd * k) : '') : 'FREE';
+            const linea = k => d.fee > 0 ? fmtK(d.fee * k) + ' $PILLY' + (d.usd != null ? ' (' + fmtUsd(d.usd * k) + ')' : '') : 'FREE';
             const stk = (cls, k) => '<div class="stk ' + cls + ' sm' + (d.fee > 0 ? '' : ' free') + '" style="' + ancho + '"><div class="in">' +
                 '<div class="sl">' + (cls === 'sk-me' ? (k > 1 ? 'YOUR TEAM' : 'YOU') : (k > 1 ? 'RIVALS' : 'RIVAL')) + '</div><div class="sv">' + linea(k) + '</div></div></div>';
             // Fuera de las franjas (encima, en la misma inclinacion) y con su propia animacion: dentro de la franja de abajo,
