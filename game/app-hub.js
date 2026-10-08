@@ -710,6 +710,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     let pyPrev = null, pyT = null;
     setInterval(pintaPilly, 3000);
+    // La pantalla de carga (la pildora que gira) no puede quedarse puesta sobre el menu: si el menu esta a la vista y no hay ninguna carga en marcha, se retira.
+    setInterval(() => {
+        const ls = document.getElementById('loadingScreen');
+        if (!ls || ls.style.display === 'none' || !hub.classList.contains('on')) return;
+        if (window.__loadingLock || window.__loadingTimer || /ls-(inicio|cargador|espera)/.test(ls.className)) return;
+        ls.style.display = 'none';
+    }, 300);
     window._hubCorto = corto;   // pruebas
     // DEPOSIT y WITHDRAW con el marco de los menus (la variante B que eligio David).
     document.documentElement.classList.add('ah-wal-hub');
