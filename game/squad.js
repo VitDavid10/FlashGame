@@ -191,6 +191,39 @@ body[data-modo="classic"] #sqEnd{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#
 /* botones como el PLAY del menu, abajo a la derecha (no cruzan el borde de la franja) */
 #sqEnd .bts{position:absolute;left:0;right:2.2%;bottom:3%;display:flex;justify-content:flex-end;gap:1.6em}
 #sqEnd .bts button{box-sizing:border-box;font-family:'Press Start 2P',monospace;font-size:1.4em;padding:0 2em;height:3.2em;display:inline-flex;align-items:center;justify-content:center;border-radius:1.7em;background:var(--acc);color:#04150c;border:.2em solid;border-color:var(--acL) var(--acD) var(--acD) var(--acL);box-shadow:0 0 0 .14em #000,inset 0 0 0 .12em #000,.15em .25em 0 .12em rgba(0,0,0,.55);cursor:pointer}
+/* ARCADE (#sqEnd.arc): ranking del reparto con puesto, nombre, premio (o puntos) y x veces la entrada; a la derecha tu premio o tu entrada */
+#sqEnd.arc .band{top:24%;height:59%}#sqEnd.arc .tms>div{padding-top:0}#sqEnd.arc .t{font-size:5em;top:-34%}#sqEnd.arc .t.lg{font-size:3.8em;top:-30%}
+#sqEnd.arc .cols{inset:3% 6% 3% 9%;gap:6%;align-items:center}
+#sqEnd.arc .tms{flex:1.5;height:auto;display:block;position:relative;padding-top:2.6em}
+#sqEnd.arc .h{left:4.6em;top:.1em}
+#sqEnd.arc .h.small{background:#3fc4ff}#sqEnd.arc .h.medium{background:#ffc83a}#sqEnd.arc .h.large{background:#ff5a4a}
+#sqEnd .alst{display:grid;grid-template-columns:1fr;gap:.85em;max-width:30em}
+#sqEnd .alst.dos{max-width:none;grid-template-columns:1fr 1fr;column-gap:2.4em;grid-auto-flow:column;grid-template-rows:repeat(5,auto)}
+#sqEnd .ar{--tc:#5d6e5f;position:relative;display:flex;align-items:center;gap:1em;height:2.7em}
+#sqEnd .ar.me{--tc:#1d9bf0}
+#sqEnd .ar:before{content:"";position:absolute;left:1.3em;right:-.5em;top:0;bottom:0;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--tc);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
+#sqEnd .ar>*{position:relative}
+#sqEnd .ar .ps{width:3.4em;height:3.4em;flex:none;display:flex;align-items:center;justify-content:center;font-size:.64em;background:var(--tc);color:#0b0f05;box-shadow:0 0 0 .2em #000}
+#sqEnd .ar.g1 .ps{background:#ffd23a}#sqEnd .ar.g2 .ps{background:#d8e0dc}#sqEnd .ar.g3 .ps{background:#d08a3c}
+#sqEnd .ar .an{flex:1;min-width:0;font-size:.78em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sqEnd .ar.me .an{color:#7fd0ff}
+#sqEnd .ar .ak{font-family:'VT323',monospace;font-size:1.75em;color:#ffd23a;white-space:nowrap}
+#sqEnd .ar .ak u{text-decoration:none;font-size:.72em;color:#9fd8b8;margin-left:.35em}
+#sqEnd .ar .ax{font-family:'VT323',monospace;font-size:1.45em;color:#00ff88;width:2.7em;text-align:right;padding-right:.5em;white-space:nowrap}
+#sqEnd .ar .ax.pt{color:#9fb0a6}
+#sqEnd .alst.dos .an{font-size:.68em}#sqEnd .alst.dos .ak{font-size:1.5em}#sqEnd .alst.dos .ax{font-size:1.3em}
+#sqEnd .asep{font-family:'VT323',monospace;font-size:1.4em;color:#9fb0a6;margin:.5em 0 0 2.2em}#sqEnd .asep b{font-weight:400;color:#ff4d6d}
+#sqEnd.arc .prz{flex:1;align-self:stretch;flex-direction:column;justify-content:center;gap:2.2em}
+#sqEnd .apb{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45em;padding:1.1em 1.7em .9em;white-space:nowrap;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--pc);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
+#sqEnd .apb:before{content:attr(data-t);position:absolute;left:1em;top:0;transform:translateY(-62%);font-size:.72em;letter-spacing:.12em;background:var(--pc);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
+#sqEnd .apb .al{white-space:nowrap}
+#sqEnd .apb .aa{font-family:'VT323',monospace;font-size:3em;line-height:1;color:#ffd23a}#sqEnd .apb .aa.no{color:#ff4d6d;font-size:2.3em}
+#sqEnd .apb .au{font-family:'VT323',monospace;font-size:1.7em;color:#e8e8e8;margin-left:.6em}
+#sqEnd .apb .af{font-family:'VT323',monospace;font-size:1.5em;line-height:1;color:#e8e8e8}#sqEnd .apb .af b{font-weight:400;color:#00ff88}#sqEnd .apb .af i{font-style:normal;color:#ffd23a}
+#sqEnd .apb .af.fr{font-size:1.55em;white-space:normal;text-align:center;max-width:14em;line-height:1.15}#sqEnd .apb .af.fr b{color:#ffd23a}
+#sqEnd .aclr{display:flex;align-items:center;gap:1em;white-space:nowrap}
+#sqEnd .aclr .cl{font-family:'Press Start 2P',monospace;font-size:1.1em;padding:0 1.6em;height:2.8em;border-radius:1.3em;border:.18em solid;background:#2c3630;color:#9fb0a6;border-color:#4a554e #1c231f #1c231f #4a554e;box-shadow:0 0 0 .12em #000,.12em .2em 0 .1em rgba(0,0,0,.55)}
+#sqEnd .aclr .pl{font-size:1em;line-height:1.1;color:#fff;text-align:left}
 #sqEnd .bts button.o{background:linear-gradient(180deg,var(--p1),var(--p2));color:#e8e8e8;border-color:var(--mb1) var(--mb2) var(--mb2) var(--mb1)}
 @keyframes seT{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 /* ENTRADA A LA PARTIDA (diseno C animado) */
@@ -823,21 +856,64 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             (pz.claimed ? '' : '<span class="pl">OR LATER<br>IN PROFILE</span>') + '</div>');
         const b = box.querySelector('.cl'); if (b) b.onclick = () => { snd('simpleselect'); claimPrize(); };
     }
+    const finHtml = '<canvas class="fx"></canvas><div class="band"><div class="t"></div><div class="cols"><div class="tms"></div><div class="prz"></div></div></div><div class="bts"><button data-e="again">PLAY AGAIN</button><button data-e="menu" class="o">MENU</button></div>';
+    /*
+     * Fin de ARCADE con el mismo diseno que VICTORY/DEFEAT de arenas. d = {
+     *   tam: small|medium|large, topN, n (cuantos jugaron), gratis: ''|'free'|'offline',
+     *   top: [{pos, name, mass (puntos), amount, mine}], myPos (0 = te comieron), myAmount,
+     *   fee (entrada en $PILLY), usd (precio de la sala en $), onAgain, onMenu }
+     * Titulo: WINNER! (1o), TOP <tu puesto>! si cobras, OUT OF TOP <N> si no. El premio ya esta en tu saldo del juego.
+     */
+    function arcadeFin(d) {
+        let el = document.getElementById('sqEnd');
+        if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = finHtml; frame().appendChild(el); }
+        const N = d.topN || 3, pos = d.myPos | 0, gana = pos >= 1 && pos <= N, fee = d.fee | 0;
+        const usdDe = a => fee > 0 && d.usd > 0 ? fmtUsd(a * d.usd / fee) : '';
+        const NOM = { small: 'SMALL MATCH', medium: 'MEDIUM MATCH', large: 'BIG MATCH' };
+        el.className = 'arc ' + (gana ? 'win' : 'lose');
+        const tit = !gana ? 'OUT OF TOP ' + N : pos === 1 ? 'WINNER!' : 'TOP ' + pos + '!';
+        const t = el.querySelector('.t'); t.textContent = tit; t.classList.toggle('lg', tit.length > 8);
+        const top = (d.top || []).slice(0, N);
+        const fila = (x, i) => {
+            const der = d.gratis ? '<span class="ak">' + Math.round(x.mass || 0).toLocaleString('en-US') + '</span><span class="ax pt">PTS</span>'
+                : '<span class="ak">' + (x.amount | 0).toLocaleString('en-US') + (usdDe(x.amount) ? '<u>(' + usdDe(x.amount) + ')</u>' : '') + '</span><span class="ax">x' + (fee > 0 ? (x.amount / fee).toFixed(2) : '0') + '</span>';
+            return '<div class="ar' + (x.mine ? ' me' : '') + (i < 3 ? ' g' + (i + 1) : '') + '"><span class="ps">#' + x.pos + '</span><span class="an">' + esc(x.name || (x.mine ? 'YOU' : 'PLAYER')) + '</span>' + der + '</div>';
+        };
+        let html = '<span class="h ' + (d.tam || 'small') + '">' + (NOM[d.tam] || 'MATCH') + ' · TOP ' + N + ' · ' + (d.n | 0) + ' PLAYERS' + (d.gratis ? ' · ' + d.gratis.toUpperCase() : '') + '</span>' +
+            '<div class="alst' + (N > 5 ? ' dos' : '') + '">' + top.map(fila).join('') + '</div>';
+        if (!gana) html += '<div class="asep">' + (pos > 0 ? 'You: <b>#' + pos + '</b> · alive but outside the top ' + N : 'You were <b>eaten</b> · only survivors get paid') + '</div>';
+        el.querySelector('.tms').innerHTML = html;
+        const usdTxt = a => usdDe(a) ? '<span class="au">(' + usdDe(a) + ')</span>' : '';
+        const mia = d.myAmount | 0;
+        el.querySelector('.prz').innerHTML = d.gratis
+            ? '<div class="apb" data-t="FREE MATCH"><span class="af fr">Next time play a <b>paid match</b> and win their <b>$PILLY</b>.</span></div>'
+            : gana && mia > 0
+            ? '<div class="apb" data-t="YOUR PRIZE"><span class="al"><span class="aa">+' + fmtPill(mia) + '</span>' + usdTxt(mia) + '</span><span class="af"><b>x' + (fee > 0 ? (mia / fee).toFixed(2) : '0') + '</b> your entry · <i>+' + (mia - fee).toLocaleString('en-US') + '</i> profit</span></div>' +
+              '<div class="aclr"><button class="cl" disabled>CLAIMED</button><span class="pl">ADDED TO<br>YOUR BALANCE</span></div>'
+            : '<div class="apb" data-t="YOUR ENTRY"><span class="al"><span class="aa no">-' + fmtPill(fee) + '</span>' + usdTxt(fee) + '</span><span class="af">' + (pos > 0 ? 'You finished <i>#' + pos + '</i> · top ' + N + ' get paid' : 'Eaten · only survivors get paid') + '</span></div>';
+        el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { (d.onMenu || returnToMenu)(); } catch (e) {} };
+        el.querySelector('[data-e="again"]').onclick = () => { el.classList.remove('show'); try { (d.onAgain || returnToMenu)(); } catch (e) {} };
+        let sonado = false;
+        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(gana ? 'finwin' : 'finlose'); }, 120); };
+        el.addEventListener('animationstart', sonar, { once: true });
+        setTimeout(sonar, 1500);
+        nitido(el); el.classList.add('show'); fondoFin(el, gana ? 'win' : 'lose');
+    }
     function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
         let el = document.getElementById('sqEnd');
         if (!el) {
             el = document.createElement('div'); el.id = 'sqEnd';
-            el.innerHTML = '<canvas class="fx"></canvas><div class="band"><div class="t"></div><div class="cols"><div class="tms"></div><div class="prz"></div></div></div><div class="bts"><button data-e="again">PLAY AGAIN</button><button data-e="menu" class="o">MENU</button></div>';
+            el.innerHTML = finHtml;
             frame().appendChild(el);
-            el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { returnToMenu(); } catch (e) {} };
-            // PLAY AGAIN: vuelta a la pantalla del grupo; hay que dar LISTO otra vez.
-            el.querySelector('[data-e="again"]').onclick = () => {
-                el.classList.remove('show');
-                try { returnToMenu(); } catch (e) {}
-                setTimeout(() => { S.arStep = S.lastSize ? { size: S.lastSize, view: null } : null; const b = document.querySelector('#appHub [data-a="arenas"]'); if (b) b.click(); else openPc('rooms'); S.arStep = S.lastSize ? { size: S.lastSize, view: null } : null; render(); }, 250);
-            };
         }
+        el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { returnToMenu(); } catch (e) {} };
+        // PLAY AGAIN: vuelta a la pantalla del grupo; hay que dar LISTO otra vez.
+        el.querySelector('[data-e="again"]').onclick = () => {
+            el.classList.remove('show');
+            try { returnToMenu(); } catch (e) {}
+            setTimeout(() => { S.arStep = S.lastSize ? { size: S.lastSize, view: null } : null; const b = document.querySelector('#appHub [data-a="arenas"]'); if (b) b.click(); else openPc('rooms'); S.arStep = S.lastSize ? { size: S.lastSize, view: null } : null; render(); }, 250);
+        };
         const mine = S.roster ? S.roster.me : 'A', other = mine === 'A' ? 'B' : 'A', win = m.winner === mine;
         const nMax = Math.max(((m.players || {}).A || []).length, ((m.players || {}).B || []).length), n3 = nMax >= 3, n2 = nMax === 2;
         el.className = (!m.winner ? 'draw' : win ? 'win' : 'lose') + (n3 ? ' n3' : n2 ? ' n2' : '');   // n3/n2: filas mas bajas para que quepan
@@ -1498,7 +1574,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
     function leaveGame() { const h = document.getElementById('sqHud'); if (h) { h.classList.remove('show'); h.innerHTML = ''; } S.rel = null; S.allies = null; rivalsBanner(); }
-    window.PWSquad = { resetAlerts: () => { S.alerted = {}; setTimeout(avisosPendientes, 3500); }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    window.PWSquad = { arcadeFin, resetAlerts: () => { S.alerted = {}; setTimeout(avisosPendientes, 3500); }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);

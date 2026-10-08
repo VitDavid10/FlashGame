@@ -954,7 +954,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     // Salas: cada tarjeta enseña sus layers con su aforo; debajo, ROOM INFO de la elegida y las reglas del modo.
     const ROOM_RULES = {
-        arcade: ['3 min · starts with 6 players · a new skill every 30s', 'Every 30s an event · good ones and bad ones', 'From min 1 the zone shrinks · outside it you shrink', 'Under 8 players top 3 win · 8 to 13 top 5 · 14+ top 10 · last 3 standing end it'],
+        arcade: ['3 min · starts with 6 players · a new skill every 30s', 'Every 30s an event · good ones and bad ones', 'From min 1 the zone shrinks · outside it you shrink', '6 to 9 players top 3 win · 10 to 19 top 5 · 20+ top 10 · last 3 standing end it'],
         classic: ['Eat cells, split and farm viruses', 'Kill 5 players (pentakill) for the max profit', 'Leaving early costs a penalty up to 20%', 'Paid rooms take the entry from your in-game $PILLY']
     };
     function renderRooms() {
@@ -1817,7 +1817,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => hub.classList.contains('pc') ? 'Tip: tap INFO in THE PILL or open HOW TO PLAY (the gear) to see how each skill works.' : 'Tip: tap INFO in THE PILL to see how each skill works.',
         () => 'Tip: add friends in FRIENDS to form a group for 2v2 and 3v3.',
         () => 'Tip: mute a friend in FRIENDS to stop their popups. Their whispers and invites pile up there instead.',
-        () => 'Tip: in ARCADE the prize depends on how many played: under 8 the top 3 win, from 8 to 13 the top 5, from 14 the top 10.',
+        () => 'Tip: in ARCADE the prize depends on how many played: 6 to 9 the top 3 win, 10 to 19 the top 5, 20 or more the top 10.',
         () => 'Tip: in ARCADE only the players still alive at the end get paid. Every paid place gets back more than its entry.',
         () => 'Tip: an ARCADE match needs at least 6 players to start.',
         () => 'Tip: in ARCADE the safe zone starts closing at minute 1. Outside it you lose mass every second, and the last phase is brutal.',

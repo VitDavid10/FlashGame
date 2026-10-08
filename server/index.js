@@ -328,7 +328,7 @@ async function pushPerfToHosts(hostIds, patch) {
 // las salas del catálogo (enforceRoomCaps), así queda en código y llega al VPS por
 // git (roomrules.json es gitignored y no se despliega). Editable en vivo desde el
 // panel; se reaplica esta política en cada reinicio.
-const ROOM_CAPS = { classic: 35, arcade: 25 };
+const ROOM_CAPS = { classic: 35, arcade: 35 };
 // Layers por combo (mode × price). Cada combo tiene N instancias paralelas:
 // el matchmaker (pickLayer) te mete en L1 hasta LLENARLA (clients.size >= maxPlayers),
 // y solo entonces pasa a L2. NO hay umbral del 90%: es 100% estricto. Las layers

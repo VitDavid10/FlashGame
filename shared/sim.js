@@ -39,8 +39,8 @@
      */
     const ARCADE = {
         duracionMs: 180000, entradaMs: 60000,
-        // Mapa REDONDO y grande (radio). Con el mapa vivo crece con la gente hasta mapa (con 25 dentro).
-        mapa: 5600, porJugador: 1120, minimo: 2240,
+        // Mapa REDONDO y grande (radio). Con el mapa vivo crece con la gente hasta mapa (con 35 dentro: 1120 x raiz(35)).
+        mapa: 6630, porJugador: 1120, minimo: 2240,
         fases: [   // hasta (ms de partida), tamano final de la fase (fraccion del mapa) y % de masa por segundo fuera
             { hasta: 90000, frac: 0.88, dano: 0.05 },
             { hasta: 120000, frac: 0.70, dano: 0.09 },
@@ -51,23 +51,23 @@
         eventosEn: [30000, 60000, 90000, 120000], buenos: ['rain', 'gold', 'nosplit'], malos: ['tax', 'heavy'],
         taxTop: 3, taxPct: 0.20, heavyMult: 0.6, finalVivos: 3,
         /*
-         * PREMIOS segun cuantos jugaron la partida: PEQUENA (menos de 8) paga el top 3, MEDIANA (8 a 13) el top 5 y
-         * GRANDE (14 o mas) el top 10. Solo cobran los que siguen vivos al final, por puntuacion; los puestos sin
-         * nadie van a la tesoreria. Si quedan 3 en pie la partida se acaba y se paga como pequena.
+         * PREMIOS segun cuantos jugaron la partida: PEQUENA (6 a 9) paga el top 3, MEDIANA (10 a 19) el top 5 y
+         * GRANDE (20 o mas, salas de hasta 35) el top 10. Solo cobran los que siguen vivos al final, por puntuacion;
+         * los puestos sin nadie van a la tesoreria. Si quedan 3 en pie la partida se acaba y se paga como pequena.
          * Los % son del BOTE entero y el resto es lo que se queda la casa (10 / 7,5 / 5 %). El ultimo puesto pagado
-         * cobra siempre mas que su entrada con la gente minima de cada tamano (6, 8 y 14).
+         * cobra siempre mas que su entrada con la gente minima de cada tamano (6: x1,32; 10: x1,35; 20: x1,25).
          */
         premios: {
-            small: { top: 3, pesos: [40, 30, 20] },
-            medium: { top: 5, pesos: [29, 20, 16, 14, 13.5] },
-            large: { top: 10, pesos: [17, 13, 11, 9.6, 8.4, 7.2, 7.2, 7.2, 7.2, 7.2] }
+            small: { top: 3, pesos: [38, 30, 22] },
+            medium: { top: 5, pesos: [28, 20, 16, 15, 13.5] },
+            large: { top: 10, pesos: [18.25, 14, 11, 9, 8.5, 8, 7.25, 6.5, 6.25, 6.25] }
         },
         minJugadores: 6,
         eventoMs: 10000, avisoMs: 3000, oroMs: 20000, oroR: 75, oroBonus: 0.25, rainR: 450, rainPorSeg: 45,
         killBonus: 0.10, killMax: 2, coronaBonus: [0.30, 0.20, 0.10]
     };
     // Tamano de la partida segun cuantos la han jugado (jugadores y, offline, bots).
-    const arcadeTamano = n => n >= 14 ? 'large' : n >= 8 ? 'medium' : 'small';
+    const arcadeTamano = n => n >= 20 ? 'large' : n >= 10 ? 'medium' : 'small';
     const arcadeScore = (mass, kills) => Math.floor((mass || 0) * Math.min(ARCADE.killMax, 1 + ARCADE.killBonus * (kills | 0)));
     const BASE_MERGE_TIME = 15000, MERGE_MASS_FACTOR = 0.225, SPLIT_COOLDOWN_MS = 1000, GLOBAL_CD_MS = 1000;
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;

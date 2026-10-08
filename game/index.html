@@ -11598,10 +11598,30 @@
         const prizeOpen = document.getElementById('prizeModal').style.display === 'flex';
         // Arenas: el cartel de fin es VICTORY/DEFEAT (game/squad.js, llega con squadEnd); aqui no sale MATCH FINISHED.
         const enArenas = !!(typeof netState !== 'undefined' && netState && netState.squad);
-        if (!prizeOpen && !enArenas) {
-            setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88');
-            showResultsUI('matchFinished');
+        const esArc = currentGameMode === 'arcade' && !enArenas && window.PWSquad && PWSquad.arcadeFin;
+        if (esArc && sim && !sim.isRemote && sim.arc) { finArcadeOffline(); return; }
+        const matchFinished = () => { setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); showResultsUI('matchFinished'); };
+        // Arcade online: la pantalla final la abre el reparto ('prize' arcadeEnd). Si no llegara, MATCH FINISHED de siempre.
+        if (esArc && sim && sim.isRemote) {
+            setTimeout(() => { const e = document.getElementById('sqEnd'); if (!(e && e.classList.contains('show')) && els.result.style.display !== 'flex' && gameRunning) matchFinished(); }, 4000);
+            return;
         }
+        if (!prizeOpen && !enArenas) matchFinished();
+    }
+    // Pantalla final de ARCADE (game/squad.js arcadeFin), igual en PC y en la app.
+    function finArcade(d) {
+        els.result.style.display = 'none';
+        document.getElementById('prizeModal').style.display = 'none';
+        hideGameHUD(); hideSpectatorBar();
+        PWSquad.arcadeFin(Object.assign({ onAgain: () => tryAgainOnline(), onMenu: () => returnToMenu() }, d));
+    }
+    // Offline: el mismo reparto que online pero sin dinero (puntos): cuantos cobrarian y en que puesto quedas.
+    function finArcadeOffline() {
+        const n = Math.max(sim.arc.jugaron.size, sim.arcVivos().length), tam = PillSim.arcadeTamano(n), N = PillSim.ARCADE.premios[tam].top;
+        const vivos = sim.arcVivos().sort((a, b) => b.puntos - a.puntos);
+        const pos = vivos.findIndex(v => v.id === 'me') + 1;
+        const top = vivos.slice(0, N).map((v, i) => ({ pos: i + 1, name: v.id === 'me' ? (playerName || 'YOU') : v.nombre, mass: v.puntos, amount: 0, mine: v.id === 'me' }));
+        finArcade({ tam, topN: N, n, gratis: 'offline', top, myPos: pos });
     }
     // hideGameHUD() aqui dentro y no solo en showResultsUI: al SALIR por el boton
     // no se pasa por el cartel de resultado, asi que los avisos de partida
@@ -12423,6 +12443,11 @@
             if (unit) unit.style.display = (MONEY_IN_USD && pillRate > 0) ? 'none' : '';
         },
         showPrize(msg) {
+            if (msg.reason === 'arcadeEnd' && window.PWSquad && PWSquad.arcadeFin) {
+                finArcade(Object.assign({}, msg, { gratis: msg.pot > 0 ? '' : 'free' }));
+                setTimeout(() => GameWalletUI.refresh(), 800);
+                return;
+            }
             const m = document.getElementById('prizeModal');
             const title = document.getElementById('prizeTitle'), amt = document.getElementById('prizeAmount'), sub = document.getElementById('prizeSubtitle'), tbl = document.getElementById('prizeTable');
             tbl.style.display = 'none'; tbl.innerHTML = '';
