@@ -670,7 +670,11 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     function foundEl() {
         let el = document.getElementById('sqFound');
-        if (!el) { el = document.createElement('div'); el.id = 'sqFound'; el.innerHTML = '<div class="a"></div><div class="c b"></div><div class="b"></div>'; frame().appendChild(el); }
+        if (!el) { el = document.createElement('div'); el.id = 'sqFound'; el.innerHTML = '<div class="a"></div><div class="c b"></div><div class="b"></div>'; }
+        // PC: el aviso va centrado en la ventana de ARENAS (a la derecha), no en la pantalla entera.
+        const pnl = document.querySelector('#appHub.pc #ahAr.open .pnl');
+        const sitio = pnl || frame();
+        if (el.parentNode !== sitio) sitio.appendChild(el);
         return el;
     }
 
