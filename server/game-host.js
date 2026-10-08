@@ -154,6 +154,8 @@ function createGameHost(deps) {
         return Math.max(propuesta, start);
     }
 
+    // Arcade: pasado el primer minuto ya no entra nadie en esa partida (la zona se esta cerrando).
+    const arcadeCerrada = r => r.mode === 'arcade' && !r.squad && r.state === 'playing' && r.sim && r.sim.arc && !r.sim.arcEntradaAbierta();
     function pickLayer(mode, roomName, prefer) {
         // Fase 4: este proceso solo materializa salas de SUS combos. Sin el guard,
         // el lazy-create de L2+ creaba salas de combos ajenos (p.ej. en el Director,
@@ -165,7 +167,7 @@ function createGameHost(deps) {
         const pi = prefer | 0;
         if (pi >= 1 && pi <= LAYERS_PER_COMBO && isLayerEnabled(mode, roomName, pi)) {
             const r = rooms.get(layerKeyOf(mode, roomName, pi));
-            if (r && !r.disabled && liveInRoom(r) + (r._reserved || 0) < max && !(r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < LAYER_STAGGER_MS)) return r;
+            if (r && !r.disabled && !arcadeCerrada(r) && liveInRoom(r) + (r._reserved || 0) < max && !(r.state === 'playing' && r.endsAt && (r.endsAt - Date.now()) < LAYER_STAGGER_MS)) return r;
         }
         for (let i = 1; i <= LAYERS_PER_COMBO; i++) {
             // La layer apagada NO entra al matchmaking aunque su sala siga viva
@@ -178,7 +180,7 @@ function createGameHost(deps) {
                 r = getOrCreateRoom(key, mode, roomName);
                 log(`Lazy: creada ${key} porque L${i - 1} está llena`);
             }
-            if (r.disabled) continue;
+            if (r.disabled || arcadeCerrada(r)) continue;
             // _reserved: joins con el cobro IPC en vuelo (async). Cuentan como slot
             // ocupado para que dos joins simultáneos no desborden el cap de la sala.
             if (liveInRoom(r) + (r._reserved || 0) >= max) continue;
@@ -611,6 +613,8 @@ function createGameHost(deps) {
         // precio de entrada, porque el precio se congela por sala y refrescarlo
         // con gente dentro descuadra el intercambio de carry al matar.
         room.endsAt = Date.now() + (room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS);
+        // Arcade (no arenas): zona segura que se cierra, eventos, puntuacion por kills y corona.
+        if (room.mode === 'arcade' && !room.squad) room.sim.startArcade(MATCH_MS);
         // Cuando empezo de verdad: va en el recibo de la partida (server/matches.js).
         room.startedAt = Date.now();
         // NO spawneamos aquí: cada jugador se spawnea cuando su cliente manda 'ready'

@@ -1,4 +1,5 @@
 'use strict';
+const { arcadeScore } = require('../shared/sim.js');   // puntuacion de arcade (ranking del bote y leaderboard)
 /**
  * Tick de UNA sala — extraído del bucle principal de index.js.
  *
@@ -170,9 +171,11 @@ function tickRoomOnce(room, now, ctx) {
         }
         if (room.mode !== 'classic' && (room.pot || 0) > 0) {
             const PESOS = [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
+            // Puntuacion de arcade: pico de masa x (1 + 0,10 por kill), como mucho x2 (shared/sim.js arcadeScore).
+            const puntos = p => arcadeScore(p.peakMass | 0, p.kills);
             const ranking = [...room.sim.players.values()]
                 .filter(p => (p.peakMass | 0) > 0 || p.alive)
-                .sort((a, b) => (b.peakMass | 0) - (a.peakMass | 0));
+                .sort((a, b) => puntos(b) - puntos(a));
             const totalPot = room.pot;
             potFinal = totalPot;
             /*
@@ -197,7 +200,7 @@ function tickRoomOnce(room, now, ctx) {
                 if (cli && cli.payWallet && parte > 0) { ctx.econ.credit(cli.payWallet, parte); repartido += parte; }
                 // Daily: terminar top 5 en arcade
                 if (cli && cli.cid && (i + 1) <= 5) ctx.econ.dailyEvent(cli.cid, 'arcade_top5', 1);
-                top.push({ pos: i + 1, name: pj.name, mass: pj.peakMass | 0, pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
+                top.push({ pos: i + 1, name: pj.name, mass: puntos(pj), pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
             }
             payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
             // Enviar a cada cliente con su #pos marcada como "mine"
@@ -449,7 +452,7 @@ function tickRoomOnce(room, now, ctx) {
             if (!p.alive || !p.cells.length) continue;
             let m = 0;
             for (const c of p.cells) m += c.mass;
-            board.push({ id: p.id, n: p.name, m: Math.round(m) });
+            board.push({ id: p.id, n: p.name, m: room.sim.arc ? arcadeScore(m, p.kills) : Math.round(m) });
         }
         const botMap = new Map();   // id → { n, m }
         for (const e of room.sim.enemies) {

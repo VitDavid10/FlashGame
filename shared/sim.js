@@ -29,6 +29,28 @@
     // con 1M de masa ibas a 1/6 de una recien nacida).
     const VELOC_EXP = -0.35;
     const MAPA_VIVO = { porJugador: 700, min: 1400, velocidad: 100, esperaMs: 10000, avisoMs: 5000, cadaMs: 200 };
+    /*
+     * ARCADE (partidas de 3 min, sin arenas): ademas del mapa vivo (el borde que empuja), dentro hay una
+     * ZONA SEGURA que a partir del minuto 1 se cierra por fases de 30 s, cada una mas rapida. Fuera de ella
+     * no te empuja nada: pierdes un % de tu masa por segundo (el mismo % para todos, tengas la masa que tengas)
+     * y si te quedas sin masa, fuera. Durante el primer minuto puede entrar gente; despues la sala se cierra.
+     * Cada 30 s hay un evento (los 4, en orden al azar). El top se decide por PUNTUACION: masa x (1 + 0,10 por
+     * kill), como mucho x2. El primero lleva corona: quien se lo come gana +25 % de masa y la kill vale doble.
+     */
+    const ARCADE = {
+        duracionMs: 180000, entradaMs: 60000,
+        fases: [   // hasta (ms de partida), tamano final de la fase (fraccion del mapa) y % de masa por segundo fuera
+            { hasta: 90000, frac: 0.85, dano: 0.05 },
+            { hasta: 120000, frac: 0.65, dano: 0.09 },
+            { hasta: 150000, frac: 0.40, dano: 0.15 },
+            { hasta: 180000, frac: 0.10, dano: 0.30 }
+        ],
+        masaMin: 300,
+        eventosEn: [30000, 60000, 90000, 120000], eventos: ['rain', 'gold', 'double', 'nosplit'],
+        eventoMs: 10000, avisoMs: 3000, oroMs: 20000, oroR: 75, oroBonus: 0.25, rainR: 450, rainPorSeg: 45,
+        killBonus: 0.10, killMax: 2, coronaBonus: 0.25
+    };
+    const arcadeScore = (mass, kills) => Math.floor((mass || 0) * Math.min(ARCADE.killMax, 1 + ARCADE.killBonus * (kills | 0)));
     const BASE_MERGE_TIME = 15000, MERGE_MASS_FACTOR = 0.225, SPLIT_COOLDOWN_MS = 1000, GLOBAL_CD_MS = 1000;
     const AUTO_SPLIT_LEVEL_1 = 200000, AUTO_SPLIT_LEVEL_2 = 300000;
     const INITIAL_RADIUS = 10, MAX_CELLS = 16, VELOC_BASE = 1.51,   // 2-oct-2026: con VELOC_EXP -0.35 una recien nacida va igual que con x1.5 y la grande no se arrastra
@@ -339,7 +361,7 @@
 
         // Elige el objetivo (huir, cazar, comer). Lo usan los bots y los amigos de prueba de las arenas (aliados = ids a ignorar).
         botSteer(sim, siblings, aliados) {
-            this.changeDirTimer--; if (Math.abs(this.x) > sim.mapSize - 200 || Math.abs(this.y) > sim.mapSize - 200) { this.targetX = 0; this.targetY = 0; return; }
+            const lim = sim.zonaLimite(); this.changeDirTimer--; if (Math.abs(this.x) > lim - 200 || Math.abs(this.y) > lim - 200) { this.targetX = 0; this.targetY = 0; return; }
             let flee = false, visionRange = 750, targetPrey = null;
 
             // Antes: `[...sim.enemies, ...sim.allPlayerCells()]` por cada bot líder cada tick.
@@ -366,7 +388,7 @@
                     let currentCount = siblings.length;
                     siblings.forEach(s => {
                         if (currentCount >= sim.config.maxBotCells) return;
-                        if ((s.mass / 2) > preyMass * 1.5) { sim.performSplit(s, Math.atan2(targetPrey.cell.y - s.y, targetPrey.cell.x - s.x)); s.lastSplitTime = sim.now; currentCount++; }
+                        if ((s.mass / 2) > preyMass * 1.5 && !sim.arcSinSplit()) { sim.performSplit(s, Math.atan2(targetPrey.cell.y - s.y, targetPrey.cell.x - s.x)); s.lastSplitTime = sim.now; currentCount++; }
                     });
                 }
             }
@@ -421,6 +443,7 @@
             this.mapaVivo = this.config.mapaVivo != null ? !!this.config.mapaVivo : (this.config.mode === 'classic' || this.config.mode === 'arcade');
             this.mapaMax = this.config.mapSize;
             this._mapa = { bajaDesde: null, estado: 'estable', emitidoAt: -1e9, emitidoSize: -1 };
+            this.arc = null;   // arcade: zona, eventos y corona (ver startArcade)
             this.now = 0;
             this.timeScale = 1.0;
             this.foods = []; this.viruses = []; this.enemies = [];
@@ -655,7 +678,7 @@
         splitPlayer(p, tx, ty) {
             // Arenas por equipos: config.maxPlayerCells = 2, la pildora solo se divide en dos.
             const cap = this.config.maxPlayerCells || MAX_CELLS;
-            if (this.now - p.lastSplitTime < SPLIT_COOLDOWN_MS || p.cells.length >= cap) return;
+            if (this.now - p.lastSplitTime < SPLIT_COOLDOWN_MS || p.cells.length >= cap || this.arcSinSplit()) return;
             let did = false;
             for (let i = p.cells.length - 1; i >= 0; i--) { let c = p.cells[i]; if (c.r >= 35 && p.cells.length < cap) { let a = Math.atan2(ty - c.y, tx - c.x); this.performSplit(c, a); did = true; } }
             if (did) p.lastSplitTime = this.now;
@@ -714,6 +737,7 @@
                         def.cells.splice(k, 1);
                         if (def.cells.length === 0) {
                             if (this.config.mode === 'classic') atk.killStreak++;
+                            this.arcKill(atk, def.id, cA);
                             this.emit({ type: 'botKilled', playerId: atk.id, victimId: def.id, botName: def.name || 'PLAYER', streak: atk.killStreak, mode: this.config.mode });
                             if (def.alive) { def.alive = false; this.emit({ type: 'playerDied', playerId: def.id }); }
                         } else {
@@ -852,6 +876,137 @@
             }
         }
 
+        // ================= ARCADE: zona segura, eventos, puntuacion y corona =================
+        startArcade(durMs) {
+            const ev = ARCADE.eventos.slice();
+            for (let i = ev.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ev[i], ev[j]] = [ev[j], ev[i]]; }
+            this.arc = { t0: this.now, dur: durMs || ARCADE.duracionMs, ev, evIdx: 0, cur: null, s: this.mapSize, fase: 0, dano: 0, emitAt: -1e9, lider: null, liderAt: -1e9, oro: null, sobraHasta: 0 };
+        }
+        // Offline: el reloj de la sala corre aunque no se juegue; al volver se cuadra la zona con el.
+        arcSync(elapsedMs) { if (this.arc) this.arc.t0 = this.now - Math.max(0, elapsedMs); }
+        arcElapsed() { return this.arc ? this.now - this.arc.t0 : 0; }
+        arcEntradaAbierta() { return !this.arc || this.arcElapsed() < ARCADE.entradaMs; }
+        arcEvento(key) { const c = this.arc && this.arc.cur; return !!(c && c.key === key && c.on); }
+        arcSinSplit() { return this.arcEvento('nosplit'); }
+        // Hasta donde se mueven los bots sin salirse: el mapa o la zona segura si ya se esta cerrando.
+        zonaLimite() { return this.arc && this.arc.fase > 0 ? Math.min(this.mapSize, this.arc.s) : this.mapSize; }
+        arcPuntos(p) { let m = 0; for (const c of p.cells) m += c.mass; return arcadeScore(m, p.kills); }
+        // Kill en arcade: suma al contador de la puntuacion; si era el de la corona, cuenta doble y da masa extra.
+        arcKill(p, victimId, cell) {
+            if (!this.arc || !p) return;
+            let k = 1;
+            if (victimId != null && victimId === this.arc.lider) {
+                k = 2;
+                let m = 0; for (const c of p.cells) m += c.mass;
+                const c = cell && p.cells.includes(cell) ? cell : p.cells[0];
+                if (c) c.r = Math.sqrt((c.mass + m * ARCADE.coronaBonus) / (Math.PI * PILL_RATIO));
+                this.emit({ type: 'arcKing', id: p.id, name: p.name || 'PLAYER', killed: true });
+                this.arc.liderAt = -1e9;   // se recalcula ya
+            }
+            p.kills = (p.kills | 0) + k;
+        }
+        pasoArcade(delta) {
+            const A = this.arc, t = this.now - A.t0;
+            // Zona segura: entera hasta el minuto 1; luego cada fase va de su tamano al siguiente.
+            let frac = 1, fase = 0, dano = 0;
+            if (t >= ARCADE.entradaMs) {
+                let desde = ARCADE.entradaMs, f0 = 1;
+                for (let i = 0; i < ARCADE.fases.length; i++) {
+                    const F = ARCADE.fases[i];
+                    if (t < F.hasta || i === ARCADE.fases.length - 1) {
+                        const k = Math.max(0, Math.min(1, (t - desde) / (F.hasta - desde)));
+                        frac = f0 + (F.frac - f0) * k; fase = i + 1; dano = F.dano; break;
+                    }
+                    desde = F.hasta; f0 = F.frac;
+                }
+            }
+            const S = this.mapSize * frac, cambioFase = fase !== A.fase;
+            A.s = S; A.fase = fase; A.dano = dano;
+            if (fase > 0) {
+                // Fuera de la zona: el mismo % de masa por segundo para todos; sin masa, fuera.
+                const factor = Math.pow(1 - dano, delta / 1000), fuera = c => Math.abs(c.x) > S || Math.abs(c.y) > S;
+                for (const p of this.players.values()) {
+                    if (!p.alive || p.godMode) continue;
+                    for (let i = p.cells.length - 1; i >= 0; i--) {
+                        const c = p.cells[i]; if (!fuera(c)) continue;
+                        const m = c.mass * factor;
+                        if (m < ARCADE.masaMin) p.cells.splice(i, 1); else c.r = Math.sqrt(m / (Math.PI * PILL_RATIO));
+                    }
+                }
+                for (let i = this.enemies.length - 1; i >= 0; i--) {
+                    const e = this.enemies[i]; if (!fuera(e)) continue;
+                    const m = e.mass * factor;
+                    if (m >= ARCADE.masaMin) { e.r = Math.sqrt(m / (Math.PI * PILL_RATIO)); continue; }
+                    const id = e.id; this.enemies.splice(i, 1);
+                    if (!this.enemies.some(x => x.id === id)) { this.botStreak.delete(id); this.botExpira.delete(id); }
+                }
+            }
+            this.pasoEventos(t, S, delta);
+            // Corona: el primero por puntuacion (jugadores y grupos de bots), cada medio segundo.
+            if (this.now - A.liderAt >= 500) {
+                A.liderAt = this.now;
+                let best = null, bestP = -1, bestName = '';
+                for (const p of this.players.values()) { if (!p.alive || !p.cells.length) continue; const v = this.arcPuntos(p); if (v > bestP) { bestP = v; best = p.id; bestName = p.name; } }
+                const g = new Map(); for (const e of this.enemies) { const x = g.get(e.id) || { m: 0, n: e.name }; x.m += e.mass; g.set(e.id, x); }
+                for (const [id, x] of g) if (x.m > bestP) { bestP = x.m; best = id; bestName = x.n; }
+                if (best !== A.lider) { A.lider = best; if (best != null) this.emit({ type: 'arcKing', id: best, name: bestName || 'PLAYER' }); }
+            }
+            // Estado para los clientes (tambien para quien entra a media partida).
+            if (cambioFase || this.now - A.emitAt >= 250) {
+                A.emitAt = this.now;
+                const c = A.cur;
+                this.emit({ type: 'arc', t: Math.round(t), dur: A.dur, s: Math.round(S), fase, dano, ent: t < ARCADE.entradaMs,
+                    ev: c ? c.key : null, evIni: c ? c.ini : 0, evFin: c ? c.fin : 0,
+                    x: c && c.x != null ? Math.round(c.x) : null, y: c && c.y != null ? Math.round(c.y) : null, r: c ? c.r || 0 : 0,
+                    oro: A.oro ? { x: Math.round(A.oro.x), y: Math.round(A.oro.y), r: ARCADE.oroR } : null });
+            }
+        }
+        pasoEventos(t, S, delta) {
+            const A = this.arc;
+            // Se anuncia avisoMs antes; dura eventoMs (el virus dorado, hasta que alguien lo coja o pasen oroMs).
+            if (!A.cur && A.evIdx < ARCADE.eventosEn.length && t >= ARCADE.eventosEn[A.evIdx] - ARCADE.avisoMs) {
+                const key = A.ev[A.evIdx], ini = ARCADE.eventosEn[A.evIdx];
+                const L = Math.max(400, Math.min(this.mapSize, S) * 0.7);
+                const cur = { key, ini, fin: ini + (key === 'gold' ? ARCADE.oroMs : ARCADE.eventoMs), on: false };
+                if (key === 'rain' || key === 'gold') { cur.x = (Math.random() * 2 - 1) * L; cur.y = (Math.random() * 2 - 1) * L; cur.r = key === 'rain' ? ARCADE.rainR : ARCADE.oroR; }
+                A.cur = cur;
+            }
+            const c = A.cur; if (!c) return;
+            if (!c.on && t >= c.ini) { c.on = true; if (c.key === 'gold') A.oro = { x: c.x, y: c.y }; if (c.key === 'rain') A.sobraHasta = this.now + 30000; }
+            if (c.on && c.key === 'rain') {
+                // Lluvia de comida en el circulo marcado (fuera del limite de comida del mapa mientras dure).
+                c.acum = (c.acum || 0) + ARCADE.rainPorSeg * delta / 1000;
+                const nuevas = [], r1 = v => Math.round(v * 10) / 10;
+                while (c.acum >= 1) {
+                    c.acum--;
+                    this.spawnFoodSafe(this.foods, 1);
+                    const f = this.foods[this.foods.length - 1], a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * c.r;
+                    this.foodGrid.remove(f); f.x = c.x + Math.cos(a) * d; f.y = c.y + Math.sin(a) * d; this.foodGrid.insert(f);
+                    nuevas.push({ x: r1(f.x), y: r1(f.y), r: r1(f.r), c1: f.c1 });
+                }
+                if (nuevas.length && this.config.emitFoodEvents) this.emit({ type: 'foodAdd', foods: nuevas });
+            }
+            if (c.on && c.key === 'gold' && A.oro) {
+                // El primero que toca el virus dorado gana +25 % de masa (sin dividirse).
+                const O = A.oro, toca = cell => Math.hypot(cell.x - O.x, cell.y - O.y) < cell.r + ARCADE.oroR * 0.6;
+                let quien = null, celda = null;
+                for (const p of this.players.values()) { if (!p.alive) continue; for (const cell of p.cells) if (toca(cell)) { quien = p; celda = cell; break; } if (quien) break; }
+                if (quien) {
+                    let m = 0; for (const x of quien.cells) m += x.mass;
+                    celda.r = Math.sqrt((celda.mass + m * ARCADE.oroBonus) / (Math.PI * PILL_RATIO));
+                    this.emit({ type: 'arcGold', id: quien.id, name: quien.name || 'PLAYER' });
+                    A.oro = null; c.fin = t;
+                } else {
+                    for (const e of this.enemies) if (toca(e)) {
+                        let m = 0; for (const x of this.enemies) if (x.id === e.id) m += x.mass;
+                        e.r = Math.sqrt((e.mass + m * ARCADE.oroBonus) / (Math.PI * PILL_RATIO));
+                        this.emit({ type: 'arcGold', id: e.id, name: e.name || 'PLAYER' });
+                        A.oro = null; c.fin = t; break;
+                    }
+                }
+            }
+            if (c.on && t >= c.fin) { A.cur = null; A.oro = null; A.evIdx++; A.emitAt = -1e9; }
+        }
         // Lado/2 del mapa para n jugadores (con el multiplicador de mapa de la sala).
         mapaObjetivo(n) {
             const ws = this.config.worldSettings || {};
@@ -920,7 +1075,7 @@
             }
             if (nuevas.length && this.config.emitFoodEvents) this.emit({ type: 'foodAdd', foods: nuevas });
             // Sobra comida (el mapa ha encogido): se quitan unas pocas por tick.
-            if (this.foods.length > quiereF + 25) {
+            if (this.foods.length > quiereF + 25 && !(this.arc && this.now < this.arc.sobraHasta)) {
                 const quita = [];
                 for (let k = 0; k < 25 && this.foods.length > quiereF; k++) {
                     const i = (Math.random() * this.foods.length) | 0, f = this.foods[i];
@@ -940,6 +1095,7 @@
             this.now += delta;
             const timeScale = this.timeScale;
             if (this.mapaVivo) { this.pasoMapa(delta); this.mapaRellena(); }
+            if (this.arc) this.pasoArcade(delta);
 
             // Timers por jugador + acciones encoladas (split / skills)
             for (const p of this.players.values()) {
@@ -1076,6 +1232,7 @@
                             if (remainingPieces === 0) {
                                 this.botStreak.delete(botId); this.botExpira.delete(botId);
                                 if (this.config.mode === 'classic') { p.killStreak++; }
+                                this.arcKill(p, botId, c);
                                 this.emit({ type: 'botKilled', playerId: p.id, botName, streak: p.killStreak, mode: this.config.mode });
                                 if (this.config.botConfig.respawn) this.botRespawnQueue.push(this.now + 3000);
                             } else { this.emit({ type: 'botPieceEaten', playerId: p.id }); }
@@ -1114,7 +1271,7 @@
             }
 
             // Comer comida (grid espacial)
-            living = this.livingCells(); let gainMultiplier = this.config.worldSettings.food || 1;
+            living = this.livingCells(); let gainMultiplier = (this.config.worldSettings.food || 1) * (this.arcEvento('double') ? 2 : 1);
             living.forEach(c => {
                 const nearbyFoods = this.foodGrid.query(c.x, c.y);
                 for (let f of nearbyFoods) {
@@ -1152,7 +1309,7 @@
             }
 
             // Bots que van entrando (botConfig.entrada) hasta llegar a count.
-            if (this._botEntraAt != null && this.now >= this._botEntraAt && this.config.botConfig.enabled) {
+            if (this._botEntraAt != null && this.now >= this._botEntraAt && this.config.botConfig.enabled && this.arcEntradaAbierta()) {
                 const grupos = new Set(); for (const e of this.enemies) grupos.add(e.id);
                 if (grupos.size < this.config.botConfig.count) { this.spawnBot(); this._botEntraAt = this.now + (this.config.botConfig.entrada.cadaMs | 0); }
                 else this._botEntraAt = null;
@@ -1160,7 +1317,7 @@
 
             // Respawn de bots pendientes
             for (let i = this.botRespawnQueue.length - 1; i >= 0; i--) {
-                if (this.botRespawnQueue[i] <= this.now) { this.botRespawnQueue.splice(i, 1); this.spawnBot(); }
+                if (this.botRespawnQueue[i] <= this.now) { this.botRespawnQueue.splice(i, 1); if (this.arcEntradaAbierta()) this.spawnBot(); }
             }
         }
     }
@@ -1168,7 +1325,7 @@
     return {
         Simulation, Cell, ObjectPool, SpatialGrid,
         uuid, getEllipticalDist, getRandomColor,
-        WORLD_CONFIG, SKILL_PARAMS, SKILL_DEFS,
+        WORLD_CONFIG, SKILL_PARAMS, SKILL_DEFS, ARCADE, arcadeScore,
         VIRUS_RADIUS, VIRUS_GAIN_LOW, VIRUS_GAIN_HIGH, VIRUS_GAIN_THRESHOLD,
         BASE_MERGE_TIME, MERGE_MASS_FACTOR, SPLIT_COOLDOWN_MS, GLOBAL_CD_MS,
         AUTO_SPLIT_LEVEL_1, AUTO_SPLIT_LEVEL_2,

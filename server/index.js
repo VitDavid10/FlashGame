@@ -108,7 +108,7 @@ const CLASSIC_MIN_REAL = 4;   // classic: minimo de reales para empezar (ver enf
 // Población objetivo (reales + bots de relleno). 0 = SIN bots de relleno: online
 // solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
 const TARGET_POP = process.env.TARGET_POP != null ? parseInt(process.env.TARGET_POP, 10) : 0;
-const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000 + 50 * 1000);
+const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000);   // arcade: 3 min fijos (zona y eventos en shared/sim.js ARCADE)
 /*
  * Duración de una partida de CLASSIC. Antes classic no acababa nunca.
  *

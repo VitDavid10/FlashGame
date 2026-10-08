@@ -954,7 +954,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     // Salas: cada tarjeta enseña sus layers con su aforo; debajo, ROOM INFO de la elegida y las reglas del modo.
     const ROOM_RULES = {
-        arcade: ['Draft a skill every 30s', 'Eat, split and survive', 'Top players split the pot', 'Paid rooms take the entry from your in-game $PILLY'],
+        arcade: ['3 min match · a new skill every 30s', 'Every 30s an event: food rain, gold virus, x2 food, no split', 'From min 1 the zone shrinks · outside you shrink fast', 'Score = mass x kills · eat the king for +25%'],
         classic: ['Eat cells, split and farm viruses', 'Kill 5 players (pentakill) for the max profit', 'Leaving early costs a penalty up to 20%', 'Paid rooms take the entry from your in-game $PILLY']
     };
     function renderRooms() {
@@ -1782,7 +1782,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => hub.classList.contains('pc') ? 'Tip: tap INFO in THE PILL or open HOW TO PLAY (the gear) to see how each skill works.' : 'Tip: tap INFO in THE PILL to see how each skill works.',
         () => 'Tip: add friends in FRIENDS to form a group for 2v2 and 3v3.',
         () => 'Tip: mute a friend in FRIENDS to stop their popups. Their whispers and invites pile up there instead.',
-        () => 'Tip: in ARCADE the top players of the room share the prize when the match ends, after about 3 minutes and 50 seconds.',
+        () => 'Tip: in ARCADE the top 10 of the room share the prize when the 3 minute match ends.',
+        () => 'Tip: in ARCADE the safe zone starts closing at minute 1. Outside it you lose mass every second, and the last phase is brutal.',
+        () => 'Tip: in ARCADE nobody can join after the first minute. Be there from the start.',
+        () => 'Tip: every 30 seconds ARCADE has an event: food rain, golden virus, double food or no split.',
+        () => 'Tip: the GOLDEN VIRUS gives +25% mass to the first one who touches it.',
+        () => 'Tip: in ARCADE the ranking goes by score: every kill adds 10% to your mass, up to x2.',
+        () => 'Tip: the player with the crown leads the room. Eat them for +25% mass and a double kill.',
         () => 'Tip: in CLASSIC, when you eat someone you take everything they were carrying.',
         () => 'Tip: leaving CLASSIC early costs a penalty: 20% with no kills, 10% with one kill, none from 2 kills.',
         () => 'Tip: in CLASSIC your match ends when you reach 5 kills (pentakill), when you leave, or at the 15 minute limit.',

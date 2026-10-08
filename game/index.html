@@ -2681,6 +2681,10 @@
 
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
+        /* Arcade: rotulo de la zona y de los eventos (FOOD RAIN IN 3, NO SPLIT · 7S, OUTSIDE THE SAFE ZONE...) */
+        #arcBanner { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 60; display: none; pointer-events: none; font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 16px 8px; background: rgba(5,8,4,.88); border: 3px solid #ffd23a; color: #ffd23a; text-shadow: 2px 2px 0 #000; white-space: nowrap; box-shadow: 4px 4px 0 rgba(0,0,0,.6); }
+        #arcBanner.show { display: block; }
+        #arcBanner.rojo { border-color: #ff4d4d; color: #ff6a6a; }
         body.hub-on #botsBanner { display: none !important; }
         /* La pildora suelta de "carga discreta" (paisSync al elegir modo) es del menu antiguo: con el hub flotaba encima del menu */
         body.hub-on #miniCargaPill { display: none !important; }   /* con el menu a la vista nunca: al salir de la partida se colaba unos ms */
@@ -3947,6 +3951,7 @@
     </div>
 
     <div id="botsBanner">🤖 Playing against bots</div>
+    <div id="arcBanner"></div>
 
     <div id="killGainStack"></div>
 
@@ -4493,7 +4498,7 @@
                     <div class="mode-sub">ROGUELIKE MECHANICS</div>
                     <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                     <div class="mode-desc">
-                        NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
+                        TIME: <span class="highlight">3:00</span>. THE SAFE ZONE SHRINKS.<br>
                         START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
                         <span style="color:#ccff00;">REACH TOP 10 TO WIN.</span>
                     </div>
@@ -4975,7 +4980,7 @@
         <div id="buff-list-content"></div>
     </div>
 
-    <div id="timerDisplay">03:50</div>
+    <div id="timerDisplay">03:00</div>
     <div id="leaderboard"><h3>TOP MASS</h3><div id="lb-list"></div><div id="killsSection" style="border-top:1px solid #333;margin-top:8px;padding-top:8px;"><div style="font-family:'Russo One';color:#888;font-size:11px;letter-spacing:1px;margin-bottom:3px;">KILLS</div><div id="killsVal" style="font-family:'Russo One';font-size:26px;color:#ff4444;text-shadow:0 0 10px rgba(255,68,68,0.5);line-height:1;">0</div></div></div>
     
     <div id="skillChoiceOverlay">
@@ -5623,7 +5628,7 @@
     const BASE_WIDTH = 1920, BASE_HEIGHT = 1080;
     // roomStates[roomKey] = { sim, config } — una Simulation por sala
     let roomStates = {}, roomTimers = {}, MAP_SIZE = 3500;
-    let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000;
+    let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000;   // arcade: 3 min (zona y eventos: shared/sim.js ARCADE)
     // Classic dura 15 min, igual que online (CLASSIC_MATCH_MS del servidor).
     // Antes la practica offline de classic no tenia fin y por eso tampoco reloj.
     const CLASSIC_DURATION_MS = 15 * 60 * 1000;
@@ -5653,6 +5658,7 @@
     // script (el cartel de REWARDS) necesitan saberlo para pintar su marco del
     // color que toca, y `currentGameMode` no es global.
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
+    let arcSt = null;   // arcade: ultimo estado de la zona/evento (evento 'arc' de la sim), con la hora local en que llego
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     // Cuantos bots hay offline. Classic lleva mas (40) porque su mapa es el doble
@@ -11280,7 +11286,7 @@
             sim = new PillSim.Simulation({
                 // Classic offline: arranca con 4 (tu + 3 bots) y entra un bot cada 2 s,
                 // como una sala que se va llenando (asi se ve crecer el mapa vivo).
-                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : null }, maxBotCells: MAX_BOT_CELLS,
+                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : { inicial: 6, cadaMs: Math.max(1500, Math.round(PillSim.ARCADE.entradaMs / Math.max(1, botConfig.count - 6))) } }, maxBotCells: MAX_BOT_CELLS,
                 botLifeMs: currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
                 // Mismo calentamiento que startPracticeGame: sin el, una partida
                 // offline recien entrada podia acabar en 1s con los bots ya encima.
@@ -11336,6 +11342,9 @@
             }
         }
         if(!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { roomTimers[roomKey] = Date.now() + duracionOffline(currentGameMode); }
+        // Arcade offline: zona segura, eventos y corona, cuadrados con el reloj de la sala (que corre aunque no juegues).
+        arcSt = null; ponTituloRanking(currentGameMode);
+        if (currentGameMode === 'arcade') { if (!sim.arc) sim.startArcade(GAME_DURATION_MS); sim.arcSync(GAME_DURATION_MS - (roomTimers[roomKey] - Date.now())); }
         if (!loadedSave) {
             // Partida nueva: las kills del HUD (y del GAME OVER) empiezan en 0; antes
             // offline se arrastraban las de las partidas anteriores.
@@ -15979,6 +15988,7 @@
 
     function enterOnlineGame(ws, msg, isResume) {
         practiceMode = false; setLobbyBanner(null);
+        arcSt = null; ponTituloRanking(msg.mode);
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet durante la partida
         sim = new RemoteSim(ws, msg);
         // En resume NO forzamos _camInit: dejamos que el primer snapshot salte la
@@ -16221,6 +16231,19 @@
                 // Mapa vivo (classic): el borde se mueve con la gente, sin anunciarlo
                 // (decision de David).
                 case 'mapa': MAP_SIZE = ev.size; break;
+                // Arcade: zona segura, eventos y corona.
+                case 'arc': arcSt = Object.assign({}, ev, { at: performance.now() }); break;
+                case 'arcKing': {
+                    const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
+                    if (ev.killed) spawnFloatingText(yo ? 'KING SLAIN! +25% MASS' : (ev.name || 'A PLAYER') + ' SLAYED THE KING', '#ffd23a');
+                    else spawnFloatingText(yo ? 'YOU ARE THE KING!' : 'NEW KING: ' + (ev.name || 'A PLAYER'), '#ffd23a');
+                    break;
+                }
+                case 'arcGold': {
+                    const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
+                    spawnFloatingText(yo ? 'GOLDEN VIRUS! +25% MASS' : (ev.name || 'A PLAYER') + ' TOOK THE GOLDEN VIRUS', '#ffd23a');
+                    break;
+                }
                 case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
                 // Un bot ha hecho pentakill: se va de la partida (igual que un
                 // jugador que gana) y entra otro. Se avisa o desaparece un bicho
@@ -16344,6 +16367,82 @@
             ctx.restore();
         });
     }
+    // El ranking de arcade va por PUNTUACION (masa x kills); el de classic, por masa.
+    function ponTituloRanking(modo) { const h = document.querySelector('#leaderboard h3'); if (h) h.textContent = modo === 'arcade' ? 'SCORE' : 'TOP MASS'; }
+    // ===== ARCADE: zona segura, eventos y aviso =====
+    const ARC_NOMBRES = { rain: 'FOOD RAIN', gold: 'GOLDEN VIRUS', double: 'DOUBLE FOOD', nosplit: 'NO SPLIT' };
+    const arcT = () => arcSt ? arcSt.t + (performance.now() - arcSt.at) : 0;
+    const arcFuera = () => { if (!arcSt || !(arcSt.fase > 0)) return false; const S = arcSt.s; return myCells().some(c => Math.abs(c.x) > S || Math.abs(c.y) > S); };
+    function drawArcadeMundo(es) {
+        if (!arcSt || currentGameMode !== 'arcade') return;
+        const u = 1 / es, M = MAP_SIZE;
+        ctx.save();
+        if (arcSt.fase > 0) {
+            const S = Math.min(arcSt.s, M);
+            ctx.fillStyle = 'rgba(255,40,40,0.14)';
+            ctx.fillRect(-M, -M, 2 * M, M - S); ctx.fillRect(-M, S, 2 * M, M - S);
+            ctx.fillRect(-M, -S, M - S, 2 * S); ctx.fillRect(S, -S, M - S, 2 * S);
+            ctx.strokeStyle = 'rgba(255,70,70,0.95)'; ctx.lineWidth = 5 * u; ctx.setLineDash([26 * u, 14 * u]); ctx.lineDashOffset = -(performance.now() / 25) * u;
+            ctx.strokeRect(-S, -S, 2 * S, 2 * S); ctx.setLineDash([]);
+        }
+        if ((arcSt.ev === 'rain' || arcSt.ev === 'gold') && arcSt.x != null) {
+            // La zona del evento se marca desde el aviso (y la lluvia mientras dura).
+            const pulso = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+            ctx.strokeStyle = 'rgba(255,210,58,' + (0.5 + 0.4 * pulso) + ')'; ctx.lineWidth = 4 * u; ctx.setLineDash([16 * u, 12 * u]);
+            ctx.beginPath(); ctx.arc(arcSt.x, arcSt.y, arcSt.ev === 'rain' ? arcSt.r : arcSt.r * 1.8, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        }
+        if (arcSt.oro) {
+            const O = arcSt.oro, n = 14, rot = performance.now() / 900;
+            ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#7a5a00'; ctx.lineWidth = 4 * u;
+            ctx.beginPath();
+            for (let i = 0; i <= n * 2; i++) { const a = rot + i * Math.PI / n, rr = i % 2 ? O.r : O.r * 1.18; const x = O.x + Math.cos(a) * rr, y = O.y + Math.sin(a) * rr; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(O.x - O.r * 0.3, O.y - O.r * 0.3, O.r * 0.22, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+    }
+    function drawArcadePantalla(es) {
+        const b = document.getElementById('arcBanner');
+        if (!arcSt || currentGameMode !== 'arcade' || !gameRunning) { if (b) b.className = ''; return; }
+        const t = arcT(), fuera = arcFuera();
+        // Borde rojo de pantalla mientras estas fuera de la zona.
+        if (fuera) {
+            const g = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
+            g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, 'rgba(255,0,0,' + (0.28 + 0.12 * Math.sin(performance.now() / 150)) + ')');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, width, height);
+        }
+        // Flecha al borde de la pantalla hacia la lluvia o el virus dorado si no se ven.
+        const obj = arcSt.oro || ((arcSt.ev === 'rain' || arcSt.ev === 'gold') && arcSt.x != null ? arcSt : null);
+        if (obj) {
+            const sx = (obj.x - camera.x) * es + width / 2, sy = (obj.y - camera.y) * es + height / 2;
+            if (sx < 0 || sy < 0 || sx > width || sy > height) {
+                const a = Math.atan2(sy - height / 2, sx - width / 2), m = 46;
+                const k = Math.min((width / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (height / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
+                const ax = width / 2 + Math.cos(a) * k, ay = height / 2 + Math.sin(a) * k;
+                ctx.save(); ctx.translate(ax, ay); ctx.rotate(a);
+                ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-12, -13); ctx.lineTo(-6, 0); ctx.lineTo(-12, 13); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.restore();
+            }
+        }
+        // Rotulo de arriba: fuera de la zona > evento > la zona empieza a cerrarse.
+        let txt = '', cls = '';
+        if (fuera) { txt = 'OUTSIDE THE SAFE ZONE · -' + Math.round((arcSt.dano || 0) * 100) + '% MASS/S'; cls = 'rojo'; }
+        else if (arcSt.ev) {
+            const nom = ARC_NOMBRES[arcSt.ev] || arcSt.ev.toUpperCase();
+            txt = t < arcSt.evIni ? nom + ' IN ' + Math.max(1, Math.ceil((arcSt.evIni - t) / 1000)) : nom + ' · ' + Math.max(0, Math.ceil((arcSt.evFin - t) / 1000)) + 'S';
+            cls = 'oro';
+        } else if (arcSt.fase > 0 && (t - (PillSim.ARCADE.entradaMs + (arcSt.fase - 1) * 30000)) < 3500) {
+            txt = arcSt.fase === 1 ? 'THE SAFE ZONE IS CLOSING' : 'THE ZONE CLOSES FASTER · -' + Math.round((arcSt.dano || 0) * 100) + '% MASS/S OUTSIDE'; cls = 'rojo';
+        }
+        if (b) {
+            b.textContent = txt; b.className = txt ? 'show ' + cls : '';
+            // La eleccion de skill tambien sale arriba (cada 30 s, como los eventos): el rotulo se pone debajo.
+            const so = els.skillOverlay; let top = 64;
+            if (txt && so && so.style.display !== 'none') { const r = so.getBoundingClientRect(); if (r.height) top = Math.round(r.bottom + 10); }
+            b.style.top = top + 'px';
+        }
+    }
     function draw() {
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color'); ctx.fillRect(0, 0, width, height); if (!gameRunning || !sim) return;
         const p = me();
@@ -16444,7 +16543,9 @@
         ctx.restore();
 
         drawAimGuide(es);
+        drawArcadeMundo(es);
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
+        drawArcadePantalla(es);
         drawEnemyArrow(es);
         drawAllyMarkers(es);
     }
@@ -16980,7 +17081,7 @@
             const cells = myCells();
             if (cells.length > 0) {
                 let m = 0; cells.forEach(c => m += c.mass);
-                all.push({ id: 'me', name: me().name, mass: m, isMe: true });
+                all.push({ id: 'me', name: me().name, mass: sim.arc ? PillSim.arcadeScore(m, me().kills) : m, isMe: true });
             }
             let botMap = new Map();
             sim.enemies.forEach(e => {
