@@ -150,7 +150,7 @@ function createSquad(deps) {
         const now = Date.now();
         const room = {
             key, comboKey: 'squad_Free', layerIdx: 1, mode, roomName: 'Free',
-            sim: buildSim(mode, { food: 1, virus: 1, speed: 1, botsEnabled: false, botCount: 0 }),
+            sim: buildSim(mode, { food: 1, virus: 1, speed: 1, botsEnabled: false, botCount: 0, mapaVivo: false }),   // arenas: mapa fijo como hasta ahora
             clients: new Map(), state: 'waiting',
             tickCount: 0, lastTick: now, emptySince: 0,
             endsAt: null, restartAt: null, startAt: now + (kind === 'practice' ? PRACTICE_START_MS : MATCH_START_MS),

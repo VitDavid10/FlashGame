@@ -416,8 +416,9 @@
                 emitFoodEvents: false                              // el servidor lo activa para publicar diffs de comida
             }, config);
             this.mapSize = this.config.mapSize;
-            // Mapa vivo: classic salvo que se diga lo contrario (config.mapaVivo).
-            this.mapaVivo = this.config.mapaVivo != null ? !!this.config.mapaVivo : this.config.mode === 'classic';
+            // Mapa vivo: classic y arcade salvo que se diga lo contrario (config.mapaVivo). En arcade el tope es su
+            // mapa de siempre (3500), al que se llega justo con 25 jugadores: con menos, el mapa es mas pequeno.
+            this.mapaVivo = this.config.mapaVivo != null ? !!this.config.mapaVivo : (this.config.mode === 'classic' || this.config.mode === 'arcade');
             this.mapaMax = this.config.mapSize;
             this._mapa = { bajaDesde: null, estado: 'estable', emitidoAt: -1e9, emitidoSize: -1 };
             this.now = 0;

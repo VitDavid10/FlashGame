@@ -52,6 +52,7 @@ function createGameHost(deps) {
         const sim = new PillSim.Simulation({
             mode,
             mapSize: baseSize,
+            mapaVivo: rules.mapaVivo,   // undefined = lo que diga el modo (classic y arcade: si)
             worldSettings: { map: 1, food: rules.food || 1, virus: rules.virus || 1, speed: rules.speed || 1 },
             botConfig: { enabled: !!rules.botsEnabled, count: rules.botCount || 0, respawn: !!rules.botsEnabled },
             maxBotCells: mode === 'classic' ? 8 : 4,
