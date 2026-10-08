@@ -1306,10 +1306,11 @@ const squad = createSquad({
     recordEntry: p => director.recordEntry(p),   // jugar arenas cuenta como partida del dia (retos diarios y cobro de misiones)
     directory: q => airdrop.lookup(q),   // encuentra a gente del airdrop que aun no ha abierto Arenas
     // Amigos y perfiles: solo el proceso que de verdad sirve las arenas los guarda.
-    socialFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'social.json') : null,
+    // Con el split, las arenas las sirve el DIRECTOR (a el llegan las conexiones de grupos y /match?mode=squad lo dice); los hosts no guardan nada.
+    socialFile: (PW_ROLE === 'mono' || PW_ROLE === 'director') ? path.join(__dirname, 'social.json') : null,
     // Arenas de pago: la entrada se firma y cobra como en las salas normales; lo retenido y los premios por cobrar
     // se guardan en arena-pay.json (solo el proceso que sirve las arenas).
-    arenaFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'arena-pay.json') : null,
+    arenaFile: (PW_ROLE === 'mono' || PW_ROLE === 'director') ? path.join(__dirname, 'arena-pay.json') : null,
     authorize: p => director.authorizeEntry(p),
     credit: (w, pill) => econ.credit(w, pill),
     treasury: (pill, motivo) => econ.rakeTesoreria(pill, motivo),
@@ -2645,6 +2646,8 @@ const httpServer = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         const mode = String(query.get('mode') || '');
         const price = String(query.get('price') || '');
+        // Arenas (grupos, amigos, premios): las sirve este mismo proceso (mono o director), nunca un host: asi sus datos se guardan siempre en el mismo sitio.
+        if (mode === 'squad' && PW_ROLE !== 'host') { res.end(JSON.stringify({ ok: true, host: 'localhost', port: PORT, hostId: MY_HOST_ID })); return; }
         const hostId = mode === 'squad' ? SQUAD_HOST_ID : SHARD.comboToHost.get(mode + '_' + price);
         if (hostId == null) { res.end(JSON.stringify({ ok: false, reason: 'combo desconocido' })); return; }
         if (PW_ROLE === 'director') {
@@ -4068,11 +4071,7 @@ wss.on('connection', (ws, req) => {
         }
 
         // --- Arenas por equipos: lobby de grupos y entrada a sala con ticket ---
-        if (msg.t === 'sq' && !room) {
-            // El director no guarda amigos ni premios (solo el host 0): si una conexion de arenas llega aqui, que lo diga en vez de perder datos en silencio.
-            if (PW_ROLE === 'director') { try { ws.send(JSON.stringify({ t: 'sqErr', reason: 'Arenas are not available on this connection. Reload the game.' })); } catch (e) {} log('[squad] conexion de arenas en el director: rechazada (debe ir al host 0 por /match)'); return; }
-            squad.handle(ws, msg); return;
-        }
+        if (msg.t === 'sq' && !room) { squad.handle(ws, msg); return; }
         if (msg.t === 'join' && msg.squad && !msg.resume && !room) {
             if (joinPending) return;
             joinPending = true;

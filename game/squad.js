@@ -27,7 +27,7 @@
         box: { rooms: null, friends: null }, pc: {}, roster: null, rel: null,
         ticketTimer: null, practiceTimer: null, enterBusy: false, after: null,
         x: 'unknown', token: null, prof: null, idAt: 0,
-        friends: { friends: [], inReq: [], outReq: [] }, rooms: [], chat: {}, chatWith: null, unread: {}, roomsTimer: null, watch: (() => { try { return JSON.parse(localStorage.getItem('pw_fwatch')) || {}; } catch (e) { return {}; } })(),
+        friends: { friends: [], inReq: [], outReq: [] }, rooms: [], chat: {}, chatWith: null, unread: {}, roomsTimer: null, alerted: {}, watch: (() => { try { return JSON.parse(localStorage.getItem('pw_fwatch')) || {}; } catch (e) { return {}; } })(),
         invites: [],
         mute: (() => { try { return JSON.parse(localStorage.getItem('pw_wmute')) || { all: false, ids: {} }; } catch (e) { return { all: false, ids: {} }; } })(),
     };
@@ -1129,7 +1129,9 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     // Un amigo con el aviso activado (ALERT en FRIENDS) esta LISTO buscando partida: aviso ARENA con boton para ir a por el.
     function avisoListo(f) {
-        if (S.party && S.party.state === 'match') return;
+        // Solo con el menu a la vista (nunca en partida) y una vez por amigo hasta que se vuelva al menu tras jugar.
+        if (!document.body.classList.contains('hub-on') || S.alerted[f.id]) return;
+        S.alerted[f.id] = 1;
         toast({ kind: 'arena', pic: f.p, text: esc(friendName(f)) + ' is READY for ' + f.q.size + 'V' + f.q.size + ' · ' + usdLbl(f.q.cents / 100), ms: 12000,
             actions: [['FIGHT', () => lanzar(f.q.size, f.q.cents / 100), 1], ['X', null]] });
     }
@@ -1449,7 +1451,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
     function leaveGame() { const h = document.getElementById('sqHud'); if (h) { h.classList.remove('show'); h.innerHTML = ''; } S.rel = null; S.allies = null; rivalsBanner(); }
-    window.PWSquad = { open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    window.PWSquad = { resetAlerts: () => { S.alerted = {}; }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);

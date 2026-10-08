@@ -1856,7 +1856,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function sysEntrada() {
         sysPoll(); SysQ.next();
         // Primera vez en el menu tras una partida: el premio ya esta apuntado (o lo estara en unos segundos).
-        if (postPartida && sysEntro) { postPartida = false; claimAvisado = false; setTimeout(() => refreshClaims(true), 3000); setTimeout(() => refreshClaims(true), 9000); }
+        if (postPartida && sysEntro) { postPartida = false; claimAvisado = false; try { PWSquad.resetAlerts(); } catch (e) {} setTimeout(() => refreshClaims(true), 3000); setTimeout(() => refreshClaims(true), 9000); }
         if (sysEntro) return; sysEntro = true;
         setTimeout(() => {
             const w = xWallet || (window.GameWallet && GameWallet.address);
