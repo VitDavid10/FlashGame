@@ -1313,6 +1313,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (!aq || aq.day !== day) aq = { day, pins: [], prog: {}, done: {}, claimed: {}, sk: [] };
         return aq;
     }
+    // Cualquier cambio de un ajuste de la cuenta (lo escriba quien lo escriba) adelanta la sincronizacion.
+    try {
+        const _set = Storage.prototype.setItem, _PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name'];
+        Storage.prototype.setItem = function (k, v) { const r = _set.apply(this, arguments); if (this === window.localStorage && _PK.indexOf(k) >= 0) { try { cuentaSyncPronto(); } catch (e) {} } return r; };
+    } catch (e) {}
     function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} cuentaSyncPronto(); }
     // ---- Foto de perfil y misiones iguales en todos los dispositivos de la cuenta (server/accountsync.js) ----
     let csTimer = null, csBusy = false;
@@ -1323,6 +1328,21 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         csBusy = true;
         try {
             const a = aqLoad(), body = { aq: { day: a.day, pins: a.pins, prog: a.prog, done: a.done, claimed: a.claimed, pt: a.pt || 0 } };
+            // ajustes de la cuenta (avisos de amigos, apodos, skills de salida, nombre): cada clave lleva su hora de cambio
+            const PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name'];
+            let snap = {}; try { snap = JSON.parse(localStorage.getItem('pw_pref_t')) || {}; } catch (e) {}
+            body.prefs = {};
+            PK.forEach(k => {
+                let v = null; try { v = localStorage.getItem(k); } catch (e) {}
+                if (v == null) return;
+                if (!snap[k] || snap[k].v !== v) snap[k] = { v, t: Date.now() };
+                body.prefs[k] = snap[k];
+            });
+            try { localStorage.setItem('pw_pref_t', JSON.stringify(snap)); } catch (e) {}
+            // rejoin: lo que se guardo en este dispositivo (o su borrado) para poder seguir desde otro
+            let rj = null, rjt = 0, rjc = 0; try { rj = JSON.parse(localStorage.getItem('pw_resume')); rjt = parseInt(localStorage.getItem('pw_resume_t'), 10) || 0; rjc = parseInt(localStorage.getItem('pw_resume_clr'), 10) || 0; } catch (e) {}
+            if (rj && rj.expiresAt > Date.now() && rjt >= rjc) { body.resume = rj; body.rt = rjt; }
+            else if (rjc) { body.resumeClear = true; body.rt = rjc; }
             let at = 0, sucio = false;
             try { at = parseInt(localStorage.getItem('pw_avatar_at'), 10) || 0; sucio = localStorage.getItem('pw_avatar_dirty') === '1'; } catch (e) {}
             if (sucio) { const av = localStorage.getItem('pw_avatar'); if (av) body.avatar = av; else body.clear = true; body.at = at; }
@@ -1338,6 +1358,34 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 } catch (e) {}
                 cambio = true;
             }
+            // ajustes: si en otro dispositivo se cambiaron mas tarde, aqui se aplican
+            const cambiadas = [];
+            Object.keys(r.prefs || {}).forEach(k => {
+                const p = r.prefs[k]; if (!p || !PK.includes(k) || typeof p.v !== 'string') return;
+                if (p.t > ((snap[k] && snap[k].t) || 0) && p.v !== (snap[k] && snap[k].v)) {
+                    try { localStorage.setItem(k, p.v); } catch (e) {}
+                    snap[k] = { v: p.v, t: p.t }; cambiadas.push(k);
+                }
+            });
+            if (cambiadas.length) {
+                try { localStorage.setItem('pw_pref_t', JSON.stringify(snap)); } catch (e) {}
+                if (cambiadas.includes('pw_start_skills')) { try { picks = JSON.parse(localStorage.getItem('pw_start_skills')) || [null, null]; } catch (e) {} }
+                if (cambiadas.includes('pw_app_name')) { try { guardaNombre(localStorage.getItem('pw_app_name')); } catch (e) {} }
+                try { if (window.PWSquad && PWSquad.reloadPrefs) PWSquad.reloadPrefs(); } catch (e) {}
+                cambio = true;
+            }
+            // rejoin de otro dispositivo: el boton REJOIN aparece tambien aqui mientras dure la ventana
+            if (r.resume && (r.rt | 0) > Math.max(rjt, rjc) && r.resume.expiresAt > Date.now()) {
+                let mismoHost = false; try { mismoHost = new URL(r.resume.url).host === location.host || /^(localhost|127\.0\.0\.1)/.test(location.host); } catch (e) {}
+                if (mismoHost) {
+                    try { localStorage.setItem('pw_resume', JSON.stringify(r.resume)); localStorage.setItem('pw_resume_t', String(r.rt)); localStorage.removeItem('pw_resume_clr'); } catch (e) {}
+                    try { Rejoin.refreshButton(); } catch (e) {}
+                    cambio = true;
+                }
+            } else if (!r.resume && rjc === 0 && rj && (r.rt | 0) > rjt) {
+                try { localStorage.removeItem('pw_resume'); } catch (e) {}   // la partida ya se cerro en otro dispositivo
+                try { Rejoin.refreshButton(); } catch (e) {}
+            }
             // misiones de hoy: lo que ya hay en la cuenta se junta con lo de este dispositivo
             const q = r.aq;
             if (q && q.day === a.day) {
@@ -1352,6 +1400,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         } catch (e) {} finally { csBusy = false; }
     }
     setInterval(() => { if (hub.classList.contains('on')) cuentaSync(); }, 90000);
+    window.pwCuentaSync = () => { clearTimeout(csTimer); csTimer = setTimeout(cuentaSync, 300); };
     // El sorteo del dia se calcula una vez (aqStat se llama muchas veces por segundo).
     let aqCache = null;
     const aqList = () => { const d = aqLoad().day; if (!aqCache || aqCache.d !== d) aqCache = { d, l: appMissionsFor(d) }; return aqCache.l; };

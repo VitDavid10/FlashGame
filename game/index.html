@@ -5317,8 +5317,8 @@
     let serverEnemyFx = true;   // override global del server (admin): false = sin FX de enemigos para todos
     // Zoom base: ajuste LOCAL de tu navegador (lo pone el panel admin via localStorage,
     // compartido por ser mismo origen). Solo afecta a TU vista. Mayor = más cerca.
-    (function(){ const z = parseFloat(localStorage.getItem('pw_baseZoom')); if (z > 0) ZOOM_CONFIG.baseScale = z; })();
-    window.addEventListener('storage', e => { if (e.key === 'pw_baseZoom') { const z = parseFloat(e.newValue); if (z > 0) ZOOM_CONFIG.baseScale = z; } });
+    // El zoom base lo manda el servidor (admin) y es el unico que manda: ya no hay valor local que lo pise.
+    try { localStorage.removeItem('pw_baseZoom'); } catch (e) {}
     let enableEnemySnd = true;
 
     // Landing background (hero=1): nothing plays there (heroAmbientDemo mutes
@@ -14520,8 +14520,9 @@
     const REJOIN_WINDOW_MS = 28000;   // un poco menos que el grace del server por seguridad
     const Rejoin = {
         save(info) {
-            try { localStorage.setItem(REJOIN_KEY, JSON.stringify({ ...info, expiresAt: Date.now() + REJOIN_WINDOW_MS })); } catch (e) {}
+            try { localStorage.setItem(REJOIN_KEY, JSON.stringify({ ...info, expiresAt: Date.now() + REJOIN_WINDOW_MS })); localStorage.setItem('pw_resume_t', String(Date.now())); } catch (e) {}
             this.refreshButton();
+            try { if (window.pwCuentaSync) pwCuentaSync(); } catch (e) {}   // para poder seguir desde otro dispositivo
         },
         get() {
             try {
@@ -14533,8 +14534,9 @@
             } catch (e) { return null; }
         },
         clear() {
-            try { localStorage.removeItem(REJOIN_KEY); } catch (e) {}
+            try { if (localStorage.getItem(REJOIN_KEY)) { localStorage.setItem('pw_resume_clr', String(Date.now())); } localStorage.removeItem(REJOIN_KEY); } catch (e) {}
             this.refreshButton();
+            try { if (window.pwCuentaSync) pwCuentaSync(); } catch (e) {}
         },
         refreshButton() {
             const btn = document.getElementById('btnPlayOnline');

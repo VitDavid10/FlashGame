@@ -20,3 +20,18 @@ test('sin cuenta no guarda nada y un dia nuevo sustituye al viejo', () => {
     assert.strictEqual(r.aq.day, day);
     assert.deepStrictEqual(r.aq.prog, {});
 });
+test('ajustes: gana el mas reciente por clave; rejoin se guarda, caduca y se borra', () => {
+    let t = 1000; const s = create({ file: null, now: () => t });
+    s.put('c', { prefs: { pw_nicks: { v: '{"a":"x"}', t: 10 }, pw_wmute: { v: '{"all":true,"ids":{}}', t: 50 } } });
+    const r = s.put('c', { prefs: { pw_nicks: { v: '{}', t: 5 }, pw_wmute: { v: '{"all":false,"ids":{}}', t: 60 }, otra: { v: 'x', t: 99 } } });
+    assert.strictEqual(r.prefs.pw_nicks.v, '{"a":"x"}');
+    assert.strictEqual(r.prefs.pw_wmute.v, '{"all":false,"ids":{}}');
+    assert.strictEqual(r.prefs.otra, undefined);
+    const rj = { token: 'abcdef123456', url: 'wss://pillwars.fun/h0/', mode: 'arcade', room: 'Free', roomName: 'x', expiresAt: 5000 };
+    assert.ok(s.put('c', { resume: rj, rt: 100 }).resume);
+    assert.strictEqual(s.put('c', { resume: Object.assign({}, rj, { url: 'javascript:alert(1)' }), rt: 200 }).resume.url, rj.url);
+    t = 6000; assert.strictEqual(s.get('c').resume, null);
+    t = 1000; assert.ok(s.get('c').resume);
+    assert.strictEqual(s.put('c', { resumeClear: true, rt: 50 }).resume !== null, true);
+    assert.strictEqual(s.put('c', { resumeClear: true, rt: 300 }).resume, null);
+});

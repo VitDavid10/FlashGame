@@ -1578,7 +1578,14 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     window.pwSquadCloseAll = closeAll;
     window.pwToast = toast;
     function leaveGame() { const h = document.getElementById('sqHud'); if (h) { h.classList.remove('show'); h.innerHTML = ''; } S.rel = null; S.allies = null; rivalsBanner(); }
-    window.PWSquad = { arcadeFin, resetAlerts: () => { S.alerted = {}; setTimeout(avisosPendientes, 3500); }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    // Los ajustes de avisos llegan de otro dispositivo (accountsync): se vuelven a leer.
+    function reloadPrefs() {
+        try { S.mute = JSON.parse(localStorage.getItem('pw_wmute')) || { all: false, ids: {} }; } catch (e) {}
+        try { S.watch = JSON.parse(localStorage.getItem('pw_fwatch')) || {}; } catch (e) {}
+        try { nicks = JSON.parse(localStorage.getItem('pw_nicks')) || {}; } catch (e) { nicks = {}; }
+        render();
+    }
+    window.PWSquad = { reloadPrefs, arcadeFin, resetAlerts: () => { S.alerted = {}; setTimeout(avisosPendientes, 3500); }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);
