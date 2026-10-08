@@ -2691,7 +2691,7 @@
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
         /* Arcade: rotulo de la zona y de los eventos (FOOD RAIN IN 3, NO SPLIT · 7S, OUTSIDE THE SAFE ZONE...) */
-        html.pw-app body:not(.mobile-allowed) #arcBanner { top: 138px !important; }   /* app en PC: debajo del reloj y de la barra de la calavera */
+        html.pw-app body:not(.mobile-allowed) #arcBanner { top: 96px !important; }   /* app en PC: justo debajo de la barra de la calavera, que va pegada al reloj */
         #arcBanner { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 60; display: none; pointer-events: none; font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 16px 8px; background: rgba(5,8,4,.88); border: 3px solid #ffd23a; color: #ffd23a; text-shadow: 2px 2px 0 #000; white-space: nowrap; box-shadow: 4px 4px 0 rgba(0,0,0,.6); }
         #arcBanner.show { display: block; }
         #arcBanner.rojo { border-color: #ff4d4d; color: #ff6a6a; }
@@ -3393,6 +3393,8 @@
         .winner-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; font-weight: bold; color: #ccc; }
         .winner-item span:last-child { color: var(--primary); font-family: 'Russo One'; }
         #actionBar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) scale(1.56); transform-origin: bottom center; display: none; gap: 8px; z-index: 15; padding: 8px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; border-radius: 12px; pointer-events: auto; backdrop-filter: blur(5px); }
+        .ab-slot .ab-key { position: absolute; left: 3px; top: 1px; font: 9px 'Press Start 2P', monospace; color: #fff; text-shadow: 1px 1px 0 #000; opacity: .85; pointer-events: none; z-index: 3; }
+        body.mobile-allowed .ab-slot .ab-key { display: none; }
         .ab-slot { width: 50px; height: 50px; background: #151515; border: 2px solid #333; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; transition: transform 0.1s; overflow: hidden; cursor: grab; }
         .ab-slot:active { cursor: grabbing; }
         .ab-slot.active { transform: scale(0.95); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-dim); }
@@ -10918,8 +10920,8 @@
 
     function init() {
         SoundManager.init(); resize();
-        for(let i=1; i<=10; i++) { uiSlots[i] = document.getElementById('slot'+i); uiCounts[i] = document.getElementById('count'+i); uiOverlays[i] = document.getElementById('cd'+i); uiOverlaysActive[i] = document.getElementById('dur'+i); uiIcons[i] = document.getElementById('icon'+i); uiGcds[i] = document.getElementById('gcd'+i); } 
-        els.skillOverlay.style.top = (UI_PARAMS.skillSelectTop === '5%' && document.documentElement.classList.contains('pw-app') && !document.body.classList.contains('mobile-allowed')) ? '17%' : UI_PARAMS.skillSelectTop;   /* app en PC: SELECT A SKILL por debajo de la fila de arriba */ window.addEventListener('resize', resize); 
+        for(let i=1; i<=10; i++) { uiSlots[i] = document.getElementById('slot'+i); if (uiSlots[i] && !uiSlots[i].querySelector('.ab-key')) { const k = document.createElement('span'); k.className = 'ab-key'; k.textContent = i === 10 ? '0' : String(i); uiSlots[i].appendChild(k); } uiCounts[i] = document.getElementById('count'+i); uiOverlays[i] = document.getElementById('cd'+i); uiOverlaysActive[i] = document.getElementById('dur'+i); uiIcons[i] = document.getElementById('icon'+i); uiGcds[i] = document.getElementById('gcd'+i); } 
+        els.skillOverlay.style.top = (UI_PARAMS.skillSelectTop === '5%' && document.documentElement.classList.contains('pw-app') && !document.body.classList.contains('mobile-allowed')) ? '150px' : UI_PARAMS.skillSelectTop;   /* app en PC: SELECT A SKILL por debajo de la fila de arriba */ window.addEventListener('resize', resize); 
         els.actionBar.addEventListener('mouseenter', () => isHoveringUI = true); els.actionBar.addEventListener('mouseleave', () => isHoveringUI = false);
         els.skillOverlay.addEventListener('mouseenter', () => isHoveringUI = true); els.skillOverlay.addEventListener('mouseleave', () => isHoveringUI = false);
         document.getElementById('exitGameBtn').addEventListener('mouseenter', () => isHoveringUI = true); document.getElementById('exitGameBtn').addEventListener('mouseleave', () => isHoveringUI = false);
@@ -16520,7 +16522,7 @@
         if (fuera && arcSt.dano > 0) {
             let m = 0; myCells().forEach(c => m += c.mass);
             const seg = m > PillSim.ARCADE.masaMin ? Math.log(PillSim.ARCADE.masaMin / m) / Math.log(1 - arcSt.dano) : 0;
-            const W = Math.min(320, width * 0.42), H = 16, x = (width - W) / 2, y = 112, f = Math.max(0, Math.min(1, seg / 40));
+            const W = Math.min(320, width * 0.42), H = 16, x = (width - W) / 2, y = (EN_APP && !document.body.classList.contains('mobile-allowed')) ? 66 : 112, f = Math.max(0, Math.min(1, seg / 40));
             const parpadea = seg < 6 && Math.floor(performance.now() / 160) % 2;
             ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(x - 4, y - 4, W + 8, H + 8);
             ctx.fillStyle = '#3a0505'; ctx.fillRect(x, y, W, H);

@@ -258,7 +258,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .qc .n{font-size:.4em;color:var(--mut)}
 .qc button{font-family:'Russo One',sans-serif;font-size:.6em;letter-spacing:.1em;padding:.3em .9em;border:none;background:var(--ac);color:#04150c;cursor:pointer}
 .qc button.v{background:#ffd23a}
-.qc{cursor:pointer}.qc.pin{outline:.16em solid var(--ac);outline-offset:-.16em;background:rgba(255,255,255,.05)}
+.qc{cursor:pointer}.qc.qpin{outline:.16em solid var(--ac);outline-offset:-.16em;background:rgba(255,255,255,.05)}
 .qc.done{opacity:.45}.qc.done .pts{color:var(--ac)}.qc.done:not(.x){cursor:default}
 .ph .qb{font-size:.42em;color:#ffd23a;letter-spacing:.06em;margin-left:1em}
 .sn .cell .pr{font-size:.4em;color:#ffd23a}
@@ -1387,12 +1387,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 '#aqHud.show{display:block}#aqHud .h{color:#8aa096;margin-bottom:3px}' +
                 '#aqHud .r{background:rgba(6,10,8,.55);border-right:3px solid #ccff00;padding:3px 7px;margin-bottom:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
                 '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-right-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}' +
-                // PC: a la izquierda de todo y como el cuadro de TOP MASS; el cuadro de BUFFS baja debajo (lo coloca aqHud).
-                'html.pw-app body:not(.mobile-allowed) #aqHud{right:auto;left:15px;top:75px;width:240px;max-width:none;text-align:left;box-sizing:border-box;background:rgba(10,10,10,.8);border:2px solid #1f7a4a;box-shadow:3px 3px 0 rgba(0,0,0,.6);padding:10px}' +
-                'html.pw-app body:not(.mobile-allowed) #aqHud .h{font-size:14px;color:#9dffc4;text-align:center;letter-spacing:2px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #333;text-shadow:2px 2px 0 #000}' +
-                'html.pw-app body:not(.mobile-allowed) #aqHud .r{background:none;border:none;border-left:3px solid #ccff00;padding:3px 0 3px 7px;margin-bottom:6px;font-size:8px;white-space:normal;line-height:1.6;text-overflow:clip}' +
-                'html.pw-app body:not(.mobile-allowed) #aqHud .r{display:flex;justify-content:space-between;align-items:center;gap:8px}html.pw-app body:not(.mobile-allowed) #aqHud .r b{margin:0;flex:none}' +
-                'html.pw-app body:not(.mobile-allowed) #aqHud .r.ok{border-left-color:#00ff66}';
+                // PC: a la izquierda de todo y con la MISMA caja de TOP MASS (mismo PNG, mismo tamaño, mismas letras); el cuadro de BUFFS baja debajo.
+                'html.pw-app body:not(.mobile-allowed) #aqHud{right:auto;left:15px;top:75px;width:210px;height:282px;max-width:none;text-align:left;box-sizing:border-box;padding:44px 16px 12px;' +
+                'background:transparent url(' + (typeof cartelHeroUrl === 'function' ? cartelHeroUrl('top-mass') : 'img/cartel-hero/top-mass.png') + ') center/100% 100% no-repeat;image-rendering:pixelated;font-family:\'Press Start 2P\',monospace;overflow:hidden}' +
+                // el titulo TOP MASS viene dibujado en el PNG: se tapa con el color del fondo y se escribe MISSIONS con el mismo verde
+                'html.pw-app body:not(.mobile-allowed) #aqHud .h{position:absolute;left:11px;right:11px;top:9px;height:27px;margin:0;padding:0;background:#0c0d12;color:#9cfe87;text-align:center;font-size:17px;line-height:27px;letter-spacing:0;text-shadow:2px 2px 0 #0d4a2a}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r{display:flex;justify-content:space-between;gap:6px;background:none;border:none;padding:0;margin:0 0 4px;font-size:8px;line-height:2;color:#fff;white-space:nowrap;text-overflow:clip;overflow:hidden}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r b{margin:0;color:#ffe97a;flex:none}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r.ok,html.pw-app body:not(.mobile-allowed) #aqHud .r.ok b{color:#00ff66}';
             document.head.appendChild(st);
             el = document.createElement('div'); el.id = 'aqHud';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(el);
@@ -1425,7 +1427,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const ok = !!a.done[m.id], pin = a.pins.includes(m.id);
             const v = Math.min(m.goal, ok ? m.goal : (a.prog[m.id] | 0));
             const c = document.createElement('div');
-            c.className = 'qc' + (ok ? ' done' : '') + (pin ? ' pin' : '');
+            c.className = 'qc' + (ok ? ' done' : '') + (pin ? ' qpin' : '');
             const estado = ok ? (a.claimed[m.id] ? 'DONE' : 'CLAIM') : '+' + m.pts + ' SP';
             c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + '</div><div class="t"></div></div>' +
                 '<div class="qp"><i style="width:' + Math.round(v / m.goal * 100) + '%"></i></div>' +
