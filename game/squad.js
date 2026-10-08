@@ -98,6 +98,7 @@
 .sq-grp{display:flex;gap:1.2em;justify-content:center;align-items:flex-start;width:100%}
 .sq-av{display:flex;flex-direction:column;align-items:center;gap:.6em;width:7em}
 .sq-av .sq-pic{width:3.4em;height:3.4em;font-size:1.1em}
+.sq-av .lb{display:contents}
 .sq-av .n{font-size:.42em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sq-av.me .sq-pic{box-shadow:0 0 0 .16em var(--ac,#00ff88)}
 .sq-av .l{font-size:.32em;color:#ffd23a;letter-spacing:.1em;margin-top:-.3em}
@@ -948,10 +949,10 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         const out = [];
         for (let i = 0; i < Math.max(slots || p.members.length, p.members.length); i++) {
             const m = p.members[i];
-            if (!m) { out.push('<div class="sq-av empty"><span class="sq-pic">+</span><div class="n" style="color:#4a5850">EMPTY</div></div>'); continue; }
+            if (!m) { out.push('<div class="sq-av empty"><span class="sq-pic">+</span><div class="lb"><div class="n" style="color:#4a5850">EMPTY</div></div></div>'); continue; }
             const rcTag = p.rc ? (p.rc.ready[m.id] ? '<div class="l" style="color:#00ff66">READY</div>' : '<div class="l" style="color:#ffb347">WAITING…</div>') : '';
-            out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="n">' + esc(m.name) + '</div>' +
-                (p.rc ? rcTag : (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : ''))) + '</div>');
+            out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="lb"><div class="n">' + esc(m.name) + '</div>' +
+                (p.rc ? rcTag : (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : ''))) + '</div></div>');
         }
         return '<div class="sq-grp' + (big ? ' big' : '') + (small ? ' small' : '') + '">' + out.join('') + '</div>';
     }
@@ -972,7 +973,19 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         const body = fee > 0
             ? '<div class="k">ENTRY</div><div class="u">' + (usd != null ? fmtUsd(usd) : '') + '</div><div class="t">' + fmtPill(fee) + ' EACH</div><div class="sep"></div><div class="k">POT</div><div class="t g">' + fmtPill(fee * size * 2) + '</div>'
             : '<div class="u free">FREE</div><div class="t">NO ENTRY</div>';
-        return '<div class="sq-pbox">' + body + seeRivals + '</div>';
+        return '<div class="sq-pbox">' + body + seeRivals + cercana(size) + '</div>';
+    }
+    // Otra sala con gente LISTA a un precio distinto del tuyo: la mas cercana en dolares (a igual distancia, la de mas precio).
+    function cercana(size) {
+        const P = S.party; if (!P || P.custom || (!P.rc && P.state !== 'queued')) return '';
+        const mio = P.rc ? P.rc.cents | 0 : P.cents | 0;
+        let mejor = null;
+        (S.rivals || []).forEach(r => {
+            if (r.size !== size || r.cents === mio || r.ready <= 0) return;
+            const d = Math.abs(r.cents - mio);
+            if (!mejor || d < mejor.d || (d === mejor.d && r.cents > mejor.r.cents)) mejor = { d, r };
+        });
+        return mejor ? '<button class="sq-b sm gold sq-near" data-near="' + mejor.r.cents + '" data-size="' + size + '">' + usdLbl(mejor.r.cents / 100) + ' FIGHT · READY</button>' : '';
     }
     function searchingHtml() {
         const p = S.party, leader = imLeader();
@@ -1221,8 +1234,16 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500, center: true }); }
         if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000, center: true }); }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
         if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); cabecera(); }
+        pedirRivales(false);
         if (S.box.friends) paint('friends', friendsHtml());
         try { if (window.PWSquadHooks) { if (PWSquadHooks.afterRender) PWSquadHooks.afterRender(); if (PWSquadHooks.badge) PWSquadHooks.badge(badgeCount()); } } catch (e) {}
+    }
+    // En el lobby o buscando, el boton de la sala cercana necesita FIND RIVALS al dia (como mucho cada 3 s al repintar).
+    function pedirRivales(fuerza) {
+        const P = S.party;
+        if (!P || P.custom || !(P.rc || P.state === 'queued') || !isOpen('rooms') || (S.arStep && S.arStep.view === 'rivals')) return;
+        if (!fuerza && Date.now() - (S.rvAt || 0) < 3000) return;
+        S.rvAt = Date.now(); send({ a: 'rivals', size: P.size });
     }
     function fail(msg) { S.err = msg; S.note = ''; render(); }
     function start(then) { connect(() => { if (!S.party) send({ a: 'create', name: myName() }); then(); }); }
@@ -1250,6 +1271,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             // Los del mismo tramo ven que estas mirando (FIND RIVALS: LOOKING) y les llega el aviso.
             clearTimeout(S.wantT); S.wantT = setTimeout(() => { if (S.party && S.party.state === 'idle') send({ a: 'want', cents: (S.usd | 0) * 100 }); }, 700);
         });
+        b.querySelectorAll('[data-near]').forEach(x => x.onclick = () => { snd('simpleselect'); lanzar(+x.dataset.size, (+x.dataset.near) / 100); });
         b.querySelectorAll('[data-play]').forEach(x => x.onclick = () => { snd('simpleselect'); lanzar(S.arStep.size, (+x.dataset.play) / 100); });
         b.querySelectorAll('[data-pu]').forEach(x => x.onclick = () => {
             snd('simpleselect'); S.usd = +x.dataset.pu;
@@ -1355,7 +1377,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     function watchRooms() {
         clearInterval(S.roomsTimer);
-        S.roomsTimer = setInterval(() => { if (isOpen('rooms') && S.arStep && S.arStep.view === 'rivals') send({ a: 'rivals', size: S.arStep.size }); }, 4000);   // FIND RIVALS al dia
+        S.roomsTimer = setInterval(() => { if (isOpen('rooms') && S.arStep && S.arStep.view === 'rivals') send({ a: 'rivals', size: S.arStep.size }); else pedirRivales(true); }, 4000);   // FIND RIVALS al dia
     }
     // La app monta cada panel dentro del suyo (el hub llama con su contenedor).
     function mountIn(kind, box) {

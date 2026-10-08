@@ -141,15 +141,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
   box-shadow:0 0 0 .14em #000,inset 0 0 0 .12em #000,.15em .25em 0 .12em rgba(0,0,0,.55)}
 .ah-play span{font-size:1.3em;letter-spacing:.3em;margin-left:.3em;text-shadow:.1em .1em 0 var(--acL)}
 .ah-play:active{transform:translateY(.12em)}
-.ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:7;display:none;padding:.85em 1em .5em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
+.ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:4;display:none;padding:.85em 1em .5em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
 .ah-sys.on{display:block}
+#appHub:has(.ov.open) .ah-sys{visibility:hidden}
 .ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 .ah-sys span{display:block;flex:1;min-width:0;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
 .ah-sys.on{display:flex;align-items:center;gap:1em;animation:ahSysIn .4s cubic-bezier(.2,.9,.3,1) both}
 .ah-sys.on.out{animation:ahSysOut .35s ease-in both}
 @keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
 @keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
-.ah-avb{left:4.1em;top:3.6em;right:auto;z-index:6}
+.ah-fb.ah-avb{left:4.1em;top:3.6em;right:auto;z-index:6}
 #appHub.pc .ah-avb{left:4.5em;top:3.9em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
@@ -375,12 +376,27 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) #ahPillSub{margin-top:.5em}
 #appHub:not(.pc) #ahPillSub img{width:3.4em;height:3.4em}
 #appHub:not(.pc) .ah-it .bar{width:7em}
-#appHub:not(.pc) .ah-sys{left:3.6em;right:auto;width:20.8em;top:auto;bottom:.9em;padding:.62em .9em .3em}
+#appHub:not(.pc) .ah-sys{left:3.6em;right:auto;width:20.8em;top:auto;bottom:.35em;padding:.62em .9em .3em}
 #appHub:not(.pc) .ah-sys span{font-size:.38em;line-height:1.5}
 #appHub:not(.pc) .ah-sys b{font-size:.32em}
 #appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em}
 #appHub:not(.pc) .ah-sys .acts,#appHub:not(.pc) .ah-sys .pic{transform:translateY(-.16em)}
 #appHub:not(.pc) .ah-sys .acts button{font-size:.36em;padding:.4em .9em}
+#appHub:not(.pc) #ahAr .sq.find{min-height:15.5em;gap:.2em}
+#appHub:not(.pc) #ahAr .sq.find .mid{justify-content:flex-start;gap:.2em;margin-top:-.5em}
+#appHub:not(.pc) #ahAr .sq-side{flex:1;align-items:stretch;padding-bottom:2.7em;gap:2.4em}
+#appHub:not(.pc) #ahAr .sq-side .sq-grp{align-self:center}
+#appHub:not(.pc) #ahAr .sq-side .sq-av{position:relative}
+#appHub:not(.pc) #ahAr .sq-side .sq-av .lb{display:flex;flex-direction:column;align-items:center;gap:.9em;position:absolute;top:100%;left:50%;transform:translateX(-50%);width:max-content;max-width:14em;padding-top:.6em}
+#appHub:not(.pc) #ahAr .sq-side .sq-grp.big .sq-av .sq-pic{font-size:1.75em}
+#appHub:not(.pc) #ahAr .sq-side.n3 .sq-grp.big .sq-av .sq-pic{font-size:1.5em}
+#appHub:not(.pc) #ahAr .sq-side .sq-pbox{justify-content:center;gap:.5em}
+#appHub:not(.pc) #ahAr .sq-pbox .sq-near{font-size:.42em;white-space:nowrap}
+#appHub:not(.pc) #ahAr .sq.find .sq-bot{margin-top:1.2em}
+/* ROOMS en el movil: mas amplio, como en PC, y con consejo debajo */
+#appHub:not(.pc) .ahr-g{grid-template-columns:repeat(4,1fr);gap:.7em}
+#appHub:not(.pc) .ahr-g .cell{padding:1.25em .3em 1em;gap:.7em}
+#appHub:not(.pc) #ahRooms .foot{margin-top:1em;padding:.5em .6em .2em;border-top:.07em solid rgba(255,255,255,.07);font-size:1.05em;line-height:1.3}
 
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
@@ -643,6 +659,15 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const dec = Math.max(0, 4 - String(Math.floor(v)).length), f = Math.pow(10, dec);
         return String(Math.floor(v * f) / f) + u[i];
     }
+    // Dolares cortos, como mucho 3 digitos y sin redondear hacia arriba: 1.9 -> $1.90, 12.34 -> $12.3, 1321 -> $1.32K.
+    function cortoUsd(u) {
+        u = Math.max(0, Number(u) || 0);
+        const un = ['K', 'M', 'B', 'T']; let i = -1, v = u;
+        while (v >= 1000 && i < un.length - 1) { v /= 1000; i++; }
+        const ent = Math.floor(v) > 0 ? String(Math.floor(v)).length : 1, dec = Math.max(0, 3 - ent), f = Math.pow(10, dec);
+        const t = (Math.floor(v * f + 1e-9) / f).toFixed(dec);
+        return '$' + (i >= 0 ? String(parseFloat(t)) + un[i] : t);
+    }
     // Tu $PILLY dentro del juego, al lado de los SP (solo con wallet conectada).
     function pintaPilly() {
         const box = document.querySelector('#appHub .ah-py'); if (!box) return;
@@ -894,7 +919,16 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0);
         if ($('#ahRooms').classList.contains('open')) renderRooms();
     }
+    const ROOM_TIPS = [
+        'Tip: paid rooms take the entry from your in-game $PILLY.',
+        'Tip: the bigger the entry, the bigger the prize for the top players.',
+        'Tip: OFFLINE is free practice against bots, no wallet needed.',
+        'Tip: the bar shows how full each room is. A room starts when enough players are in.',
+        'Tip: want to play with friends? Use ARENAS for 1v1, 2v2 and 3v3.'
+    ];
+    let roomTipN = Math.floor(Math.random() * ROOM_TIPS.length);
     function renderRooms() {
+        if (!hub.classList.contains('pc') && !$('#ahRooms').classList.contains('open-tip')) { $('#ahRooms .foot').textContent = ROOM_TIPS[roomTipN++ % ROOM_TIPS.length]; $('#ahRooms').classList.add('open-tip'); }
         const g = $('#ahrG'), mine = rooms.filter(r => r.mode === mode);
         $('#ahrOn').textContent = mine.reduce((a, r) => a + (r.players || 0), 0) + ' ONLINE';
         g.innerHTML = '';
@@ -1519,7 +1553,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const ov = $('#ahPz'), w = window.GameWallet && GameWallet.address;
         ov.classList.add('open'); placa($('#ahPz .pnl'), 1);
         $('#ahPzL').innerHTML = '<div class="pz-e">LOADING...</div>';
-        const fmt = n => Math.floor(n).toLocaleString('en-US');
+        const fmt = corto;
         const pinta = (total, list, usd, hist) => {
             const fecha = t => { const d = new Date(t); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
             $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
@@ -1630,7 +1664,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (a === 'x') { conectaX(); return; }
         if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp'].includes(a)) cierraPaneles();
         if (a === 'htp') { htpPag = 0; htpSk = null; $('#ahHtp').classList.add('open'); renderHtp(); return; }
-        if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
+        if (a === 'rooms') { $('#ahRooms').classList.remove('open-tip'); $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
         if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('rooms', $('#ahArBody')); placa($('#ahAr .pnl'), 1); }
         else if (a === 'friends') { const fr = $('#ahFr'); fr.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('friends', $('#ahFrBody')); placa($('#ahFr .pnl'), 1); }
         else if (a === 'store') openStore('shop');
@@ -1767,17 +1801,19 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const w = xWallet || (window.GameWallet && GameWallet.address);
         if (!w || !window.PWSquad) return;
         try {
-            PWSquad.prizes(w, (total, list) => {
+            PWSquad.prizes(w, (total, list, usd) => {
                 const n = (list || []).length, b = $('#ahAvB');
                 if (b) b.textContent = n ? String(Math.min(n, 99)) : '';
-                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + Math.floor(total).toLocaleString('en-US') + ' $PILLY waiting to be claimed.', 12000, 0); }
+                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + corto(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '') + ' waiting to be claimed.', 12000, 0); }
             });
         } catch (e) {}
     }
     setInterval(() => { if (hub.classList.contains('on')) refreshClaims(false); }, 120000);
-    let sysEntro = false;
+    let sysEntro = false, postPartida = false;
     function sysEntrada() {
         sysPoll(); SysQ.next();
+        // Primera vez en el menu tras una partida: el premio ya esta apuntado (o lo estara en unos segundos).
+        if (postPartida && sysEntro) { postPartida = false; claimAvisado = false; setTimeout(() => refreshClaims(true), 3000); setTimeout(() => refreshClaims(true), 9000); }
         if (sysEntro) return; sysEntro = true;
         setTimeout(() => {
             const w = xWallet || (window.GameWallet && GameWallet.address);
@@ -1837,7 +1873,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // startOnlineGame en sala de pago pasa por popup + firma de la wallet ANTES de entrar: si el hub se esconde ya, el
         // menu antiguo queda a la vista (popup raro) y al entrar el vigilante lo daba por perdido y volvia a tapar la partida.
         // Por eso en online el hub solo se esconde cuando la partida corre de verdad; si el pago se cancela no se toca.
-        const entra = () => { hide(); _enPartida = true; aqHud(true); };
+        const entra = () => { hide(); _enPartida = true; postPartida = true; aqHud(true); };
         let esperando = false;
         const alEntrar = () => {
             if (esperando) return; esperando = true;
