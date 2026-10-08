@@ -1317,7 +1317,7 @@ const squad = createSquad({
     quote: usd => usd * PILL_PER_DOLLAR,
     pillUsd: () => (PILL_PER_DOLLAR > 0 ? 1 / PILL_PER_DOLLAR : 0),
     // Bots de prueba (@icefox, @bandit, @rcer): buscan 1v1 cada uno a su precio; en devnet su entrada la pone la casa.
-    virtualQueue: true,
+    virtualQueue: true,   // (arenaFile/socialFile: ver arriba; en el director son null)
     botsPay: /devnet/i.test(solana.RPC || ''),   // la misma tasa que fija el precio (en el split, el host la recibe por IPC)
 });
 
@@ -4068,7 +4068,11 @@ wss.on('connection', (ws, req) => {
         }
 
         // --- Arenas por equipos: lobby de grupos y entrada a sala con ticket ---
-        if (msg.t === 'sq' && !room) { squad.handle(ws, msg); return; }
+        if (msg.t === 'sq' && !room) {
+            // El director no guarda amigos ni premios (solo el host 0): si una conexion de arenas llega aqui, que lo diga en vez de perder datos en silencio.
+            if (PW_ROLE === 'director') { try { ws.send(JSON.stringify({ t: 'sqErr', reason: 'Arenas are not available on this connection. Reload the game.' })); } catch (e) {} log('[squad] conexion de arenas en el director: rechazada (debe ir al host 0 por /match)'); return; }
+            squad.handle(ws, msg); return;
+        }
         if (msg.t === 'join' && msg.squad && !msg.resume && !room) {
             if (joinPending) return;
             joinPending = true;

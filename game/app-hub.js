@@ -180,12 +180,22 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ahr-g .cell.sel{border-color:var(--k);box-shadow:0 0 0 .1em #000,0 0 .9em color-mix(in srgb,var(--k) 50%,transparent);background:rgba(0,0,0,.28)}
 .ahr-g .cell .p{align-self:stretch;margin:0 -.12em;min-height:2em;display:flex;align-items:center;justify-content:center;background:var(--k);color:#0b0f05;text-shadow:none;font-size:1em}
 .ahr-g .cell .p.sm{font-size:.62em;min-height:3.2em}
+.ahr-g .cell{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 20%,#06100a),color-mix(in srgb,var(--k) 7%,#06100a))}
+.ahr-g .cell .p{border-bottom:.16em solid color-mix(in srgb,var(--k) 55%,#000)}
+.ahr-g .cell .ly b,.ahr-g .cell .n{color:color-mix(in srgb,var(--k) 62%,#fff)}
+.ahr-g .cell .more{color:color-mix(in srgb,var(--k) 45%,#9fb0a6)}
+.ahr-box{background:linear-gradient(180deg,color-mix(in srgb,var(--k,#c8ff00) 13%,#06100a),color-mix(in srgb,var(--k,#c8ff00) 5%,#06100a))}
+.ahr-r{color:color-mix(in srgb,var(--k,#c8ff00) 60%,#fff);border-bottom-color:color-mix(in srgb,var(--k,#c8ff00) 35%,#000)}
 .k0{--k:#8a948e}.k1{--k:#c8ff00}.k2{--k:#3fc4ff}.k3{--k:#b57bff}.k4{--k:#ffc83a}.k5{--k:#ff5a4a}
 .ahr-g .cell .ly{display:flex;align-items:center;justify-content:center;gap:.35em;width:100%;font-family:'VT323',monospace;font-size:.78em;line-height:1;color:#b6c4bc}
 .ahr-g .cell .ly b{font-weight:400;color:var(--mut)}
 .ahr-g .cell .ly i{width:.42em;height:.42em;background:#56635b;flex:none}
 .ahr-g .cell .ly i.g{background:#00ff88}.ahr-g .cell .ly i.y{background:#ffce3d}.ahr-g .cell .ly i.r{background:#ff5a4e}
-.ahr-g .cell .more{font-size:.28em;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
+.ahr-g .cell>*:not(.p){box-sizing:border-box;max-width:100%;padding:0 .55em}
+.ahr-g .cell .more{font-size:.28em;letter-spacing:.06em;line-height:1.7;color:var(--mut);text-align:center;padding:0 1.6em}
+.ahr-lt{position:absolute;right:.7em;top:0;transform:translateY(-58%);display:flex;gap:.35em}
+.ahr-lt button{font-family:'Press Start 2P',monospace;font-size:.4em;padding:.55em .8em .45em;background:#050c09;color:var(--mut);border:.2em solid #2f3d35;cursor:pointer}
+.ahr-lt button.on{background:var(--k,#c8ff00);border-color:var(--k,#c8ff00);color:#0b0f05}
 .ahr-g .cell .st.live{color:#00ff88}.ahr-g .cell .st.wait{color:#ffd23a}
 #ahRooms .ph .cnt{margin-left:.3em}
 .ahr-b{display:grid;grid-template-columns:1fr 1.18fr;gap:.9em;margin-top:.95em}
@@ -944,7 +954,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const off = document.createElement('div');
         off.className = 'cell k0' + (room === 'offline' ? ' sel' : '');
         off.innerHTML = '<div class="p sm">OFFLINE</div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
-        off.onclick = () => { room = 'offline'; renderRooms(); paintStatic(); };
+        off.onclick = () => { room = 'offline'; window._riLayer = null; renderRooms(); paintStatic(); };
         g.appendChild(off);
         const info = { offline: { t: 'OFFLINE', rows: [['ENTRY', 'FREE'], ['PLAYERS', 'VS BOTS'], ['STATUS', 'PRACTICE'], ['PRIZE', 'NONE']] } };
         PRICES.forEach((p, pi) => {
@@ -958,18 +968,23 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 (lys.length ? lys.map(l => '<div class="ly"><b>L' + l.layerIdx + '</b><i class="' + dot(l, cap) + '"></i>' + l.players + '/' + (l.maxPlayers || cap) + '</div>').join('') : '<div class="ly"><b>L1</b><i></i>0/' + cap + '</div>') +
                 ((r.layers || []).length > lys.length || (r.layers || []).length < 2 ? '<div class="more">UP TO ' + Math.max(4, (r.layers || []).length) + ' LAYERS</div>' : '') +
                 '<div class="st ' + (live ? 'live' : 'wait') + '">' + (live ? 'LIVE' : 'WAITING') + '</div>';
-            c.onclick = () => { room = p; renderRooms(); paintStatic(); };
+            c.onclick = () => { if (room !== p) window._riLayer = null; room = p; renderRooms(); paintStatic(); };
             g.appendChild(c);
-            const best = lys.slice().sort((x, y) => (y.players >= cap ? -1 : y.players) - (x.players >= cap ? -1 : x.players))[0];
-            info[p] = { t: lbl + ' · L' + (best ? best.layerIdx : 1), rows: [
-                ['ENTRY', free ? 'FREE' : '<span class="usd">' + lbl + ' · ' + (r.pillFee ? Number(r.pillFee).toLocaleString('en-US') + ' $PILLY' : '') + '</span>'],
-                ['PLAYERS', (best ? best.players : 0) + '/' + cap],
-                ['STATUS', '<span class="' + (live ? 'live' : 'wait') + '">' + (r.state === 'playing' ? 'IN GAME' : live ? 'LIVE' : 'WAITING') + '</span>'],
+            const auto = lys.slice().sort((x, y) => (y.players >= cap ? -1 : y.players) - (x.players >= cap ? -1 : x.players))[0];
+            const best = (p === room && window._riLayer && lys.find(l => l.layerIdx === window._riLayer)) || auto;
+            if (p === room && !lys.some(l => l.layerIdx === window._riLayer)) window._riLayer = null;
+            const fee = best && Number(best.pillFee) > 0 ? Number(best.pillFee) : Number(r.pillFee) || 0;
+            const bl = best ? best.state : r.state, bn = best ? best.players : 0;
+            info[p] = { t: lbl + (lys.length > 1 ? '' : ' · L' + (best ? best.layerIdx : 1)), lys, sel: best ? best.layerIdx : 1, rows: [
+                ['ENTRY', free ? 'FREE' : '<span class="usd">' + lbl + ' · ' + (fee ? fee.toLocaleString('en-US') + ' $PILLY' : '') + '</span>'],
+                ['PLAYERS', bn + '/' + (best ? best.maxPlayers || cap : cap)],
+                ['STATUS', '<span class="' + (bn > 0 || bl === 'playing' ? 'live' : 'wait') + '">' + (bl === 'playing' ? 'IN GAME' : bn > 0 ? 'LIVE' : 'WAITING') + '</span>'],
                 ['PRIZE', mode === 'classic' ? 'KILL LOOT' : 'TOP 10']] };
         });
         const cur = info[room] || info.offline, kc = 'k' + (room === 'offline' ? 0 : PRICES.indexOf(room) + 1);
         $('#ahrInfo').className = $('#ahrRules').className = 'ahr-box ' + kc;
-        $('#ahrInfo').innerHTML = '<b>ROOM INFO · ' + cur.t + '</b>' + cur.rows.map(x => '<div class="ahr-r">' + x[0] + (/^<span/.test(x[1]) ? x[1] : '<span>' + x[1] + '</span>') + '</div>').join('');
+        $('#ahrInfo').innerHTML = '<b>ROOM INFO · ' + cur.t + '</b>' + (cur.lys && cur.lys.length > 1 ? '<div class="ahr-lt">' + cur.lys.map(l => '<button data-l="' + l.layerIdx + '"' + (l.layerIdx === cur.sel ? ' class="on"' : '') + '>L' + l.layerIdx + '</button>').join('') + '</div>' : '') + cur.rows.map(x => '<div class="ahr-r">' + x[0] + (/^<span/.test(x[1]) ? x[1] : '<span>' + x[1] + '</span>') + '</div>').join('');
+        $('#ahrInfo').querySelectorAll('[data-l]').forEach(b => b.onclick = () => { window._riLayer = +b.dataset.l; try { SoundManager.play('simpleselect'); } catch (e) {} renderRooms(); });
         $('#ahrRules').innerHTML = '<b>RULES</b>' + (ROOM_RULES[mode] || ROOM_RULES.arcade).map((t, k) => '<div class="ahr-n"><i>0' + (k + 1) + '</i>' + t.toUpperCase() + '</div>').join('');
         placa($('#ahRooms .pnl'), 1);
     }
