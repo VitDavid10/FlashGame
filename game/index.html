@@ -48,7 +48,9 @@
         // un velo oscuro lo tapa desde el primer pintado (y bloquea los toques). Sale solo (red de seguridad a los 15 s).
         if (el.classList.contains('pw-app')) {
             const velo = document.createElement('style');
-            velo.textContent = 'html.pw-app:not(.pw-boot) body::before{content:"";position:fixed;inset:0;z-index:9998;background:#050505}';
+            velo.textContent = 'html.pw-app:not(.pw-boot) body::before{content:"";position:fixed;inset:0;z-index:9998;background:#050505}' +
+                // El menu antiguo (login de cada modo) no existe en la app: el hub lo sustituye y nunca debe verse ni tocarse.
+                'html.pw-app #loginOverlay{visibility:hidden !important;pointer-events:none !important}';
             document.head.appendChild(velo);
             setTimeout(() => el.classList.add('pw-boot'), 15000);
         }

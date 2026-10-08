@@ -711,12 +711,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     let pyPrev = null, pyT = null;
     setInterval(pintaPilly, 3000);
     // La pantalla de carga (la pildora que gira) no puede quedarse puesta sobre el menu: si el menu esta a la vista y no hay ninguna carga en marcha, se retira.
-    setInterval(() => {
+    function limpiaCarga() {
         const ls = document.getElementById('loadingScreen');
         if (!ls || ls.style.display === 'none' || !hub.classList.contains('on')) return;
         if (window.__loadingLock || window.__loadingTimer || /ls-(inicio|cargador|espera)/.test(ls.className)) return;
         ls.style.display = 'none';
-    }, 300);
+    }
+    setInterval(limpiaCarga, 300);
     window._hubCorto = corto;   // pruebas
     // DEPOSIT y WITHDRAW con el marco de los menus (la variante B que eligio David).
     document.documentElement.classList.add('ah-wal-hub');
@@ -1878,7 +1879,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
 
     function show(m) {
-        mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on');
+        mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on'); limpiaCarga();
         sysEntrada();
         scale(); paintStatic(); pullRooms(); requestAnimationFrame(loop);
         try { if (window.PWSquad) PWSquad.boot(); } catch (e) {}   // amigos: invitaciones y susurros aunque el panel este cerrado
@@ -1975,5 +1976,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             if (lo && getComputedStyle(lo).display !== 'none' && !(typeof gameRunning !== 'undefined' && gameRunning)) { _enPartida = false; show(mode); }
         }, 500);
     }
-    if (document.readyState === 'complete') start(); else addEventListener('load', start);
+    // El menu se monta en cuanto hay DOM (antes esperaba al 'load' y, si se tocaba rapido, salia el menu antiguo en medio).
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
