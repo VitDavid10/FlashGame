@@ -99,7 +99,6 @@
 .sq-grp{display:flex;gap:1.2em;justify-content:center;align-items:flex-start;width:100%}
 .sq-av{display:flex;flex-direction:column;align-items:center;gap:.6em;width:7em}
 .sq-av .sq-pic{width:3.4em;height:3.4em;font-size:1.1em}
-.sq-av .lb{display:contents}
 .sq-av .n{font-size:.42em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sq-av.me .sq-pic{box-shadow:0 0 0 .16em var(--ac,#00ff88)}
 .sq-av .l{font-size:.32em;color:#ffd23a;letter-spacing:.1em;margin-top:-.3em}
@@ -958,10 +957,10 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         const out = [];
         for (let i = 0; i < Math.max(slots || p.members.length, p.members.length); i++) {
             const m = p.members[i];
-            if (!m) { out.push('<div class="sq-av empty"><span class="sq-pic">+</span><div class="lb"><div class="n" style="color:#4a5850">EMPTY</div></div></div>'); continue; }
+            if (!m) { out.push('<div class="sq-av empty"><span class="sq-pic">+</span><div class="n" style="color:#4a5850">EMPTY</div></div>'); continue; }
             const rcTag = p.rc ? (p.rc.ready[m.id] ? '<div class="l" style="color:#00ff66">READY</div>' : '<div class="l" style="color:#ffb347">WAITING…</div>') : '';
-            out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="lb"><div class="n">' + esc(m.name) + '</div>' +
-                (p.rc ? rcTag : (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : ''))) + '</div></div>');
+            out.push('<div class="sq-av' + (m.id === S.me ? ' me' : '') + '">' + pic(memberO(m)) + '<div class="n">' + esc(m.name) + '</div>' +
+                (p.rc ? rcTag : (m.leader ? '<div class="l">LEADER</div>' : (withKick && S.party.leader === S.me && p.state === 'idle' ? '<span class="k" data-k="' + m.id + '">KICK</span>' : ''))) + '</div>');
         }
         return '<div class="sq-grp' + (big ? ' big' : '') + (small ? ' small' : '') + '">' + out.join('') + '</div>';
     }

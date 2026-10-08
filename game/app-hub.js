@@ -16,6 +16,12 @@
     };
     const PRICES = ['Free', '2$', '5$', '10$', '20$'];
     const SWATCH = ['#ffffff', '#c8ccd2', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'];
+    // Colores de THE PILL: 9 tonos en 3 filas (normal, oscuro, claro), para arriba y para abajo.
+    const PILL_COLS = [
+        ['#ffffff', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'],
+        ['#9a9a9a', '#931c1c', '#8f4d00', '#8e7a26', '#00803a', '#008a6e', '#153f9a', '#3f7398', '#66009e'],
+        ['#c8ccd2', '#ff8f8f', '#ffc27a', '#ffe39a', '#7aeea6', '#7aefd6', '#82a8ff', '#b6e3ff', '#d27aff']
+    ];
     // Skills de salida del ARCADE (solo interfaz: la partida aun no las usa).
     const SKILLS = [['clon', 'CLON'], ['shoot', 'SHOOT'], ['sprint', 'SPRINT'], ['tp', 'BLINK'], ['iman', 'MAGNET'], ['inmune', 'SHIELD'], ['big', 'PLUS'], ['random', 'GAMBLE']];
     let mode = 'classic', room = 'Free', rooms = [], _enPartida = false;
@@ -209,7 +215,6 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ahr-n i{font-style:normal;flex:none;background:var(--k,#c8ff00);color:#0b0f05;padding:.3em .5em .2em;min-width:2em;text-align:center}
 .cell{position:relative;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;cursor:pointer}
 .cell .p{font-size:1em;text-shadow:.16em .16em 0 #000}
-.cell .p.usd{color:#ffd23a}
 .cell .n{font-size:.42em;color:var(--mut)}
 .cell .f{width:80%;height:.35em;background:#000;outline:.1em solid var(--edge)}
 .cell .f i{display:block;height:100%;background:var(--ac)}
@@ -238,7 +243,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .co{display:flex;flex-direction:column;justify-content:center;gap:.9em}
 .co .rw{display:flex;align-items:center;gap:.8em}
 .co .lb{width:5.6em;font-size:.44em;color:var(--mut);letter-spacing:.1em;flex:none}
-.co .sw{flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:.35em}
+.co .sw{display:grid;grid-template-columns:repeat(9,1.55em);gap:.3em}
 .co .sw b{aspect-ratio:1;cursor:pointer;box-shadow:inset -.18em -.18em 0 rgba(0,0,0,.35),inset .18em .18em 0 rgba(255,255,255,.3),0 0 0 .1em #000}
 .co .sw b.sel{outline:.16em solid #fff;outline-offset:.12em}
 .qg{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:.45em}
@@ -701,23 +706,17 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (!w) return;
         const v = Number(GameWalletUI.gameBalance) || 0, el = document.getElementById('ahPy');
         el.textContent = corto(v);
-        if (pyPrev != null && v !== pyPrev && !_enPartida) {
+        if (pyPrev != null && v !== pyPrev && !_enPartida && pyTras) {
+            pyTras = false;
             box.classList.remove('py-up', 'py-dn'); void box.offsetWidth;
             box.classList.add(v > pyPrev ? 'py-up' : 'py-dn');
             clearTimeout(pyT); pyT = setTimeout(() => box.classList.remove('py-up', 'py-dn'), 6000);
         }
         if (!_enPartida) pyPrev = v;
     }
-    let pyPrev = null, pyT = null;
+    let pyPrev = null, pyT = null, pyTras = false;   // pyTras: se acaba de volver de una partida
     setInterval(pintaPilly, 3000);
-    // La pantalla de carga (la pildora que gira) no puede quedarse puesta sobre el menu: si el menu esta a la vista y no hay ninguna carga en marcha, se retira.
-    function limpiaCarga() {
-        const ls = document.getElementById('loadingScreen');
-        if (!ls || ls.style.display === 'none' || !hub.classList.contains('on')) return;
-        if (window.__loadingLock || window.__loadingTimer || /ls-(inicio|cargador|espera)/.test(ls.className)) return;
-        ls.style.display = 'none';
-    }
-    setInterval(limpiaCarga, 300);
+
     window._hubCorto = corto;   // pruebas
     // DEPOSIT y WITHDRAW con el marco de los menus (la variante B que eligio David).
     document.documentElement.classList.add('ah-wal-hub');
@@ -1030,7 +1029,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 const cur = ((document.getElementById(half) || {}).value || '').toLowerCase();
                 const rw = document.createElement('div'); rw.className = 'rw';
                 rw.innerHTML = '<div class="lb">' + lb + '</div><div class="sw"></div>';
-                SWATCH.forEach(col => {
+                PILL_COLS.flat().forEach(col => {
                     const b = document.createElement('b'); b.style.background = col;
                     if (col === cur) b.className = 'sel';
                     b.onclick = () => setColor(half, col);
@@ -1879,7 +1878,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
 
     function show(m) {
-        mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on'); limpiaCarga();
+        mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on');
         sysEntrada();
         scale(); paintStatic(); pullRooms(); requestAnimationFrame(loop);
         try { if (window.PWSquad) PWSquad.boot(); } catch (e) {}   // amigos: invitaciones y susurros aunque el panel este cerrado
@@ -1930,7 +1929,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // startOnlineGame en sala de pago pasa por popup + firma de la wallet ANTES de entrar: si el hub se esconde ya, el
         // menu antiguo queda a la vista (popup raro) y al entrar el vigilante lo daba por perdido y volvia a tapar la partida.
         // Por eso en online el hub solo se esconde cuando la partida corre de verdad; si el pago se cancela no se toca.
-        const entra = () => { hide(); _enPartida = true; postPartida = true; aqHud(true); };
+        const entra = () => { hide(); _enPartida = true; postPartida = true; pyTras = true; aqHud(true); };
         let esperando = false;
         const alEntrar = () => {
             if (esperando) return; esperando = true;

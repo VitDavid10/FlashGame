@@ -2681,7 +2681,9 @@
 
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
-        body.hub-on #botsBanner { display: none !important; }   /* con el menu a la vista nunca: al salir de la partida se colaba unos ms */
+        body.hub-on #botsBanner { display: none !important; }
+        /* La pildora suelta de "carga discreta" (paisSync al elegir modo) es del menu antiguo: con el hub flotaba encima del menu */
+        body.hub-on #miniCargaPill { display: none !important; }   /* con el menu a la vista nunca: al salir de la partida se colaba unos ms */
         /* A media altura (40% desde arriba) y no pegado arriba: el hueco de arriba
            lo ocupan el reloj, el aviso de pentakill y el marcador, y el +X se
            les montaba encima. Se ancla por TOP (antes por bottom) porque el
@@ -15477,7 +15479,9 @@
     function miniCargaMuestra() {
         if (_miniCargaT || _miniCargaOn) return;
         _miniCargaT = setTimeout(() => {
-            _miniCargaT = null; _miniCargaOn = true;
+            _miniCargaT = null;
+            if (document.body.classList.contains('hub-on')) return;   // con el menu de la app no hay pildora suelta encima
+            _miniCargaOn = true;
             let cv = document.getElementById('miniCargaPill');
             if (!cv) {
                 if (!document.getElementById('miniCargaCss')) {
