@@ -493,10 +493,13 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         return f;
     }
     function toast(o) {
-        // Con el menu a la vista, los avisos sin botones van a la placa SYSTEM del hub (cola, un aviso a la vez).
-        if (window.PWSys && document.body.classList.contains('hub-on') && (o.kind || (!o.actions && !o.pic))) {
+        // Con el hub (menu de la app / PC) NUNCA hay popups sueltos: con el menu a la vista todo va a la placa (cola, un aviso a la vez, etiqueta ARENA/FRIEND/...);
+        // en partida o cargando no sale nada, y los avisos sin botones esperan en la placa hasta volver al menu (los que llevan botones caducarian, se descartan).
+        if (window.PWSys && document.getElementById('appHub')) {
             const d = document.createElement('div'); d.innerHTML = o.text;
-            window.PWSys.push(d.textContent, 12000, o.kind ? 0 : 1, { kind: o.kind || 'arena', pic: o.pic, actions: o.actions }); snd('alert'); return;
+            if (document.body.classList.contains('hub-on')) { window.PWSys.push(d.textContent, 12000, o.kind ? 0 : 1, { kind: o.kind || 'arena', pic: o.pic, actions: o.actions }); snd('alert'); }
+            else if (!o.actions) window.PWSys.push(d.textContent, 9000, 1, { kind: o.kind || 'arena' });
+            return;
         }
         const bid = (o.center || (!o.actions && !o.pic)) ? 'sqToastC' : 'sqToast';   // los avisos sin botones (CANCELLED, premios...) van centrados; susurros e invitaciones a la izquierda
         let box = document.getElementById(bid);
@@ -1160,7 +1163,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     // Un companero propone partida: al lider le sale el aviso y si acepta se lanza.
     function onPropose(m) {
-        toast({ pic: m.pic, text: esc(m.from) + ' proposes ' + m.size + 'V' + m.size + ' · ' + usdLbl(m.cents / 100), warm: true, ms: 20000,
+        toast({ kind: 'invite', pic: m.pic, text: esc(m.from) + ' proposes ' + m.size + 'V' + m.size + ' · ' + usdLbl(m.cents / 100), warm: true, ms: 20000,
             actions: [['ACCEPT', () => lanzar(m.size, m.cents / 100), 1], ['NO', null]] });
     }
     // QUICK MATCH o FIGHT a un precio: comprueba el grupo (sin grupo, de otro tamano, o no eres el lider -> se propone).
@@ -1272,8 +1275,15 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         wire(box);
     }
     function render() {
-        if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500, center: true }); }
-        if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000, center: true }); }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
+        const panel = !!document.getElementById('appHub') && document.body.classList.contains('hub-on') && (isOpen('rooms') || isOpen('friends'));
+        if (panel) {
+            // la linea de errores del propio panel (errLine) la enseña unos segundos
+            const msg = S.note || S.err;
+            if (msg && S._shown !== msg) { S._shown = msg; clearTimeout(S._errT); S._errT = setTimeout(() => { S._shown = null; if (S.note === msg) S.note = ''; if (S.err === msg) S.err = ''; render(); }, 4000); }
+        } else {
+            if (S.note) { const t = S.note; S.note = ''; toast({ text: esc(t), warm: true, ms: 2500, center: true }); }
+            if (S.err) { const t = S.err; S.err = ''; toast({ text: esc(t), warm: true, ms: 4000, center: true }); }
+        }   // los avisos de error tambien como popup: nada pegado debajo de las listas   // los avisos cortos van como popup, no dentro del menu
         if (S.box.rooms) { paint('rooms', roomsHtml()); drawCards(S.box.rooms); cabecera(); }
         pedirRivales(false);
         if (S.box.friends) paint('friends', friendsHtml());
