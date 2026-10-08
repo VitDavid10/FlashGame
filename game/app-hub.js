@@ -1206,7 +1206,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
         $('#ahIcClose').onclick = () => ic.classList.remove('open');
         $('#ahIcUse').onclick = () => {
-            try { localStorage.setItem('pw_avatar', JSON.stringify(nuevo)); } catch (e) {}
+            try { localStorage.setItem('pw_avatar', JSON.stringify(nuevo)); } catch (e) {} avatarCambiado();
             try { SoundManager.play('simpleselect'); } catch (e) {}
             ic.classList.remove('open'); pintaX(); paintStatic();
         };
@@ -1313,7 +1313,45 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (!aq || aq.day !== day) aq = { day, pins: [], prog: {}, done: {}, claimed: {}, sk: [] };
         return aq;
     }
-    function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} }
+    function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} cuentaSyncPronto(); }
+    // ---- Foto de perfil y misiones iguales en todos los dispositivos de la cuenta (server/accountsync.js) ----
+    let csTimer = null, csBusy = false;
+    function avatarCambiado() { try { localStorage.setItem('pw_avatar_at', String(Date.now())); localStorage.setItem('pw_avatar_dirty', '1'); } catch (e) {} cuentaSyncPronto(); }
+    function cuentaSyncPronto() { clearTimeout(csTimer); csTimer = setTimeout(cuentaSync, 4000); }
+    async function cuentaSync() {
+        if (csBusy || !(xWallet || xUser)) return;
+        csBusy = true;
+        try {
+            const a = aqLoad(), body = { aq: { day: a.day, pins: a.pins, prog: a.prog, done: a.done, claimed: a.claimed, pt: a.pt || 0 } };
+            let at = 0, sucio = false;
+            try { at = parseInt(localStorage.getItem('pw_avatar_at'), 10) || 0; sucio = localStorage.getItem('pw_avatar_dirty') === '1'; } catch (e) {}
+            if (sucio) { const av = localStorage.getItem('pw_avatar'); if (av) body.avatar = av; else body.clear = true; body.at = at; }
+            const r = await (await fetch('/api/account/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store' })).json();
+            if (!r || !r.ok) return;
+            try { if (sucio) localStorage.removeItem('pw_avatar_dirty'); } catch (e) {}
+            let cambio = false;
+            // foto: gana la mas reciente
+            if ((r.at | 0) > at) {
+                try {
+                    if (r.avatar) localStorage.setItem('pw_avatar', r.avatar); else localStorage.removeItem('pw_avatar');
+                    localStorage.setItem('pw_avatar_at', String(r.at));
+                } catch (e) {}
+                cambio = true;
+            }
+            // misiones de hoy: lo que ya hay en la cuenta se junta con lo de este dispositivo
+            const q = r.aq;
+            if (q && q.day === a.day) {
+                const antes = JSON.stringify([a.pins, a.prog, a.done, a.claimed]);
+                if ((q.pt | 0) > (a.pt | 0)) { a.pins = q.pins.slice(0, AQ_MAX); a.pt = q.pt; }
+                Object.keys(q.prog || {}).forEach(k => { a.prog[k] = Math.max(a.prog[k] | 0, q.prog[k] | 0); });
+                Object.keys(q.done || {}).forEach(k => { a.done[k] = 1; });
+                Object.keys(q.claimed || {}).forEach(k => { a.claimed[k] = 1; });
+                if (JSON.stringify([a.pins, a.prog, a.done, a.claimed]) !== antes) { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} cambio = true; }
+            }
+            if (cambio) { try { pintaX(); paintStatic(); aqHud(); if ($('#ahQ').classList.contains('open')) renderQuests(); try { PWSquad.refreshAv(); } catch (e) {} } catch (e) {} }
+        } catch (e) {} finally { csBusy = false; }
+    }
+    setInterval(() => { if (hub.classList.contains('on')) cuentaSync(); }, 90000);
     // El sorteo del dia se calcula una vez (aqStat se llama muchas veces por segundo).
     let aqCache = null;
     const aqList = () => { const d = aqLoad().day; if (!aqCache || aqCache.d !== d) aqCache = { d, l: appMissionsFor(d) }; return aqCache.l; };
@@ -1348,9 +1386,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const a = aqLoad();
         if (a.done[m.id] && !a.pins.includes(m.id)) { if (!a.claimed[m.id]) aqClaim(m); return; }
         const k = a.pins.indexOf(m.id);
-        if (k >= 0) { a.pins.splice(k, 1); aqMsg = ''; }
+        if (k >= 0) { a.pins.splice(k, 1); aqMsg = ''; a.pt = Date.now(); }
         else if (a.pins.length >= AQ_MAX) { aqMsg = 'MAX 3 SHOWN IN GAME · TAP ONE OF THEM TO REPLACE IT'; setTimeout(() => { aqMsg = ''; if ($('#ahQ').classList.contains('open')) renderQuests(); }, 2500); }
         else { a.pins.push(m.id); aqMsg = ''; }
+        a.pt = Date.now();
         aqSave(); renderQuests(); aqHud();
     }
     // Lo que ve el juego: cada hecho pasa por aqui, en cualquier modo.
@@ -1389,7 +1428,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-right-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}' +
                 // PC: a la izquierda de todo y con la MISMA caja de TOP MASS (mismo PNG, mismo tamaño, mismas letras); el cuadro de BUFFS baja debajo.
                 'html.pw-app body:not(.mobile-allowed) #aqHud{right:auto;left:15px;top:75px;width:210px;height:auto;max-width:none;text-align:left;box-sizing:border-box;border-style:solid;border-width:42px 10px 10px;' +
-                'border-image:url(' + (typeof cartelHeroUrl === 'function' ? cartelHeroUrl('top-mass') : 'img/cartel-hero/top-mass.png') + ') 120 30 30 30 fill stretch;background:none;padding:6px 6px 4px;min-height:60px;image-rendering:pixelated;font-family:\'Press Start 2P\',monospace;overflow:visible}' +
+                'border-image:url(' + (typeof cartelHeroUrl === 'function' ? cartelHeroUrl('top-mass') : 'img/cartel-hero/top-mass.png') + ') 120 30 30 30 fill stretch;background:none;padding:6px 6px 4px;min-height:90px;image-rendering:pixelated;font-family:\'Press Start 2P\',monospace;overflow:visible}' +
                 // el titulo TOP MASS viene dibujado en el PNG: se tapa con el color del fondo y se escribe MISSIONS con el mismo verde
                 'html.pw-app body:not(.mobile-allowed) #aqHud .h{position:absolute;left:-1px;right:-1px;top:-33px;height:27px;margin:0;padding:0;background:#0c0d12;color:#9cfe87;text-align:center;font-size:17px;line-height:27px;letter-spacing:0;text-shadow:2px 2px 0 #0d4a2a}' +
                 'html.pw-app body:not(.mobile-allowed) #aqHud .r{display:flex;justify-content:space-between;gap:6px;background:none;border:none;padding:0;margin:0 0 4px;font-size:8px;line-height:2;color:#fff;white-space:nowrap;text-overflow:clip;overflow:hidden}' +
@@ -1516,6 +1555,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             try { if (typeof paisSync === 'function') await paisSync(); } catch (e) {}
         }
         pintaX(); paintStatic();
+        cuentaSync();
     }
     function pintaAvatarEditor() {
         avPonX($('#ahPrPic'), avatar(), 96);
@@ -1546,7 +1586,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // Editor del avatar: estilo, fondo y, con la pildora, sus colores o una skin tuya.
     function openAvatar() {
         const av = $('#ahAv'), a = avatar();
-        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); try { PWSquad.refreshAv(); } catch (e) {} };
+        const guarda = n => { try { localStorage.setItem('pw_avatar', JSON.stringify(n)); } catch (e) {} avatarCambiado(); try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); try { PWSquad.refreshAv(); } catch (e) {} };
         av.classList.toggle('pill', a.t === 'pill');
         avPon($('#ahAvBig'), a, 160);
         const fila = (id, items, pinta, on, elige) => {
@@ -1568,7 +1608,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (xUser && tx) {
             const b = document.createElement('b'); b.className = 'xpic' + (localStorage.getItem('pw_avatar') ? '' : ' on'); b.title = 'X PHOTO';
             const im = new Image(); im.src = xUser.pic; im.referrerPolicy = 'no-referrer'; im.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%'; b.appendChild(im);
-            b.onclick = () => { try { localStorage.removeItem('pw_avatar'); } catch (e) {} try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); try { PWSquad.refreshAv(); } catch (e) {} };
+            b.onclick = () => { try { localStorage.removeItem('pw_avatar'); } catch (e) {} avatarCambiado(); try { SoundManager.play('simpleselect'); } catch (e) {} openAvatar(); pintaX(); pintaAvatarEditor(); try { PWSquad.refreshAv(); } catch (e) {} };
             tx.insertBefore(b, tx.firstChild);
             if (!localStorage.getItem('pw_avatar')) { tx.querySelectorAll('b.on').forEach(x => { if (x !== b) x.classList.remove('on'); }); const big = $('#ahAvBig'); if (big) { big.innerHTML = ''; const bi = new Image(); bi.src = xUser.pic; bi.referrerPolicy = 'no-referrer'; bi.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%'; big.appendChild(bi); } }
         }

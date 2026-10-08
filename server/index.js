@@ -48,6 +48,7 @@ leaderboard.setProveedorOponentes(() => matches.oponentesDe());
 const dailyquests = require('./dailyquests.js');   // retos diarios rotativos (usa skinpoints por dentro)
 const skinshop = require('./skinshop.js');         // tienda de skins de pais (SP / $PILLY + quema)
 const skinpoints = require('./skinpoints.js');
+const accountsync = require('./accountsync.js').create();   // foto de perfil y misiones de la app iguales en todos los dispositivos de la cuenta
 const appquests = require('./appquests.js').create({ addPoints: (cid, n) => skinpoints.addPoints(cid, n), playedToday: cid => dailyquests.playedToday(cid) });   // misiones de la app: el servidor solo cobra
 const { createAirdrop } = require('./airdrop.js');  // página del airdrop + modo AIRDROP_ONLY
 const { createDiscord } = require('./discord.js');  // botones verify y tickets del Discord
@@ -2884,6 +2885,17 @@ const httpServer = http.createServer(async (req, res) => {
     // la wallet firmada si no hay X):
     // desde ahi SP y skins se guardan en la cuenta (ver skinpoints.linkCid). Lo
     // del movil se SUMA a la cuenta; nunca se pierde nada.
+    // Foto y misiones de la cuenta: GET devuelve lo guardado, POST lo mezcla y devuelve el resultado (solo con cuenta).
+    if (urlPath === '/api/account/sync' && (req.method === 'GET' || req.method === 'POST')) {
+        const reply = o => { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
+        const acc = airdrop.xAccountOf(req);
+        if (!acc) { reply({ ok: false, error: 'no_account' }); return; }
+        if (req.method === 'GET') { reply(Object.assign({ ok: true }, accountsync.get(acc.id))); return; }
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 4000) req.destroy(); });
+        req.on('end', () => { let p; try { p = JSON.parse(body || '{}'); } catch (e) { p = {}; } reply(Object.assign({ ok: true }, accountsync.put(acc.id, p))); });
+        return;
+    }
     // Cobro de una mision de la app (progreso contado en el movil, tambien offline): hoy, maximo 3 al dia, solo con cuenta.
     if (urlPath === '/api/appquests/claim' && req.method === 'POST') {
         const cid = String(req.headers['x-client-id'] || '').trim();
