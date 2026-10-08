@@ -176,7 +176,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ph .cnt{margin-left:auto;font-family:'Russo One',sans-serif;font-size:.72em;letter-spacing:.1em;color:var(--ac)}
 .px{font-family:'Russo One',sans-serif;font-size:.66em;letter-spacing:.1em;padding:.45em 1em;border:.14em solid #2c3630;color:#7d8a82;background:none}
 .ahr-g{display:grid;grid-template-columns:repeat(6,1fr);gap:.5em;margin-top:.8em}
-.ahr-g .cell{padding:.55em .25em .4em;gap:.22em;min-width:0}
+.ahr-g .cell{padding:0 0 .45em;gap:.25em;min-width:0;overflow:hidden;border:.12em solid color-mix(in srgb,var(--k) 45%,#000)}
+.ahr-g .cell.sel{border-color:var(--k);box-shadow:0 0 0 .1em #000,0 0 .9em color-mix(in srgb,var(--k) 50%,transparent);background:rgba(0,0,0,.28)}
+.ahr-g .cell .p{align-self:stretch;margin:0 -.12em;min-height:2em;display:flex;align-items:center;justify-content:center;background:var(--k);color:#0b0f05;text-shadow:none;font-size:1em}
+.ahr-g .cell .p.sm{font-size:.62em;min-height:3.2em}
+.k0{--k:#8a948e}.k1{--k:#c8ff00}.k2{--k:#3fc4ff}.k3{--k:#b57bff}.k4{--k:#ffc83a}.k5{--k:#ff5a4a}
 .ahr-g .cell .ly{display:flex;align-items:center;justify-content:center;gap:.35em;width:100%;font-family:'VT323',monospace;font-size:.78em;line-height:1;color:#b6c4bc}
 .ahr-g .cell .ly b{font-weight:400;color:var(--mut)}
 .ahr-g .cell .ly i{width:.42em;height:.42em;background:#56635b;flex:none}
@@ -184,15 +188,14 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ahr-g .cell .more{font-size:.28em;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
 .ahr-g .cell .st.live{color:#00ff88}.ahr-g .cell .st.wait{color:#ffd23a}
 .ahr-b{display:grid;grid-template-columns:1fr 1.18fr;gap:.9em;margin-top:.95em}
-.ahr-box{position:relative;box-sizing:border-box;border:.1em solid var(--edge);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
-.ahr-box>b{position:absolute;left:.7em;top:0;transform:translateY(-58%);font-weight:400;font-size:.4em;letter-spacing:.1em;background:var(--ac);color:#0b0f05;padding:.5em .8em .4em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
+.ahr-box{position:relative;box-sizing:border-box;border:.12em solid color-mix(in srgb,var(--k,#c8ff00) 55%,#000);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
+.ahr-box>b{position:absolute;left:.7em;top:0;transform:translateY(-58%);font-weight:400;font-size:.4em;letter-spacing:.1em;background:var(--k,#c8ff00);color:#0b0f05;padding:.5em .8em .4em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
 .ahr-r{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;font-size:.46em;letter-spacing:.06em;padding:.5em 0;border-bottom:.08em dashed rgba(255,255,255,.12);color:var(--mut)}
 .ahr-r:last-child{border-bottom:0}
 .ahr-r span{color:#fff;text-align:right}.ahr-r span.usd{color:#ffd23a}.ahr-r span.live{color:#00ff88}.ahr-r span.wait{color:#ffd23a}
 .ahr-n{display:flex;align-items:center;gap:.7em;font-size:.44em;line-height:1.35;letter-spacing:.05em;padding:.42em 0;color:#fff}
-.ahr-n i{font-style:normal;flex:none;background:var(--ac);color:#0b0f05;padding:.3em .5em .2em;min-width:2em;text-align:center}
+.ahr-n i{font-style:normal;flex:none;background:var(--k,#c8ff00);color:#0b0f05;padding:.3em .5em .2em;min-width:2em;text-align:center}
 .cell{position:relative;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;cursor:pointer}
-.ahr-g .cell{padding:.9em .3em .7em;gap:.55em}
 .cell .p{font-size:1em;text-shadow:.16em .16em 0 #000}
 .cell .p.usd{color:#ffd23a}
 .cell .n{font-size:.42em;color:var(--mut)}
@@ -938,19 +941,19 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         g.innerHTML = '';
         const dot = (l, cap) => l.players >= cap ? 'r' : l.state === 'playing' ? 'g' : l.players > 0 ? 'y' : '';
         const off = document.createElement('div');
-        off.className = 'cell' + (room === 'offline' ? ' sel' : '');
-        off.innerHTML = '<div class="p" style="font-size:.62em;line-height:1.6em">OFFLINE</div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
+        off.className = 'cell k0' + (room === 'offline' ? ' sel' : '');
+        off.innerHTML = '<div class="p sm">OFFLINE</div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
         off.onclick = () => { room = 'offline'; renderRooms(); paintStatic(); };
         g.appendChild(off);
         const info = { offline: { t: 'OFFLINE', rows: [['ENTRY', 'FREE'], ['PLAYERS', 'VS BOTS'], ['STATUS', 'PRACTICE'], ['PRIZE', 'NONE']] } };
-        PRICES.forEach(p => {
+        PRICES.forEach((p, pi) => {
             const r = mine.find(x => x.room === p) || { players: 0, cap: 70, state: 'waiting', needed: 5, layers: [] };
             const cap = r.maxPlayers || 35, lys = (r.layers || []).filter(l => !l.disabled).slice(0, 3);
             const live = (r.players || 0) > 0 || r.state === 'playing';
             const free = p === 'Free', lbl = free ? 'FREE' : '$' + p.replace('$', '');
             const c = document.createElement('div');
-            c.className = 'cell' + (p === room ? ' sel' : '');
-            c.innerHTML = '<div class="p' + (free ? '' : ' usd') + '"' + (free ? ' style="font-size:.62em;line-height:1.6em"' : '') + '>' + lbl + '</div>' +
+            c.className = 'cell k' + (pi + 1) + (p === room ? ' sel' : '');
+            c.innerHTML = '<div class="p' + (free ? ' sm' : '') + '">' + lbl + '</div>' +
                 (lys.length ? lys.map(l => '<div class="ly"><b>L' + l.layerIdx + '</b><i class="' + dot(l, cap) + '"></i>' + l.players + '/' + (l.maxPlayers || cap) + '</div>').join('') : '<div class="ly"><b>L1</b><i></i>0/' + cap + '</div>') +
                 ((r.layers || []).length > lys.length || (r.layers || []).length < 2 ? '<div class="more">UP TO ' + Math.max(4, (r.layers || []).length) + ' LAYERS</div>' : '') +
                 '<div class="st ' + (live ? 'live' : 'wait') + '">' + (live ? 'LIVE' : 'WAITING') + '</div>';
@@ -963,7 +966,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 ['STATUS', '<span class="' + (live ? 'live' : 'wait') + '">' + (r.state === 'playing' ? 'IN GAME' : live ? 'LIVE' : 'WAITING') + '</span>'],
                 ['PRIZE', mode === 'classic' ? 'KILL LOOT' : 'TOP 10']] };
         });
-        const cur = info[room] || info.offline;
+        const cur = info[room] || info.offline, kc = 'k' + (room === 'offline' ? 0 : PRICES.indexOf(room) + 1);
+        $('#ahrInfo').className = $('#ahrRules').className = 'ahr-box ' + kc;
         $('#ahrInfo').innerHTML = '<b>ROOM INFO · ' + cur.t + '</b>' + cur.rows.map(x => '<div class="ahr-r">' + x[0] + (/^<span/.test(x[1]) ? x[1] : '<span>' + x[1] + '</span>') + '</div>').join('');
         $('#ahrRules').innerHTML = '<b>RULES</b>' + (ROOM_RULES[mode] || ROOM_RULES.arcade).map((t, k) => '<div class="ahr-n"><i>0' + (k + 1) + '</i>' + t.toUpperCase() + '</div>').join('');
         placa($('#ahRooms .pnl'), 1);

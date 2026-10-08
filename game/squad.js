@@ -1129,7 +1129,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     }
     // Un amigo con el aviso activado (ALERT en FRIENDS) esta LISTO buscando partida: aviso ARENA con boton para ir a por el.
     function avisoListo(f) {
-        if (S.party && (S.party.state !== 'idle' || S.party.rc || S.party.cm)) return;
+        if (S.party && S.party.state === 'match') return;
         toast({ kind: 'arena', pic: f.p, text: esc(friendName(f)) + ' is READY for ' + f.q.size + 'V' + f.q.size + ' · ' + usdLbl(f.q.cents / 100), ms: 12000,
             actions: [['FIGHT', () => lanzar(f.q.size, f.q.cents / 100), 1], ['X', null]] });
     }
