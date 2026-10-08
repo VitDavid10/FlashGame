@@ -966,7 +966,7 @@
             // Se anuncia avisoMs antes; dura eventoMs (el virus dorado, hasta que alguien lo coja o pasen oroMs).
             if (!A.cur && A.evIdx < ARCADE.eventosEn.length && t >= ARCADE.eventosEn[A.evIdx] - ARCADE.avisoMs) {
                 const key = A.ev[A.evIdx], ini = ARCADE.eventosEn[A.evIdx];
-                const L = Math.max(400, Math.min(this.mapSize, S) * 0.7);
+                const L = Math.max(150, Math.min(this.mapSize, S) - 60);   // en cualquier punto de la zona segura de ahora, extremos incluidos
                 const cur = { key, ini, fin: ini + (key === 'gold' ? ARCADE.oroMs : ARCADE.eventoMs), on: false };
                 if (key === 'rain' || key === 'gold') { cur.x = (Math.random() * 2 - 1) * L; cur.y = (Math.random() * 2 - 1) * L; cur.r = key === 'rain' ? ARCADE.rainR : ARCADE.oroR; }
                 A.cur = cur;
