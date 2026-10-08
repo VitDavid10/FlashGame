@@ -14642,6 +14642,8 @@
         els.actionBar.style.display = esArcade ? 'flex' : 'none';
         if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); }
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
+        // ROOM del HUD: la sala que se esta buscando (antes se quedaba la de la ultima partida y parecia que te metia en otra).
+        els.room.innerText = (netState && netState.joinMsg && netState.joinMsg.room) || currentServer || 'Free';
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
@@ -15193,6 +15195,7 @@
                 enterOnlineGame(ws, msg, false);
             }, 600);
         } else {
+            if (msg.roomName) els.room.innerText = msg.roomName;   // la sala que te ha dado el servidor
             if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
             else setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
             if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
