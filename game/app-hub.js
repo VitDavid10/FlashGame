@@ -150,8 +150,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys.on.out{animation:ahSysOut .35s ease-in both}
 @keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
 @keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
-.ah-fb.ah-avb{left:4.2em;top:.15em;right:auto;z-index:6}
-#appHub.pc .ah-avb{left:4.5em;top:.3em}
+.ah-fb.ah-avb{left:14.3em;top:1.8em;right:auto;z-index:6}
+#appHub.pc .ah-avb{left:15.7em;top:2.3em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
 .ah-sys .acts{display:none;flex:none;gap:.6em;align-self:center;transform:translateY(-.17em)}
