@@ -1652,8 +1652,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
     // Devuelve true si quedo conectada.
     async function loginWallet() {
-        const p = window.GameWallet && GameWallet.getProvider('mwa');
-        if (!p) { try { showSystemMsg('The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return false; }
+        // Movil: Mobile Wallet Adapter. PC: la extension del navegador (Phantom, Solflare o Backpack).
+        const pc = hub.classList.contains('pc');
+        let wname = 'mwa', p = null;
+        if (window.GameWallet) {
+            if (!pc) p = GameWallet.getProvider('mwa');
+            else for (const n of ['phantom', 'solflare', 'backpack']) { p = GameWallet.getProvider(n); if (p) { wname = n; break; } }
+        }
+        if (!p) { try { showSystemMsg(pc ? 'No wallet found in this browser. Install Phantom, Solflare or Backpack and reload.' : 'The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return false; }
         try {
             const r = await p.connect();
             const addr = r.publicKey.toString();
@@ -1663,7 +1669,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const j = await post('wallet', { address: addr, nonce, signature: Array.from(out.signature) });
             if (j.error) throw new Error(j.error);
             GameWallet.address = addr; GameWallet.provider = p;
-            try { localStorage.setItem('pw_wallet', 'mwa'); localStorage.setItem('pw_addr', addr); } catch (e) {}
+            try { localStorage.setItem('pw_wallet', wname); localStorage.setItem('pw_addr', addr); } catch (e) {}
             await syncX();
             return true;
         } catch (e) { try { showSystemMsg('The wallet did not sign in. Please try again.', 'WALLET'); } catch (x) {} return false; }
@@ -1732,7 +1738,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const it = e.target.closest('[data-a]'); if (!it) return;
         const a = it.dataset.a;
         try { SoundManager.play('simpleselect'); } catch (x) {}
-        if (a === 'x') { conectaX(); return; }
+        if (a === 'x') { if (hub.classList.contains('pc')) cierraPaneles(); conectaX(); return; }
         if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp'].includes(a)) cierraPaneles();
         if (a === 'htp') { htpPag = 0; htpSk = null; $('#ahHtp').classList.add('open'); renderHtp(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
