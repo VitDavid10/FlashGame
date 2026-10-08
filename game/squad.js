@@ -1020,7 +1020,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         const paid = rc.fee > 0;
         const rok = mine ? '<button class="sq-b" disabled>READY ✓</button>'
             : '<button class="sq-b on" data-a="rok"' + (S.paying ? ' disabled' : '') + '>' + (S.paying ? 'SIGNING...' : paid ? 'PAY & READY' : 'READY') + '</button>';
-        const all = leader && rc.size > 1 ? '<button class="sq-b" data-a="remind"' + (falta && !(falta === 1 && !mine) ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
+        const all = rc.size === 1 ? '' : leader ? '<button class="sq-b" data-a="remind"' + (falta && !(falta === 1 && !mine) ? '' : ' disabled') + '>READY ALL</button>' : ghost('READY ALL');
         return '<div class="sq find"><div class="mid"><div class="sq-q">LOBBY · ' + (KIND_TXT[rc.kind] || 'MATCH') + ' · ' + rc.size + 'V' + rc.size + '</div>' +
             '<div class="sq-side' + (rc.size === 3 ? ' n3' : '') + '">' + groupHtml(false, p.size, true) + priceBox(rc.fee, rc.usd, rc.size) + '</div></div>' +
             '<div class="sq-bot"><div class="sq-row">' + rok + all +
@@ -1149,11 +1149,16 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         if (!document.body.classList.contains('hub-on') || S.alerted[f.id]) return;
         S.alerted[f.id] = 1;
         const q = f.q, quien = friendName(f);
-        toast({ kind: 'arena', pic: f.p, text: esc(quien) + ' is waiting for a ' + q.size + 'V' + q.size + ' · ' + usdLbl(q.cents / 100) + ' fight', ms: 12000,
+        toast({ kind: 'arena', pic: f.p, text: esc(quien) + ' is waiting for a ' + q.size + 'V' + q.size + ' · ' + usdLbl(q.cents / 100) + ' fight' + (q.size > 1 ? ' (group of ' + q.size + ')' : ''), ms: 12000,
             actions: [['JOIN', () => preguntaSala(q, quien), 1], ['X', null]] });
     }
     // Buscar donde esta un amigo no garantiza encontrarlo: se dice cuanta gente busca ahi (lista o no) y se deja elegir.
     function preguntaSala(q, quien) {
+        // Un 2V2 o 3V3 se busca en grupo: si el tuyo es mas pequeno, no se puede buscar lo mismo aunque se quiera.
+        if (groupSize() < q.size) {
+            rcPopup('YOU NEED A GROUP OF ' + q.size, quien + ' is searching ' + q.size + 'V' + q.size + ' · ' + usdLbl(q.cents / 100) + ' as a group of ' + q.size + '.\n\nYour group has ' + groupSize() + (groupSize() === 1 ? ' player' : ' players') + '. Invite friends in FRIENDS first, then search it together.', 'OK', 'CLOSE', () => {});
+            return;
+        }
         connect(() => send({ a: 'rivals', size: q.size }));
         setTimeout(() => {
             const r = (S.rivals || []).find(x => x.size === q.size && x.cents === q.cents);
@@ -1251,7 +1256,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
                 : '<div class="n">' + esc(friendName(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div>') +
             '<div class="s ' + f.st + '"><i></i>' + (f.q ? 'WAITING FOR ' + f.q.size + 'V' + f.q.size + ' · ' + usdLbl(f.q.cents / 100) + ' FIGHT' : ST[f.st]) + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
             (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
-            '<div class="a">' + (f.q ? '<button class="sq-b sm gold" data-fight="' + f.id + '" title="Search where they are">+</button>' : '') + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm sq-gear' + (S.cfgOpen === f.id ? ' on' : '') + '" data-cfg="' + f.id + '" title="Settings">' + GEAR + '</button></div>') +
+            '<div class="a">' + (f.q ? '<button class="sq-b sm gold" data-fight="' + f.id + '" title="Search where they are">JOIN</button>' : '') + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm sq-gear' + (S.cfgOpen === f.id ? ' on' : '') + '" data-cfg="' + f.id + '" title="Settings">' + GEAR + '</button></div>') +
             (S.cfgOpen === f.id && S.nickEdit !== f.id ? '<div class="sq-cfg"><button class="sq-b sm" data-nk="' + f.id + '">NICKNAME</button><button class="sq-b sm' + (S.watch[f.id] ? ' on' : '') + '" data-wt="' + f.id + '">' + (S.watch[f.id] ? 'ALERT ON' : 'ALERT WHEN WAITING') + '</button><button class="sq-b sm' + (S.mute.ids[f.id] ? ' on' : '') + '" data-mu="' + f.id + '">' + (S.mute.ids[f.id] ? 'UNMUTE' : 'MUTE') + '</button><button class="sq-b sm red" data-rm="' + f.id + '">REMOVE FRIEND</button></div>' : '') + '</div>').join('');
         return '<div class="sq sq-fixed">' + tabs + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button><button class="sq-b sm' + (S.mute.all ? ' red' : '') + '" data-a="muteall">' + (S.mute.all ? 'POPUPS OFF' : 'POPUPS ON') + '</button></div>' +
