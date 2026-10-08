@@ -35,7 +35,8 @@
 
     // Only the top window shows the notice: the landing page embeds the game as
     // the hero background (game/?hero=1) and that copy must not ask again.
-    if (choice === 'yes' || choice === 'no' || window.top !== window.self) return;
+    // The game page never shows the notice (it covers the menu); Analytics there still follows the choice made on the landing page.
+    if (choice === 'yes' || choice === 'no' || window.top !== window.self || /^\/game(\/|$)/.test(location.pathname)) return;
 
     function mount() {
         var css = document.createElement('style');

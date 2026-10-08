@@ -56,3 +56,20 @@ test('entrada de la casa (bot de prueba, wallet null): si gana el bot su parte v
     pay.settle('m5', [{ team: 'A', wallet: 'h', fee: 100 }, { team: 'B', wallet: null, fee: 100 }], null);
     assert.equal(saldo.h, 100, 'empate: solo vuelve lo tuyo');
 });
+
+test('el libro de cuentas recupera premios y cobros aunque falte arena-pay.json', () => {
+    const os = require('os'), path = require('path'), fs = require('fs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ap-')), file = path.join(dir, 'arena-pay.json');
+    const mk = () => createArenaPay({ file, credit() {}, treasury() {}, verify: () => true, log() {} });
+    const a = mk();
+    const r = a.settle('m1', [{ team: 'A', wallet: 'W1', fee: 100 }, { team: 'B', wallet: 'W2', fee: 100 }], 'A', { size: 1, cents: 200 });
+    r.prizes.push(...a.settle('m2', [{ team: 'A', wallet: 'W1', fee: 50 }, { team: 'B', wallet: 'W2', fee: 50 }], 'A', { size: 1, cents: 100 }).prizes);
+    assert.equal(a.claim(r.prizes[0].id, 'W1', a.claimMessage(r.prizes[0].id), [1, 2, 3]).ok, true);
+    fs.rmSync(file, { force: true });   // se pierde el json (o nunca se escribio)
+    const b = mk();
+    assert.deepEqual(b.claimsOf('W1').map(c => c.amount), [100]);                 // el segundo premio sigue por cobrar
+    const h = b.historyOf('W1');
+    assert.equal(h.length, 2);
+    assert.equal(h.filter(x => x.claimed).length, 1);                              // y el primero consta como cobrado
+    assert.equal(fs.readFileSync(path.join(dir, 'arena-pay-ledger.jsonl'), 'utf8').includes('"signature":[1,2,3]'), true);   // con su firma
+});

@@ -30,7 +30,23 @@ function createArenaPay(o) {
     if (!Array.isArray(db.hist)) db.hist = [];
     const marcaCobrado = id => { const h = db.hist.find(x => x.id === id); if (h) h.claimed = now(); };
     let dirty = false;
-    const save = () => { if (!file || !dirty) return; dirty = false; try { fs.writeFileSync(file + '.tmp', JSON.stringify(db)); fs.renameSync(file + '.tmp', file); } catch (e) {} };
+    const save = () => { if (!file || !dirty) return; dirty = false; try { fs.writeFileSync(file + '.tmp', JSON.stringify(db)); fs.renameSync(file + '.tmp', file); } catch (e) { dirty = true; log('[arena] no se pudo guardar ' + file + ': ' + e.message); } };
+    // Libro de cuentas: cada premio y cada cobro (con su firma) se apunta al momento, una linea por suceso, y nunca se borra.
+    // Si arena-pay.json falta o va por detras, al arrancar se reconstruye de aqui: un premio apuntado no se pierde.
+    const ledgerFile = file ? file.replace(/\.json$/, '') + '-ledger.jsonl' : null;
+    const led = ev => { if (!ledgerFile) return; try { fs.appendFileSync(ledgerFile, JSON.stringify(ev) + '\n'); } catch (e) { log('[arena] no se pudo apuntar en el libro: ' + e.message); } };
+    if (ledgerFile) {
+        let n = 0, rec = 0;
+        try {
+            for (const ln of fs.readFileSync(ledgerFile, 'utf8').split('\n')) {
+                if (!ln) continue; let ev; try { ev = JSON.parse(ln); } catch (e) { continue; } n++;
+                if (ev.t === 'prize' && !db.hist.some(h => h.id === ev.id)) { db.claims[ev.id] = { wallet: ev.wallet, amount: ev.amount, matchId: ev.matchId || '', at: ev.at }; db.hist.push({ id: ev.id, wallet: ev.wallet, amount: ev.amount, at: ev.at, size: ev.size | 0, cents: ev.cents | 0, claimed: 0 }); rec++; }
+                else if (ev.t === 'claim') for (const id of ev.ids || []) { if (db.claims[id]) { delete db.claims[id]; rec++; } const h = db.hist.find(x => x.id === id); if (h && !h.claimed) h.claimed = ev.at; }
+            }
+        } catch (e) { if (e.code !== 'ENOENT') log('[arena] no se pudo leer el libro: ' + e.message); }
+        dirty = rec > 0;
+        log('[arena] ' + Object.keys(db.claims).length + ' premios por cobrar y ' + db.hist.length + ' en el historial (libro: ' + n + ' sucesos, ' + rec + ' recuperados)');
+    }
     const timer = setInterval(() => { save(); }, 5000); if (timer.unref) timer.unref();
     if (file) for (const sig of ['SIGTERM', 'SIGINT', 'beforeExit']) process.once(sig, () => { try { dirty = true; save(); } catch (e) {} });
 
@@ -104,6 +120,7 @@ function createArenaPay(o) {
         const id = newRef();
         db.claims[id] = { wallet, amount, matchId: matchId || '', at: now() }; dirty = true;
         db.hist.push({ id, wallet, amount, at: now(), size: (meta && meta.size) | 0, cents: (meta && meta.cents) | 0, claimed: 0 });
+        led({ t: 'prize', id, wallet, amount, matchId: matchId || '', at: now(), size: (meta && meta.size) | 0, cents: (meta && meta.cents) | 0 }); save();
         if (db.hist.length > 5000) db.hist.splice(0, db.hist.length - 5000);
         return id;
     }
@@ -116,6 +133,7 @@ function createArenaPay(o) {
         if (c.wallet !== wallet || message !== claimMessage(id)) return { ok: false, reason: 'bad_claim' };
         if (!verify(wallet, message, signature)) return { ok: false, reason: 'bad_signature' };
         delete db.claims[id]; marcaCobrado(id); dirty = true;
+        led({ t: 'claim', ids: [id], wallet, amount: c.amount, at: now(), message, signature }); save();
         try { credit(wallet, c.amount); } catch (e) {}
         log(`[arena] premio cobrado: ${c.amount} PILL a ${wallet.slice(0, 6)}…`);
         return { ok: true, amount: c.amount };
@@ -130,7 +148,7 @@ function createArenaPay(o) {
         if (!verify(wallet, message, signature)) return { ok: false, reason: 'bad_signature' };
         let amount = 0;
         for (const id of ids) { amount += db.claims[id].amount; delete db.claims[id]; marcaCobrado(id); }
-        dirty = true;
+        dirty = true; led({ t: 'claim', ids, wallet, amount, at: now(), message, signature }); save();
         try { credit(wallet, amount); } catch (e) {}
         log(`[arena] premios cobrados de golpe: ${amount} PILL (${ids.length}) a ${wallet.slice(0, 6)}…`);
         return { ok: true, amount, n: ids.length };

@@ -66,6 +66,11 @@ const { createIpc } = require('./cluster/ipc.js');             // request/respon
 const PW_ROLE = process.env.PW_ROLE || 'mono';
 const PW_HOST_ID = parseInt(process.env.PW_HOST_ID, 10) || 0;
 const PW_HOST_COUNT = parseInt(process.env.PW_HOST_COUNT, 10) || 1;
+// Peticiones HTTP internas director -> host (/api/rooms, /api/publicstats): van firmadas con esta clave, que el
+// director crea al arrancar y pasa a sus hosts. Con el sitio cerrado (AIRDROP_ONLY / SITE_CLOSED) el host contestaba
+// 404 a esas peticiones (no llevan Referer) y la lista de salas salia entera "offline".
+const PW_INTERNAL_KEY = process.env.PW_INTERNAL_KEY || crypto.randomBytes(24).toString('hex');
+const internoHdr = { 'x-pw-internal': PW_INTERNAL_KEY };
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 /*
@@ -104,11 +109,12 @@ const APP_PATH = /^\/[A-Za-z0-9_-]{12,}$/.test(process.env.APP_PATH || '') ? pro
 // Nunca una constante en el código: eso sería una puerta trasera pública.
 const STRESS_KEY = process.env.STRESS_KEY || '';
 const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;
+const ARCADE_MIN_REAL = 6;   // arcade: con menos gente el top no tiene sentido (ver ARCADE.premios en shared/sim.js)
 const CLASSIC_MIN_REAL = 4;   // classic: minimo de reales para empezar (ver enforceRoomCaps)    // reales para empezar (editable por sala desde el panel)
 // Población objetivo (reales + bots de relleno). 0 = SIN bots de relleno: online
 // solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
 const TARGET_POP = process.env.TARGET_POP != null ? parseInt(process.env.TARGET_POP, 10) : 0;
-const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000 + 50 * 1000);
+const MATCH_MS = parseInt(process.env.MATCH_MS, 10) || (3 * 60 * 1000);   // arcade: 3 min fijos (zona y eventos en shared/sim.js ARCADE)
 /*
  * Duración de una partida de CLASSIC. Antes classic no acababa nunca.
  *
@@ -277,6 +283,7 @@ function spawnHost(hostId) {
             PW_HOST_ID: String(hostId),
             PW_HOST_COUNT: String(PW_HOST_COUNT),
             PORT: String(port),
+            PW_INTERNAL_KEY,
         }),
     });
     const ipc = createIpc(child, { label: `director→host${hostId}` });
@@ -321,7 +328,7 @@ async function pushPerfToHosts(hostIds, patch) {
 // las salas del catálogo (enforceRoomCaps), así queda en código y llega al VPS por
 // git (roomrules.json es gitignored y no se despliega). Editable en vivo desde el
 // panel; se reaplica esta política en cada reinicio.
-const ROOM_CAPS = { classic: 35, arcade: 25 };
+const ROOM_CAPS = { classic: 35, arcade: 35 };
 // Layers por combo (mode × price). Cada combo tiene N instancias paralelas:
 // el matchmaker (pickLayer) te mete en L1 hasta LLENARLA (clients.size >= maxPlayers),
 // y solo entonces pasa a L2. NO hay umbral del 90%: es 100% estricto. Las layers
@@ -1306,10 +1313,11 @@ const squad = createSquad({
     recordEntry: p => director.recordEntry(p),   // jugar arenas cuenta como partida del dia (retos diarios y cobro de misiones)
     directory: q => airdrop.lookup(q),   // encuentra a gente del airdrop que aun no ha abierto Arenas
     // Amigos y perfiles: solo el proceso que de verdad sirve las arenas los guarda.
-    socialFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'social.json') : null,
+    // Con el split, las arenas las sirve el DIRECTOR (a el llegan las conexiones de grupos y /match?mode=squad lo dice); los hosts no guardan nada.
+    socialFile: (PW_ROLE === 'mono' || PW_ROLE === 'director') ? path.join(__dirname, 'social.json') : null,
     // Arenas de pago: la entrada se firma y cobra como en las salas normales; lo retenido y los premios por cobrar
     // se guardan en arena-pay.json (solo el proceso que sirve las arenas).
-    arenaFile: (PW_ROLE === 'mono' || (PW_ROLE === 'host' && PW_HOST_ID === SQUAD_HOST_ID)) ? path.join(__dirname, 'arena-pay.json') : null,
+    arenaFile: (PW_ROLE === 'mono' || PW_ROLE === 'director') ? path.join(__dirname, 'arena-pay.json') : null,
     authorize: p => director.authorizeEntry(p),
     credit: (w, pill) => econ.credit(w, pill),
     treasury: (pill, motivo) => econ.rakeTesoreria(pill, motivo),
@@ -1317,7 +1325,7 @@ const squad = createSquad({
     quote: usd => usd * PILL_PER_DOLLAR,
     pillUsd: () => (PILL_PER_DOLLAR > 0 ? 1 / PILL_PER_DOLLAR : 0),
     // Bots de prueba (@icefox, @bandit, @rcer): buscan 1v1 cada uno a su precio; en devnet su entrada la pone la casa.
-    virtualQueue: true,
+    virtualQueue: true,   // (arenaFile/socialFile: ver arriba; en el director son null)
     botsPay: /devnet/i.test(solana.RPC || ''),   // la misma tasa que fija el precio (en el split, el host la recibe por IPC)
 });
 
@@ -2595,7 +2603,8 @@ const httpServer = http.createServer(async (req, res) => {
     // Antes que el airdrop: con SITE_CLOSED/AIRDROP_ONLY los botones del Discord siguen vivos.
     if (await discord.handle(req, res, urlPath)) return;
     if (await handleInbox(req, res, urlPath, query)) return;
-    if (await airdrop.handle(req, res, urlPath, query)) return;
+    const internoDirector = PW_ROLE === 'host' && req.headers['x-pw-internal'] === PW_INTERNAL_KEY;
+    if (!internoDirector && await airdrop.handle(req, res, urlPath, query)) return;
 
     // --- Salud del servidor: heap, uptime y tamaños de estructuras (diagnóstico de leaks) ---
     if (urlPath === '/api/health') {
@@ -2645,6 +2654,8 @@ const httpServer = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
         const mode = String(query.get('mode') || '');
         const price = String(query.get('price') || '');
+        // Arenas (grupos, amigos, premios): las sirve este mismo proceso (mono o director), nunca un host: asi sus datos se guardan siempre en el mismo sitio.
+        if (mode === 'squad' && PW_ROLE !== 'host') { res.end(JSON.stringify({ ok: true, host: 'localhost', port: PORT, hostId: MY_HOST_ID })); return; }
         const hostId = mode === 'squad' ? SQUAD_HOST_ID : SHARD.comboToHost.get(mode + '_' + price);
         if (hostId == null) { res.end(JSON.stringify({ ok: false, reason: 'combo desconocido' })); return; }
         if (PW_ROLE === 'director') {
@@ -2683,7 +2694,7 @@ const httpServer = http.createServer(async (req, res) => {
             await Promise.all([...hostProcs.values()].map(async (h) => {
                 if (!h.alive) return;
                 try {
-                    const r = await fetch(`http://localhost:${h.port}/api/publicstats`);
+                    const r = await fetch(`http://localhost:${h.port}/api/publicstats`, { headers: internoHdr });
                     const j = await r.json();
                     activePlayers += j.activePlayers || 0; revenue += j.revenue || 0;
                 } catch (e) { /* host caído: no suma, no rompe */ }
@@ -2714,7 +2725,7 @@ const httpServer = http.createServer(async (req, res) => {
                 await Promise.all([...hostProcs.values()].map(async (h) => {
                     if (!h.alive) return;
                     try {
-                        const r = await fetch(`http://localhost:${h.port}/api/rooms`);
+                        const r = await fetch(`http://localhost:${h.port}/api/rooms`, { headers: internoHdr });
                         perHost.set(h.id, await r.json());
                     } catch (e) { /* host caído: sus combos salen 'offline' */ }
                 }));
@@ -4202,6 +4213,7 @@ function enforceRoomCaps() {
             // Classic arranca con 4 reales (2-oct-2026): con el mapa vivo, 4 es el
             // mapa mas pequeno. Menos gente no tiene sentido en classic.
             if (mode === 'classic' && r.minReal !== CLASSIC_MIN_REAL) { r.minReal = CLASSIC_MIN_REAL; rulesDirty = true; n++; }
+            if (mode === 'arcade' && r.minReal !== ARCADE_MIN_REAL) { r.minReal = ARCADE_MIN_REAL; rulesDirty = true; n++; }
         }
     }
     if (n) log(`Política por modo aplicada: classic ${ROOM_CAPS.classic}, arcade ${ROOM_CAPS.arcade}, población 0 (${n} ajustes)`);

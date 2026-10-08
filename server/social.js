@@ -68,7 +68,9 @@ function createSocial(opts) {
         if (pi) return 'party';
         return 'on';
     }
-    const row = id => Object.assign(pub(id), { st: statusOf(id) });
+    // q: si busca partida (LISTO), en que tamano y precio (centimos): sus amigos pueden ir a por el.
+    const queueOf = id => { const pi = online.has(id) ? partyInfoOf(id) : null; return pi && pi.state === 'queued' && pi.q ? pi.q : null; };
+    const row = id => { const q = queueOf(id); return Object.assign(pub(id), { st: statusOf(id) }, q ? { q } : {}); };
 
     function pushFriends(id) {
         const r = relOf(id);
@@ -77,7 +79,8 @@ function createSocial(opts) {
     // Avisa a los amigos conectados de que cambio el estado de `id`.
     function pushPresence(id) {
         const st = statusOf(id);
-        for (const f of relOf(id).f) sendTo(f, { t: 'sqPresence', id, st });
+        const q = queueOf(id);
+        for (const f of relOf(id).f) sendTo(f, q ? { t: 'sqPresence', id, st, q } : { t: 'sqPresence', id, st });
     }
 
     // El avatar del jugador (icono del menu) que ven sus amigos cuando no tiene foto de X. Solo valores simples.

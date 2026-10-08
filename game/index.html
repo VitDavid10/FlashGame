@@ -44,6 +44,16 @@
         // html.pw-app y de EN_APP. En el navegador el juego sigue como antes
         // (pedido por David). Aqui, antes de pintar nada, para que no salte.
         if (/Solana Mobile Web Shell/.test(navigator.userAgent) || new URLSearchParams(location.search).has('app')) el.classList.add('pw-app');
+        // App: hasta que sale la pantalla de carga (showLoadingScreen) el menu de debajo se veia y se podia tocar:
+        // un velo oscuro lo tapa desde el primer pintado (y bloquea los toques). Sale solo (red de seguridad a los 15 s).
+        if (el.classList.contains('pw-app')) {
+            const velo = document.createElement('style');
+            velo.textContent = 'html.pw-app:not(.pw-boot) body::before{content:"";position:fixed;inset:0;z-index:9998;background:#050505}' +
+                // El menu antiguo (login de cada modo) no existe en la app: el hub lo sustituye y nunca debe verse ni tocarse.
+                'html.pw-app #loginOverlay{visibility:hidden !important;pointer-events:none !important}';
+            document.head.appendChild(velo);
+            setTimeout(() => el.classList.add('pw-boot'), 15000);
+        }
         // App: la wallet del movil (Seed Vault) va por Mobile Wallet Adapter. Solo
         // aqui se carga; en la web no hace falta (ver mwaProvider).
         if (el.classList.contains('pw-app')) { const s = document.createElement('script'); s.src = '/vendor/mwa.js'; s.async = true; document.head.appendChild(s); }
@@ -909,6 +919,12 @@
             html:not([data-hero]) body.mobile-allowed #botsBanner,
             html:not([data-hero]) body.mobile-allowed #lobbyBanner {
                 top: 50% !important; bottom: auto !important; right: 14% !important; left: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
+                transform-origin: center !important;
+            }
+            /* Arcade: el rotulo de zona y eventos, girado igual (si no, salia de canto sobre la partida tumbada). */
+            html:not([data-hero]) body.mobile-allowed #arcBanner {
+                top: 50% !important; bottom: auto !important; right: 24% !important; left: auto !important;
                 transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
                 transform-origin: center !important;
             }
@@ -2671,6 +2687,13 @@
 
         #botsBanner { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(8,12,8,0.92); backdrop-filter: blur(8px); border: 1px solid rgba(0,255,136,0.4); border-radius: 10px; padding: 12px 28px; font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #00ff88; box-shadow: 0 0 30px rgba(0,255,136,0.2); white-space: nowrap; transition: top 0.6s cubic-bezier(0.34,1.56,0.64,1), opacity 0.5s; opacity: 0; pointer-events: none; }
         #botsBanner.show { top: 22px; opacity: 1; }
+        /* Arcade: rotulo de la zona y de los eventos (FOOD RAIN IN 3, NO SPLIT · 7S, OUTSIDE THE SAFE ZONE...) */
+        #arcBanner { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 60; display: none; pointer-events: none; font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 1px; padding: 10px 16px 8px; background: rgba(5,8,4,.88); border: 3px solid #ffd23a; color: #ffd23a; text-shadow: 2px 2px 0 #000; white-space: nowrap; box-shadow: 4px 4px 0 rgba(0,0,0,.6); }
+        #arcBanner.show { display: block; }
+        #arcBanner.rojo { border-color: #ff4d4d; color: #ff6a6a; }
+        body.hub-on #botsBanner { display: none !important; }
+        /* La pildora suelta de "carga discreta" (paisSync al elegir modo) es del menu antiguo: con el hub flotaba encima del menu */
+        body.hub-on #miniCargaPill { display: none !important; }   /* con el menu a la vista nunca: al salir de la partida se colaba unos ms */
         /* A media altura (40% desde arriba) y no pegado arriba: el hueco de arriba
            lo ocupan el reloj, el aviso de pentakill y el marcador, y el +X se
            les montaba encima. Se ancla por TOP (antes por bottom) porque el
@@ -3934,6 +3957,7 @@
     </div>
 
     <div id="botsBanner">🤖 Playing against bots</div>
+    <div id="arcBanner"></div>
 
     <div id="killGainStack"></div>
 
@@ -4480,7 +4504,7 @@
                     <div class="mode-sub">ROGUELIKE MECHANICS</div>
                     <div class="mode-title"><span class="mt-txt">ARCADE</span><img class="mt-img mt-placa" src="img/mode-title/ARCADE-sel-placa.png" alt="" onerror="this.closest('.mode-title').classList.add('no-img')"></div>
                     <div class="mode-desc">
-                        NORMAL MAP. TIME: <span class="highlight">3:50</span>.<br>
+                        TIME: <span class="highlight">3:00</span>. THE SAFE ZONE SHRINKS.<br>
                         START EMPTY. <span class="highlight">PICK SKILLS</span> EVERY 30S.<br>
                         <span style="color:#ccff00;">REACH TOP 10 TO WIN.</span>
                     </div>
@@ -4962,7 +4986,7 @@
         <div id="buff-list-content"></div>
     </div>
 
-    <div id="timerDisplay">03:50</div>
+    <div id="timerDisplay">03:00</div>
     <div id="leaderboard"><h3>TOP MASS</h3><div id="lb-list"></div><div id="killsSection" style="border-top:1px solid #333;margin-top:8px;padding-top:8px;"><div style="font-family:'Russo One';color:#888;font-size:11px;letter-spacing:1px;margin-bottom:3px;">KILLS</div><div id="killsVal" style="font-family:'Russo One';font-size:26px;color:#ff4444;text-shadow:0 0 10px rgba(255,68,68,0.5);line-height:1;">0</div></div></div>
     
     <div id="skillChoiceOverlay">
@@ -5610,7 +5634,7 @@
     const BASE_WIDTH = 1920, BASE_HEIGHT = 1080;
     // roomStates[roomKey] = { sim, config } — una Simulation por sala
     let roomStates = {}, roomTimers = {}, MAP_SIZE = 3500;
-    let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000 + 50 * 1000;
+    let MAX_BOT_CELLS = 16, GAME_DURATION_MS = 3 * 60 * 1000;   // arcade: 3 min (zona y eventos: shared/sim.js ARCADE)
     // Classic dura 15 min, igual que online (CLASSIC_MATCH_MS del servidor).
     // Antes la practica offline de classic no tenia fin y por eso tampoco reloj.
     const CLASSIC_DURATION_MS = 15 * 60 * 1000;
@@ -5640,6 +5664,7 @@
     // script (el cartel de REWARDS) necesitan saberlo para pintar su marco del
     // color que toca, y `currentGameMode` no es global.
     let currentGameMode = 'classic', currentServer = null, width, height, gameRunning = false, isGodMode = false, isSpectating = false;
+    let arcSt = null;   // arcade: ultimo estado de la zona/evento (evento 'arc' de la sim), con la hora local en que llego
     let serverLeaderboard = null;   // ranking de la sala entera que manda el server (online); null = usar cálculo local (offline)
     let lastTapTime = 0, lastFrameTime = performance.now(), timeScale = 1.0;
     // Cuantos bots hay offline. Classic lleva mas (40) porque su mapa es el doble
@@ -11249,14 +11274,16 @@
         enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
         isGodMode = false; isSpectating = false;
         // Classic tambien con barra de skills (2-oct-2026).
-        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; } els.actionBar.style.display = 'flex';
+        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = PillSim.ARCADE.mapa; } els.actionBar.style.display = 'flex';
         MAP_SIZE *= worldSettings.map;
         botConfig.enabled = true; botConfig.count = nBots; botConfig.respawn = true;
         let roomKey = currentGameMode + '_' + currentServer;
         // Una sala con el reloj vencido es una partida TERMINADA: no se
         // reutiliza su simulacion. Si no, entrabas con el contador recien
         // puesto a 3:50 pero con los bots ya gordos de la partida anterior.
-        if (roomTimers[roomKey] && roomTimers[roomKey] <= Date.now()) {
+        // Arcade: pasado el primer minuto la sala esta cerrada (como en online): sin partida guardada que retomar, se empieza otra.
+        const arcadeCerrada = currentGameMode === 'arcade' && roomTimers[roomKey] && (GAME_DURATION_MS - (roomTimers[roomKey] - Date.now())) >= PillSim.ARCADE.entradaMs && !saveSystem.hasSaveForRoom(currentGameMode, currentServer);
+        if (roomTimers[roomKey] && (roomTimers[roomKey] <= Date.now() || arcadeCerrada)) {
             roomStates[roomKey] = null;
             delete roomTimers[roomKey];
         }
@@ -11267,7 +11294,7 @@
             sim = new PillSim.Simulation({
                 // Classic offline: arranca con 4 (tu + 3 bots) y entra un bot cada 2 s,
                 // como una sala que se va llenando (asi se ve crecer el mapa vivo).
-                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : null }, maxBotCells: MAX_BOT_CELLS,
+                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : { inicial: 6, cadaMs: Math.max(1500, Math.round(PillSim.ARCADE.entradaMs / Math.max(1, botConfig.count - 6))) } }, maxBotCells: MAX_BOT_CELLS,
                 botLifeMs: currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
                 // Mismo calentamiento que startPracticeGame: sin el, una partida
                 // offline recien entrada podia acabar en 1s con los bots ya encima.
@@ -11323,6 +11350,9 @@
             }
         }
         if(!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { roomTimers[roomKey] = Date.now() + duracionOffline(currentGameMode); }
+        // Arcade offline: zona segura, eventos y corona, cuadrados con el reloj de la sala (que corre aunque no juegues).
+        arcSt = null; ponTituloRanking(currentGameMode);
+        if (currentGameMode === 'arcade') { if (!sim.arc) sim.startArcade(GAME_DURATION_MS); sim.arcSync(GAME_DURATION_MS - (roomTimers[roomKey] - Date.now())); }
         if (!loadedSave) {
             // Partida nueva: las kills del HUD (y del GAME OVER) empiezan en 0; antes
             // offline se arrastraban las de las partidas anteriores.
@@ -11349,7 +11379,7 @@
         let currentBotConfig = { botEnabled: botConfig.enabled, botCount: botConfig.count, botRespawn: botConfig.respawn, chaosMode: document.getElementById('chaosModeToggle') ? document.getElementById('chaosModeToggle').checked : false, botMaxSplits: MAX_BOT_CELLS, world: {...worldSettings} };
         if (selectedQuality === 'high') DRAW_LOD_THRESHOLD = 1; else if (selectedQuality === 'normal') DRAW_LOD_THRESHOLD = 3; else if (selectedQuality === 'low') DRAW_LOD_THRESHOLD = 6; else if (selectedQuality === 'ultra') { DRAW_LOD_THRESHOLD = 6; isLowQuality = true; } else { isLowQuality = false; DRAW_LOD_THRESHOLD = 3; }
         isSpectating = true; gameRunning = true; isGodMode = false;
-        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; } els.actionBar.style.display = 'none'; MAP_SIZE *= worldSettings.map;
+        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = PillSim.ARCADE.mapa; } els.actionBar.style.display = 'none'; MAP_SIZE *= worldSettings.map;
         let roomKey = currentGameMode + '_' + currentServer; if (!roomTimers[roomKey] || roomTimers[roomKey] <= Date.now()) { roomTimers[roomKey] = Date.now() + duracionOffline(currentGameMode); }
         let entry = roomStates[roomKey];
         if (!entry) {
@@ -11505,12 +11535,18 @@
         let l1 = k(kills), l2;
         if (tipo === 'victory') { l1 = k(Math.max(kills, 5)); l2 = [['+' + pill(x.amount), 'g']]; }
         else if (tipo === 'cashout') { l1 = k(x.kills | 0); l2 = [['+' + pill(x.amount), 'g'], [' · ' + x.feePct + '% EXIT FEE', 'd']]; }
-        else if (tipo === 'matchEnded') { l2 = x.myAmount > 0 ? [['+' + pill(x.myAmount), 'g']] : [['OUT OF TOP 10', 'd']]; }
+        else if (tipo === 'matchEnded') { l2 = x.myAmount > 0 ? [['+' + pill(x.myAmount), 'g']] : [['OUT OF TOP ' + (x.topN || 10), 'd']]; }
+        else if (tipo === 'matchFinished' && esArcade && sim && !sim.isRemote && sim.arc) {
+            // Offline: el mismo reparto que online (sin dinero): cuantos cobrarian y en que puesto quedas tu.
+            const tam = PillSim.arcadeTamano(sim.arc.jugaron.size), N = PillSim.ARCADE.premios[tam].top;
+            const vivos = sim.arcVivos().sort((a, b) => b.puntos - a.puntos), pos = vivos.findIndex(v => v.id === 'me') + 1;
+            l2 = [[{ small: 'SMALL', medium: 'MEDIUM', large: 'BIG' }[tam] + ' MATCH · ', 'd']].concat(pos > 0 && pos <= N ? [['#' + pos + ' · TOP ' + N, 'g']] : [['OUT OF TOP ' + N, 'd']]);
+        }
         else if (tipo === 'roomRestarted') { const dev = x.refunded | 0; l2 = dev > 0 ? [['REFUNDED ' + pill(dev), '']] : (dePago ? [['NO $PILLY LOST', 'd']] : gratis); }
         else if (!dePago) l2 = gratis;
         else {
             const perdido = (typeof EconHUD !== 'undefined' && (esArcade ? EconHUD.entry : EconHUD.carry)) | 0;
-            const fuera = tipo === 'matchFinished' && esArcade ? [['OUT OF TOP 10 · ', 'd']] : [];
+            const fuera = tipo === 'matchFinished' && esArcade ? [['OUT OF THE TOP · ', 'd']] : [];
             l2 = perdido > 0 ? fuera.concat([['LOST ', ''], [pill(perdido), 'r']]) : fuera.concat([['NO $PILLY LOST', 'd']]);
         }
         window._finData = Object.assign({ tipo, l1, l2 }, window._finTitulo || {}, tipo === 'matchEnded' ? { top: x.top || [], pot: x.pot } : {});
@@ -11562,16 +11598,36 @@
         const prizeOpen = document.getElementById('prizeModal').style.display === 'flex';
         // Arenas: el cartel de fin es VICTORY/DEFEAT (game/squad.js, llega con squadEnd); aqui no sale MATCH FINISHED.
         const enArenas = !!(typeof netState !== 'undefined' && netState && netState.squad);
-        if (!prizeOpen && !enArenas) {
-            setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88');
-            showResultsUI('matchFinished');
+        const esArc = currentGameMode === 'arcade' && !enArenas && window.PWSquad && PWSquad.arcadeFin;
+        if (esArc && sim && !sim.isRemote && sim.arc) { finArcadeOffline(); return; }
+        const matchFinished = () => { setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); showResultsUI('matchFinished'); };
+        // Arcade online: la pantalla final la abre el reparto ('prize' arcadeEnd). Si no llegara, MATCH FINISHED de siempre.
+        if (esArc && sim && sim.isRemote) {
+            setTimeout(() => { const e = document.getElementById('sqEnd'); if (!(e && e.classList.contains('show')) && els.result.style.display !== 'flex' && gameRunning) matchFinished(); }, 4000);
+            return;
         }
+        if (!prizeOpen && !enArenas) matchFinished();
+    }
+    // Pantalla final de ARCADE (game/squad.js arcadeFin), igual en PC y en la app.
+    function finArcade(d) {
+        els.result.style.display = 'none';
+        document.getElementById('prizeModal').style.display = 'none';
+        hideGameHUD(); hideSpectatorBar();
+        PWSquad.arcadeFin(Object.assign({ onAgain: () => tryAgainOnline(), onMenu: () => returnToMenu() }, d));
+    }
+    // Offline: el mismo reparto que online pero sin dinero (puntos): cuantos cobrarian y en que puesto quedas.
+    function finArcadeOffline() {
+        const n = Math.max(sim.arc.jugaron.size, sim.arcVivos().length), tam = PillSim.arcadeTamano(n), N = PillSim.ARCADE.premios[tam].top;
+        const vivos = sim.arcVivos().sort((a, b) => b.puntos - a.puntos);
+        const pos = vivos.findIndex(v => v.id === 'me') + 1;
+        const top = vivos.slice(0, N).map((v, i) => ({ pos: i + 1, name: v.id === 'me' ? (playerName || 'YOU') : v.nombre, mass: v.puntos, amount: 0, mine: v.id === 'me' }));
+        finArcade({ tam, topN: N, n, gratis: 'offline', top, myPos: pos });
     }
     // hideGameHUD() aqui dentro y no solo en showResultsUI: al SALIR por el boton
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { try { hideSquadEntry(); } catch (e) {} hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+    function returnToMenu() { try { const bb = document.getElementById('botsBanner'); clearTimeout(bb._hideTimer); bb.classList.remove('show'); } catch (e) {} try { hideSquadEntry(); } catch (e) {} hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
         centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
@@ -12387,6 +12443,11 @@
             if (unit) unit.style.display = (MONEY_IN_USD && pillRate > 0) ? 'none' : '';
         },
         showPrize(msg) {
+            if (msg.reason === 'arcadeEnd' && window.PWSquad && PWSquad.arcadeFin) {
+                finArcade(Object.assign({}, msg, { gratis: msg.pot > 0 ? '' : 'free' }));
+                setTimeout(() => GameWalletUI.refresh(), 800);
+                return;
+            }
             const m = document.getElementById('prizeModal');
             const title = document.getElementById('prizeTitle'), amt = document.getElementById('prizeAmount'), sub = document.getElementById('prizeSubtitle'), tbl = document.getElementById('prizeTable');
             tbl.style.display = 'none'; tbl.innerHTML = '';
@@ -12421,7 +12482,7 @@
                 sub.innerHTML = msg.kills + (msg.kills === 1 ? ' kill' : ' kills') + ' · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtPillShort(msg.fee) + ' $PILLY</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
-                if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
+                if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top ' + (msg.topN || 10);
                 // Bote y ranking SIEMPRE en $PILLY (peticion de David): el reparto
                 // se hace en tokens, y solo lo TUYO lleva ademas el (~$).
                 sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmtPill(msg.pot) + '</b>';
@@ -14577,10 +14638,11 @@
         Quests.resetKills();   // el preview no arrastra los kills de la partida anterior
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         const botCount = mode === 'classic' ? BOTS_OFFLINE_CLASSIC : BOTS_OFFLINE;
-        const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
+        const esArc = mode === 'arcade';
+        const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : esArc ? PillSim.ARCADE.mapa : WORLD_CONFIG.arcade.size;
         sim = new PillSim.Simulation({
             mode: mode, mapSize: baseSize, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
-            botConfig: { enabled: true, count: botCount, respawn: true },
+            botConfig: { enabled: true, count: botCount, respawn: true, entrada: esArc ? { inicial: 6, cadaMs: Math.max(1500, Math.round(PillSim.ARCADE.entradaMs / Math.max(1, botCount - 6))) } : undefined },
             maxBotCells: mode === 'classic' ? 8 : 4,
             botLifeMs: mode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
             // Calentamiento: en el preview offline los bots ignoran al jugador los
@@ -14590,6 +14652,9 @@
         });
         sim.populate();
         MAP_SIZE = sim.mapSize;
+        // Sin esto el preview pintaba la zona de la partida anterior (arcSt viejo) y te dejaba "fuera".
+        arcSt = null; ponTituloRanking(mode);
+        if (esArc) { sim.startArcade(duracionOffline(mode)); sim.arcSync(0); }
         const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
         const p = sim.addPlayer('me', { name: playerName, colorBot: colBot, colorTop: colTop });
         p.godMode = false;
@@ -14602,6 +14667,8 @@
         els.actionBar.style.display = esArcade ? 'flex' : 'none';
         if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); }
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
+        // ROOM del HUD: la sala que se esta buscando (antes se quedaba la de la ultima partida y parecia que te metia en otra).
+        els.room.innerText = (netState && netState.joinMsg && netState.joinMsg.room) || currentServer || 'Free';
         document.getElementById('ui').style.display = 'flex'; document.getElementById('leaderboard').style.display = 'block'; document.getElementById('timerDisplay').style.display = 'block'; document.getElementById('exitGameBtn').style.display = 'flex';
         if (saveInterval) clearInterval(saveInterval);
         lastFrameTime = Date.now();
@@ -14815,7 +14882,7 @@
         // apaga hasta estar bien dentro. Con un solo umbral (lo de antes)
         // entraba, volvia a elegir algo del borde, salia otra vez... y ese ir y
         // venir era la otra mitad del zigzag.
-        const dBorde = Math.max(Math.abs(c0.x), Math.abs(c0.y));
+        const dBorde = mapaRedondo() ? Math.hypot(c0.x, c0.y) : Math.max(Math.abs(c0.x), Math.abs(c0.y));
         if (dBorde > M - 400) heroVolviendo = true;
         else if (dBorde < M - 1200) heroVolviendo = false;
         if (heroVolviendo) { heroTarget = null; heroApunta(0, 0); return; }
@@ -14846,7 +14913,7 @@
             // que acababa de salir.
             if (!heroTarget) {
                 for (const f of sim.foods) {
-                    if (Math.max(Math.abs(f.x), Math.abs(f.y)) > M - 600) continue;
+                    if ((mapaRedondo() ? Math.hypot(f.x, f.y) : Math.max(Math.abs(f.x), Math.abs(f.y))) > M - 600) continue;
                     const d = (f.x - c0.x) * (f.x - c0.x) + (f.y - c0.y) * (f.y - c0.y);
                     if (d < mejorD) { mejorD = d; heroTarget = { ref: f, bot: false }; }
                 }
@@ -15042,7 +15109,7 @@
     }
     window.pwPlaca = pwPlaca;
     // Avisos SI/NO (arenas, desvincular X...): sin sonido; confirmar gris y cancelar rojo, del mismo tamano.
-    window.pwConfirm = function (title, text, yes, no, onYes) {
+    window.pwConfirm = function (title, text, yes, no, onYes, onNo) {
         let ov = document.getElementById('pwConf');
         if (!ov) {
             ov = document.createElement('div'); ov.id = 'pwConf';
@@ -15055,7 +15122,7 @@
         y.textContent = yes; n.textContent = no;
         const cierra = () => { ov.classList.remove('on'); };
         y.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onYes) onYes(); };
-        n.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); };
+        n.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onNo) onNo(); };
         ov.classList.add('on');
         pwPlaca(b);
     };
@@ -15153,6 +15220,7 @@
                 enterOnlineGame(ws, msg, false);
             }, 600);
         } else {
+            if (msg.roomName) els.room.innerText = msg.roomName;   // la sala que te ha dado el servidor
             if (msg.state === 'ended') setLobbyBanner('<b>' + msg.roomName + '</b> · RESTARTING…');
             else setLobbyBanner('<b>' + msg.roomName + '</b> · WAITING · <b>' + msg.count + '</b> ' + (msg.count === 1 ? 'PLAYER' : 'PLAYERS'));
             if (!practiceMode || !gameRunning) startPracticeGame(msg.mode);
@@ -15466,7 +15534,9 @@
     function miniCargaMuestra() {
         if (_miniCargaT || _miniCargaOn) return;
         _miniCargaT = setTimeout(() => {
-            _miniCargaT = null; _miniCargaOn = true;
+            _miniCargaT = null;
+            if (document.body.classList.contains('hub-on')) return;   // con el menu de la app no hay pildora suelta encima
+            _miniCargaOn = true;
             let cv = document.getElementById('miniCargaPill');
             if (!cv) {
                 if (!document.getElementById('miniCargaCss')) {
@@ -15803,6 +15873,7 @@
             });
         }
         ov.style.display = 'flex';
+        document.documentElement.classList.add('pw-boot');   // ya hay cartel de carga: el velo del arranque sobra
         // Carga inicial de la app: pildora llenandose en vez de rotulo + barra.
         if (window.__lsCargador) {
             window.__lsCargador = false;
@@ -15963,6 +16034,7 @@
 
     function enterOnlineGame(ws, msg, isResume) {
         practiceMode = false; setLobbyBanner(null);
+        arcSt = null; ponTituloRanking(msg.mode);
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);   // ocultar wallet durante la partida
         sim = new RemoteSim(ws, msg);
         // En resume NO forzamos _camInit: dejamos que el primer snapshot salte la
@@ -16168,7 +16240,9 @@
             const cells = myCells(); let tx=0, ty=0, totalR=0, maxR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; if (c.r > maxR) maxR = c.r; });
             if(n > 0) {
                 camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale;
-                camera.scale += (zoomObjetivoJugador(totalR, maxR, n) - camera.scale) * 0.05 * timeScale;
+                let zObj = zoomObjetivoJugador(totalR, maxR, n);
+                if (currentGameMode === 'arcade' && !(netState && netState.squad && sim.isRemote)) zObj = Math.max(zObj, zoomMinArcade());   // arcade: por grande que seas, no ves casi todo el mapa
+                camera.scale += (zObj - camera.scale) * 0.05 * timeScale;
             }
         }
 
@@ -16205,6 +16279,44 @@
                 // Mapa vivo (classic): el borde se mueve con la gente, sin anunciarlo
                 // (decision de David).
                 case 'mapa': MAP_SIZE = ev.size; break;
+                // Arcade: zona segura, eventos y corona.
+                case 'arc': arcSt = Object.assign({}, ev, { at: performance.now() }); break;
+                case 'arcKing': {
+                    const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
+                    // Solo cuando se comen una corona (ya no se avisa de cada NEW KING: salia demasiado).
+                    if (ev.killed && yo) spawnFloatingText('CROWN #' + (ev.puesto || 1) + ' SLAIN! +' + (ev.pct || 30) + '% MASS', '#ffd23a');
+                    else if (ev.killed && (ev.puesto || 1) === 1) spawnFloatingText((ev.name || 'A PLAYER') + ' SLAYED THE KING', '#ffd23a');
+                    break;
+                }
+                case 'arcTax': {
+                    const yo = (ev.quien || []).some(q => q.id === 'me' || (sim && sim.myId && q.id === sim.myId));
+                    spawnFloatingText(yo ? 'TAX ON THE TOP! -20% MASS' : 'TAX ON THE TOP: THE TOP 3 LOSE 20%', '#ff6a6a');
+                    const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#2ee6d6'], t0 = performance.now();
+                    for (const q of ev.quien || []) {
+                        const n = Math.min(46, 14 + Math.round((q.r || 40) / 12));
+                        for (let i = 0; i < n; i++) {
+                            const a = Math.random() * Math.PI * 2, v = (q.r || 40) * (1.4 + Math.random() * 1.6);
+                            arcChispas.push({ x: q.x + Math.cos(a) * (q.r || 40) * 0.6, y: q.y + Math.sin(a) * (q.r || 40) * 0.6, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 5 + Math.random() * 5, c: COL[i % COL.length], t0, vida: 900 + Math.random() * 600 });
+                        }
+                    }
+                    break;
+                }
+                case 'arcHeavy': {
+                    const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
+                    spawnFloatingText(yo ? 'HEAVY! YOU ARE SLOWER' : 'HEAVY: ' + (ev.name || 'THE BIGGEST') + ' IS SLOWER', '#ff6a6a');
+                    break;
+                }
+                case 'arcFinal': {
+                    spawnFloatingText('FINAL 3: ' + (ev.nombres || []).join(', '), '#ffd23a');
+                    // Offline: la partida se acaba aqui, como en online (el reloj de la sala llega a 0).
+                    if (sim && !sim.isRemote) { if (practiceMode) previewHasta = Date.now(); else { const rk = currentGameMode + '_' + currentServer; if (roomTimers[rk]) roomTimers[rk] = Date.now(); } }
+                    break;
+                }
+                case 'arcGold': {
+                    const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
+                    spawnFloatingText(yo ? 'GOLDEN VIRUS! +25% MASS' : (ev.name || 'A PLAYER') + ' TOOK THE GOLDEN VIRUS', '#ffd23a');
+                    break;
+                }
                 case 'botText': { const cells = myCells(); if (enableEnemyFX && cells.length > 0 && getEllipticalDist({x: ev.x, y: ev.y}, cells[0]) < 1500) { floatingTexts.push(new FloatingText(ev.x, ev.y, ev.text, ev.color)); } break; }
                 // Un bot ha hecho pentakill: se va de la partida (igual que un
                 // jugador que gana) y entra otro. Se avisa o desaparece un bicho
@@ -16289,6 +16401,161 @@
         }
     }
 
+    // Guia de punteria de SHOOT y CLON: con la habilidad lista, un punto en el borde de la pildora que dispara (por donde
+    // sale el proyectil, igual que en la sim: emitProjectile) y una flecha pequena con la direccion. El angulo se suaviza
+    // para que no tiemble con el movimiento del raton ni de la pildora.
+    const _aimA = {};
+    function drawAimGuide(es) {
+        if (!gameRunning || !sim || isSpectating) return;
+        const p = me(); if (!p || !p.alive || !p.cells || !p.cells.length || p.globalCD > 0 || !p.skillSlots) return;
+        const listas = p.skillSlots.filter(sl => sl && (sl.id === 1 || sl.id === 2) && (sl.uses > 0 || p.godMode) && !(p.skillState && p.skillState[sl.id] > 0));
+        if (!listas.length) return;
+        const tx = (mouse.x - width / 2) / es + camera.x, ty = (mouse.y - height / 2) / es + camera.y;
+        const tipos = { 2: { cost: SKILL_PARAMS.shootCost, r: 12, col: '255,70,70' }, 1: { cost: SKILL_PARAMS.clonCost, r: 16, col: '0,229,255' } };
+        listas.sort((a, b) => b.id - a.id).forEach(sl => {
+            const T = tipos[sl.id];
+            let best = null, minD = Infinity;
+            p.cells.forEach(c => { if (c.mass - T.cost > 314) { const d = Math.hypot(c.x - tx, c.y - ty); if (d < minD) { minD = d; best = c; } } });
+            if (!best) return;
+            const objetivo = Math.atan2(ty - best.y, tx - best.x);
+            let a = _aimA[sl.id];
+            if (a == null) a = objetivo; else { let d = objetivo - a; d = Math.atan2(Math.sin(d), Math.cos(d)); a += d * 0.3; }
+            _aimA[sl.id] = a;
+            const rel = a - (-Math.PI / 4);
+            const edge = (best.r * (best.r * PILL_RATIO)) / Math.sqrt(Math.pow((best.r * PILL_RATIO) * Math.cos(rel), 2) + Math.pow(best.r * Math.sin(rel), 2));
+            const sd = edge + 25, sx = best.x + Math.cos(a) * sd, sy = best.y + Math.sin(a) * sd;
+            const u = 1 / es, L = 70 * u, ex = sx + Math.cos(a) * (T.r + L), ey = sy + Math.sin(a) * (T.r + L);
+            ctx.save();
+            // tramo corto de puntos hasta la flecha
+            ctx.setLineDash([6 * u, 6 * u]); ctx.lineWidth = 3 * u; ctx.strokeStyle = 'rgba(' + T.col + ',0.7)';
+            ctx.beginPath(); ctx.moveTo(sx + Math.cos(a) * T.r, sy + Math.sin(a) * T.r); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.setLineDash([]);
+            // flecha pequena
+            ctx.fillStyle = 'rgba(' + T.col + ',0.9)';
+            ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * 12 * u, ey + Math.sin(a) * 12 * u);
+            ctx.lineTo(ex + Math.cos(a + 2.5) * 10 * u, ey + Math.sin(a + 2.5) * 10 * u); ctx.lineTo(ex + Math.cos(a - 2.5) * 10 * u, ey + Math.sin(a - 2.5) * 10 * u); ctx.closePath(); ctx.fill();
+            // punto de salida
+            ctx.strokeStyle = 'rgba(' + T.col + ',0.95)'; ctx.fillStyle = 'rgba(' + T.col + ',0.35)'; ctx.lineWidth = 3 * u;
+            ctx.beginPath(); ctx.arc(sx, sy, T.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.restore();
+        });
+    }
+    // El ranking de arcade va por PUNTUACION (masa x kills); el de classic, por masa.
+    function ponTituloRanking(modo) { const h = document.querySelector('#leaderboard h3'); if (h) h.textContent = modo === 'arcade' ? 'SCORE' : 'TOP MASS'; }
+    // ===== ARCADE: zona segura, eventos y aviso =====
+    const ARC_NOMBRES = { rain: 'FOOD RAIN', gold: 'GOLDEN VIRUS', nosplit: 'NO SPLIT', tax: 'TAX ON THE TOP', heavy: 'HEAVY' };
+    let arcChispas = [];   // TAX ON THE TOP: la comida que sale despedida (solo efecto, no se come)
+    const arcT = () => arcSt ? arcSt.t + (performance.now() - arcSt.at) : 0;
+    // Arcade normal: mapa y zona REDONDOS (las arenas y la practica siguen cuadradas).
+    // Todos los modos van con mapa redondo (online lo decide el servidor, que ya los crea asi).
+    function mapaRedondo() { return !!sim && (sim.isRemote ? true : !!sim.circular); }
+    // Zoom minimo de arcade: lo que se ve de lado a lado nunca pasa de ~0,9 veces el radio del mapa (menos de medio mapa).
+    function zoomMinArcade() { return (width / 2) / (MAP_SIZE * 0.45 * Math.max(width / BASE_WIDTH, height / BASE_HEIGHT)); }
+    const arcFuera = () => { if (!arcSt || !(arcSt.fase > 0)) return false; const S = arcSt.s, red = mapaRedondo(); return myCells().some(c => red ? Math.hypot(c.x, c.y) > S : (Math.abs(c.x) > S || Math.abs(c.y) > S)); };
+    function drawArcadeMundo(es) {
+        if (!arcSt || currentGameMode !== 'arcade') return;
+        const u = 1 / es, M = MAP_SIZE;
+        ctx.save();
+        if (arcSt.fase > 0) {
+            const S = Math.min(arcSt.s, M);
+            ctx.fillStyle = 'rgba(255,40,40,0.14)';
+            ctx.strokeStyle = 'rgba(255,70,70,0.95)'; ctx.lineWidth = 5 * u;
+            if (mapaRedondo()) {
+                ctx.beginPath(); ctx.arc(0, 0, M, 0, Math.PI * 2); ctx.arc(0, 0, S, 0, Math.PI * 2, true); ctx.fill();
+                ctx.setLineDash([26 * u, 14 * u]); ctx.lineDashOffset = -(performance.now() / 25) * u;
+                ctx.beginPath(); ctx.arc(0, 0, S, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+            } else {
+                ctx.fillRect(-M, -M, 2 * M, M - S); ctx.fillRect(-M, S, 2 * M, M - S);
+                ctx.fillRect(-M, -S, M - S, 2 * S); ctx.fillRect(S, -S, M - S, 2 * S);
+                ctx.setLineDash([26 * u, 14 * u]); ctx.lineDashOffset = -(performance.now() / 25) * u;
+                ctx.strokeRect(-S, -S, 2 * S, 2 * S); ctx.setLineDash([]);
+            }
+        }
+        if ((arcSt.ev === 'rain' || arcSt.ev === 'gold') && arcSt.x != null) {
+            // La zona del evento se marca desde el aviso (y la lluvia mientras dura).
+            const pulso = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+            ctx.strokeStyle = 'rgba(255,210,58,' + (0.5 + 0.4 * pulso) + ')'; ctx.lineWidth = 4 * u; ctx.setLineDash([16 * u, 12 * u]);
+            ctx.beginPath(); ctx.arc(arcSt.x, arcSt.y, arcSt.ev === 'rain' ? arcSt.r : arcSt.r * 1.8, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        }
+        if (arcChispas.length) {
+            const ahora = performance.now();
+            arcChispas = arcChispas.filter(q => ahora - q.t0 < q.vida);
+            for (const q of arcChispas) {
+                const k = (ahora - q.t0) / q.vida, d = 1 - Math.pow(1 - k, 3);   // salen rapido y frenan
+                ctx.globalAlpha = 1 - k; ctx.fillStyle = q.c;
+                ctx.fillRect(q.x + q.vx * d - q.r, q.y + q.vy * d - q.r, q.r * 2, q.r * 2);
+            }
+            ctx.globalAlpha = 1;
+        }
+        if (arcSt.oro) {
+            const O = arcSt.oro, n = 14, rot = performance.now() / 900;
+            ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#7a5a00'; ctx.lineWidth = 4 * u;
+            ctx.beginPath();
+            for (let i = 0; i <= n * 2; i++) { const a = rot + i * Math.PI / n, rr = i % 2 ? O.r : O.r * 1.18; const x = O.x + Math.cos(a) * rr, y = O.y + Math.sin(a) * rr; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(O.x - O.r * 0.3, O.y - O.r * 0.3, O.r * 0.22, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+    }
+    function drawArcadePantalla(es) {
+        const b = document.getElementById('arcBanner');
+        if (!arcSt || currentGameMode !== 'arcade' || !gameRunning) { if (b) b.className = ''; return; }
+        const t = arcT(), fuera = arcFuera();
+        // Borde rojo de pantalla mientras estas fuera de la zona.
+        if (fuera) {
+            const g = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
+            g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, 'rgba(255,0,0,' + (0.28 + 0.12 * Math.sin(performance.now() / 150)) + ')');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, width, height);
+        }
+        // Fuera de la zona: barra con el tiempo que te queda hasta desaparecer (depende de tu masa y de la fase).
+        if (fuera && arcSt.dano > 0) {
+            let m = 0; myCells().forEach(c => m += c.mass);
+            const seg = m > PillSim.ARCADE.masaMin ? Math.log(PillSim.ARCADE.masaMin / m) / Math.log(1 - arcSt.dano) : 0;
+            const W = Math.min(320, width * 0.42), H = 16, x = (width - W) / 2, y = 112, f = Math.max(0, Math.min(1, seg / 40));
+            const parpadea = seg < 6 && Math.floor(performance.now() / 160) % 2;
+            ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(x - 4, y - 4, W + 8, H + 8);
+            ctx.fillStyle = '#3a0505'; ctx.fillRect(x, y, W, H);
+            ctx.fillStyle = parpadea ? '#ffffff' : '#ff3b3b'; ctx.fillRect(x, y, Math.round(W * f), H);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, Math.round(W * f), 3);
+            // calavera pixel a la izquierda
+            const k = 3, cx = x - 34, cy = y - 3, P = ['01110', '11111', '10101', '11111', '01010'];
+            ctx.fillStyle = '#ff6a6a'; P.forEach((fila, j) => { for (let i = 0; i < 5; i++) if (fila[i] === '1') ctx.fillRect(cx + i * k * 1.4, cy + j * k * 1.4, k * 1.4, k * 1.4); });
+        }
+        // Flecha al borde de la pantalla hacia la lluvia o el virus dorado si no se ven.
+        const obj = arcSt.oro || ((arcSt.ev === 'rain' || arcSt.ev === 'gold') && arcSt.x != null ? arcSt : null);
+        if (obj) {
+            const sx = (obj.x - camera.x) * es + width / 2, sy = (obj.y - camera.y) * es + height / 2;
+            if (sx < 0 || sy < 0 || sx > width || sy > height) {
+                const a = Math.atan2(sy - height / 2, sx - width / 2), m = 46;
+                const k = Math.min((width / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (height / 2 - m) / Math.abs(Math.sin(a) || 1e-6));
+                const ax = width / 2 + Math.cos(a) * k, ay = height / 2 + Math.sin(a) * k;
+                ctx.save(); ctx.translate(ax, ay); ctx.rotate(a);
+                ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-12, -13); ctx.lineTo(-6, 0); ctx.lineTo(-12, 13); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.restore();
+            }
+        }
+        // Rotulo de arriba: fuera de la zona > evento > la zona empieza a cerrarse.
+        let txt = '', cls = '';
+        if (arcSt.ev) {
+            const nom = ARC_NOMBRES[arcSt.ev] || arcSt.ev.toUpperCase();
+            txt = t < arcSt.evIni ? nom + ' IN ' + Math.max(1, Math.ceil((arcSt.evIni - t) / 1000)) : nom + ' · ' + Math.max(0, Math.ceil((arcSt.evFin - t) / 1000)) + 'S';
+            cls = 'oro';
+        } else if (arcSt.fase > 0 && (t - (PillSim.ARCADE.entradaMs + (arcSt.fase - 1) * 30000)) < 3500) {
+            txt = arcSt.fase === 1 ? 'THE SAFE ZONE IS CLOSING' : 'THE ZONE CLOSES FASTER'; cls = 'rojo';
+        } else if (arcSt.fase === 1 && t - PillSim.ARCADE.entradaMs < 8000 && arcSt.tam) {
+            // Al cerrarse la entrada ya se sabe cuanta gente hay: cuantos cobran.
+            const T = PillSim.ARCADE.premios[arcSt.tam];
+            txt = { small: 'SMALL', medium: 'MEDIUM', large: 'BIG' }[arcSt.tam] + ' MATCH · TOP ' + T.top + ' WIN';
+        }
+        if (b) {
+            b.textContent = txt; b.className = txt ? 'show ' + cls : '';
+            // La eleccion de skill tambien sale arriba (cada 30 s, como los eventos): el rotulo se pone debajo.
+            const so = els.skillOverlay; let top = 64;
+            if (txt && so && so.style.display !== 'none') { const r = so.getBoundingClientRect(); if (r.height) top = Math.round(r.bottom + 10); }
+            b.style.top = top + 'px';
+        }
+    }
     function draw() {
         ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color'); ctx.fillRect(0, 0, width, height); if (!gameRunning || !sim) return;
         const p = me();
@@ -16301,7 +16568,15 @@
         }
 
         ctx.save();
-        if (pixelMode) {
+        if (mapaRedondo()) {
+            // Arcade: mapa redondo. Fuera, oscuro; el borde, la misma banda roja que marcha.
+            const M = MAP_SIZE;
+            ctx.beginPath(); ctx.rect(vL - 200, vT - 200, vR - vL + 400, vB - vT + 400); ctx.arc(0, 0, M, 0, Math.PI * 2, true);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, M, 0, Math.PI * 2); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.22)'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, M - 10, 0, Math.PI * 2); ctx.lineWidth = 8; ctx.strokeStyle = '#ff3333';
+            ctx.setLineDash([48, 48]); ctx.lineDashOffset = -((performance.now() / 160) % 2) * 48; ctx.stroke(); ctx.setLineDash([]);
+        } else if (pixelMode) {
             // Zona de peligro translúcida + banda "hazard" de bloques pixel que marchan.
             ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.22)'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
             const B = 48, bw = 20, march = Math.floor(performance.now() / 160) % 2, M = MAP_SIZE;
@@ -16388,7 +16663,10 @@
         });
         ctx.restore();
 
+        drawAimGuide(es);
+        drawArcadeMundo(es);
         floatingTexts.forEach(ft => ft.draw(ctx)); ctx.restore(); uiTexts.forEach(ut => ut.draw(ctx));
+        drawArcadePantalla(es);
         drawEnemyArrow(es);
         drawAllyMarkers(es);
     }
@@ -16924,7 +17202,7 @@
             const cells = myCells();
             if (cells.length > 0) {
                 let m = 0; cells.forEach(c => m += c.mass);
-                all.push({ id: 'me', name: me().name, mass: m, isMe: true });
+                all.push({ id: 'me', name: me().name, mass: sim.arc ? PillSim.arcadeScore(m, me().kills) : m, isMe: true });
             }
             let botMap = new Map();
             sim.enemies.forEach(e => {

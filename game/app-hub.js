@@ -16,6 +16,12 @@
     };
     const PRICES = ['Free', '2$', '5$', '10$', '20$'];
     const SWATCH = ['#ffffff', '#c8ccd2', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'];
+    // Colores de THE PILL: 9 tonos en 3 filas (normal, oscuro, claro), para arriba y para abajo.
+    const PILL_COLS = [
+        ['#ffffff', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'],
+        ['#9a9a9a', '#931c1c', '#8f4d00', '#8e7a26', '#00803a', '#008a6e', '#153f9a', '#3f7398', '#66009e'],
+        ['#c8ccd2', '#ff8f8f', '#ffc27a', '#ffe39a', '#7aeea6', '#7aefd6', '#82a8ff', '#b6e3ff', '#d27aff']
+    ];
     // Skills de salida del ARCADE (solo interfaz: la partida aun no las usa).
     const SKILLS = [['clon', 'CLON'], ['shoot', 'SHOOT'], ['sprint', 'SPRINT'], ['tp', 'BLINK'], ['iman', 'MAGNET'], ['inmune', 'SHIELD'], ['big', 'PLUS'], ['random', 'GAMBLE']];
     let mode = 'classic', room = 'Free', rooms = [], _enPartida = false;
@@ -126,7 +132,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-it:active .med{transform:translateY(.1em)}
 .ah-dot{width:.55em;height:.55em;background:#00ff66;animation:ahBl 1s steps(2) infinite}
 @keyframes ahBl{50%{opacity:.2}}
-.ah-bdg{position:absolute;left:2.3em;top:-.2em;background:#e5302f;font-size:.42em;padding:.35em .45em .25em;box-shadow:0 0 0 .2em #000}
+.ah-bdg{position:absolute;left:2.4em;top:-.1em;background:#e5302f;font-size:.3em;padding:.35em .45em .25em;box-shadow:0 0 0 .2em #000}
 #ahPill{position:absolute;left:24.15em;top:3.2em;width:22em;height:14.2em;cursor:pointer}
 .ah-room{position:absolute;right:15.9em;bottom:.6em;width:5em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.4em}
 .ah-room .sw{position:absolute;right:-.45em;top:-.3em;width:1.35em;height:1.35em;border-radius:50%;background:var(--ac);color:#04150c;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 .12em #000}
@@ -141,16 +147,18 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
   box-shadow:0 0 0 .14em #000,inset 0 0 0 .12em #000,.15em .25em 0 .12em rgba(0,0,0,.55)}
 .ah-play span{font-size:1.3em;letter-spacing:.3em;margin-left:.3em;text-shadow:.1em .1em 0 var(--acL)}
 .ah-play:active{transform:translateY(.12em)}
-.ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:7;display:none;padding:.85em 1em .5em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
+.ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:4;display:none;padding:.85em 1em .5em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
 .ah-sys.on{display:block}
+#appHub:not(.pc):has(.ov.open) .ah-sys{visibility:hidden}
 .ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 .ah-sys span{display:block;flex:1;min-width:0;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
 .ah-sys.on{display:flex;align-items:center;gap:1em;animation:ahSysIn .4s cubic-bezier(.2,.9,.3,1) both}
 .ah-sys.on.out{animation:ahSysOut .35s ease-in both}
 @keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
 @keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
-.ah-avb{left:4.1em;top:3.6em;right:auto;z-index:6}
-#appHub.pc .ah-avb{left:4.5em;top:3.9em}
+.ah-fb.ah-avb{left:14.3em;top:1.8em;right:auto;z-index:4}
+#appHub:not(.pc):has(.ov.open) .ah-fb,#appHub:not(.pc):has(.ov.open) .ah-bdg{visibility:hidden}
+#appHub.pc .ah-avb{left:15.7em;top:2.3em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
 .ah-sys .acts{display:none;flex:none;gap:.6em;align-self:center;transform:translateY(-.17em)}
@@ -161,6 +169,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys.k-whisper b{background:#3fa0ff}
 .ah-sys.k-friend{--kb:#b57bff;--kd:#7a55b0;border-color:#7a55b0;background:linear-gradient(180deg,#0d0814,#06030a)}
 .ah-sys.k-friend b{background:#b57bff}
+.ah-sys.k-arena{--kb:#ffb02e;--kd:#a8741a;border-color:#a8741a;background:linear-gradient(180deg,#140d02,#0a0601)}
+.ah-sys.k-arena b{background:#ffb02e}
 .ah-sys.k-invite{--kb:#ff5a4a;--kd:#a8453a;border-color:#a8453a;background:linear-gradient(180deg,#140706,#0a0302)}
 .ah-sys.k-invite b{background:#ff5a4a}
 .ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.9);z-index:5}
@@ -172,11 +182,39 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ph .w{font-family:'Russo One',sans-serif;font-size:.8em;letter-spacing:.14em;color:#fff}
 .ph .cnt{margin-left:auto;font-family:'Russo One',sans-serif;font-size:.72em;letter-spacing:.1em;color:var(--ac)}
 .px{font-family:'Russo One',sans-serif;font-size:.66em;letter-spacing:.1em;padding:.45em 1em;border:.14em solid #2c3630;color:#7d8a82;background:none}
-.ahr-g{display:grid;grid-template-columns:repeat(6,1fr);gap:.5em;margin-top:.9em}
+.ahr-g{display:grid;grid-template-columns:repeat(6,1fr);gap:.5em;margin-top:.8em}
+.ahr-g .cell{padding:0 0 .45em;gap:.25em;min-width:0;overflow:hidden;border:.12em solid color-mix(in srgb,var(--k) 45%,#000)}
+.ahr-g .cell.sel{border-color:var(--k);box-shadow:0 0 0 .1em #000,0 0 .9em color-mix(in srgb,var(--k) 50%,transparent);background:rgba(0,0,0,.28)}
+.ahr-g .cell .p{align-self:stretch;margin:0 -.12em;min-height:2em;display:flex;align-items:center;justify-content:center;background:var(--k);color:#0b0f05;text-shadow:none;font-size:1em}
+.ahr-g .cell .p.sm{font-size:.62em;min-height:3.2em}
+.ahr-g .cell{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 20%,#06100a),color-mix(in srgb,var(--k) 7%,#06100a))}
+.ahr-g .cell .p{border-bottom:.16em solid color-mix(in srgb,var(--k) 55%,#000)}
+.ahr-g .cell .ly b,.ahr-g .cell .n{color:color-mix(in srgb,var(--k) 62%,#fff)}
+.ahr-g .cell .more{color:color-mix(in srgb,var(--k) 45%,#9fb0a6)}
+.ahr-box{background:linear-gradient(180deg,color-mix(in srgb,var(--k,#c8ff00) 13%,#06100a),color-mix(in srgb,var(--k,#c8ff00) 5%,#06100a))}
+.ahr-r{color:color-mix(in srgb,var(--k,#c8ff00) 60%,#fff);border-bottom-color:color-mix(in srgb,var(--k,#c8ff00) 35%,#000)}
+.k0{--k:#8a948e}.k1{--k:#c8ff00}.k2{--k:#3fc4ff}.k3{--k:#b57bff}.k4{--k:#ffc83a}.k5{--k:#ff5a4a}
+.ahr-g .cell .ly{display:flex;align-items:center;justify-content:center;gap:.35em;width:100%;font-family:'VT323',monospace;font-size:.78em;line-height:1;color:#b6c4bc}
+.ahr-g .cell .ly b{font-weight:400;color:var(--mut)}
+.ahr-g .cell .ly i{width:.42em;height:.42em;background:#56635b;flex:none}
+.ahr-g .cell .ly i.g{background:#00ff88}.ahr-g .cell .ly i.y{background:#ffce3d}.ahr-g .cell .ly i.r{background:#ff5a4e}
+.ahr-g .cell>*:not(.p){box-sizing:border-box;max-width:100%;padding:0 .55em}
+.ahr-g .cell .more{font-size:.28em;letter-spacing:.06em;line-height:1.7;color:var(--mut);text-align:center;padding:0 1.6em}
+.ahr-lt{position:absolute;right:.7em;top:0;transform:translateY(-58%);display:flex;gap:.35em}
+.ahr-lt button{font-family:'Press Start 2P',monospace;font-size:.4em;padding:.55em .8em .45em;background:#050c09;color:var(--mut);border:.2em solid #2f3d35;cursor:pointer}
+.ahr-lt button.on{background:var(--k,#c8ff00);border-color:var(--k,#c8ff00);color:#0b0f05}
+.ahr-g .cell .st.live{color:#00ff88}.ahr-g .cell .st.wait{color:#ffd23a}
+#ahRooms .ph .cnt{margin-left:.3em}
+.ahr-b{display:grid;grid-template-columns:1fr 1.18fr;gap:.9em;margin-top:.95em}
+.ahr-box{position:relative;box-sizing:border-box;border:.12em solid color-mix(in srgb,var(--k,#c8ff00) 55%,#000);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
+.ahr-box>b{position:absolute;left:.7em;top:0;transform:translateY(-58%);font-weight:400;font-size:.4em;letter-spacing:.1em;background:var(--k,#c8ff00);color:#0b0f05;padding:.5em .8em .4em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
+.ahr-r{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;font-size:.46em;letter-spacing:.06em;padding:.5em 0;border-bottom:.08em dashed rgba(255,255,255,.12);color:var(--mut)}
+.ahr-r:last-child{border-bottom:0}
+.ahr-r span{color:#fff;text-align:right}.ahr-r span.usd{color:#ffd23a}.ahr-r span.live{color:#00ff88}.ahr-r span.wait{color:#ffd23a}
+.ahr-n{display:flex;align-items:center;gap:.7em;font-size:.44em;line-height:1.35;letter-spacing:.05em;padding:.42em 0;color:#fff}
+.ahr-n i{font-style:normal;flex:none;background:var(--k,#c8ff00);color:#0b0f05;padding:.3em .5em .2em;min-width:2em;text-align:center}
 .cell{position:relative;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;cursor:pointer}
-.ahr-g .cell{padding:.9em .3em .7em;gap:.55em}
 .cell .p{font-size:1em;text-shadow:.16em .16em 0 #000}
-.cell .p.usd{color:#ffd23a}
 .cell .n{font-size:.42em;color:var(--mut)}
 .cell .f{width:80%;height:.35em;background:#000;outline:.1em solid var(--edge)}
 .cell .f i{display:block;height:100%;background:var(--ac)}
@@ -205,7 +243,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .co{display:flex;flex-direction:column;justify-content:center;gap:.9em}
 .co .rw{display:flex;align-items:center;gap:.8em}
 .co .lb{width:5.6em;font-size:.44em;color:var(--mut);letter-spacing:.1em;flex:none}
-.co .sw{flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:.35em}
+.co .sw{display:grid;grid-template-columns:repeat(9,1.55em);gap:.3em}
 .co .sw b{aspect-ratio:1;cursor:pointer;box-shadow:inset -.18em -.18em 0 rgba(0,0,0,.35),inset .18em .18em 0 rgba(255,255,255,.3),0 0 0 .1em #000}
 .co .sw b.sel{outline:.16em solid #fff;outline-offset:.12em}
 .qg{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:.45em}
@@ -240,7 +278,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 @keyframes pyBlink{50%{opacity:.25}}
 #ahAr,#ahFr{z-index:7}
 .ah-btn{position:relative}
-.ah-fb{position:absolute;right:-.35em;top:-.35em;min-width:1.5em;background:#e5302f;color:#fff;font-style:normal;font-size:.42em;line-height:1;text-align:center;padding:.4em .35em .25em;box-shadow:0 0 0 .2em #000}
+.ah-fb{position:absolute;right:-.35em;top:-.35em;min-width:1.4em;background:#e5302f;color:#fff;font-style:normal;font-size:.3em;line-height:1;text-align:center;padding:.4em .35em .25em;box-shadow:0 0 0 .2em #000}
 .ah-fb:empty{display:none}
 #ahAv{z-index:7}#ahUn{z-index:8}#ahIc{z-index:9}
 /* ICON UNLOCKED: el icono de perfil nuevo en una tarjeta cuadrada que entra
@@ -320,13 +358,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em;cursor:pointer;word-break:break-all}
 .pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
 #ahPr .pr-bt{margin-top:1.2em}#ahPr .pr-w{margin-top:.35em}
-.tb .pz-dot{display:inline-block;width:.5em;height:.5em;background:#ffd23a;margin-left:.5em;vertical-align:.15em;box-shadow:.1em .1em 0 #000}
-.pz-l{display:flex;flex-direction:column;gap:.45em;max-height:15em;overflow-y:auto;margin-top:.9em}
-.pz-r{display:flex;align-items:center;gap:1em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.6em .9em}
-.pz-r .m{font-size:.5em;color:#fff;min-width:6.5em}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
+.tb .pz-dot{display:inline-block;min-width:1.4em;box-sizing:border-box;padding:.3em .4em .2em;background:#e5302f;color:#fff;font-style:normal;font-size:.7em;line-height:1;text-align:center;margin-left:.6em;vertical-align:.2em;box-shadow:0 0 0 .18em #000}
+#ahPz .ph .tb{white-space:nowrap;width:auto;padding:.5em 1.4em}
+.pz-l{display:flex;flex-direction:column;gap:0;box-sizing:border-box;height:calc(4 * 2.7em + 1.6em);overflow-y:auto;overflow-x:hidden;margin:1.2em 0 .5em;padding:.8em .8em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.pz-l .pz-r{flex:none}
+.pz-r{display:flex;align-items:center;gap:1em;padding:.85em .4em;border-bottom:.07em dashed rgba(255,255,255,.12)}
+.pz-r:last-child{border-bottom:0}
+.pz-r .m{font-size:.5em;color:#fff;width:12.5em;flex:none;white-space:nowrap}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
 .pz-r .a{font-size:.55em;color:#ffd23a;text-align:right}.pz-r .s{font-size:.36em;min-width:6.5em;text-align:right;letter-spacing:.08em}
 .pz-r .s.ok{color:var(--mut)}.pz-r .s.no{color:#ffd23a}.pz-r.done .a{color:var(--mut)}
-.pz-e{font-size:.45em;color:var(--mut);text-align:center;padding:2.5em 0;line-height:2}
+.pz-e{font-size:.45em;color:var(--mut);text-align:center;margin:auto;line-height:2}
 .pz-f{display:flex;align-items:center;justify-content:space-between;gap:1em;margin-top:.9em}.pz-f .k{font-size:.45em;color:var(--mut)}.pz-f b{color:#ffd23a;font-weight:400}.pz-f .tb{width:auto;padding-left:1.4em;padding-right:1.4em}
 .ph>.px:not(.bk){margin-left:auto}   /* CLOSE siempre en la esquina de arriba a la derecha, en todos los paneles */
 #ahAr .ph .bk{color:#fff;border-color:#4a5850}   /* mismo tamano que CLOSE */
@@ -381,6 +422,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em}
 #appHub:not(.pc) .ah-sys .acts,#appHub:not(.pc) .ah-sys .pic{transform:translateY(-.16em)}
 #appHub:not(.pc) .ah-sys .acts button{font-size:.36em;padding:.4em .9em}
+#appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big{gap:1.1em}
+#appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big .sq-av{width:9em}
+#appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big .sq-av .sq-pic{font-size:1.6em}
+#appHub:not(.pc) #ahAr .sq-pbox .sq-near{font-size:.42em;white-space:nowrap}
+#appHub:not(.pc) #ahAr .sq.find .sq-q{position:relative;top:-.9em}
 
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
@@ -418,7 +464,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:18.2em;bottom:1em;z-index:6}
+#appHub.pc .ah-room{right:17.6em;bottom:.35em;z-index:6}
 #appHub.pc .ah-room .med{width:2.7em;height:2.7em}
 #appHub.pc .ah-room .med>svg{width:1.3em;height:1.3em}
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:28.7em;top:auto;bottom:2em}
@@ -643,6 +689,15 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const dec = Math.max(0, 4 - String(Math.floor(v)).length), f = Math.pow(10, dec);
         return String(Math.floor(v * f) / f) + u[i];
     }
+    // Dolares cortos, como mucho 3 digitos y sin redondear hacia arriba: 1.9 -> $1.90, 12.34 -> $12.3, 1321 -> $1.32K.
+    function cortoUsd(u) {
+        u = Math.max(0, Number(u) || 0);
+        const un = ['K', 'M', 'B', 'T']; let i = -1, v = u;
+        while (v >= 1000 && i < un.length - 1) { v /= 1000; i++; }
+        const ent = Math.floor(v) > 0 ? String(Math.floor(v)).length : 1, dec = Math.max(0, 3 - ent), f = Math.pow(10, dec);
+        const t = (Math.floor(v * f + 1e-9) / f).toFixed(dec);
+        return '$' + (i >= 0 ? String(parseFloat(t)) + un[i] : t);
+    }
     // Tu $PILLY dentro del juego, al lado de los SP (solo con wallet conectada).
     function pintaPilly() {
         const box = document.querySelector('#appHub .ah-py'); if (!box) return;
@@ -651,15 +706,17 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (!w) return;
         const v = Number(GameWalletUI.gameBalance) || 0, el = document.getElementById('ahPy');
         el.textContent = corto(v);
-        if (pyPrev != null && v !== pyPrev && !_enPartida) {
+        if (pyPrev != null && v !== pyPrev && !_enPartida && pyTras) {
+            pyTras = false;
             box.classList.remove('py-up', 'py-dn'); void box.offsetWidth;
             box.classList.add(v > pyPrev ? 'py-up' : 'py-dn');
             clearTimeout(pyT); pyT = setTimeout(() => box.classList.remove('py-up', 'py-dn'), 6000);
         }
         if (!_enPartida) pyPrev = v;
     }
-    let pyPrev = null, pyT = null;
+    let pyPrev = null, pyT = null, pyTras = false;   // pyTras: se acaba de volver de una partida
     setInterval(pintaPilly, 3000);
+
     window._hubCorto = corto;   // pruebas
     // DEPOSIT y WITHDRAW con el marco de los menus (la variante B que eligio David).
     document.documentElement.classList.add('ah-wal-hub');
@@ -724,7 +781,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
-  <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILLY</div></div></div></div>
+  <div class="ahr-g" id="ahrG"></div>
+  <div class="ahr-b"><div class="ahr-box" id="ahrInfo"></div><div class="ahr-box" id="ahrRules"></div></div></div></div></div>
 <div class="ov" id="ahAv"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">AVATAR</button><span class="cnt"></span><button class="px">DONE</button></div>
   <div class="sk-b"><div class="sk-pill"><div class="av-big" id="ahAvBig"></div></div>
@@ -897,31 +955,51 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0);
         if ($('#ahRooms').classList.contains('open')) renderRooms();
     }
+    // Salas: cada tarjeta enseña sus layers con su aforo; debajo, ROOM INFO de la elegida y las reglas del modo.
+    const ROOM_RULES = {
+        arcade: ['3 min · starts with 6 players · a new skill every 30s', 'Every 30s an event · good ones and bad ones', 'From min 1 the zone shrinks · outside it you shrink', '6 to 9 players top 3 win · 10 to 19 top 5 · 20+ top 10 · last 3 standing end it'],
+        classic: ['Eat cells, split and farm viruses', 'Kill 5 players (pentakill) for the max profit', 'Leaving early costs a penalty up to 20%', 'Paid rooms take the entry from your in-game $PILLY']
+    };
     function renderRooms() {
         const g = $('#ahrG'), mine = rooms.filter(r => r.mode === mode);
         $('#ahrOn').textContent = mine.reduce((a, r) => a + (r.players || 0), 0) + ' ONLINE';
         g.innerHTML = '';
+        const dot = (l, cap) => l.players >= cap ? 'r' : l.state === 'playing' ? 'g' : l.players > 0 ? 'y' : '';
         const off = document.createElement('div');
-        off.className = 'cell' + (room === 'offline' ? ' sel' : '');
-        off.innerHTML = '<div class="p" style="font-size:.62em;line-height:1.6em">OFFLINE</div><div class="f"><i style="width:0"></i></div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
-        off.onclick = () => { room = 'offline'; renderRooms(); paintStatic(); setTimeout(() => $('#ahRooms').classList.remove('open'), 220); };
+        off.className = 'cell k0' + (room === 'offline' ? ' sel' : '');
+        off.innerHTML = '<div class="p sm">OFFLINE</div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
+        off.onclick = () => { room = 'offline'; window._riLayer = null; renderRooms(); paintStatic(); };
         g.appendChild(off);
-        PRICES.forEach(p => {
-            const r = mine.find(x => x.room === p) || { players: 0, cap: 70, state: 'waiting', needed: 5 };
-            const lock = false;
-            const est = lock ? 'PC ONLY' : r.state === 'playing' ? 'IN GAME' : r.players >= (r.needed || 5) ? 'STARTING' : 'WAITING';
+        const info = { offline: { t: 'OFFLINE', rows: [['ENTRY', 'FREE'], ['PLAYERS', 'VS BOTS'], ['STATUS', 'PRACTICE'], ['PRIZE', 'NONE']] } };
+        PRICES.forEach((p, pi) => {
+            const r = mine.find(x => x.room === p) || { players: 0, cap: 70, state: 'waiting', needed: 5, layers: [] };
+            const cap = r.maxPlayers || 35, lys = (r.layers || []).filter(l => !l.disabled).slice(0, 3);
+            const live = (r.players || 0) > 0 || r.state === 'playing';
+            const free = p === 'Free', lbl = free ? 'FREE' : '$' + p.replace('$', '');
             const c = document.createElement('div');
-            c.className = 'cell' + (p === room ? ' sel' : '') + (lock ? ' lock' : '');
-            c.innerHTML = `<div class="p${p === 'Free' ? '' : ' usd'}"${p === 'Free' ? ' style="font-size:.62em;line-height:1.6em"' : ''}>${p === 'Free' ? 'FREE' : '$' + p.replace('$', '')}</div>
-              <div class="f"><i style="width:${Math.min(100, Math.round((r.players || 0) / (r.cap || 70) * 100))}%"></i></div>
-              <div class="n">${r.players || 0}/${r.cap || 70}</div><div class="st">${est}</div>`;
-            c.onclick = () => {
-                if (lock) { c.animate([{ transform: 'translateX(-.2em)' }, { transform: 'translateX(.2em)' }, { transform: 'none' }], { duration: 160 }); return; }
-                room = p; renderRooms(); paintStatic();
-                setTimeout(() => $('#ahRooms').classList.remove('open'), 220);
-            };
+            c.className = 'cell k' + (pi + 1) + (p === room ? ' sel' : '');
+            c.innerHTML = '<div class="p' + (free ? ' sm' : '') + '">' + lbl + '</div>' +
+                (lys.length ? lys.map(l => '<div class="ly"><b>L' + l.layerIdx + '</b><i class="' + dot(l, cap) + '"></i>' + l.players + '/' + (l.maxPlayers || cap) + '</div>').join('') : '<div class="ly"><b>L1</b><i></i>0/' + cap + '</div>') +
+                ((r.layers || []).length > lys.length || (r.layers || []).length < 2 ? '<div class="more">UP TO ' + Math.max(4, (r.layers || []).length) + ' LAYERS</div>' : '') +
+                '<div class="st ' + (live ? 'live' : 'wait') + '">' + (live ? 'LIVE' : 'WAITING') + '</div>';
+            c.onclick = () => { if (room !== p) window._riLayer = null; room = p; renderRooms(); paintStatic(); };
             g.appendChild(c);
+            const auto = lys.slice().sort((x, y) => (y.players >= cap ? -1 : y.players) - (x.players >= cap ? -1 : x.players))[0];
+            const best = (p === room && window._riLayer && lys.find(l => l.layerIdx === window._riLayer)) || auto;
+            if (p === room && !lys.some(l => l.layerIdx === window._riLayer)) window._riLayer = null;
+            const fee = best && Number(best.pillFee) > 0 ? Number(best.pillFee) : Number(r.pillFee) || 0;
+            const bl = best ? best.state : r.state, bn = best ? best.players : 0;
+            info[p] = { t: lbl + (lys.length > 1 ? '' : ' · L' + (best ? best.layerIdx : 1)), lys, sel: best ? best.layerIdx : 1, rows: [
+                ['ENTRY', free ? 'FREE' : '<span class="usd">' + lbl + ' · ' + (fee ? fee.toLocaleString('en-US') + ' $PILLY' : '') + '</span>'],
+                ['PLAYERS', bn + '/' + (best ? best.maxPlayers || cap : cap)],
+                ['STATUS', '<span class="' + (bn > 0 || bl === 'playing' ? 'live' : 'wait') + '">' + (bl === 'playing' ? 'IN GAME' : bn > 0 ? 'LIVE' : 'WAITING') + '</span>'],
+                ['PRIZE', mode === 'classic' ? 'KILL LOOT' : 'TOP 3 / 5 / 10']] };
         });
+        const cur = info[room] || info.offline, kc = 'k' + (room === 'offline' ? 0 : PRICES.indexOf(room) + 1);
+        $('#ahrInfo').className = $('#ahrRules').className = 'ahr-box ' + kc;
+        $('#ahrInfo').innerHTML = '<b>ROOM INFO · ' + cur.t + '</b>' + (cur.lys && cur.lys.length > 1 ? '<div class="ahr-lt">' + cur.lys.map(l => '<button data-l="' + l.layerIdx + '"' + (l.layerIdx === cur.sel ? ' class="on"' : '') + '>L' + l.layerIdx + '</button>').join('') + '</div>' : '') + cur.rows.map(x => '<div class="ahr-r">' + x[0] + (/^<span/.test(x[1]) ? x[1] : '<span>' + x[1] + '</span>') + '</div>').join('');
+        $('#ahrInfo').querySelectorAll('[data-l]').forEach(b => b.onclick = () => { window._riLayer = +b.dataset.l; try { SoundManager.play('simpleselect'); } catch (e) {} renderRooms(); });
+        $('#ahrRules').innerHTML = '<b>RULES</b>' + (ROOM_RULES[mode] || ROOM_RULES.arcade).map((t, k) => '<div class="ahr-n"><i>0' + (k + 1) + '</i>' + t.toUpperCase() + '</div>').join('');
         placa($('#ahRooms .pnl'), 1);
     }
 
@@ -954,7 +1032,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 const cur = ((document.getElementById(half) || {}).value || '').toLowerCase();
                 const rw = document.createElement('div'); rw.className = 'rw';
                 rw.innerHTML = '<div class="lb">' + lb + '</div><div class="sw"></div>';
-                SWATCH.forEach(col => {
+                PILL_COLS.flat().forEach(col => {
                     const b = document.createElement('b'); b.style.background = col;
                     if (col === cur) b.className = 'sel';
                     b.onclick = () => setColor(half, col);
@@ -1514,7 +1592,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahPrPzC').style.display = conectada ? '' : 'none';
         $('#ahPrPzC').onclick = abrePremios;
         $('#ahPrPzDot').style.display = 'none';
-        if (w && window.PWSquad) PWSquad.prizes(w, total => { $('#ahPrPzDot').style.display = total > 0 ? '' : 'none'; });
+        if (w && window.PWSquad) PWSquad.prizes(w, (total, list) => { const d = $('#ahPrPzDot'); d.textContent = (list || []).length ? String(Math.min((list || []).length, 99)) : ''; d.style.display = total > 0 ? '' : 'none'; });
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
     }
     // Historial de premios de arenas: los cobrados salen CLAIMED; lo pendiente se cobra todo con CLAIM ALL.
@@ -1522,12 +1600,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const ov = $('#ahPz'), w = window.GameWallet && GameWallet.address;
         ov.classList.add('open'); placa($('#ahPz .pnl'), 1);
         $('#ahPzL').innerHTML = '<div class="pz-e">LOADING...</div>';
-        const fmt = n => Math.floor(n).toLocaleString('en-US');
+        const fmt = corto;
         const pinta = (total, list, usd, hist) => {
             const fecha = t => { const d = new Date(t); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
+            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY' + (h.usd != null ? ' (' + cortoUsd(h.usd) + ')' : '') + '</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
                 : '<div class="pz-e">EMPTY<br>WIN A PAID ARENA MATCH TO GET PRIZES</div>';
-            $('#ahPzT').textContent = fmt(total) + ' $PILLY';
+            const fl = $('#ahPzL'), f0 = fl.firstElementChild;   // alto exacto de 4 filas, haya las que haya
+            if (f0 && f0.classList.contains('pz-r')) { const cs = getComputedStyle(fl); fl.style.height = (4 * f0.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)) + 'px'; }
+            $('#ahPzT').textContent = fmt(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '');
             $('#ahPzAll').disabled = !(total > 0);
             $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); refreshClaims(false); });
         };
@@ -1676,6 +1756,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('.ah-play').onclick = async () => {
             const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
             try { SoundManager.play('select'); } catch (x) {}
+            if (kind === 'online' && mode === 'arcade' && !esperarIgual && !(await arcadeAbierta())) return;
+            esperarIgual = false;
             try {
                 // Volver a la partida en curso solo si es la sala elegida: antes cualquier sala de pago te devolvia a la FREE que dejaste.
                 if (typeof Rejoin !== 'undefined' && Rejoin.get()) {
@@ -1692,6 +1774,39 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         };
     }
 
+    // ARCADE: pasado el primer minuto nadie entra en esa partida. Si la sala elegida no tiene ninguna layer abierta
+    // (esperando gente, o jugando y aun en el primer minuto) se avisa y se recomienda otra: primero donde se esta
+    // jugando, luego donde se espera gente; con casi nadie, ARENAS. Si hay otra layer abierta, se entra sin decir nada.
+    let esperarIgual = false;
+    const ARC_ENTRADA = (window.PillSim && PillSim.ARCADE && PillSim.ARCADE.entradaMs) || 60000;
+    const capaAbierta = l => !l.disabled && l.players < (l.maxPlayers || 35) && (l.state === 'waiting' || (l.state === 'playing' && (l.openMs || 0) < ARC_ENTRADA));
+    const salaTxt = p => p === 'Free' ? 'FREE' : '$' + String(p).replace('$', '');
+    async function arcadeAbierta() {
+        await pullRooms();
+        const mias = rooms.filter(r => r.mode === 'arcade'), r = mias.find(x => x.room === room);
+        if (!r || !(r.layers || []).length || (r.layers || []).some(capaAbierta)) return true;
+        const jugando = [], esperando = [];
+        for (const x of mias) {
+            if (x.room === room) continue;
+            for (const l of x.layers || []) {
+                if (!capaAbierta(l)) continue;
+                (l.state === 'playing' ? jugando : esperando).push({ room: x.room, players: l.players });
+            }
+        }
+        jugando.sort((a, b) => b.players - a.players); esperando.sort((a, b) => b.players - a.players);
+        const total = mias.reduce((a, x) => a + (x.players || 0), 0), mejor = jugando[0] || esperando.find(e => e.players > 0);
+        const ir = p => { room = p; renderRooms(); paintStatic(); $('.ah-play').onclick(); };
+        const quedar = () => { esperarIgual = true; $('.ah-play').onclick(); };
+        const cab = 'MATCH ALREADY STARTED', base = 'The ' + salaTxt(room) + ' match started more than 1 minute ago and no one can join it now.';
+        if (typeof pwConfirm !== 'function') return true;
+        if (mejor && total >= 4) {
+            const lista = jugando.slice(0, 2).map(j => salaTxt(j.room) + ' · playing · ' + j.players + ' in').concat(esperando.slice(0, 2).map(e => salaTxt(e.room) + ' · waiting · ' + e.players + ' in'));
+            pwConfirm(cab, base + '\n\n' + lista.join('\n'), 'GO TO ' + salaTxt(mejor.room), 'WAIT HERE', () => ir(mejor.room), quedar);
+        } else {
+            pwConfirm(cab, base + '\n\nFew people are playing ARCADE right now. ARENAS has players and quick matches are easier to find.', 'OPEN ARENAS', 'WAIT HERE', () => { const b = $('[data-a=arenas]'); if (b) b.click(); }, quedar);
+        }
+        return false;
+    }
     // Placa SYSTEM: avisos del juego en cola, uno a la vez, cada uno el tiempo que se le da.
     // prio 0 = importante (pasa delante), 1 = normal, 2 = consejo. Solo corre con el hub a la vista.
     // Consejos que rotan en la placa cuando no hay avisos. Los que dependen de datos del dia se calculan al sacarlos.
@@ -1705,7 +1820,18 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => hub.classList.contains('pc') ? 'Tip: tap INFO in THE PILL or open HOW TO PLAY (the gear) to see how each skill works.' : 'Tip: tap INFO in THE PILL to see how each skill works.',
         () => 'Tip: add friends in FRIENDS to form a group for 2v2 and 3v3.',
         () => 'Tip: mute a friend in FRIENDS to stop their popups. Their whispers and invites pile up there instead.',
-        () => 'Tip: in ARCADE the top players of the room share the prize when the match ends, after about 3 minutes and 50 seconds.',
+        () => 'Tip: in ARCADE the prize depends on how many played: 6 to 9 the top 3 win, 10 to 19 the top 5, 20 or more the top 10.',
+        () => 'Tip: in ARCADE only the players still alive at the end get paid. Every paid place gets back more than its entry.',
+        () => 'Tip: an ARCADE match needs at least 6 players to start.',
+        () => 'Tip: in ARCADE the safe zone starts closing at minute 1. Outside it you lose mass every second, and the last phase is brutal.',
+        () => 'Tip: in ARCADE nobody can join after the first minute. Be there from the start.',
+        () => 'Tip: every 30 seconds ARCADE has an event. Good ones: food rain, golden virus, no split. Bad ones: tax on the top, heavy.',
+        () => 'Tip: TAX ON THE TOP takes 20% of the mass of the top 3. Being first has its price.',
+        () => 'Tip: during HEAVY the biggest pill moves slower. Time to hunt it.',
+        () => 'Tip: in ARCADE, when only 3 players are left the match ends and those 3 win.',
+        () => 'Tip: the GOLDEN VIRUS gives +25% mass to the first one who touches it.',
+        () => 'Tip: in ARCADE the ranking goes by score: every kill adds 10% to your mass, up to x2.',
+        () => 'Tip: in ARCADE the top 3 wear a crown. Eat one for +30%, +20% or +10% mass (the king also counts as a double kill).',
         () => 'Tip: in CLASSIC, when you eat someone you take everything they were carrying.',
         () => 'Tip: leaving CLASSIC early costs a penalty: 20% with no kills, 10% with one kill, none from 2 kills.',
         () => 'Tip: in CLASSIC your match ends when you reach 5 kills (pentakill), when you leave, or at the 15 minute limit.',
@@ -1716,7 +1842,16 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => 'Tip: change your pill color and skin in THE PILL.',
         () => 'Tip: customize your profile and connect it to X.'
     ];
-    const TAGS = { sys: 'SYSTEM', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
+    const TAGS = { sys: 'SYSTEM', arena: 'ARENA', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
+    // Movil: la placa se centra en el hueco entre QUESTS y el borde de abajo, sea cual sea su numero de lineas.
+    function colocaPlaca(e) {
+        if (hub.classList.contains('pc')) { e.style.bottom = ''; return; }
+        requestAnimationFrame(() => {
+            const q = $('.ah-it[data-a=quests]'), fs = parseFloat(hub.style.fontSize) || 16; if (!q) return;
+            const sup = q.offsetTop + 2.9 * fs, alto = hub.offsetHeight, h = e.offsetHeight;
+            e.style.bottom = Math.max(.2 * fs, (alto - sup - h) / 2) + 'px';
+        });
+    }
     const SysQ = (() => {
         const q = []; let cur = null, n = 0, tm = null, tipN = Math.floor(Math.random() * TIPS.length);
         const el = () => $('#ahSys');
@@ -1727,6 +1862,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             e.querySelector('span').textContent = m.text;
             e.querySelector('.pic').style.backgroundImage = m.pic ? 'url("' + String(m.pic).replace(/"/g, '') + '")' : '';
             const ac = e.querySelector('.acts'); ac.innerHTML = '';
+            colocaPlaca(e);
             (m.actions || []).forEach(a => { const b = document.createElement('button'); b.textContent = a[0]; if (!a[2]) b.className = 'n'; b.onclick = ev => { ev.stopPropagation(); try { SoundManager.play('simpleselect'); } catch (x) {} fin(); if (a[1]) a[1](); }; ac.appendChild(b); });
         }
         // Al acabar un aviso se funde; si hay otro esperando sale enseguida, y si no, la placa descansa 5 s antes del siguiente consejo.
@@ -1770,17 +1906,19 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const w = xWallet || (window.GameWallet && GameWallet.address);
         if (!w || !window.PWSquad) return;
         try {
-            PWSquad.prizes(w, (total, list) => {
+            PWSquad.prizes(w, (total, list, usd) => {
                 const n = (list || []).length, b = $('#ahAvB');
                 if (b) b.textContent = n ? String(Math.min(n, 99)) : '';
-                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + Math.floor(total).toLocaleString('en-US') + ' $PILLY waiting to be claimed.', 12000, 0); }
+                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + corto(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '') + ' waiting to be claimed.', 12000, 0, { kind: 'arena' }); }
             });
         } catch (e) {}
     }
     setInterval(() => { if (hub.classList.contains('on')) refreshClaims(false); }, 120000);
-    let sysEntro = false;
+    let sysEntro = false, postPartida = false;
     function sysEntrada() {
         sysPoll(); SysQ.next();
+        // Primera vez en el menu tras una partida: el premio ya esta apuntado (o lo estara en unos segundos).
+        if (postPartida && sysEntro) { postPartida = false; claimAvisado = false; try { PWSquad.resetAlerts(); } catch (e) {} setTimeout(() => refreshClaims(true), 3000); setTimeout(() => refreshClaims(true), 9000); }
         if (sysEntro) return; sysEntro = true;
         setTimeout(() => {
             const w = xWallet || (window.GameWallet && GameWallet.address);
@@ -1840,7 +1978,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // startOnlineGame en sala de pago pasa por popup + firma de la wallet ANTES de entrar: si el hub se esconde ya, el
         // menu antiguo queda a la vista (popup raro) y al entrar el vigilante lo daba por perdido y volvia a tapar la partida.
         // Por eso en online el hub solo se esconde cuando la partida corre de verdad; si el pago se cancela no se toca.
-        const entra = () => { hide(); _enPartida = true; aqHud(true); };
+        const entra = () => { hide(); _enPartida = true; postPartida = true; pyTras = true; aqHud(true); };
         let esperando = false;
         const alEntrar = () => {
             if (esperando) return; esperando = true;
@@ -1886,5 +2024,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             if (lo && getComputedStyle(lo).display !== 'none' && !(typeof gameRunning !== 'undefined' && gameRunning)) { _enPartida = false; show(mode); }
         }, 500);
     }
-    if (document.readyState === 'complete') start(); else addEventListener('load', start);
+    // El menu se monta en cuanto hay DOM (antes esperaba al 'load' y, si se tocaba rapido, salia el menu antiguo en medio).
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

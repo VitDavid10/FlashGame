@@ -68,18 +68,6 @@ function createSquad(deps) {
     function refundMap(map, why) { for (const k of Object.keys(map || {})) arena.refund(map[k].ref, why); }
     function releaseBracket(p) { if (p.inBracket) { arena.useBracket(p.inBracket, -1); p.inBracket = null; } }
     const liveStakes = new Map();   // sala -> apuestas aun sin repartir (por si la sala desaparece sin acabar)
-    // Precio en el que esta un grupo: el que busca (cola) o el que mira (want).
-    const centsOf = p => p.cm ? -1 : (p.state === 'queued' && !p.custom) ? (p.cents | 0) : (p.rc && p.rc.kind === 'quick') ? (p.rc.cents | 0) : (p.want == null ? -1 : p.want);
-    // Alguien entra en tu precio (busca o mira): aviso a todos los de ese precio y tamano para que sepan que hay rival.
-    function avisaBracket(p) {
-        const c = centsOf(p); if (c < 0) return;
-        const n = p.state === 'queued' ? p.qsize : p.members.size;
-        const otros = [...parties.values()].filter(x => x !== p && centsOf(x) === c && (x.state === 'queued' ? x.qsize : x.members.size) === n);
-        if (!otros.length) return;
-        const quien = (p.members.get(p.leader) || {}).name || 'PLAYER';
-        for (const x of otros) for (const m of x.members.values()) send(m.ws, { t: 'sqBracket', cents: c, size: n, who: quien, ready: p.state === 'queued' });
-        for (const m of p.members.values()) send(m.ws, { t: 'sqBracket', cents: c, size: n, who: (otros[0].members.get(otros[0].leader) || {}).name || 'PLAYER', ready: otros[0].state === 'queued', count: otros.length });
-    }
     // FIND RIVALS: por tamano y precio, cuantos estan buscando (LISTOS), cuantos mirando y cuantos jugando.
     function rivalsList() {
         const map = new Map(), at = (size, cents) => { const k = size + '|' + cents; let e = map.get(k); if (!e) map.set(k, e = { size, cents, ready: 0, looking: 0, playing: 0, fee: cents > 0 ? arena.bracketFee(bkey('arcade', size, cents)) : 0 }); return e; };
@@ -98,7 +86,7 @@ function createSquad(deps) {
     // Estado de grupo de una cuenta, para la presencia y las invitaciones de amigos.
     const maxOf = p => p.cm ? p.cm.size * 2 : MAX_PARTY;
     function partyInfoOf(uid) {
-        for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.members.size, full: m.party.members.size >= maxOf(m.party) };
+        for (const m of byWs.values()) if (m.uid === uid) return { state: m.party.state, code: m.party.code, size: m.party.members.size, full: m.party.members.size >= maxOf(m.party), q: (m.party.state === 'queued' && !m.party.custom) ? { size: m.party.qsize, cents: m.party.cents | 0 } : null };
         return null;
     }
     const social = createSocial({ file: deps.socialFile || null, log, partyInfoOf, directory: deps.directory || null });
@@ -162,7 +150,7 @@ function createSquad(deps) {
         const now = Date.now();
         const room = {
             key, comboKey: 'squad_Free', layerIdx: 1, mode, roomName: 'Free',
-            sim: buildSim(mode, { food: 1, virus: 1, speed: 1, botsEnabled: false, botCount: 0 }),
+            sim: buildSim(mode, { food: 1, virus: 1, speed: 1, botsEnabled: false, botCount: 0, mapaVivo: false }),   // arenas: mapa fijo como hasta ahora
             clients: new Map(), state: 'waiting',
             tickCount: 0, lastTick: now, emptySince: 0,
             endsAt: null, restartAt: null, startAt: now + (kind === 'practice' ? PRACTICE_START_MS : MATCH_START_MS),
@@ -296,7 +284,6 @@ function createSquad(deps) {
         const lead = (p.members.get(p.leader) || {}).name || 'PLAYER';
         for (const m of p.members.values()) if (!ready[m.id] || m.ws.virtual) send(m.ws, { t: 'sqReadyCheck', kind: action.kind, size: p.members.size, exp, leader: lead, fee, cents, usd: usdOf(fee), you: m.id === p.leader });
         pushParty(p);
-        if (action.kind === 'quick' && !Object.values(ready).every(Boolean)) avisaBracket(p);   // ya sale como LOOKING en su precio
         if (Object.values(ready).every(Boolean)) { const act = action; clearRc(p, true); runAction(p, act); }
     }
     function runAction(p, action) {
@@ -327,7 +314,7 @@ function createSquad(deps) {
         // Sala custom: no entra en la cola automatica; se publica y espera un retador.
         if (p.custom) customRooms.add(p); else Q(qkey(n, p.mode, p.cents)).push(p);
         pushParty(p);
-        if (!p.custom) { avisaBracket(p); tryMatch(n, p.mode, p.cents); }
+        if (!p.custom) { tryMatch(n, p.mode, p.cents); }
         if (virtual && p.state === 'queued') setTimeout(() => { if (p.state === 'queued') virtual.onQueued(view(p)); }, 1500);   // rivales de prueba para quien tiene a los bots de amigos
     }
 
@@ -538,7 +525,6 @@ function createSquad(deps) {
         if (a === 'want') {
             p.want = msg.cents == null ? null : cleanCents(msg.cents);
             pushParty(p);
-            if (p.want != null) avisaBracket(p);
             return;
         }
         // El lider avisa de nuevo a quien aun no ha contestado.
