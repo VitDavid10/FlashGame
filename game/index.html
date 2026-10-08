@@ -43,7 +43,10 @@
         // mejoras de movil (stick, circulos de skills, margenes...) cuelgan de
         // html.pw-app y de EN_APP. En el navegador el juego sigue como antes
         // (pedido por David). Aqui, antes de pintar nada, para que no salte.
-        if (/Solana Mobile Web Shell/.test(navigator.userAgent) || new URLSearchParams(location.search).has('app')) el.classList.add('pw-app');
+        var _q = new URLSearchParams(location.search), _shell = /Solana Mobile Web Shell/.test(navigator.userAgent);
+        // Abierto directamente (/game), sin iframe ni ?hero=1, sale el menu nuevo en todo: ?old=1 devuelve el antiguo para comparar.
+        var _directo = window.top === window && !_q.has('hero') && !_q.has('old');
+        if (_shell || _q.has('app') || _directo) el.classList.add('pw-app');
         // App: hasta que sale la pantalla de carga (showLoadingScreen) el menu de debajo se veia y se podia tocar:
         // un velo oscuro lo tapa desde el primer pintado (y bloquea los toques). Sale solo (red de seguridad a los 15 s).
         if (el.classList.contains('pw-app')) {
@@ -56,7 +59,7 @@
         }
         // App: la wallet del movil (Seed Vault) va por Mobile Wallet Adapter. Solo
         // aqui se carga; en la web no hace falta (ver mwaProvider).
-        if (el.classList.contains('pw-app')) { const s = document.createElement('script'); s.src = '/vendor/mwa.js'; s.async = true; document.head.appendChild(s); }
+        if (el.classList.contains('pw-app') && (_shell || _q.has('app'))) { const s = document.createElement('script'); s.src = '/vendor/mwa.js'; s.async = true; document.head.appendChild(s); }
         // El MAYOR de las tres medidas, no visualViewport a secas. Las tres
         // dicen cosas distintas mientras la barra del navegador se esta
         // encogiendo -visualViewport es lo visible AHORA, que al principio es
