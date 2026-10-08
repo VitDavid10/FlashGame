@@ -467,7 +467,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-room{right:17.6em;bottom:.35em;z-index:6}
 #appHub.pc .ah-room .med{width:2.7em;height:2.7em}
 #appHub.pc .ah-room .med>svg{width:1.3em;height:1.3em}
-#appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:28.7em;top:auto;bottom:2em}
+#appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:auto;bottom:2em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:5.375em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
