@@ -10919,7 +10919,7 @@
     function init() {
         SoundManager.init(); resize();
         for(let i=1; i<=10; i++) { uiSlots[i] = document.getElementById('slot'+i); uiCounts[i] = document.getElementById('count'+i); uiOverlays[i] = document.getElementById('cd'+i); uiOverlaysActive[i] = document.getElementById('dur'+i); uiIcons[i] = document.getElementById('icon'+i); uiGcds[i] = document.getElementById('gcd'+i); } 
-        els.skillOverlay.style.top = UI_PARAMS.skillSelectTop; window.addEventListener('resize', resize); 
+        els.skillOverlay.style.top = (UI_PARAMS.skillSelectTop === '5%' && document.documentElement.classList.contains('pw-app') && !document.body.classList.contains('mobile-allowed')) ? '17%' : UI_PARAMS.skillSelectTop;   /* app en PC: SELECT A SKILL por debajo de la fila de arriba */ window.addEventListener('resize', resize); 
         els.actionBar.addEventListener('mouseenter', () => isHoveringUI = true); els.actionBar.addEventListener('mouseleave', () => isHoveringUI = false);
         els.skillOverlay.addEventListener('mouseenter', () => isHoveringUI = true); els.skillOverlay.addEventListener('mouseleave', () => isHoveringUI = false);
         document.getElementById('exitGameBtn').addEventListener('mouseenter', () => isHoveringUI = true); document.getElementById('exitGameBtn').addEventListener('mouseleave', () => isHoveringUI = false);
