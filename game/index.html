@@ -11535,12 +11535,18 @@
         let l1 = k(kills), l2;
         if (tipo === 'victory') { l1 = k(Math.max(kills, 5)); l2 = [['+' + pill(x.amount), 'g']]; }
         else if (tipo === 'cashout') { l1 = k(x.kills | 0); l2 = [['+' + pill(x.amount), 'g'], [' · ' + x.feePct + '% EXIT FEE', 'd']]; }
-        else if (tipo === 'matchEnded') { l2 = x.myAmount > 0 ? [['+' + pill(x.myAmount), 'g']] : [['OUT OF TOP 10', 'd']]; }
+        else if (tipo === 'matchEnded') { l2 = x.myAmount > 0 ? [['+' + pill(x.myAmount), 'g']] : [['OUT OF TOP ' + (x.topN || 10), 'd']]; }
+        else if (tipo === 'matchFinished' && esArcade && sim && !sim.isRemote && sim.arc) {
+            // Offline: el mismo reparto que online (sin dinero): cuantos cobrarian y en que puesto quedas tu.
+            const tam = PillSim.arcadeTamano(sim.arc.jugaron.size), N = PillSim.ARCADE.premios[tam].top;
+            const vivos = sim.arcVivos().sort((a, b) => b.puntos - a.puntos), pos = vivos.findIndex(v => v.id === 'me') + 1;
+            l2 = [[{ small: 'SMALL', medium: 'MEDIUM', large: 'BIG' }[tam] + ' MATCH · ', 'd']].concat(pos > 0 && pos <= N ? [['#' + pos + ' · TOP ' + N, 'g']] : [['OUT OF TOP ' + N, 'd']]);
+        }
         else if (tipo === 'roomRestarted') { const dev = x.refunded | 0; l2 = dev > 0 ? [['REFUNDED ' + pill(dev), '']] : (dePago ? [['NO $PILLY LOST', 'd']] : gratis); }
         else if (!dePago) l2 = gratis;
         else {
             const perdido = (typeof EconHUD !== 'undefined' && (esArcade ? EconHUD.entry : EconHUD.carry)) | 0;
-            const fuera = tipo === 'matchFinished' && esArcade ? [['OUT OF TOP 10 · ', 'd']] : [];
+            const fuera = tipo === 'matchFinished' && esArcade ? [['OUT OF THE TOP · ', 'd']] : [];
             l2 = perdido > 0 ? fuera.concat([['LOST ', ''], [pill(perdido), 'r']]) : fuera.concat([['NO $PILLY LOST', 'd']]);
         }
         window._finData = Object.assign({ tipo, l1, l2 }, window._finTitulo || {}, tipo === 'matchEnded' ? { top: x.top || [], pot: x.pot } : {});
@@ -12451,7 +12457,7 @@
                 sub.innerHTML = msg.kills + (msg.kills === 1 ? ' kill' : ' kills') + ' · carry <b>' + fmtMoney(msg.carry) + '</b> − ' + msg.feePct + '% exit fee (<b>' + fmtPillShort(msg.fee) + ' $PILLY</b>)';
             } else if (msg.reason === 'arcadeEnd') {
                 setOverlayTitle(title, 'matchEnded', 'MATCH ENDED', msg.myAmount > 0 ? '#ffce3d' : '#aaa');
-                if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top 10';
+                if (msg.myAmount > 0) setAmt(msg.myAmount); else amt.innerText = 'Out of top ' + (msg.topN || 10);
                 // Bote y ranking SIEMPRE en $PILLY (peticion de David): el reparto
                 // se hace en tokens, y solo lo TUYO lleva ademas el (~$).
                 sub.innerHTML = 'Pot: <b style="color:#ffce3d">' + fmtPill(msg.pot) + '</b>';
@@ -16467,6 +16473,20 @@
             g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, 'rgba(255,0,0,' + (0.28 + 0.12 * Math.sin(performance.now() / 150)) + ')');
             ctx.fillStyle = g; ctx.fillRect(0, 0, width, height);
         }
+        // Fuera de la zona: barra con el tiempo que te queda hasta desaparecer (depende de tu masa y de la fase).
+        if (fuera && arcSt.dano > 0) {
+            let m = 0; myCells().forEach(c => m += c.mass);
+            const seg = m > PillSim.ARCADE.masaMin ? Math.log(PillSim.ARCADE.masaMin / m) / Math.log(1 - arcSt.dano) : 0;
+            const W = Math.min(320, width * 0.42), H = 16, x = (width - W) / 2, y = 112, f = Math.max(0, Math.min(1, seg / 40));
+            const parpadea = seg < 6 && Math.floor(performance.now() / 160) % 2;
+            ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(x - 4, y - 4, W + 8, H + 8);
+            ctx.fillStyle = '#3a0505'; ctx.fillRect(x, y, W, H);
+            ctx.fillStyle = parpadea ? '#ffffff' : '#ff3b3b'; ctx.fillRect(x, y, Math.round(W * f), H);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, Math.round(W * f), 3);
+            // calavera pixel a la izquierda
+            const k = 3, cx = x - 34, cy = y - 3, P = ['01110', '11111', '10101', '11111', '01010'];
+            ctx.fillStyle = '#ff6a6a'; P.forEach((fila, j) => { for (let i = 0; i < 5; i++) if (fila[i] === '1') ctx.fillRect(cx + i * k * 1.4, cy + j * k * 1.4, k * 1.4, k * 1.4); });
+        }
         // Flecha al borde de la pantalla hacia la lluvia o el virus dorado si no se ven.
         const obj = arcSt.oro || ((arcSt.ev === 'rain' || arcSt.ev === 'gold') && arcSt.x != null ? arcSt : null);
         if (obj) {
@@ -16483,13 +16503,16 @@
         }
         // Rotulo de arriba: fuera de la zona > evento > la zona empieza a cerrarse.
         let txt = '', cls = '';
-        if (fuera) { txt = 'OUTSIDE THE SAFE ZONE · -' + Math.round((arcSt.dano || 0) * 100) + '% MASS/S'; cls = 'rojo'; }
-        else if (arcSt.ev) {
+        if (arcSt.ev) {
             const nom = ARC_NOMBRES[arcSt.ev] || arcSt.ev.toUpperCase();
             txt = t < arcSt.evIni ? nom + ' IN ' + Math.max(1, Math.ceil((arcSt.evIni - t) / 1000)) : nom + ' · ' + Math.max(0, Math.ceil((arcSt.evFin - t) / 1000)) + 'S';
             cls = 'oro';
         } else if (arcSt.fase > 0 && (t - (PillSim.ARCADE.entradaMs + (arcSt.fase - 1) * 30000)) < 3500) {
-            txt = arcSt.fase === 1 ? 'THE SAFE ZONE IS CLOSING' : 'THE ZONE CLOSES FASTER · -' + Math.round((arcSt.dano || 0) * 100) + '% MASS/S OUTSIDE'; cls = 'rojo';
+            txt = arcSt.fase === 1 ? 'THE SAFE ZONE IS CLOSING' : 'THE ZONE CLOSES FASTER'; cls = 'rojo';
+        } else if (arcSt.fase === 1 && t - PillSim.ARCADE.entradaMs < 8000 && arcSt.tam) {
+            // Al cerrarse la entrada ya se sabe cuanta gente hay: cuantos cobran.
+            const T = PillSim.ARCADE.premios[arcSt.tam];
+            txt = { small: 'SMALL', medium: 'MEDIUM', large: 'BIG' }[arcSt.tam] + ' MATCH · TOP ' + T.top + ' WIN';
         }
         if (b) {
             b.textContent = txt; b.className = txt ? 'show ' + cls : '';

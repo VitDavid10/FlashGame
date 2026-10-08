@@ -1,5 +1,5 @@
 'use strict';
-const { arcadeScore } = require('../shared/sim.js');   // puntuacion de arcade (ranking del bote y leaderboard)
+const { arcadeScore, arcadeTamano, ARCADE } = require('../shared/sim.js');   // puntuacion de arcade (ranking del bote y leaderboard)
 /**
  * Tick de UNA sala — extraído del bucle principal de index.js.
  *
@@ -171,8 +171,12 @@ function tickRoomOnce(room, now, ctx) {
         }
         if (room.mode !== 'classic' && (room.pot || 0) > 0) {
             // Final a 3 (quedaban 3 en pie): solo cobran ellos, 40/30/20, sin comision; el 10 % que sobra va a la pool de rewards (staking).
+            // Tamano de la partida (cuantos la jugaron): pequena top 3, mediana top 5, grande top 10. Si quedaban 3 en pie, top 3.
             const final3 = !!room._final3;
-            const PESOS = final3 ? [40, 30, 20] : [35, 20, 13, 9, 7, 5, 4, 3, 2.5, 1.5];
+            const jugaron = room.sim.arc ? room.sim.arc.jugaron.size : room.clients.size;
+            const tam = final3 ? 'small' : arcadeTamano(jugaron);
+            // Los % ya son del bote entero: lo que no suman (10 / 7,5 / 5 %) es la parte de la casa.
+            const PESOS = ARCADE.premios[tam].pesos;
             // Puntuacion de arcade: pico de masa x (1 + 0,10 por kill), como mucho x2 (shared/sim.js arcadeScore).
             const puntos = p => arcadeScore(p.peakMass | 0, p.kills);
             const ranking = [...room.sim.players.values()]
@@ -190,8 +194,10 @@ function tickRoomOnce(room, now, ctx) {
              * comisión: así el reparto entre los diez no cambia de forma y solo baja
              * la escala.
              */
-            if (final3) ranking.splice(0, ranking.length, ...ranking.filter(p => p.alive && p.cells && p.cells.length));
-            const comision = Math.floor(totalPot * (final3 ? 0 : ctx.ARCADE_RAKE_PCT) / 100);
+            // Solo cobran los que siguen vivos al final (si no queda nadie, por el pico de puntuacion de todos).
+            const vivosFin = ranking.filter(p => p.alive && p.cells && p.cells.length);
+            if (vivosFin.length) ranking.splice(0, ranking.length, ...vivosFin);
+            const comision = Math.floor(totalPot * (room.sim.arc ? 0 : ctx.ARCADE_RAKE_PCT) / 100);
             const repartible = totalPot - comision;
             let repartido = 0;
             if (comision > 0) ctx.econ.rakeStaking(comision, 'comision arcade ' + room.key);
@@ -205,7 +211,7 @@ function tickRoomOnce(room, now, ctx) {
                 if (cli && cli.cid && (i + 1) <= 5) ctx.econ.dailyEvent(cli.cid, 'arcade_top5', 1);
                 top.push({ pos: i + 1, name: pj.name, mass: puntos(pj), pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
             }
-            payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top, final3 };
+            payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top, final3, tam, topN: ARCADE.premios[tam].top };
             // Enviar a cada cliente con su #pos marcada como "mine"
             for (const [pid, cli] of room.clients) {
                 if (cli.ws.readyState !== 1) continue;

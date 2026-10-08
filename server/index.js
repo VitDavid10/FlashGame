@@ -104,6 +104,7 @@ const APP_PATH = /^\/[A-Za-z0-9_-]{12,}$/.test(process.env.APP_PATH || '') ? pro
 // Nunca una constante en el código: eso sería una puerta trasera pública.
 const STRESS_KEY = process.env.STRESS_KEY || '';
 const MIN_PLAYERS = parseInt(process.env.MIN_PLAYERS, 10) || 5;
+const ARCADE_MIN_REAL = 6;   // arcade: con menos gente el top no tiene sentido (ver ARCADE.premios en shared/sim.js)
 const CLASSIC_MIN_REAL = 4;   // classic: minimo de reales para empezar (ver enforceRoomCaps)    // reales para empezar (editable por sala desde el panel)
 // Población objetivo (reales + bots de relleno). 0 = SIN bots de relleno: online
 // solo tiene jugadores reales. Editable por sala desde el panel si se quieren bots.
@@ -4205,6 +4206,7 @@ function enforceRoomCaps() {
             // Classic arranca con 4 reales (2-oct-2026): con el mapa vivo, 4 es el
             // mapa mas pequeno. Menos gente no tiene sentido en classic.
             if (mode === 'classic' && r.minReal !== CLASSIC_MIN_REAL) { r.minReal = CLASSIC_MIN_REAL; rulesDirty = true; n++; }
+            if (mode === 'arcade' && r.minReal !== ARCADE_MIN_REAL) { r.minReal = ARCADE_MIN_REAL; rulesDirty = true; n++; }
         }
     }
     if (n) log(`Política por modo aplicada: classic ${ROOM_CAPS.classic}, arcade ${ROOM_CAPS.arcade}, población 0 (${n} ajustes)`);
