@@ -464,7 +464,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     const dropInvite = id => { S.invites = S.invites.filter(i => i.from.id !== id); render(); };
     function badgeCount() { return S.friends.inReq.length + liveInvites().length + Object.values(S.unread).reduce((a, b) => a + b, 0); }
     function onMsg(m) {
-        if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (!m.rc && !(m.cm && !m.cm.ready[m.me])) hideRc(); rivalsBanner(); render(); }
+        if (m.t === 'sqParty') { if (m.members.length >= 2 && !(S.party && S.party.members.length >= 2)) S.frTab = 'group'; S.party = m; S.me = m.me; S.err = ''; if (S.lanza && (m.rc || m.state === 'queued')) { if (Date.now() - S.lanza < 10000 && S.arStep) S.arStep.view = null; S.lanza = 0; } if (!m.rc && !(m.cm && !m.cm.ready[m.me])) hideRc(); rivalsBanner(); render(); }
         else if (m.t === 'sqGone') { S.party = null; S.err = ''; render(); }
         else if (m.t === 'sqErr') { if (S.joining) { S.joining = false; clearTimeout(S.joinT); } if (m.reason === 'slow_down') return; S.paying = false; S.err = (ERRS[m.reason] || 'Something went wrong.') + (m.reason === 'pay_failed' && m.detail ? ' (' + m.detail + ')' : ''); S.note = ''; render(); }   // pulsar dos veces no es un error que haya que contar
         else if (m.t === 'sqTicket') onTicket(m);
@@ -532,8 +532,8 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         render();
     }
     // Abre el panel de ARENAS (la sala de espera del grupo, donde se da READY).
-    function abreSala() {
-        if (S.arStep) S.arStep.view = null;
+    function abreSala(sinVista) {
+        if (S.arStep && !sinVista) S.arStep.view = null;
         const fr = document.getElementById('ahFr'); if (fr) fr.classList.remove('open');   // en el movil FRIENDS tapa el menu
         const b = document.querySelector('#appHub [data-a="arenas"]');
         if (b && !isOpen('rooms')) b.click(); else if (!b) openPc('rooms');
@@ -1203,8 +1203,8 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         if (!grupoOk(n, () => lanzar(n, usd))) return;
         if (S.party && !imLeader()) { send({ a: 'propose', price: usd, size: n }); S.note = 'Proposal sent to your leader'; render(); return; }
         S.usd = usd; try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {}
-        if (S.arStep) S.arStep.view = null;   // se abre el grupo con su sala de espera
-        start(() => { send({ a: 'play', mode: arMode(), price: usd, ready: !usd }); abreSala(); });   // gratis: pulsar es tu LISTO; de pago: PAY & READY
+        S.lanza = Date.now();   // la vista (precio / rivales) se queda hasta que llega la sala de espera: asi no parpadea el menu QUICK MATCH / FIND RIVALS / MATCH CUSTOM
+        start(() => { send({ a: 'play', mode: arMode(), price: usd, ready: !usd }); abreSala(true); });   // gratis: pulsar es tu LISTO; de pago: PAY & READY
     }
     function quick() { lanzar(S.arStep ? S.arStep.size : groupSize(), S.usd | 0); }
     // PAY & READY: primero se confirma la entrada (precio exacto) y luego se firma.
