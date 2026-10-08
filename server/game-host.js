@@ -55,7 +55,7 @@ function createGameHost(deps) {
             mode,
             mapSize: baseSize,
             mapaVivo: rules.mapaVivo,   // undefined = lo que diga el modo (classic y arcade: si)
-            circular: redondo,
+            circular: true,   // todos los modos con mapa redondo (classic y arenas con la misma superficie que el cuadrado)
             worldSettings: { map: 1, food: rules.food || 1, virus: rules.virus || 1, speed: rules.speed || 1 },
             botConfig: { enabled: !!rules.botsEnabled, count: rules.botCount || 0, respawn: !!rules.botsEnabled },
             maxBotCells: mode === 'classic' ? 8 : 4,

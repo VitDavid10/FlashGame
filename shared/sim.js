@@ -461,9 +461,14 @@
             // Mapa vivo: classic y arcade salvo que se diga lo contrario (config.mapaVivo). En arcade el tope es su
             // mapa de siempre (3500), al que se llega justo con 25 jugadores: con menos, el mapa es mas pequeno.
             this.mapaVivo = this.config.mapaVivo != null ? !!this.config.mapaVivo : (this.config.mode === 'classic' || this.config.mode === 'arcade');
-            this.mapaMax = this.config.mapSize;
-            // Mapa redondo: arcade (no arenas) salvo que se diga lo contrario (config.circular). mapSize es entonces el RADIO.
-            this.circular = this.config.circular != null ? !!this.config.circular : false;
+            // Mapa redondo en todos los modos salvo que se diga lo contrario (config.circular). mapSize es entonces el RADIO.
+            this.circular = this.config.circular != null ? !!this.config.circular : true;
+            // El arcade normal ya trae su radio (ARCADE.mapa). Los demas tamanos (classic, arenas) se pensaron para el
+            // cuadrado de lado/2 = mapSize: redondos se agrandan para tener la MISMA superficie (radio = lado/2 x 2/raiz(pi)).
+            this.arcMapa = this.circular && this.config.mode === 'arcade' && this.mapaVivo;
+            this.radioK = this.circular && !this.arcMapa ? 2 / Math.sqrt(Math.PI) : 1;
+            this.mapSize = Math.round(this.mapSize * this.radioK);
+            this.mapaMax = this.mapSize;
             this._mapa = { bajaDesde: null, estado: 'estable', emitidoAt: -1e9, emitidoSize: -1 };
             this.arc = null;   // arcade: zona, eventos y corona (ver startArcade)
             this.now = 0;
@@ -1082,8 +1087,8 @@
         // Lado/2 del mapa para n jugadores (con el multiplicador de mapa de la sala).
         mapaObjetivo(n) {
             const ws = this.config.worldSettings || {};
-            const arc = this.circular, t = (arc ? ARCADE.porJugador : MAPA_VIVO.porJugador) * Math.sqrt(Math.max(1, n)) * (ws.map || 1);
-            return Math.round(Math.max(arc ? ARCADE.minimo : MAPA_VIVO.min, Math.min(this.mapaMax, t)));
+            const arc = this.arcMapa, t = (arc ? ARCADE.porJugador : MAPA_VIVO.porJugador * this.radioK) * Math.sqrt(Math.max(1, n)) * (ws.map || 1);
+            return Math.round(Math.max(arc ? ARCADE.minimo : MAPA_VIVO.min * this.radioK, Math.min(this.mapaMax, t)));
         }
         // Jugadores vivos + grupos de bots (offline los bots hacen de gente).
         mapaGente() {
@@ -1095,7 +1100,7 @@
         // estado y cada cadaMs mientras se mueve; el cliente lo usa para pintar
         // el borde y el aviso. La comida que se queda fuera se quita ('foodDel').
         pasoMapa(delta) {
-            const m = this._mapa, antes = this.mapSize, paso = MAPA_VIVO.velocidad * delta / 1000 * (this.circular ? 1.6 : 1);
+            const m = this._mapa, antes = this.mapSize, paso = MAPA_VIVO.velocidad * delta / 1000 * (this.arcMapa ? 1.6 : 1);
             let obj = this.mapaObjetivo(this.mapaGente());
             if (this.arc && !this.arcEntradaAbierta()) obj = Math.max(obj, this.mapSize);   // arcade cerrado: el mapa ya no encoge, lo cierra la zona
             let estado = 'estable';
