@@ -35,7 +35,7 @@ const X_PENDING_TTL_MS = 10 * 60 * 1000;
 const X_LOGIN_PER_MIN = 10, X_PENDING_MAX = 20000;
 const X_SCOPES = 'tweet.read users.read';
 // With AIRDROP_ONLY=1, the only static paths served (prefixes end in '/').
-const LOCKDOWN_ALLOW = ['/game/', '/shared/', '/vendor/', '/fonts/', '/img/', '/snd/', '/video/', '/api/', '/info.css', '/info.js', '/cookies.js'];
+const LOCKDOWN_ALLOW = ['/game/', '/shared/', '/vendor/', '/fonts/', '/img/', '/snd/', '/video/', '/api/', '/match', '/info.css', '/info.js', '/cookies.js'];
 // The legal pages the dApp Store listing links to: public even through the
 // lockdown and the blackout (the store's reviewers open them).
 const LEGAL_PAGES = ['/privacy.html', '/terms.html', '/contact.html'];

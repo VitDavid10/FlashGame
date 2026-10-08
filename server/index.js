@@ -66,6 +66,11 @@ const { createIpc } = require('./cluster/ipc.js');             // request/respon
 const PW_ROLE = process.env.PW_ROLE || 'mono';
 const PW_HOST_ID = parseInt(process.env.PW_HOST_ID, 10) || 0;
 const PW_HOST_COUNT = parseInt(process.env.PW_HOST_COUNT, 10) || 1;
+// Peticiones HTTP internas director -> host (/api/rooms, /api/publicstats): van firmadas con esta clave, que el
+// director crea al arrancar y pasa a sus hosts. Con el sitio cerrado (AIRDROP_ONLY / SITE_CLOSED) el host contestaba
+// 404 a esas peticiones (no llevan Referer) y la lista de salas salia entera "offline".
+const PW_INTERNAL_KEY = process.env.PW_INTERNAL_KEY || crypto.randomBytes(24).toString('hex');
+const internoHdr = { 'x-pw-internal': PW_INTERNAL_KEY };
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 /*
@@ -278,6 +283,7 @@ function spawnHost(hostId) {
             PW_HOST_ID: String(hostId),
             PW_HOST_COUNT: String(PW_HOST_COUNT),
             PORT: String(port),
+            PW_INTERNAL_KEY,
         }),
     });
     const ipc = createIpc(child, { label: `director→host${hostId}` });
@@ -2597,7 +2603,8 @@ const httpServer = http.createServer(async (req, res) => {
     // Antes que el airdrop: con SITE_CLOSED/AIRDROP_ONLY los botones del Discord siguen vivos.
     if (await discord.handle(req, res, urlPath)) return;
     if (await handleInbox(req, res, urlPath, query)) return;
-    if (await airdrop.handle(req, res, urlPath, query)) return;
+    const internoDirector = PW_ROLE === 'host' && req.headers['x-pw-internal'] === PW_INTERNAL_KEY;
+    if (!internoDirector && await airdrop.handle(req, res, urlPath, query)) return;
 
     // --- Salud del servidor: heap, uptime y tamaños de estructuras (diagnóstico de leaks) ---
     if (urlPath === '/api/health') {
@@ -2687,7 +2694,7 @@ const httpServer = http.createServer(async (req, res) => {
             await Promise.all([...hostProcs.values()].map(async (h) => {
                 if (!h.alive) return;
                 try {
-                    const r = await fetch(`http://localhost:${h.port}/api/publicstats`);
+                    const r = await fetch(`http://localhost:${h.port}/api/publicstats`, { headers: internoHdr });
                     const j = await r.json();
                     activePlayers += j.activePlayers || 0; revenue += j.revenue || 0;
                 } catch (e) { /* host caído: no suma, no rompe */ }
@@ -2718,7 +2725,7 @@ const httpServer = http.createServer(async (req, res) => {
                 await Promise.all([...hostProcs.values()].map(async (h) => {
                     if (!h.alive) return;
                     try {
-                        const r = await fetch(`http://localhost:${h.port}/api/rooms`);
+                        const r = await fetch(`http://localhost:${h.port}/api/rooms`, { headers: internoHdr });
                         perHost.set(h.id, await r.json());
                     } catch (e) { /* host caído: sus combos salen 'offline' */ }
                 }));
