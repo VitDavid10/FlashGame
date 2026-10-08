@@ -352,7 +352,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em;cursor:pointer;word-break:break-all}
 .pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
 #ahPr .pr-bt{margin-top:1.2em}#ahPr .pr-w{margin-top:.35em}
-.tb .pz-dot{display:inline-block;width:.5em;height:.5em;background:#ffd23a;margin-left:.5em;vertical-align:.15em;box-shadow:.1em .1em 0 #000}
+.tb .pz-dot{display:inline-block;min-width:1.4em;box-sizing:border-box;padding:.3em .4em .2em;background:#e5302f;color:#fff;font-style:normal;font-size:.7em;line-height:1;text-align:center;margin-left:.6em;vertical-align:.2em;box-shadow:0 0 0 .18em #000}
 .pz-l{display:flex;flex-direction:column;gap:.45em;max-height:15em;overflow-y:auto;margin-top:.9em}
 .pz-r{display:flex;align-items:center;gap:1em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.6em .9em}
 .pz-r .m{font-size:.5em;color:#fff;min-width:6.5em}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
@@ -1578,7 +1578,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahPrPzC').style.display = conectada ? '' : 'none';
         $('#ahPrPzC').onclick = abrePremios;
         $('#ahPrPzDot').style.display = 'none';
-        if (w && window.PWSquad) PWSquad.prizes(w, total => { $('#ahPrPzDot').style.display = total > 0 ? '' : 'none'; });
+        if (w && window.PWSquad) PWSquad.prizes(w, (total, list) => { const d = $('#ahPrPzDot'); d.textContent = (list || []).length ? String(Math.min((list || []).length, 99)) : ''; d.style.display = total > 0 ? '' : 'none'; });
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
     }
     // Historial de premios de arenas: los cobrados salen CLAIMED; lo pendiente se cobra todo con CLAIM ALL.

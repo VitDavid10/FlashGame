@@ -16289,42 +16289,42 @@
         }
     }
 
-    // Guia de puntería de SHOOT y CLON: con la habilidad lista se ve la pildora que dispara (anillo), por dónde sale
-    // (circulo en el borde, igual que en la sim: emitProjectile) y hasta dónde llega (línea de puntos con flecha).
+    // Guia de punteria de SHOOT y CLON: con la habilidad lista, un punto en el borde de la pildora que dispara (por donde
+    // sale el proyectil, igual que en la sim: emitProjectile) y una flecha pequena con la direccion. El angulo se suaviza
+    // para que no tiemble con el movimiento del raton ni de la pildora.
+    const _aimA = {};
     function drawAimGuide(es) {
         if (!gameRunning || !sim || isSpectating) return;
         const p = me(); if (!p || !p.alive || !p.cells || !p.cells.length || p.globalCD > 0 || !p.skillSlots) return;
         const listas = p.skillSlots.filter(sl => sl && (sl.id === 1 || sl.id === 2) && (sl.uses > 0 || p.godMode) && !(p.skillState && p.skillState[sl.id] > 0));
         if (!listas.length) return;
         const tx = (mouse.x - width / 2) / es + camera.x, ty = (mouse.y - height / 2) / es + camera.y;
-        const tipos = { 2: { cost: SKILL_PARAMS.shootCost, v: SKILL_PARAMS.shootBulletSpeed || 20, f: 0.93, r: 12, col: '255,70,70' }, 1: { cost: SKILL_PARAMS.clonCost, v: SKILL_PARAMS.clonSpeed || 40, f: 0.9, r: 16, col: '0,229,255' } };
-        const t0 = performance.now();
-        listas.sort((a, b) => b.id - a.id).forEach((sl, k) => {
+        const tipos = { 2: { cost: SKILL_PARAMS.shootCost, r: 12, col: '255,70,70' }, 1: { cost: SKILL_PARAMS.clonCost, r: 16, col: '0,229,255' } };
+        listas.sort((a, b) => b.id - a.id).forEach(sl => {
             const T = tipos[sl.id];
             let best = null, minD = Infinity;
             p.cells.forEach(c => { if (c.mass - T.cost > 314) { const d = Math.hypot(c.x - tx, c.y - ty); if (d < minD) { minD = d; best = c; } } });
             if (!best) return;
-            const a = Math.atan2(ty - best.y, tx - best.x), rel = a - (-Math.PI / 4);
+            const objetivo = Math.atan2(ty - best.y, tx - best.x);
+            let a = _aimA[sl.id];
+            if (a == null) a = objetivo; else { let d = objetivo - a; d = Math.atan2(Math.sin(d), Math.cos(d)); a += d * 0.3; }
+            _aimA[sl.id] = a;
+            const rel = a - (-Math.PI / 4);
             const edge = (best.r * (best.r * PILL_RATIO)) / Math.sqrt(Math.pow((best.r * PILL_RATIO) * Math.cos(rel), 2) + Math.pow(best.r * Math.sin(rel), 2));
             const sd = edge + 25, sx = best.x + Math.cos(a) * sd, sy = best.y + Math.sin(a) * sd;
-            const alcance = T.v / (1 - T.f), ex = sx + Math.cos(a) * alcance, ey = sy + Math.sin(a) * alcance;
-            const u = 1 / es;
+            const u = 1 / es, L = 70 * u, ex = sx + Math.cos(a) * (T.r + L), ey = sy + Math.sin(a) * (T.r + L);
             ctx.save();
-            // la pildora que dispara
-            ctx.strokeStyle = 'rgba(' + T.col + ',' + (0.55 + 0.25 * Math.sin(t0 / 160)) + ')'; ctx.lineWidth = 3 * u; ctx.setLineDash([8 * u, 6 * u]);
-            ctx.beginPath(); ctx.arc(best.x, best.y, best.r + 6 * u, 0, Math.PI * 2); ctx.stroke();
-            // trayectoria
-            ctx.setLineDash([10 * u, 9 * u]); ctx.lineDashOffset = -(t0 / 40) * u; ctx.lineWidth = 3 * u;
-            ctx.strokeStyle = 'rgba(' + T.col + ',0.6)';
-            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+            // tramo corto de puntos hasta la flecha
+            ctx.setLineDash([6 * u, 6 * u]); ctx.lineWidth = 3 * u; ctx.strokeStyle = 'rgba(' + T.col + ',0.7)';
+            ctx.beginPath(); ctx.moveTo(sx + Math.cos(a) * T.r, sy + Math.sin(a) * T.r); ctx.lineTo(ex, ey); ctx.stroke();
             ctx.setLineDash([]);
-            // flecha al final
-            ctx.fillStyle = 'rgba(' + T.col + ',0.75)';
-            ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * 16 * u, ey + Math.sin(a) * 16 * u);
-            ctx.lineTo(ex + Math.cos(a + 2.5) * 14 * u, ey + Math.sin(a + 2.5) * 14 * u); ctx.lineTo(ex + Math.cos(a - 2.5) * 14 * u, ey + Math.sin(a - 2.5) * 14 * u); ctx.closePath(); ctx.fill();
+            // flecha pequena
+            ctx.fillStyle = 'rgba(' + T.col + ',0.9)';
+            ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * 12 * u, ey + Math.sin(a) * 12 * u);
+            ctx.lineTo(ex + Math.cos(a + 2.5) * 10 * u, ey + Math.sin(a + 2.5) * 10 * u); ctx.lineTo(ex + Math.cos(a - 2.5) * 10 * u, ey + Math.sin(a - 2.5) * 10 * u); ctx.closePath(); ctx.fill();
             // punto de salida
             ctx.strokeStyle = 'rgba(' + T.col + ',0.95)'; ctx.fillStyle = 'rgba(' + T.col + ',0.35)'; ctx.lineWidth = 3 * u;
-            ctx.beginPath(); ctx.arc(sx, sy, T.r + 2 * u, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(sx, sy, T.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
             ctx.restore();
         });
     }

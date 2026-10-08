@@ -113,6 +113,7 @@
 .sq-tab{flex:1;font-family:inherit;font-size:.5em;letter-spacing:.1em;padding:.7em;background:none;border:.14em solid #2f3d35;color:#7d8a82;cursor:pointer}
 .sq-tab.on{border-color:var(--ac,#00ff88);color:var(--ac,#00ff88)}
 .sq-tab:disabled{opacity:.35}
+.sq-gw .sq-grp{gap:1.4em}.sq-gw .sq-av{width:8.5em}.sq-gw .sq-av .sq-pic{width:4.4em;height:4.4em;font-size:1.4em}.sq-gw .sq-av .n{font-size:.5em}
 .sq-gw{flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0}   /* el panel no se sale de la pantalla: con grupo la lista hace scroll dentro */
 /* amigos: la lista usa todo el alto del panel (si no, con 3 amigos el tercero quedaba cortado) y las filas son mas bajas */
 #ahFrBody .sq-list{max-height:none;overflow:visible;gap:.4em}
@@ -782,14 +783,14 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     function onClaim(m) {
         S.claiming = false;
         if (m.all) {
-            if (m.ok) { if (S.prize) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 5000, center: true }); }
+            if (m.ok) { if (S.prize) S.prize.claimed = true; cobrado(m.amount, S.prize && S.prize.usd); }
             else if (m.reason !== 'already_claimed') toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
             const cb = S.afterAll; S.afterAll = null; if (cb) cb();
             const el0 = document.getElementById('sqEnd'); if (el0) pintaPremio(el0);
             try { if (window.GameWallet && GameWallet.refreshBalance) GameWallet.refreshBalance(); } catch (e) {}
             return;
         }
-        if (m.ok) { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; toast({ text: '+' + fmtPill(m.amount) + ' added to your balance', warm: true, ms: 5000, center: true }); }
+        if (m.ok) { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; cobrado(m.amount, S.prize && S.prize.id === m.id ? S.prize.usd : null); }
         else if (m.reason === 'already_claimed') { if (S.prize && S.prize.id === m.id) S.prize.claimed = true; }
         else toast({ text: 'Claim failed. Try again.', warm: true, ms: 4000, center: true });
         const el = document.getElementById('sqEnd'); if (el) pintaPremio(el);
@@ -1135,6 +1136,11 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     // Un amigo con el aviso activado (ALERT en FRIENDS) esta LISTO buscando partida: aviso ARENA con boton para ir a por el.
     // Amigos con ALERT que ya estaban buscando cuando se vio el menu (p. ej. al volver de una partida).
     function avisosPendientes() { (S.friends.friends || []).forEach(f => { if (f.q && S.watch[f.id]) avisoListo(f); }); }
+    // Premio cobrado: sin popup en medio de la partida; el aviso espera en la placa ARENA y sale al volver al menu.
+    function cobrado(amount, usd) {
+        const txt = '+' + fmtPill(amount) + (usd != null ? ' (' + fmtUsd(usd) + ')' : '') + ' added to your balance';
+        if (window.PWSys) window.PWSys.push(txt, 9000, 1, { kind: 'arena' });
+    }
     function avisoListo(f) {
         // Solo con el menu a la vista (nunca en partida) y una vez por amigo hasta que se vuelva al menu tras jugar.
         if (!document.body.classList.contains('hub-on') || S.alerted[f.id]) return;
