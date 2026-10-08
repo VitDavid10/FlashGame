@@ -3393,7 +3393,7 @@
         .winner-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; font-weight: bold; color: #ccc; }
         .winner-item span:last-child { color: var(--primary); font-family: 'Russo One'; }
         #actionBar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) scale(1.56); transform-origin: bottom center; display: none; gap: 8px; z-index: 15; padding: 8px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; border-radius: 12px; pointer-events: auto; backdrop-filter: blur(5px); }
-        .ab-slot .ab-key { position: absolute; left: 3px; top: 1px; font: 9px 'Press Start 2P', monospace; color: #fff; text-shadow: 1px 1px 0 #000; opacity: .85; pointer-events: none; z-index: 3; }
+        .ab-slot .ab-key { position: absolute; left: 0; top: 0; min-width: 13px; padding: 2px 3px 1px; text-align: center; font: 8px 'Press Start 2P', monospace; color: var(--primary); background: rgba(0,0,0,.82); border-right: 1px solid #333; border-bottom: 1px solid #333; border-radius: 0 0 6px 0; pointer-events: none; z-index: 3; }
         body.mobile-allowed .ab-slot .ab-key { display: none; }
         .ab-slot { width: 50px; height: 50px; background: #151515; border: 2px solid #333; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; transition: transform 0.1s; overflow: hidden; cursor: grab; }
         .ab-slot:active { cursor: grabbing; }
@@ -16518,6 +16518,7 @@
         const b = document.getElementById('arcBanner');
         if (!arcSt || currentGameMode !== 'arcade' || !gameRunning) { if (b) b.className = ''; return; }
         const t = arcT(), fuera = arcFuera();
+        if (!fuera) { window._arcBarPico = 0; window._arcBarF = null; }
         // Borde rojo de pantalla mientras estas fuera de la zona.
         if (fuera) {
             const g = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
@@ -16528,7 +16529,13 @@
         if (fuera && arcSt.dano > 0) {
             let m = 0; myCells().forEach(c => m += c.mass);
             const seg = m > PillSim.ARCADE.masaMin ? Math.log(PillSim.ARCADE.masaMin / m) / Math.log(1 - arcSt.dano) : 0;
-            const W = Math.min(320, width * 0.42), H = 16, x = (width - W) / 2, y = (EN_APP && !document.body.classList.contains('mobile-allowed')) ? 66 : 112, f = Math.max(0, Math.min(1, seg / 40));
+            const W = Math.min(320, width * 0.42), H = 16, x = (width - W) / 2, y = (EN_APP && !document.body.classList.contains('mobile-allowed')) ? 66 : 112; let f;
+            // Antes la barra estaba llena hasta que quedaban 40 s y luego caia de golpe. Ahora se mide contra el tiempo
+            // que tenias al salir de la zona (llena al salir, baja desde el primer segundo) y se suaviza.
+            window._arcBarPico = Math.max(window._arcBarPico || 0, seg, 10);
+            const objF = Math.max(0, Math.min(1, seg / window._arcBarPico));
+            window._arcBarF = window._arcBarF == null ? 1 : window._arcBarF + (objF - window._arcBarF) * 0.12;
+            f = window._arcBarF;
             const parpadea = seg < 6 && Math.floor(performance.now() / 160) % 2;
             ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(x - 4, y - 4, W + 8, H + 8);
             ctx.fillStyle = '#3a0505'; ctx.fillRect(x, y, W, H);

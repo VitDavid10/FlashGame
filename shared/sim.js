@@ -1363,6 +1363,8 @@
                     if (f.eaten) continue;
                     if (getEllipticalDist(c, f) < c.r + f.r) {
                         let gain = (Math.PI * f.r * f.r * 2.5) * gainMultiplier;
+                        // Arcade: fuera de la zona segura se gana un 70% menos al comer (si no, comiendo se aguantaba el veneno).
+                        if (this.arc && this.arc.fase > 0 && !this.dentroMapa(c.x, c.y, this.arc.s)) gain *= 0.3;
                         c.r = Math.sqrt((c.mass + gain) / (Math.PI * PILL_RATIO));
                         f.eaten = true;
                     }

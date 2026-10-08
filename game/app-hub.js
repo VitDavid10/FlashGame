@@ -18,9 +18,9 @@
     const SWATCH = ['#ffffff', '#c8ccd2', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'];
     // Colores de THE PILL: 9 tonos en 3 filas (normal, oscuro, claro), para arriba y para abajo.
     const PILL_COLS = [
-        ['#ffffff', '#ff2a2a', '#ff8a00', '#ffd23a', '#00e05a', '#00e0b0', '#1e6bff', '#6cc8ff', '#b000ff'],
-        ['#9a9a9a', '#931c1c', '#8f4d00', '#8e7a26', '#00803a', '#008a6e', '#153f9a', '#3f7398', '#66009e'],
-        ['#c8ccd2', '#ff8f8f', '#ffc27a', '#ffe39a', '#7aeea6', '#7aefd6', '#82a8ff', '#b6e3ff', '#d27aff']
+        ['#ffffff', '#ff2a2a', '#ff8a00', '#ffd23a', '#c8ff00', '#00e05a', '#00e0b0', '#00cfff', '#1e6bff', '#5a5aff', '#b000ff', '#ff4fd8', '#ff2a80'],
+        ['#7a7a7a', '#931c1c', '#8f4d00', '#8e7a26', '#6b8a00', '#00803a', '#008a6e', '#007a99', '#153f9a', '#2a2a8a', '#66009e', '#9a2a86', '#8a1048'],
+        ['#c8ccd2', '#ff8f8f', '#ffc27a', '#ffe39a', '#e2ff7a', '#7aeea6', '#7aefd6', '#9be8ff', '#82a8ff', '#a6a6ff', '#d27aff', '#ffa6ec', '#ff8fb8']
     ];
     // Skills de salida del ARCADE (solo interfaz: la partida aun no las usa).
     const SKILLS = [['clon', 'CLON'], ['shoot', 'SHOOT'], ['sprint', 'SPRINT'], ['tp', 'BLINK'], ['iman', 'MAGNET'], ['inmune', 'SHIELD'], ['big', 'PLUS'], ['random', 'GAMBLE']];
@@ -73,7 +73,7 @@
         const k = res * fill / sw;
         g.drawImage(o.cv, 0, 0, sw, sh, res / 2 - sw * k / 2, res / 2 - sh * k / 2 + (bobPx || 0), sw * k, sh * k);
     }
-    const placa = (box, t) => { if (typeof drawPlacaCaja === 'function') { const cv = box.querySelector(':scope>canvas'); cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], t); } };
+    const placa = (box, t) => { if (typeof drawPlacaCaja === 'function') { const cv = box.querySelector(':scope>canvas'); cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], (t || 1) * (hub.classList.contains('pc') ? 0.5 : 1)); } };
 
     const css = `
 #appHub{position:fixed;inset:0;z-index:105;display:none;overflow:hidden;background:var(--bg);color:#fff;font-family:'Press Start 2P',monospace;
@@ -243,7 +243,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .co{display:flex;flex-direction:column;justify-content:center;gap:.9em}
 .co .rw{display:flex;align-items:center;gap:.8em}
 .co .lb{width:5.6em;font-size:.44em;color:var(--mut);letter-spacing:.1em;flex:none}
-.co .sw{display:grid;grid-template-columns:repeat(9,1.55em);gap:.3em}
+.co .sw{display:grid;grid-template-columns:repeat(13,1.4em);gap:.25em}
 .co .sw b{aspect-ratio:1;cursor:pointer;box-shadow:inset -.18em -.18em 0 rgba(0,0,0,.35),inset .18em .18em 0 rgba(255,255,255,.3),0 0 0 .1em #000}
 .co .sw b.sel{outline:.16em solid #fff;outline-offset:.12em}
 .qg{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:.45em}
@@ -475,6 +475,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ov.open .pnl{pointer-events:auto}
 .ph>.px.pmax{margin-left:auto}.ph>.pmax+.px{margin-left:.5em}.ph>.cnt+.pmax{margin-left:.7em}
 #ahSkSp+.pmax,#ahStSp+.pmax,#ahQSp+.pmax,#ahPrSp+.pmax{margin-left:auto}
+#appHub:not(.pc) .ph>.px:last-child{margin-left:auto}
 #appHub:not(.pc) .pmax{display:none}
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv){background:rgba(3,6,4,.9);justify-content:center;align-items:center;padding:0;pointer-events:auto;z-index:8}
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:auto;font-size:1em}
@@ -658,6 +659,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // (pensado para cuando iba solo): en la fila con CLOSE se salia de la caja.
         ['gdConfirm', 'gwdConfirm'].forEach(id => { const e = document.getElementById(id); if (e) e.style.removeProperty('transform'); });
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
+        if (m.id === 'walletPickerModal') return;   // el selector de wallet conserva su cartel de siempre (el marco placa lo descuadraba)
         const walHub = document.documentElement.classList.contains('ah-wal-hub') && (m.id === 'gameDepositModal' || m.id === 'gameWithdrawModal');
         if (m.classList.contains('gameModal') && m.id !== 'gameTopUpModal' && !walHub) return;
         const box = m.querySelector('.pw-modal-box, .gameModalBox'); if (!box || typeof drawPlacaCaja !== 'function') return;
