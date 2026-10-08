@@ -1313,9 +1313,22 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (!aq || aq.day !== day) aq = { day, pins: [], prog: {}, done: {}, claimed: {}, sk: [] };
         return aq;
     }
+    // Colores de la pastilla: antes solo vivian en los selectores ocultos y se perdian al recargar. Se guardan al cambiar y se vuelven a poner al arrancar.
+    function aplicaColores() {
+        let c = null; try { c = JSON.parse(localStorage.getItem('pw_pillcols')); } catch (e) {}
+        if (!Array.isArray(c) || c.length !== 2) return;
+        ['colTop', 'colBot'].forEach((id, i) => { const el = document.getElementById(id); if (el && /^#[0-9a-f]{6}$/i.test(c[i])) el.value = c[i]; });
+        try { paintStatic(); if ($('#ahSk').classList.contains('open')) renderPill(); } catch (e) {}
+    }
+    function guardaColores() {
+        const t = document.getElementById('colTop'), b = document.getElementById('colBot'); if (!t || !b) return;
+        try { const nuevo = JSON.stringify([t.value, b.value]); if (localStorage.getItem('pw_pillcols') !== nuevo) localStorage.setItem('pw_pillcols', nuevo); } catch (e) {}
+    }
+    document.addEventListener('input', e => { if (e.target && (e.target.id === 'colTop' || e.target.id === 'colBot')) guardaColores(); }, true);
+    document.addEventListener('change', e => { if (e.target && (e.target.id === 'colTop' || e.target.id === 'colBot')) guardaColores(); }, true);
     // Cualquier cambio de un ajuste de la cuenta (lo escriba quien lo escriba) adelanta la sincronizacion.
     try {
-        const _set = Storage.prototype.setItem, _PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name'];
+        const _set = Storage.prototype.setItem, _PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols'];
         Storage.prototype.setItem = function (k, v) { const r = _set.apply(this, arguments); if (this === window.localStorage && _PK.indexOf(k) >= 0) { try { cuentaSyncPronto(); } catch (e) {} } return r; };
     } catch (e) {}
     function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} cuentaSyncPronto(); }
@@ -1329,7 +1342,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try {
             const a = aqLoad(), body = { aq: { day: a.day, pins: a.pins, prog: a.prog, done: a.done, claimed: a.claimed, pt: a.pt || 0 } };
             // ajustes de la cuenta (avisos de amigos, apodos, skills de salida, nombre): cada clave lleva su hora de cambio
-            const PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name'];
+            const PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols'];
             let snap = {}; try { snap = JSON.parse(localStorage.getItem('pw_pref_t')) || {}; } catch (e) {}
             body.prefs = {};
             PK.forEach(k => {
@@ -1370,6 +1383,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             if (cambiadas.length) {
                 try { localStorage.setItem('pw_pref_t', JSON.stringify(snap)); } catch (e) {}
                 if (cambiadas.includes('pw_start_skills')) { try { picks = JSON.parse(localStorage.getItem('pw_start_skills')) || [null, null]; } catch (e) {} }
+                if (cambiadas.includes('pw_pillcols')) { aplicaColores(); }
                 if (cambiadas.includes('pw_app_name')) { try { guardaNombre(localStorage.getItem('pw_app_name')); } catch (e) {} }
                 try { if (window.PWSquad && PWSquad.reloadPrefs) PWSquad.reloadPrefs(); } catch (e) {}
                 cambio = true;
@@ -2081,6 +2095,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function start() {
         document.body.appendChild(hub);
         try { const n = localStorage.getItem('pw_app_name'); if (n) guardaNombre(n); } catch (e) {}
+        aplicaColores();
         syncX();
         // Vuelta del login de X por el navegador (#xhandoff=...): se canjea dentro del WebView, que es donde tiene que quedar la cookie.
         // La app nativa vuelve cargando la MISMA pagina con otro #: eso no recarga, solo cambia el hash. Por eso tambien se
