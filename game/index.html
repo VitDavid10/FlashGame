@@ -922,6 +922,12 @@
                 transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
                 transform-origin: center !important;
             }
+            /* Arcade: el rotulo de zona y eventos, girado igual (si no, salia de canto sobre la partida tumbada). */
+            html:not([data-hero]) body.mobile-allowed #arcBanner {
+                top: 50% !important; bottom: auto !important; right: 24% !important; left: auto !important;
+                transform: translate(50%, -50%) rotate(90deg) scale(0.85) !important;
+                transform-origin: center !important;
+            }
             /* Aviso de pentakill y el +X de cada kill: cuelgan de <body>, asi que
                la rotacion del juego no les llegaba y salian derechos sobre una
                partida tumbada. Se giran igual que #botsBanner. El aviso va justo
@@ -11275,7 +11281,9 @@
         // Una sala con el reloj vencido es una partida TERMINADA: no se
         // reutiliza su simulacion. Si no, entrabas con el contador recien
         // puesto a 3:50 pero con los bots ya gordos de la partida anterior.
-        if (roomTimers[roomKey] && roomTimers[roomKey] <= Date.now()) {
+        // Arcade: pasado el primer minuto la sala esta cerrada (como en online): sin partida guardada que retomar, se empieza otra.
+        const arcadeCerrada = currentGameMode === 'arcade' && roomTimers[roomKey] && (GAME_DURATION_MS - (roomTimers[roomKey] - Date.now())) >= PillSim.ARCADE.entradaMs && !saveSystem.hasSaveForRoom(currentGameMode, currentServer);
+        if (roomTimers[roomKey] && (roomTimers[roomKey] <= Date.now() || arcadeCerrada)) {
             roomStates[roomKey] = null;
             delete roomTimers[roomKey];
         }
@@ -15064,7 +15072,7 @@
     }
     window.pwPlaca = pwPlaca;
     // Avisos SI/NO (arenas, desvincular X...): sin sonido; confirmar gris y cancelar rojo, del mismo tamano.
-    window.pwConfirm = function (title, text, yes, no, onYes) {
+    window.pwConfirm = function (title, text, yes, no, onYes, onNo) {
         let ov = document.getElementById('pwConf');
         if (!ov) {
             ov = document.createElement('div'); ov.id = 'pwConf';
@@ -15077,7 +15085,7 @@
         y.textContent = yes; n.textContent = no;
         const cierra = () => { ov.classList.remove('on'); };
         y.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onYes) onYes(); };
-        n.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); };
+        n.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onNo) onNo(); };
         ov.classList.add('on');
         pwPlaca(b);
     };

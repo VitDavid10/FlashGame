@@ -1753,6 +1753,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('.ah-play').onclick = async () => {
             const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
             try { SoundManager.play('select'); } catch (x) {}
+            if (kind === 'online' && mode === 'arcade' && !esperarIgual && !(await arcadeAbierta())) return;
+            esperarIgual = false;
             try {
                 // Volver a la partida en curso solo si es la sala elegida: antes cualquier sala de pago te devolvia a la FREE que dejaste.
                 if (typeof Rejoin !== 'undefined' && Rejoin.get()) {
@@ -1769,6 +1771,39 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         };
     }
 
+    // ARCADE: pasado el primer minuto nadie entra en esa partida. Si la sala elegida no tiene ninguna layer abierta
+    // (esperando gente, o jugando y aun en el primer minuto) se avisa y se recomienda otra: primero donde se esta
+    // jugando, luego donde se espera gente; con casi nadie, ARENAS. Si hay otra layer abierta, se entra sin decir nada.
+    let esperarIgual = false;
+    const ARC_ENTRADA = (window.PillSim && PillSim.ARCADE && PillSim.ARCADE.entradaMs) || 60000;
+    const capaAbierta = l => !l.disabled && l.players < (l.maxPlayers || 35) && (l.state === 'waiting' || (l.state === 'playing' && (l.openMs || 0) < ARC_ENTRADA));
+    const salaTxt = p => p === 'Free' ? 'FREE' : '$' + String(p).replace('$', '');
+    async function arcadeAbierta() {
+        await pullRooms();
+        const mias = rooms.filter(r => r.mode === 'arcade'), r = mias.find(x => x.room === room);
+        if (!r || !(r.layers || []).length || (r.layers || []).some(capaAbierta)) return true;
+        const jugando = [], esperando = [];
+        for (const x of mias) {
+            if (x.room === room) continue;
+            for (const l of x.layers || []) {
+                if (!capaAbierta(l)) continue;
+                (l.state === 'playing' ? jugando : esperando).push({ room: x.room, players: l.players });
+            }
+        }
+        jugando.sort((a, b) => b.players - a.players); esperando.sort((a, b) => b.players - a.players);
+        const total = mias.reduce((a, x) => a + (x.players || 0), 0), mejor = jugando[0] || esperando.find(e => e.players > 0);
+        const ir = p => { room = p; renderRooms(); paintStatic(); $('.ah-play').onclick(); };
+        const quedar = () => { esperarIgual = true; $('.ah-play').onclick(); };
+        const cab = 'MATCH ALREADY STARTED', base = 'The ' + salaTxt(room) + ' match started more than 1 minute ago and no one can join it now.';
+        if (typeof pwConfirm !== 'function') return true;
+        if (mejor && total >= 4) {
+            const lista = jugando.slice(0, 2).map(j => salaTxt(j.room) + ' · playing · ' + j.players + ' in').concat(esperando.slice(0, 2).map(e => salaTxt(e.room) + ' · waiting · ' + e.players + ' in'));
+            pwConfirm(cab, base + '\n\n' + lista.join('\n'), 'GO TO ' + salaTxt(mejor.room), 'WAIT HERE', () => ir(mejor.room), quedar);
+        } else {
+            pwConfirm(cab, base + '\n\nFew people are playing ARCADE right now. ARENAS has players and quick matches are easier to find.', 'OPEN ARENAS', 'WAIT HERE', () => { const b = $('[data-a=arenas]'); if (b) b.click(); }, quedar);
+        }
+        return false;
+    }
     // Placa SYSTEM: avisos del juego en cola, uno a la vez, cada uno el tiempo que se le da.
     // prio 0 = importante (pasa delante), 1 = normal, 2 = consejo. Solo corre con el hub a la vista.
     // Consejos que rotan en la placa cuando no hay avisos. Los que dependen de datos del dia se calculan al sacarlos.
