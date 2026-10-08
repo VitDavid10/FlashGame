@@ -11268,7 +11268,7 @@
         enableEnemyFX = serverEnemyFx; enableEnemySnd = false;
         isGodMode = false; isSpectating = false;
         // Classic tambien con barra de skills (2-oct-2026).
-        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = WORLD_CONFIG.arcade.size; } els.actionBar.style.display = 'flex';
+        if (currentGameMode === 'classic') { MAP_SIZE = WORLD_CONFIG.classic.size; } else { MAP_SIZE = PillSim.ARCADE.mapa; } els.actionBar.style.display = 'flex';
         MAP_SIZE *= worldSettings.map;
         botConfig.enabled = true; botConfig.count = nBots; botConfig.respawn = true;
         let roomKey = currentGameMode + '_' + currentServer;
@@ -11286,7 +11286,7 @@
             sim = new PillSim.Simulation({
                 // Classic offline: arranca con 4 (tu + 3 bots) y entra un bot cada 2 s,
                 // como una sala que se va llenando (asi se ve crecer el mapa vivo).
-                mode: currentGameMode, mapSize: MAP_SIZE, worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : { inicial: 6, cadaMs: Math.max(1500, Math.round(PillSim.ARCADE.entradaMs / Math.max(1, botConfig.count - 6))) } }, maxBotCells: MAX_BOT_CELLS,
+                mode: currentGameMode, mapSize: MAP_SIZE, circular: currentGameMode === 'arcade', worldSettings: {...worldSettings}, botConfig: { enabled: botConfig.enabled, count: botConfig.count, respawn: botConfig.respawn, entrada: currentGameMode === 'classic' ? { inicial: 3, cadaMs: 2000 } : { inicial: 6, cadaMs: Math.max(1500, Math.round(PillSim.ARCADE.entradaMs / Math.max(1, botConfig.count - 6))) } }, maxBotCells: MAX_BOT_CELLS,
                 botLifeMs: currentGameMode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
                 // Mismo calentamiento que startPracticeGame: sin el, una partida
                 // offline recien entrada podia acabar en 1s con los bots ya encima.
@@ -16370,9 +16370,11 @@
     // El ranking de arcade va por PUNTUACION (masa x kills); el de classic, por masa.
     function ponTituloRanking(modo) { const h = document.querySelector('#leaderboard h3'); if (h) h.textContent = modo === 'arcade' ? 'SCORE' : 'TOP MASS'; }
     // ===== ARCADE: zona segura, eventos y aviso =====
-    const ARC_NOMBRES = { rain: 'FOOD RAIN', gold: 'GOLDEN VIRUS', double: 'DOUBLE FOOD', nosplit: 'NO SPLIT' };
+    const ARC_NOMBRES = { rain: 'FOOD RAIN', gold: 'GOLDEN VIRUS', nosplit: 'NO SPLIT' };
     const arcT = () => arcSt ? arcSt.t + (performance.now() - arcSt.at) : 0;
-    const arcFuera = () => { if (!arcSt || !(arcSt.fase > 0)) return false; const S = arcSt.s; return myCells().some(c => Math.abs(c.x) > S || Math.abs(c.y) > S); };
+    // Arcade normal: mapa y zona REDONDOS (las arenas y la practica siguen cuadradas).
+    function mapaRedondo() { return !!sim && (sim.isRemote ? (currentGameMode === 'arcade' && !(netState && netState.squad)) : !!sim.circular); }
+    const arcFuera = () => { if (!arcSt || !(arcSt.fase > 0)) return false; const S = arcSt.s, red = mapaRedondo(); return myCells().some(c => red ? Math.hypot(c.x, c.y) > S : (Math.abs(c.x) > S || Math.abs(c.y) > S)); };
     function drawArcadeMundo(es) {
         if (!arcSt || currentGameMode !== 'arcade') return;
         const u = 1 / es, M = MAP_SIZE;
@@ -16380,10 +16382,17 @@
         if (arcSt.fase > 0) {
             const S = Math.min(arcSt.s, M);
             ctx.fillStyle = 'rgba(255,40,40,0.14)';
-            ctx.fillRect(-M, -M, 2 * M, M - S); ctx.fillRect(-M, S, 2 * M, M - S);
-            ctx.fillRect(-M, -S, M - S, 2 * S); ctx.fillRect(S, -S, M - S, 2 * S);
-            ctx.strokeStyle = 'rgba(255,70,70,0.95)'; ctx.lineWidth = 5 * u; ctx.setLineDash([26 * u, 14 * u]); ctx.lineDashOffset = -(performance.now() / 25) * u;
-            ctx.strokeRect(-S, -S, 2 * S, 2 * S); ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(255,70,70,0.95)'; ctx.lineWidth = 5 * u;
+            if (mapaRedondo()) {
+                ctx.beginPath(); ctx.arc(0, 0, M, 0, Math.PI * 2); ctx.arc(0, 0, S, 0, Math.PI * 2, true); ctx.fill();
+                ctx.setLineDash([26 * u, 14 * u]); ctx.lineDashOffset = -(performance.now() / 25) * u;
+                ctx.beginPath(); ctx.arc(0, 0, S, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+            } else {
+                ctx.fillRect(-M, -M, 2 * M, M - S); ctx.fillRect(-M, S, 2 * M, M - S);
+                ctx.fillRect(-M, -S, M - S, 2 * S); ctx.fillRect(S, -S, M - S, 2 * S);
+                ctx.setLineDash([26 * u, 14 * u]); ctx.lineDashOffset = -(performance.now() / 25) * u;
+                ctx.strokeRect(-S, -S, 2 * S, 2 * S); ctx.setLineDash([]);
+            }
         }
         if ((arcSt.ev === 'rain' || arcSt.ev === 'gold') && arcSt.x != null) {
             // La zona del evento se marca desde el aviso (y la lluvia mientras dura).
@@ -16455,7 +16464,15 @@
         }
 
         ctx.save();
-        if (pixelMode) {
+        if (mapaRedondo()) {
+            // Arcade: mapa redondo. Fuera, oscuro; el borde, la misma banda roja que marcha.
+            const M = MAP_SIZE;
+            ctx.beginPath(); ctx.rect(vL - 200, vT - 200, vR - vL + 400, vB - vT + 400); ctx.arc(0, 0, M, 0, Math.PI * 2, true);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, M, 0, Math.PI * 2); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.22)'; ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, M - 10, 0, Math.PI * 2); ctx.lineWidth = 8; ctx.strokeStyle = '#ff3333';
+            ctx.setLineDash([48, 48]); ctx.lineDashOffset = -((performance.now() / 160) % 2) * 48; ctx.stroke(); ctx.setLineDash([]);
+        } else if (pixelMode) {
             // Zona de peligro translúcida + banda "hazard" de bloques pixel que marchan.
             ctx.beginPath(); ctx.lineWidth = 20; ctx.strokeStyle = 'rgba(255, 0, 0, 0.22)'; ctx.rect(-MAP_SIZE, -MAP_SIZE, MAP_SIZE*2, MAP_SIZE*2); ctx.stroke();
             const B = 48, bw = 20, march = Math.floor(performance.now() / 160) % 2, M = MAP_SIZE;

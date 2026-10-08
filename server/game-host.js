@@ -48,11 +48,14 @@ function createGameHost(deps) {
     } = deps;
 
     function buildSim(mode, rules) {
-        const baseSize = PillSim.WORLD_CONFIG[mode === 'classic' ? 'classic' : 'arcade'].size;
+        // Arcade normal: mapa redondo y grande (shared/sim.js ARCADE). Las arenas (mapaVivo:false) siguen con el de siempre.
+        const redondo = mode === 'arcade' && rules.mapaVivo !== false;
+        const baseSize = redondo ? PillSim.ARCADE.mapa : PillSim.WORLD_CONFIG[mode === 'classic' ? 'classic' : 'arcade'].size;
         const sim = new PillSim.Simulation({
             mode,
             mapSize: baseSize,
             mapaVivo: rules.mapaVivo,   // undefined = lo que diga el modo (classic y arcade: si)
+            circular: redondo,
             worldSettings: { map: 1, food: rules.food || 1, virus: rules.virus || 1, speed: rules.speed || 1 },
             botConfig: { enabled: !!rules.botsEnabled, count: rules.botCount || 0, respawn: !!rules.botsEnabled },
             maxBotCells: mode === 'classic' ? 8 : 4,

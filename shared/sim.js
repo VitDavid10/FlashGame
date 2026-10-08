@@ -39,14 +39,16 @@
      */
     const ARCADE = {
         duracionMs: 180000, entradaMs: 60000,
+        // Mapa REDONDO y grande (radio). Con el mapa vivo crece con la gente hasta mapa (con 25 dentro).
+        mapa: 5600, porJugador: 1120, minimo: 2240,
         fases: [   // hasta (ms de partida), tamano final de la fase (fraccion del mapa) y % de masa por segundo fuera
             { hasta: 90000, frac: 0.85, dano: 0.05 },
             { hasta: 120000, frac: 0.65, dano: 0.09 },
             { hasta: 150000, frac: 0.40, dano: 0.15 },
-            { hasta: 180000, frac: 0.10, dano: 0.30 }
+            { hasta: 180000, frac: 0.12, dano: 0.30 }
         ],
         masaMin: 300,
-        eventosEn: [30000, 60000, 90000, 120000], eventos: ['rain', 'gold', 'double', 'nosplit'],
+        eventosEn: [30000, 60000, 90000, 120000], eventos: ['rain', 'gold', 'nosplit'],
         eventoMs: 10000, avisoMs: 3000, oroMs: 20000, oroR: 75, oroBonus: 0.25, rainR: 450, rainPorSeg: 45,
         killBonus: 0.10, killMax: 2, coronaBonus: 0.25
     };
@@ -303,7 +305,8 @@
             // eff = media diagonal de la cápsula (r ancho, r*PILL_RATIO alto) rotada 45°.
             const eff = this.r * (1 + PILL_RATIO) * 0.7071;
             let limit = Math.max(0, sim.mapSize - eff * 0.9);
-            this.x = Math.max(Math.min(this.x, limit), -limit); this.y = Math.max(Math.min(this.y, limit), -limit);
+            if (sim.circular) { const d = Math.hypot(this.x, this.y); if (d > limit) { const k = limit / (d || 1); this.x *= k; this.y *= k; } }
+            else { this.x = Math.max(Math.min(this.x, limit), -limit); this.y = Math.max(Math.min(this.y, limit), -limit); }
         }
 
         spawnParticles(sim, type) {
@@ -361,7 +364,7 @@
 
         // Elige el objetivo (huir, cazar, comer). Lo usan los bots y los amigos de prueba de las arenas (aliados = ids a ignorar).
         botSteer(sim, siblings, aliados) {
-            const lim = sim.zonaLimite(); this.changeDirTimer--; if (Math.abs(this.x) > lim - 200 || Math.abs(this.y) > lim - 200) { this.targetX = 0; this.targetY = 0; return; }
+            const lim = sim.zonaLimite(); this.changeDirTimer--; if (!sim.dentroMapa(this.x, this.y, lim - 200)) { this.targetX = 0; this.targetY = 0; return; }
             let flee = false, visionRange = 750, targetPrey = null;
 
             // Antes: `[...sim.enemies, ...sim.allPlayerCells()]` por cada bot líder cada tick.
@@ -408,7 +411,7 @@
                     if (d < mejorD) { mejorD = d; mejor = f; }
                 }
                 if (mejor) { this.targetX = mejor.x; this.targetY = mejor.y; this.changeDirTimer = BOT_FOOD_RETARGET; }
-                else { this.targetX = Math.random() * (sim.mapSize * 1.8) - sim.mapSize * 0.9; this.targetY = Math.random() * (sim.mapSize * 1.8) - sim.mapSize * 0.9; this.changeDirTimer = Math.random() * 80 + 40; }
+                else { const q = sim.puntoAzar(sim.zonaLimite() * 0.9); this.targetX = q.x; this.targetY = q.y; this.changeDirTimer = Math.random() * 80 + 40; }
             }
         }
 
@@ -417,7 +420,7 @@
             const showText = (txt, col) => { sim.emit({ type: 'botText', x: leader.x, y: leader.y, text: txt, color: col }); };
 
             if (id === 3) { siblings.forEach(s => { s.sprintTime = SKILL_PARAMS.sprintDuration; s.boostX += s.vx * 2; s.boostY += s.vy * 2; s.spawnParticles(sim, 'BOLT'); }); }
-            else if (id === 4) { let limit = sim.mapSize - 300; let centerX = Math.random() * (limit * 2) - limit; let centerY = Math.random() * (limit * 2) - limit; siblings.forEach(s => { s.tpPhase = 1; s.tpTimer = 500; s.tpDest = { x: centerX + (Math.random() * 100 - 50), y: centerY + (Math.random() * 100 - 50) }; }); }
+            else if (id === 4) { let limit = sim.zonaLimite() - 300; const q = sim.puntoAzar(limit); let centerX = q.x; let centerY = q.y; siblings.forEach(s => { s.tpPhase = 1; s.tpTimer = 500; s.tpDest = { x: centerX + (Math.random() * 100 - 50), y: centerY + (Math.random() * 100 - 50) }; }); }
             else if (id === 5) { siblings.forEach(s => s.magnetTime = SKILL_PARAMS.magnetDuration); showText("MAGNET", "#A020F0"); }
             else if (id === 6) { siblings.forEach(s => s.immuneTime = SKILL_PARAMS.shieldDuration); showText("SHIELD", "#FFD700"); }
             else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin; let gainPerCell = totalGain / siblings.length; siblings.forEach(s => { s.r = Math.sqrt((s.mass + gainPerCell) / (Math.PI * PILL_RATIO)); s.flashColor = '#00ff00'; s.flashTime = 1000; s.spawnParticles(sim, 'PLUS'); }); showText("MASS UP", "#00FF00"); }
@@ -442,6 +445,8 @@
             // mapa de siempre (3500), al que se llega justo con 25 jugadores: con menos, el mapa es mas pequeno.
             this.mapaVivo = this.config.mapaVivo != null ? !!this.config.mapaVivo : (this.config.mode === 'classic' || this.config.mode === 'arcade');
             this.mapaMax = this.config.mapSize;
+            // Mapa redondo: arcade (no arenas) salvo que se diga lo contrario (config.circular). mapSize es entonces el RADIO.
+            this.circular = this.config.circular != null ? !!this.config.circular : false;
             this._mapa = { bajaDesde: null, estado: 'estable', emitidoAt: -1e9, emitidoSize: -1 };
             this.arc = null;   // arcade: zona, eventos y corona (ver startArcade)
             this.now = 0;
@@ -516,7 +521,7 @@
             const entIni = this.config.botConfig.entrada ? Math.min(this.config.botConfig.count | 0, this.config.botConfig.entrada.inicial | 0) : (this.config.botConfig.count | 0);
             if (this.mapaVivo) this.mapSize = this.mapaObjetivo(this.players.size + (this.config.botConfig.enabled ? entIni : 0));
             let currentMapSize = this.mapSize * (this.mapaVivo ? 1 : (ws.map || 1));
-            let areaMillions = Math.pow(currentMapSize * 2, 2) / 1000000;
+            let areaMillions = this.areaMapa(currentMapSize);
             let foodCount = Math.floor(areaMillions * WORLD_CONFIG.foodDensity);
             let virusCount = Math.floor(areaMillions * WORLD_CONFIG.virusDensity * (ws.virus || 1));
             for (let i = 0; i < foodCount; i++) this.spawnFoodSafe(this.foods, currentMapSize);
@@ -531,8 +536,7 @@
 
         spawnFoodSafe(foodArray, limit) {
             let food = this.foodPool.get();
-            food.x = Math.random() * limit * 2 - limit;
-            food.y = Math.random() * limit * 2 - limit;
+            const q = this.puntoAzar(limit); food.x = q.x; food.y = q.y;
             food.r = Math.random() * 4 + 5;
             food.c1 = COLORS[Math.floor(Math.random() * COLORS.length)];
             food.c2 = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -545,7 +549,7 @@
         }
 
         spawnVirusSafe(virusArray, limit) {
-            let attempts = 0, x, y, valid; do { x = Math.random() * limit * 2 - limit; y = Math.random() * limit * 2 - limit; valid = true; for (let other of virusArray) { if (Math.hypot(x - other.x, y - other.y) < 350) { valid = false; break; } } attempts++; } while (!valid && attempts < 30);
+            let attempts = 0, x, y, valid; do { const q = this.puntoAzar(limit); x = q.x; y = q.y; valid = true; for (let other of virusArray) { if (Math.hypot(x - other.x, y - other.y) < 350) { valid = false; break; } } attempts++; } while (!valid && attempts < 30);
             let spots = []; for (let k = 0; k < 2; k++) { let angle = Math.random() * Math.PI * 2; let dist = Math.random() * (VIRUS_RADIUS * 0.5); spots.push({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, r: Math.random() * 8 + 4 }); }
             let v = this.virusPool.get();
             v.ci = nextSeq();
@@ -624,7 +628,7 @@
             while (attempts < 100) {
                 // Mapa vivo: se nace en todo el mapa (sin el, solo en el 45% central).
                 const f = this.mapaVivo ? 0.9 : 0.45;
-                let x = (Math.random() * 2 - 1) * limit * f; let y = (Math.random() * 2 - 1) * limit * f; let isSafe = true;
+                const q = this.puntoAzar(limit * f); let x = q.x; let y = q.y; let isSafe = true;
                 for (let e of allEntities) { if (e.mass === 0) continue; let dist = Math.hypot(x - e.x, y - e.y); if (dist < 600 + (e.r * 4)) { isSafe = false; break; } }
                 if (isSafe) return { x: x, y: y };
                 attempts++;
@@ -860,7 +864,7 @@
             if (id === 1) { if (p.cells.some(c => c.mass > SKILL_PARAMS.clonCost + 314) || p.godMode) { this.emitProjectile(p, 'clon', SKILL_PARAMS.clonCost, tx, ty); activated = true; } }
             else if (id === 2) { if (p.cells.some(c => c.mass > SKILL_PARAMS.shootCost + 314) || p.godMode) { this.emitProjectile(p, 'shoot', SKILL_PARAMS.shootCost, tx, ty); activated = true; } }
             else if (id === 3) { p.cells.forEach(c => c.sprintTime = SKILL_PARAMS.sprintDuration); activated = true; }
-            else if (id === 4) { let limit = this.mapSize - 300; let targetX = Math.random() * (limit * 2) - limit; let targetY = Math.random() * (limit * 2) - limit; let avgX = 0, avgY = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; }); avgX /= p.cells.length; avgY /= p.cells.length; let dx = targetX - avgX, dy = targetY - avgY; p.cells.forEach(c => { c.tpPhase = 1; c.tpTimer = 500; c.tpDest = { x: c.x + dx, y: c.y + dy }; }); activated = true; }
+            else if (id === 4) { let limit = this.zonaLimite() - 300; const q = this.puntoAzar(limit); let targetX = q.x; let targetY = q.y; let avgX = 0, avgY = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; }); avgX /= p.cells.length; avgY /= p.cells.length; let dx = targetX - avgX, dy = targetY - avgY; p.cells.forEach(c => { c.tpPhase = 1; c.tpTimer = 500; c.tpDest = { x: c.x + dx, y: c.y + dy }; }); activated = true; }
             else if (id === 5) { activated = true; }
             else if (id === 6) { p.cells.forEach(c => c.immuneTime = SKILL_PARAMS.shieldDuration); activated = true; }
             else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin, gainPerCell = (p.cells.length > 0) ? (totalGain / p.cells.length) : totalGain; p.cells.forEach(c => { c.r = Math.sqrt((c.mass + gainPerCell) / (Math.PI * PILL_RATIO)); c.flashColor = '#00ff00'; c.flashTime = 1000; c.spawnParticles(this, 'PLUS'); }); activated = true; }
@@ -876,6 +880,15 @@
             }
         }
 
+        // ---- forma del mapa (cuadrado de lado/2 = mapSize, o circulo de radio mapSize) ----
+        dentroMapa(x, y, L) { return this.circular ? x * x + y * y <= L * L : Math.abs(x) <= L && Math.abs(y) <= L; }
+        // Punto al azar dentro del mapa de "radio" L (uniforme por area).
+        puntoAzar(L) {
+            if (!this.circular) return { x: Math.random() * L * 2 - L, y: Math.random() * L * 2 - L };
+            const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * L;
+            return { x: Math.cos(a) * d, y: Math.sin(a) * d };
+        }
+        areaMapa(L) { return (this.circular ? Math.PI * L * L : Math.pow(L * 2, 2)) / 1000000; }
         // ================= ARCADE: zona segura, eventos, puntuacion y corona =================
         startArcade(durMs) {
             const ev = ARCADE.eventos.slice();
@@ -924,7 +937,7 @@
             A.s = S; A.fase = fase; A.dano = dano;
             if (fase > 0) {
                 // Fuera de la zona: el mismo % de masa por segundo para todos; sin masa, fuera.
-                const factor = Math.pow(1 - dano, delta / 1000), fuera = c => Math.abs(c.x) > S || Math.abs(c.y) > S;
+                const factor = Math.pow(1 - dano, delta / 1000), fuera = c => !this.dentroMapa(c.x, c.y, S);
                 for (const p of this.players.values()) {
                     if (!p.alive || p.godMode) continue;
                     for (let i = p.cells.length - 1; i >= 0; i--) {
@@ -964,11 +977,11 @@
         pasoEventos(t, S, delta) {
             const A = this.arc;
             // Se anuncia avisoMs antes; dura eventoMs (el virus dorado, hasta que alguien lo coja o pasen oroMs).
-            if (!A.cur && A.evIdx < ARCADE.eventosEn.length && t >= ARCADE.eventosEn[A.evIdx] - ARCADE.avisoMs) {
+            if (!A.cur && A.evIdx < Math.min(ARCADE.eventosEn.length, A.ev.length) && t >= ARCADE.eventosEn[A.evIdx] - ARCADE.avisoMs) {
                 const key = A.ev[A.evIdx], ini = ARCADE.eventosEn[A.evIdx];
                 const L = Math.max(150, Math.min(this.mapSize, S) - 60);   // en cualquier punto de la zona segura de ahora, extremos incluidos
                 const cur = { key, ini, fin: ini + (key === 'gold' ? ARCADE.oroMs : ARCADE.eventoMs), on: false };
-                if (key === 'rain' || key === 'gold') { cur.x = (Math.random() * 2 - 1) * L; cur.y = (Math.random() * 2 - 1) * L; cur.r = key === 'rain' ? ARCADE.rainR : ARCADE.oroR; }
+                if (key === 'rain' || key === 'gold') { const q = this.puntoAzar(L); cur.x = q.x; cur.y = q.y; cur.r = key === 'rain' ? ARCADE.rainR : ARCADE.oroR; }
                 A.cur = cur;
             }
             const c = A.cur; if (!c) return;
@@ -1010,8 +1023,8 @@
         // Lado/2 del mapa para n jugadores (con el multiplicador de mapa de la sala).
         mapaObjetivo(n) {
             const ws = this.config.worldSettings || {};
-            const t = MAPA_VIVO.porJugador * Math.sqrt(Math.max(1, n)) * (ws.map || 1);
-            return Math.round(Math.max(MAPA_VIVO.min, Math.min(this.mapaMax, t)));
+            const arc = this.circular, t = (arc ? ARCADE.porJugador : MAPA_VIVO.porJugador) * Math.sqrt(Math.max(1, n)) * (ws.map || 1);
+            return Math.round(Math.max(arc ? ARCADE.minimo : MAPA_VIVO.min, Math.min(this.mapaMax, t)));
         }
         // Jugadores vivos + grupos de bots (offline los bots hacen de gente).
         mapaGente() {
@@ -1023,7 +1036,9 @@
         // estado y cada cadaMs mientras se mueve; el cliente lo usa para pintar
         // el borde y el aviso. La comida que se queda fuera se quita ('foodDel').
         pasoMapa(delta) {
-            const m = this._mapa, obj = this.mapaObjetivo(this.mapaGente()), antes = this.mapSize, paso = MAPA_VIVO.velocidad * delta / 1000;
+            const m = this._mapa, antes = this.mapSize, paso = MAPA_VIVO.velocidad * delta / 1000 * (this.circular ? 1.6 : 1);
+            let obj = this.mapaObjetivo(this.mapaGente());
+            if (this.arc && !this.arcEntradaAbierta()) obj = Math.max(obj, this.mapSize);   // arcade cerrado: el mapa ya no encoge, lo cierra la zona
             let estado = 'estable';
             if (obj > this.mapSize + 0.5) { m.bajaDesde = null; this.mapSize = Math.min(obj, this.mapSize + paso); estado = 'crece'; }
             else if (obj < this.mapSize - 0.5) {
@@ -1045,7 +1060,7 @@
             const M = this.mapSize, borrados = [];
             for (let i = this.foods.length - 1; i >= 0; i--) {
                 const f = this.foods[i];
-                if (Math.abs(f.x) <= M && Math.abs(f.y) <= M) continue;
+                if (this.dentroMapa(f.x, f.y, M)) continue;
                 this.foodGrid.remove(f);
                 this.foodPool.free(f);
                 this.foods[i] = this.foods[this.foods.length - 1];
@@ -1058,14 +1073,14 @@
             // al borde dejaba una hilera de virus en cada linea por la que pasaba).
             const L = Math.max(0, M - VIRUS_RADIUS);
             for (const v of this.viruses) {
-                if (Math.abs(v.x) <= L && Math.abs(v.y) <= L) continue;
-                v.x = (Math.random() * 2 - 1) * L * 0.9; v.y = (Math.random() * 2 - 1) * L * 0.9; v.vx = 0; v.vy = 0;
+                if (this.dentroMapa(v.x, v.y, L)) continue;
+                const q = this.puntoAzar(L * 0.9); v.x = q.x; v.y = q.y; v.vx = 0; v.vy = 0;
             }
         }
         // Comida y virus por area: al crecer el mapa se van anadiendo (unos pocos
         // por tick, para no soltar miles de golpe), con la densidad de siempre.
         mapaRellena() {
-            const ws = this.config.worldSettings || {}, area = Math.pow(this.mapSize * 2, 2) / 1000000;
+            const ws = this.config.worldSettings || {}, area = this.areaMapa(this.mapSize);
             const quiereF = Math.floor(area * WORLD_CONFIG.foodDensity * (ws.food || 1)), quiereV = Math.floor(area * WORLD_CONFIG.virusDensity * (ws.virus || 1));
             const nuevas = [];
             for (let k = 0; k < 25 && this.foods.length < quiereF; k++) {
@@ -1187,13 +1202,14 @@
             }
 
             // Proyectiles de virus (explosión púrpura)
-            for (let i = this.projectiles.length - 1; i >= 0; i--) { let pr = this.projectiles[i]; pr.x += pr.vx * timeScale; pr.y += pr.vy * timeScale; if (Math.abs(pr.x) > this.mapSize || Math.abs(pr.y) > this.mapSize) { this.projectiles.splice(i, 1); continue; } for (let c of living) { if (c.immuneTime > 0 || c.tpPhase > 0) continue; if (getEllipticalDist(pr, c) < c.r + pr.r) { this.emit({ type: 'explosion', x: c.x, y: c.y }); this.handleVirusCollision({ x: c.x, y: c.y }, -1, c, true); this.projectiles.splice(i, 1); break; } } }
+            for (let i = this.projectiles.length - 1; i >= 0; i--) { let pr = this.projectiles[i]; pr.x += pr.vx * timeScale; pr.y += pr.vy * timeScale; if (!this.dentroMapa(pr.x, pr.y, this.mapSize)) { this.projectiles.splice(i, 1); continue; } for (let c of living) { if (c.immuneTime > 0 || c.tpPhase > 0) continue; if (getEllipticalDist(pr, c) < c.r + pr.r) { this.emit({ type: 'explosion', x: c.x, y: c.y }); this.handleVirusCollision({ x: c.x, y: c.y }, -1, c, true); this.projectiles.splice(i, 1); break; } } }
 
             // Virus: movimiento y colisión con celdas
             for (let i = 0; i < this.viruses.length; i++) {
                 let v = this.viruses[i]; if (v.damaged && v.animTime < 1) { v.animTime += 0.015 * timeScale; if (v.animTime > 1) v.animTime = 1; }
                 v.x += v.vx * timeScale; v.y += v.vy * timeScale; v.vx *= Math.pow(0.94, timeScale); v.vy *= Math.pow(0.94, timeScale);
-                if (Math.abs(v.x) > this.mapSize) v.vx *= -1; if (Math.abs(v.y) > this.mapSize) v.vy *= -1;
+                if (this.circular) { if (v.x * v.x + v.y * v.y > this.mapSize * this.mapSize) { v.vx *= -1; v.vy *= -1; } }
+                else { if (Math.abs(v.x) > this.mapSize) v.vx *= -1; if (Math.abs(v.y) > this.mapSize) v.vy *= -1; }
                 for (let c of living) { if (c.immuneTime > 0 || c.tpPhase > 0) continue; let vulnerable = (c.mass >= 15000) || (c.r > v.r); if (((v.vx ** 2 + v.vy ** 2) > 25 && getEllipticalDist(c, v) < c.r + v.r - 10) || (vulnerable && getEllipticalDist(c, v) < c.r * 0.9)) { this.handleVirusCollision(v, i, c, false); i--; break; } }
             }
 
@@ -1271,7 +1287,7 @@
             }
 
             // Comer comida (grid espacial)
-            living = this.livingCells(); let gainMultiplier = (this.config.worldSettings.food || 1) * (this.arcEvento('double') ? 2 : 1);
+            living = this.livingCells(); let gainMultiplier = this.config.worldSettings.food || 1;
             living.forEach(c => {
                 const nearbyFoods = this.foodGrid.query(c.x, c.y);
                 for (let f of nearbyFoods) {
