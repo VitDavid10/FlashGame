@@ -465,7 +465,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:16.2em;bottom:1.09em;z-index:6;gap:.3em}
+#appHub.pc .ah-room{right:16.2em;bottom:.73em;z-index:6;gap:.3em}
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
 #appHub.pc .ah-room .med>svg{width:1.05em;height:1.05em}
 #appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
@@ -481,9 +481,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:22.5em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
-#appHub.pc #ahSt .sn .cell canvas{width:4.6em;height:4.6em}
-#appHub.pc #ahSt .sn{gap:.6em}
-#appHub.pc #ahSt .foot{margin-top:1.8em}
+#appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:4.6em;height:4.6em}
+#appHub.pc #ahSt .sn,#appHub.pc #ahSk .sn{gap:.6em}
+#appHub.pc #ahSt .foot,#appHub.pc #ahSk .foot{margin-top:1.8em}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
 .sk-g .cell .inf:active{color:var(--ac)}
 .sk-g.sk-inf{display:flex;flex-direction:column;gap:.5em;padding:.2em .3em}
