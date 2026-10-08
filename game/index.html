@@ -44,6 +44,14 @@
         // html.pw-app y de EN_APP. En el navegador el juego sigue como antes
         // (pedido por David). Aqui, antes de pintar nada, para que no salte.
         if (/Solana Mobile Web Shell/.test(navigator.userAgent) || new URLSearchParams(location.search).has('app')) el.classList.add('pw-app');
+        // App: hasta que sale la pantalla de carga (showLoadingScreen) el menu de debajo se veia y se podia tocar:
+        // un velo oscuro lo tapa desde el primer pintado (y bloquea los toques). Sale solo (red de seguridad a los 15 s).
+        if (el.classList.contains('pw-app')) {
+            const velo = document.createElement('style');
+            velo.textContent = 'html.pw-app:not(.pw-boot) body::before{content:"";position:fixed;inset:0;z-index:9998;background:#050505}';
+            document.head.appendChild(velo);
+            setTimeout(() => el.classList.add('pw-boot'), 15000);
+        }
         // App: la wallet del movil (Seed Vault) va por Mobile Wallet Adapter. Solo
         // aqui se carga; en la web no hace falta (ver mwaProvider).
         if (el.classList.contains('pw-app')) { const s = document.createElement('script'); s.src = '/vendor/mwa.js'; s.async = true; document.head.appendChild(s); }
@@ -15804,6 +15812,7 @@
             });
         }
         ov.style.display = 'flex';
+        document.documentElement.classList.add('pw-boot');   // ya hay cartel de carga: el velo del arranque sobra
         // Carga inicial de la app: pildora llenandose en vez de rotulo + barra.
         if (window.__lsCargador) {
             window.__lsCargador = false;
