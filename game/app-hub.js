@@ -150,8 +150,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys.on.out{animation:ahSysOut .35s ease-in both}
 @keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
 @keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
-.ah-fb.ah-avb{left:4.1em;top:3.6em;right:auto;z-index:6}
-#appHub.pc .ah-avb{left:4.5em;top:3.9em}
+.ah-fb.ah-avb{left:4.1em;top:0;right:auto;z-index:6}
+#appHub.pc .ah-avb{left:4.5em;top:.2em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
 .ah-sys .acts{display:none;flex:none;gap:.6em;align-self:center;transform:translateY(-.17em)}
@@ -382,17 +382,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em}
 #appHub:not(.pc) .ah-sys .acts,#appHub:not(.pc) .ah-sys .pic{transform:translateY(-.16em)}
 #appHub:not(.pc) .ah-sys .acts button{font-size:.36em;padding:.4em .9em}
-#appHub:not(.pc) #ahAr .sq.find{min-height:15.5em;gap:.2em}
-#appHub:not(.pc) #ahAr .sq.find .mid{justify-content:flex-start;gap:.2em;margin-top:-.5em}
-#appHub:not(.pc) #ahAr .sq-side{flex:1;align-items:stretch;padding-bottom:2.7em;gap:2.4em}
-#appHub:not(.pc) #ahAr .sq-side .sq-grp{align-self:center}
-#appHub:not(.pc) #ahAr .sq-side .sq-av{position:relative}
-#appHub:not(.pc) #ahAr .sq-side .sq-av .lb{display:flex;flex-direction:column;align-items:center;gap:.9em;position:absolute;top:100%;left:50%;transform:translateX(-50%);width:max-content;max-width:14em;padding-top:.6em}
-#appHub:not(.pc) #ahAr .sq-side .sq-grp.big .sq-av .sq-pic{font-size:1.75em}
-#appHub:not(.pc) #ahAr .sq-side.n3 .sq-grp.big .sq-av .sq-pic{font-size:1.5em}
-#appHub:not(.pc) #ahAr .sq-side .sq-pbox{justify-content:center;gap:.5em}
+#appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big{gap:1.1em}
+#appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big .sq-av{width:9em}
+#appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big .sq-av .sq-pic{font-size:1.6em}
 #appHub:not(.pc) #ahAr .sq-pbox .sq-near{font-size:.42em;white-space:nowrap}
-#appHub:not(.pc) #ahAr .sq.find .sq-bot{margin-top:1.2em}
 /* ROOMS en el movil: mas amplio, como en PC, y con consejo debajo */
 #appHub:not(.pc) .ahr-g{grid-template-columns:repeat(4,1fr);gap:.7em}
 #appHub:not(.pc) .ahr-g .cell{padding:1.25em .3em 1em;gap:.7em}
@@ -1556,9 +1549,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const fmt = corto;
         const pinta = (total, list, usd, hist) => {
             const fecha = t => { const d = new Date(t); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
+            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY' + (h.usd != null ? ' (' + cortoUsd(h.usd) + ')' : '') + '</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
                 : '<div class="pz-e">EMPTY<br>WIN A PAID ARENA MATCH TO GET PRIZES</div>';
-            $('#ahPzT').textContent = fmt(total) + ' $PILLY';
+            $('#ahPzT').textContent = fmt(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '');
             $('#ahPzAll').disabled = !(total > 0);
             $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); refreshClaims(false); });
         };

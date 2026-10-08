@@ -276,6 +276,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
 .sq-pbox .k{font-size:.36em;letter-spacing:.14em;color:#7d8a82}
 .sq-pbox .u{font-family:'Russo One',sans-serif;font-size:1em;color:#ffd23a}.sq-pbox .u.free{color:var(--ac,#00ff88)}
 .sq-pbox .t{font-family:'Russo One',sans-serif;font-size:.48em;letter-spacing:.06em;color:#cfd8d3}.sq-pbox .t.g{color:#ffd23a}
+.sq-wt{font-size:.34em;line-height:1.6;letter-spacing:.06em;color:#ffb347;max-width:17em;text-align:left;margin-top:.3em}.sq-wt.rd{color:#00ff88}
 .sq-pbox .sq-b{margin-top:.3em}
 .sq-cm{display:flex;align-items:center;justify-content:center;gap:1em;width:100%;flex:1;min-height:0}
 .sq-cm .tm{flex:1;display:flex;flex-direction:column;align-items:center;gap:.5em;padding:.5em;border:.07em solid rgba(255,255,255,.1);background:rgba(0,0,0,.25)}
@@ -978,9 +979,18 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     // Otra sala con gente LISTA a un precio distinto del tuyo: la mas cercana en dolares (a igual distancia, la de mas precio).
     function cercana(size) {
         const P = S.party; if (!P || P.custom || (!P.rc && P.state !== 'queued')) return '';
-        const mio = P.rc ? P.rc.cents | 0 : P.cents | 0;
+        const mio = P.rc ? P.rc.cents | 0 : P.cents | 0, yo = groupSize(), rv = S.rivals || [];
+        // Ya hay gente en tu precio: se dice, sin recomendar otra sala.
+        const aqui = rv.find(r => r.size === size && r.cents === mio);
+        if (aqui) {
+            const ready = aqui.ready - (P.state === 'queued' ? yo : 0), look = aqui.looking - (P.rc ? yo : 0), k = ready > 0 ? ready : look;
+            if (k > 0) {
+                const g = Math.ceil(k / size), unit = size === 1 ? (k === 1 ? 'PLAYER' : 'PLAYERS') : (g === 1 ? 'GROUP' : 'GROUPS'), n = size === 1 ? k : g;
+                return '<div class="sq-wt' + (ready > 0 ? ' rd' : '') + '">' + n + ' ' + unit + (n === 1 ? ' IS ' : ' ARE ') + (ready > 0 ? 'READY' : 'WAITING') + ' TO FIGHT</div>';
+            }
+        }
         let mejor = null;
-        (S.rivals || []).forEach(r => {
+        rv.forEach(r => {
             if (r.size !== size || r.cents === mio || r.ready <= 0) return;
             const d = Math.abs(r.cents - mio);
             if (!mejor || d < mejor.d || (d === mejor.d && r.cents > mejor.r.cents)) mejor = { d, r };
