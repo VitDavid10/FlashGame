@@ -14613,10 +14613,11 @@
         Quests.resetKills();   // el preview no arrastra los kills de la partida anterior
         if (typeof GameWalletUI !== 'undefined') GameWalletUI.setVisible(false);
         const botCount = mode === 'classic' ? BOTS_OFFLINE_CLASSIC : BOTS_OFFLINE;
-        const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : WORLD_CONFIG.arcade.size;
+        const esArc = mode === 'arcade';
+        const baseSize = (mode === 'classic') ? WORLD_CONFIG.classic.size : esArc ? PillSim.ARCADE.mapa : WORLD_CONFIG.arcade.size;
         sim = new PillSim.Simulation({
-            mode: mode, mapSize: baseSize, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
-            botConfig: { enabled: true, count: botCount, respawn: true },
+            mode: mode, mapSize: baseSize, circular: esArc, worldSettings: { map: 1, food: 1, virus: 1, speed: 1 },
+            botConfig: { enabled: true, count: botCount, respawn: true, entrada: esArc ? { inicial: 6, cadaMs: Math.max(1500, Math.round(PillSim.ARCADE.entradaMs / Math.max(1, botCount - 6))) } : undefined },
             maxBotCells: mode === 'classic' ? 8 : 4,
             botLifeMs: mode === 'classic' ? BOT_VIDA_CLASSIC_MS : 0,
             // Calentamiento: en el preview offline los bots ignoran al jugador los
@@ -14626,6 +14627,9 @@
         });
         sim.populate();
         MAP_SIZE = sim.mapSize;
+        // Sin esto el preview pintaba la zona de la partida anterior (arcSt viejo) y te dejaba "fuera".
+        arcSt = null; ponTituloRanking(mode);
+        if (esArc) { sim.startArcade(duracionOffline(mode)); sim.arcSync(0); }
         const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
         const p = sim.addPlayer('me', { name: playerName, colorBot: colBot, colorTop: colTop });
         p.godMode = false;
@@ -16276,7 +16280,7 @@
                 case 'arcFinal': {
                     spawnFloatingText('FINAL 3: ' + (ev.nombres || []).join(', '), '#ffd23a');
                     // Offline: la partida se acaba aqui, como en online (el reloj de la sala llega a 0).
-                    if (sim && !sim.isRemote) { const rk = currentGameMode + '_' + currentServer; if (roomTimers[rk]) roomTimers[rk] = Date.now(); }
+                    if (sim && !sim.isRemote) { if (practiceMode) previewHasta = Date.now(); else { const rk = currentGameMode + '_' + currentServer; if (roomTimers[rk]) roomTimers[rk] = Date.now(); } }
                     break;
                 }
                 case 'arcGold': {
