@@ -16194,7 +16194,9 @@
             const cells = myCells(); let tx=0, ty=0, totalR=0, maxR=0, n=cells.length; cells.forEach(c => { tx+=c.x; ty+=c.y; totalR+=c.r; if (c.r > maxR) maxR = c.r; });
             if(n > 0) {
                 camera.x += ((tx/n) - camera.x) * 0.05 * timeScale; camera.y += ((ty/n) - camera.y) * 0.05 * timeScale;
-                camera.scale += (zoomObjetivoJugador(totalR, maxR, n) - camera.scale) * 0.05 * timeScale;
+                let zObj = zoomObjetivoJugador(totalR, maxR, n);
+                if (mapaRedondo()) zObj = Math.max(zObj, zoomMinArcade());   // arcade: por grande que seas, no ves casi todo el mapa
+                camera.scale += (zObj - camera.scale) * 0.05 * timeScale;
             }
         }
 
@@ -16237,6 +16239,30 @@
                     const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
                     if (ev.killed) spawnFloatingText(yo ? 'KING SLAIN! +25% MASS' : (ev.name || 'A PLAYER') + ' SLAYED THE KING', '#ffd23a');
                     else spawnFloatingText(yo ? 'YOU ARE THE KING!' : 'NEW KING: ' + (ev.name || 'A PLAYER'), '#ffd23a');
+                    break;
+                }
+                case 'arcTax': {
+                    const yo = (ev.quien || []).some(q => q.id === 'me' || (sim && sim.myId && q.id === sim.myId));
+                    spawnFloatingText(yo ? 'TAX ON THE TOP! -20% MASS' : 'TAX ON THE TOP: THE TOP 3 LOSE 20%', '#ff6a6a');
+                    const COL = ['#ff4d6d', '#1d9bf0', '#ffce3d', '#b86bff', '#00ff88', '#ff8a3d', '#ccff00', '#2ee6d6'], t0 = performance.now();
+                    for (const q of ev.quien || []) {
+                        const n = Math.min(46, 14 + Math.round((q.r || 40) / 12));
+                        for (let i = 0; i < n; i++) {
+                            const a = Math.random() * Math.PI * 2, v = (q.r || 40) * (1.4 + Math.random() * 1.6);
+                            arcChispas.push({ x: q.x + Math.cos(a) * (q.r || 40) * 0.6, y: q.y + Math.sin(a) * (q.r || 40) * 0.6, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 5 + Math.random() * 5, c: COL[i % COL.length], t0, vida: 900 + Math.random() * 600 });
+                        }
+                    }
+                    break;
+                }
+                case 'arcHeavy': {
+                    const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
+                    spawnFloatingText(yo ? 'HEAVY! YOU ARE SLOWER' : 'HEAVY: ' + (ev.name || 'THE BIGGEST') + ' IS SLOWER', '#ff6a6a');
+                    break;
+                }
+                case 'arcFinal': {
+                    spawnFloatingText('FINAL 3: ' + (ev.nombres || []).join(', '), '#ffd23a');
+                    // Offline: la partida se acaba aqui, como en online (el reloj de la sala llega a 0).
+                    if (sim && !sim.isRemote) { const rk = currentGameMode + '_' + currentServer; if (roomTimers[rk]) roomTimers[rk] = Date.now(); }
                     break;
                 }
                 case 'arcGold': {
@@ -16370,10 +16396,13 @@
     // El ranking de arcade va por PUNTUACION (masa x kills); el de classic, por masa.
     function ponTituloRanking(modo) { const h = document.querySelector('#leaderboard h3'); if (h) h.textContent = modo === 'arcade' ? 'SCORE' : 'TOP MASS'; }
     // ===== ARCADE: zona segura, eventos y aviso =====
-    const ARC_NOMBRES = { rain: 'FOOD RAIN', gold: 'GOLDEN VIRUS', nosplit: 'NO SPLIT' };
+    const ARC_NOMBRES = { rain: 'FOOD RAIN', gold: 'GOLDEN VIRUS', nosplit: 'NO SPLIT', tax: 'TAX ON THE TOP', heavy: 'HEAVY' };
+    let arcChispas = [];   // TAX ON THE TOP: la comida que sale despedida (solo efecto, no se come)
     const arcT = () => arcSt ? arcSt.t + (performance.now() - arcSt.at) : 0;
     // Arcade normal: mapa y zona REDONDOS (las arenas y la practica siguen cuadradas).
     function mapaRedondo() { return !!sim && (sim.isRemote ? (currentGameMode === 'arcade' && !(netState && netState.squad)) : !!sim.circular); }
+    // Zoom minimo de arcade: lo que se ve de lado a lado nunca pasa de ~0,9 veces el radio del mapa (menos de medio mapa).
+    function zoomMinArcade() { return (width / 2) / (MAP_SIZE * 0.45 * Math.max(width / BASE_WIDTH, height / BASE_HEIGHT)); }
     const arcFuera = () => { if (!arcSt || !(arcSt.fase > 0)) return false; const S = arcSt.s, red = mapaRedondo(); return myCells().some(c => red ? Math.hypot(c.x, c.y) > S : (Math.abs(c.x) > S || Math.abs(c.y) > S)); };
     function drawArcadeMundo(es) {
         if (!arcSt || currentGameMode !== 'arcade') return;
@@ -16399,6 +16428,16 @@
             const pulso = 0.5 + 0.5 * Math.sin(performance.now() / 200);
             ctx.strokeStyle = 'rgba(255,210,58,' + (0.5 + 0.4 * pulso) + ')'; ctx.lineWidth = 4 * u; ctx.setLineDash([16 * u, 12 * u]);
             ctx.beginPath(); ctx.arc(arcSt.x, arcSt.y, arcSt.ev === 'rain' ? arcSt.r : arcSt.r * 1.8, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        }
+        if (arcChispas.length) {
+            const ahora = performance.now();
+            arcChispas = arcChispas.filter(q => ahora - q.t0 < q.vida);
+            for (const q of arcChispas) {
+                const k = (ahora - q.t0) / q.vida, d = 1 - Math.pow(1 - k, 3);   // salen rapido y frenan
+                ctx.globalAlpha = 1 - k; ctx.fillStyle = q.c;
+                ctx.fillRect(q.x + q.vx * d - q.r, q.y + q.vy * d - q.r, q.r * 2, q.r * 2);
+            }
+            ctx.globalAlpha = 1;
         }
         if (arcSt.oro) {
             const O = arcSt.oro, n = 14, rot = performance.now() / 900;

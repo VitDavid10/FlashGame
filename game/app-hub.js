@@ -954,7 +954,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     // Salas: cada tarjeta enseña sus layers con su aforo; debajo, ROOM INFO de la elegida y las reglas del modo.
     const ROOM_RULES = {
-        arcade: ['3 min match · a new skill every 30s', 'Every 30s an event: food rain, gold virus, no split', 'From min 1 the zone shrinks · outside you shrink fast', 'Score = mass x kills · eat the king for +25%'],
+        arcade: ['3 min match · a new skill every 30s', 'Every 30s an event · good ones and bad ones (tax on the top, heavy)', 'From min 1 the zone shrinks · outside you shrink · last 3 split the pot', 'Score = mass x kills · eat the king for +25%'],
         classic: ['Eat cells, split and farm viruses', 'Kill 5 players (pentakill) for the max profit', 'Leaving early costs a penalty up to 20%', 'Paid rooms take the entry from your in-game $PILLY']
     };
     function renderRooms() {
@@ -1785,7 +1785,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => 'Tip: in ARCADE the top 10 of the room share the prize when the 3 minute match ends.',
         () => 'Tip: in ARCADE the safe zone starts closing at minute 1. Outside it you lose mass every second, and the last phase is brutal.',
         () => 'Tip: in ARCADE nobody can join after the first minute. Be there from the start.',
-        () => 'Tip: every 30 seconds ARCADE has an event: food rain, golden virus or no split.',
+        () => 'Tip: every 30 seconds ARCADE has an event. Good ones: food rain, golden virus, no split. Bad ones: tax on the top, heavy.',
+        () => 'Tip: TAX ON THE TOP takes 20% of the mass of the top 3. Being first has its price.',
+        () => 'Tip: during HEAVY the biggest pill moves slower. Time to hunt it.',
+        () => 'Tip: in ARCADE, when only 3 players are left the match ends and they split the pot 40/30/20.',
         () => 'Tip: the GOLDEN VIRUS gives +25% mass to the first one who touches it.',
         () => 'Tip: in ARCADE the ranking goes by score: every kill adds 10% to your mass, up to x2.',
         () => 'Tip: the player with the crown leads the room. Eat them for +25% mass and a double kill.',

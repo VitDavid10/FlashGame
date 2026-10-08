@@ -617,6 +617,7 @@ function createGameHost(deps) {
         // con gente dentro descuadra el intercambio de carry al matar.
         room.endsAt = Date.now() + (room.mode === 'classic' ? CLASSIC_MATCH_MS : MATCH_MS);
         // Arcade (no arenas): zona segura que se cierra, eventos, puntuacion por kills y corona.
+        room._final3 = false;
         if (room.mode === 'arcade' && !room.squad) room.sim.startArcade(MATCH_MS);
         // Cuando empezo de verdad: va en el recibo de la partida (server/matches.js).
         room.startedAt = Date.now();

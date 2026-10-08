@@ -42,13 +42,14 @@
         // Mapa REDONDO y grande (radio). Con el mapa vivo crece con la gente hasta mapa (con 25 dentro).
         mapa: 5600, porJugador: 1120, minimo: 2240,
         fases: [   // hasta (ms de partida), tamano final de la fase (fraccion del mapa) y % de masa por segundo fuera
-            { hasta: 90000, frac: 0.85, dano: 0.05 },
-            { hasta: 120000, frac: 0.65, dano: 0.09 },
-            { hasta: 150000, frac: 0.40, dano: 0.15 },
-            { hasta: 180000, frac: 0.12, dano: 0.30 }
+            { hasta: 90000, frac: 0.88, dano: 0.05 },
+            { hasta: 120000, frac: 0.70, dano: 0.09 },
+            { hasta: 150000, frac: 0.48, dano: 0.15 },
+            { hasta: 180000, frac: 0.25, dano: 0.30 }
         ],
         masaMin: 300,
-        eventosEn: [30000, 60000, 90000, 120000], eventos: ['rain', 'gold', 'nosplit'],
+        eventosEn: [30000, 60000, 90000, 120000], buenos: ['rain', 'gold', 'nosplit'], malos: ['tax', 'heavy'],
+        taxTop: 3, taxPct: 0.20, heavyMult: 0.6, finalVivos: 3,
         eventoMs: 10000, avisoMs: 3000, oroMs: 20000, oroR: 75, oroBonus: 0.25, rainR: 450, rainPorSeg: 45,
         killBonus: 0.10, killMax: 2, coronaBonus: 0.25
     };
@@ -275,6 +276,7 @@
             let speedMult = baseSpeed * 10.0 * Math.pow(effectiveR, VELOC_EXP);
             let isSprinting = this.sprintTime > 0;
             if (isSprinting) speedMult *= SKILL_PARAMS.sprintSpeedMult;
+            if (sim.arc && sim.arc.pesado != null && sim.arc.pesado === this.id) speedMult *= ARCADE.heavyMult;   // arcade: evento HEAVY
 
             if (isSprinting && Math.random() < 0.18) this.spawnParticles(sim, 'BOLT');
             if (speedMult < 0.2) speedMult = 0.2;
@@ -891,9 +893,11 @@
         areaMapa(L) { return (this.circular ? Math.PI * L * L : Math.pow(L * 2, 2)) / 1000000; }
         // ================= ARCADE: zona segura, eventos, puntuacion y corona =================
         startArcade(durMs) {
-            const ev = ARCADE.eventos.slice();
+            // Cada partida: 2 eventos buenos al azar y los 2 malos, en orden al azar.
+            const mezcla = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+            const ev = mezcla(mezcla(ARCADE.buenos.slice()).slice(0, 2).concat(ARCADE.malos));
             for (let i = ev.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ev[i], ev[j]] = [ev[j], ev[i]]; }
-            this.arc = { t0: this.now, dur: durMs || ARCADE.duracionMs, ev, evIdx: 0, cur: null, s: this.mapSize, fase: 0, dano: 0, emitAt: -1e9, lider: null, liderAt: -1e9, oro: null, sobraHasta: 0 };
+            this.arc = { t0: this.now, dur: durMs || ARCADE.duracionMs, ev, evIdx: 0, cur: null, s: this.mapSize, fase: 0, dano: 0, emitAt: -1e9, lider: null, liderAt: -1e9, oro: null, sobraHasta: 0, pesado: null, maxVivos: 0, final: false };
         }
         // Offline: el reloj de la sala corre aunque no se juegue; al volver se cuadra la zona con el.
         arcSync(elapsedMs) { if (this.arc) this.arc.t0 = this.now - Math.max(0, elapsedMs); }
@@ -904,6 +908,14 @@
         // Hasta donde se mueven los bots sin salirse: el mapa o la zona segura si ya se esta cerrando.
         zonaLimite() { return this.arc && this.arc.fase > 0 ? Math.min(this.mapSize, this.arc.s) : this.mapSize; }
         arcPuntos(p) { let m = 0; for (const c of p.cells) m += c.mass; return arcadeScore(m, p.kills); }
+        // Quien sigue en pie: { id, nombre, masa, puntos, celdas } por jugador y por grupo de bots.
+        arcVivos() {
+            const out = [];
+            for (const p of this.players.values()) { if (!p.alive || !p.cells.length) continue; let m = 0; for (const c of p.cells) m += c.mass; out.push({ id: p.id, nombre: p.name, masa: m, puntos: arcadeScore(m, p.kills), celdas: p.cells }); }
+            const g = new Map(); for (const e of this.enemies) { let x = g.get(e.id); if (!x) g.set(e.id, x = { id: e.id, nombre: e.name, masa: 0, celdas: [] }); x.masa += e.mass; x.celdas.push(e); }
+            for (const x of g.values()) { x.puntos = Math.floor(x.masa); out.push(x); }
+            return out;
+        }
         // Kill en arcade: suma al contador de la puntuacion; si era el de la corona, cuenta doble y da masa extra.
         arcKill(p, victimId, cell) {
             if (!this.arc || !p) return;
@@ -955,6 +967,16 @@
                 }
             }
             this.pasoEventos(t, S, delta);
+            // Quedan 3 (con la entrada ya cerrada y habiendo habido mas): se acaba la partida y se reparten el bote.
+            if (!A.final) {
+                const vivos = this.arcVivos();
+                if (vivos.length > A.maxVivos) A.maxVivos = vivos.length;
+                if (!this.arcEntradaAbierta() && A.maxVivos > ARCADE.finalVivos && vivos.length <= ARCADE.finalVivos) {
+                    A.final = true;
+                    vivos.sort((a, b) => b.puntos - a.puntos);
+                    this.emit({ type: 'arcFinal', ids: vivos.map(v => v.id), nombres: vivos.map(v => v.nombre || 'PLAYER') });
+                }
+            }
             // Corona: el primero por puntuacion (jugadores y grupos de bots), cada medio segundo.
             if (this.now - A.liderAt >= 500) {
                 A.liderAt = this.now;
@@ -971,7 +993,7 @@
                 this.emit({ type: 'arc', t: Math.round(t), dur: A.dur, s: Math.round(S), fase, dano, ent: t < ARCADE.entradaMs,
                     ev: c ? c.key : null, evIni: c ? c.ini : 0, evFin: c ? c.fin : 0,
                     x: c && c.x != null ? Math.round(c.x) : null, y: c && c.y != null ? Math.round(c.y) : null, r: c ? c.r || 0 : 0,
-                    oro: A.oro ? { x: Math.round(A.oro.x), y: Math.round(A.oro.y), r: ARCADE.oroR } : null });
+                    oro: A.oro ? { x: Math.round(A.oro.x), y: Math.round(A.oro.y), r: ARCADE.oroR } : null, pesado: A.pesado });
             }
         }
         pasoEventos(t, S, delta) {
@@ -985,7 +1007,28 @@
                 A.cur = cur;
             }
             const c = A.cur; if (!c) return;
-            if (!c.on && t >= c.ini) { c.on = true; if (c.key === 'gold') A.oro = { x: c.x, y: c.y }; if (c.key === 'rain') A.sobraHasta = this.now + 30000; }
+            if (!c.on && t >= c.ini) {
+                c.on = true;
+                if (c.key === 'gold') A.oro = { x: c.x, y: c.y };
+                if (c.key === 'rain') A.sobraHasta = this.now + 30000;
+                if (c.key === 'tax') {
+                    // El top 3 pierde de golpe un 20 % de su masa (se pierde; la comida que sale a los lados es solo el efecto).
+                    const top = this.arcVivos().sort((a, b) => b.puntos - a.puntos).slice(0, ARCADE.taxTop), quien = [];
+                    for (const v of top) {
+                        let cx = 0, cy = 0, rMax = 0;
+                        for (const cell of v.celdas) { cx += cell.x; cy += cell.y; if (cell.r > rMax) rMax = cell.r; cell.r = Math.sqrt(cell.mass * (1 - ARCADE.taxPct) / (Math.PI * PILL_RATIO)); }
+                        quien.push({ id: v.id, name: v.nombre || 'PLAYER', x: Math.round(cx / v.celdas.length), y: Math.round(cy / v.celdas.length), r: Math.round(rMax), m: Math.round(v.masa * ARCADE.taxPct) });
+                    }
+                    this.emit({ type: 'arcTax', quien });
+                    c.fin = t + 3000;   // el rotulo se queda un momento
+                }
+                if (c.key === 'heavy') {
+                    // El que mas masa tiene va mas lento durante el evento.
+                    const v = this.arcVivos().sort((a, b) => b.masa - a.masa)[0];
+                    A.pesado = v ? v.id : null;
+                    if (v) this.emit({ type: 'arcHeavy', id: v.id, name: v.nombre || 'PLAYER' });
+                }
+            }
             if (c.on && c.key === 'rain') {
                 // Lluvia de comida en el circulo marcado (fuera del limite de comida del mapa mientras dure).
                 c.acum = (c.acum || 0) + ARCADE.rainPorSeg * delta / 1000;
@@ -1018,7 +1061,7 @@
                     }
                 }
             }
-            if (c.on && t >= c.fin) { A.cur = null; A.oro = null; A.evIdx++; A.emitAt = -1e9; }
+            if (c.on && t >= c.fin) { A.cur = null; A.oro = null; A.pesado = null; A.evIdx++; A.emitAt = -1e9; }
         }
         // Lado/2 del mapa para n jugadores (con el multiplicador de mapa de la sala).
         mapaObjetivo(n) {

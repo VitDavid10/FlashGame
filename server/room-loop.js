@@ -188,21 +188,25 @@ function tickRoomOnce(room, now, ctx) {
              * comisión: así el reparto entre los diez no cambia de forma y solo baja
              * la escala.
              */
-            const comision = Math.floor(totalPot * ctx.ARCADE_RAKE_PCT / 100);
+            // Final a 3 (quedaban 3 en pie): solo cobran ellos, 40/30/20, y el 10 % va a la pool de rewards (staking).
+            const final3 = !!room._final3;
+            if (final3) ranking.splice(0, ranking.length, ...ranking.filter(p => p.alive && p.cells && p.cells.length));
+            const PESOS_RONDA = final3 ? [40, 30, 20] : PESOS;
+            const comision = final3 ? 0 : Math.floor(totalPot * ctx.ARCADE_RAKE_PCT / 100);
             const repartible = totalPot - comision;
             let repartido = 0;
             if (comision > 0) ctx.econ.rakeStaking(comision, 'comision arcade ' + room.key);
             const top = [];
-            for (let i = 0; i < Math.min(10, ranking.length); i++) {
+            for (let i = 0; i < Math.min(PESOS_RONDA.length, ranking.length); i++) {
                 const pj = ranking[i];
                 const cli = room.clients.get(pj.id);
-                const parte = Math.floor(repartible * PESOS[i] / 100);
+                const parte = Math.floor(repartible * PESOS_RONDA[i] / 100);
                 if (cli && cli.payWallet && parte > 0) { ctx.econ.credit(cli.payWallet, parte); repartido += parte; }
                 // Daily: terminar top 5 en arcade
                 if (cli && cli.cid && (i + 1) <= 5) ctx.econ.dailyEvent(cli.cid, 'arcade_top5', 1);
-                top.push({ pos: i + 1, name: pj.name, mass: puntos(pj), pct: PESOS[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
+                top.push({ pos: i + 1, name: pj.name, mass: puntos(pj), pct: PESOS_RONDA[i], amount: parte, mine: false, paid: !!(cli && cli.payWallet) });
             }
-            payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top };
+            payoutMsg = { t: 'prize', reason: 'arcadeEnd', pot: totalPot, top, final3 };
             // Enviar a cada cliente con su #pos marcada como "mine"
             for (const [pid, cli] of room.clients) {
                 if (cli.ws.readyState !== 1) continue;
@@ -217,7 +221,7 @@ function tickRoomOnce(room, now, ctx) {
              * que nadie apuntara de quién era — un rake accidental e invisible.
              */
             const sinRepartir = repartible - repartido;
-            if (sinRepartir > 0) ctx.econ.rakeStaking(sinRepartir, 'bote no reclamado ' + room.key);
+            if (sinRepartir > 0) ctx.econ.rakeStaking(sinRepartir, (final3 ? 'final a 3 (pool de rewards) ' : 'bote no reclamado ') + room.key);
             ctx.log(`Reparto arcade ${room.key}: bote ${totalPot} (comisión ${comision}${sinRepartir > 0 ? ' + ' + sinRepartir + ' sin reclamar' : ''} → staking) → ${top.filter(t => t.paid).map(t => `#${t.pos}=${t.amount}`).join(' ') || '(sin ganadores con wallet)'}`);
             room.pot = 0;
         }
@@ -346,6 +350,9 @@ function tickRoomOnce(room, now, ctx) {
                     if (cliK.cid) ctx.econ.dailyEvent(cliK.cid, 'classic_5kills', 1);
                 }
             }
+        } else if (ev.type === 'arcFinal') {
+            // Arcade: quedan 3 en pie -> la partida se acaba ya y esos 3 se reparten el bote (40/30/20, el 10 % a la pool de rewards).
+            if (room.state === 'playing' && !room.squad) { room._final3 = true; room.endsAt = now; ctx.log(`Arcade ${room.key}: quedan ${(ev.ids || []).length} → final y reparto entre ellos`); }
         } else if (ev.type === 'skillUsed') {
             // BLINDAJE Q3: el servidor cuenta skills (no el cliente)
             const cli = room.clients.get(ev.playerId);
