@@ -35,7 +35,7 @@
      * no te empuja nada: pierdes un % de tu masa por segundo (el mismo % para todos, tengas la masa que tengas)
      * y si te quedas sin masa, fuera. Durante el primer minuto puede entrar gente; despues la sala se cierra.
      * Cada 30 s hay un evento (los 4, en orden al azar). El top se decide por PUNTUACION: masa x (1 + 0,10 por
-     * kill), como mucho x2. El primero lleva corona: quien se lo come gana +25 % de masa y la kill vale doble.
+     * kill), como mucho x2. Los 3 primeros llevan corona: quien se come a uno gana +30 / +20 / +10 % de masa y la kill del primero vale doble.
      */
     const ARCADE = {
         duracionMs: 180000, entradaMs: 60000,
@@ -64,7 +64,7 @@
         },
         minJugadores: 6,
         eventoMs: 10000, avisoMs: 3000, oroMs: 20000, oroR: 75, oroBonus: 0.25, rainR: 450, rainPorSeg: 45,
-        killBonus: 0.10, killMax: 2, coronaBonus: 0.25
+        killBonus: 0.10, killMax: 2, coronaBonus: [0.30, 0.20, 0.10]
     };
     // Tamano de la partida segun cuantos la han jugado (jugadores y, offline, bots).
     const arcadeTamano = n => n >= 14 ? 'large' : n >= 8 ? 'medium' : 'small';
@@ -917,7 +917,7 @@
             const mezcla = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
             const ev = mezcla(mezcla(ARCADE.buenos.slice()).slice(0, 2).concat(ARCADE.malos));
             for (let i = ev.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ev[i], ev[j]] = [ev[j], ev[i]]; }
-            this.arc = { t0: this.now, dur: durMs || ARCADE.duracionMs, ev, evIdx: 0, cur: null, s: this.mapSize, fase: 0, dano: 0, emitAt: -1e9, lider: null, liderAt: -1e9, oro: null, sobraHasta: 0, pesado: null, maxVivos: 0, final: false, jugaron: new Set() };
+            this.arc = { t0: this.now, dur: durMs || ARCADE.duracionMs, ev, evIdx: 0, cur: null, s: this.mapSize, fase: 0, dano: 0, emitAt: -1e9, lider: null, podio: [], liderAt: -1e9, oro: null, sobraHasta: 0, pesado: null, maxVivos: 0, final: false, jugaron: new Set() };
         }
         // Offline: el reloj de la sala corre aunque no se juegue; al volver se cuadra la zona con el.
         arcSync(elapsedMs) { if (this.arc) this.arc.t0 = this.now - Math.max(0, elapsedMs); }
@@ -936,16 +936,19 @@
             for (const x of g.values()) { x.puntos = Math.floor(x.masa); out.push(x); }
             return out;
         }
-        // Kill en arcade: suma al contador de la puntuacion; si era el de la corona, cuenta doble y da masa extra.
+        // Kill en arcade: suma al contador de la puntuacion. Si llevaba corona (podio: 1o, 2o o 3o) da masa extra
+        // (+30 / +20 / +10 %) y la del primero cuenta doble.
         arcKill(p, victimId, cell) {
             if (!this.arc || !p) return;
             let k = 1;
-            if (victimId != null && victimId === this.arc.lider) {
-                k = 2;
+            const puesto = victimId != null ? this.arc.podio.indexOf(victimId) : -1;
+            if (puesto >= 0) {
+                if (puesto === 0) k = 2;
+                const pct = ARCADE.coronaBonus[puesto];
                 let m = 0; for (const c of p.cells) m += c.mass;
                 const c = cell && p.cells.includes(cell) ? cell : p.cells[0];
-                if (c) c.r = Math.sqrt((c.mass + m * ARCADE.coronaBonus) / (Math.PI * PILL_RATIO));
-                this.emit({ type: 'arcKing', id: p.id, name: p.name || 'PLAYER', killed: true });
+                if (c) c.r = Math.sqrt((c.mass + m * pct) / (Math.PI * PILL_RATIO));
+                this.emit({ type: 'arcKing', id: p.id, name: p.name || 'PLAYER', killed: true, puesto: puesto + 1, pct: Math.round(pct * 100) });
                 this.arc.liderAt = -1e9;   // se recalcula ya
             }
             p.kills = (p.kills | 0) + k;
@@ -998,14 +1001,16 @@
                     this.emit({ type: 'arcFinal', ids: vivos.map(v => v.id), nombres: vivos.map(v => v.nombre || 'PLAYER') });
                 }
             }
-            // Corona: el primero por puntuacion (jugadores y grupos de bots), cada medio segundo.
+            // Coronas: los 3 primeros por puntuacion (jugadores y grupos de bots), cada medio segundo. Sin aviso al cambiar:
+            // salia demasiado (NEW KING); solo se avisa cuando alguien se come una corona (arcKill).
             if (this.now - A.liderAt >= 500) {
                 A.liderAt = this.now;
-                let best = null, bestP = -1, bestName = '';
-                for (const p of this.players.values()) { if (!p.alive || !p.cells.length) continue; const v = this.arcPuntos(p); if (v > bestP) { bestP = v; best = p.id; bestName = p.name; } }
-                const g = new Map(); for (const e of this.enemies) { const x = g.get(e.id) || { m: 0, n: e.name }; x.m += e.mass; g.set(e.id, x); }
-                for (const [id, x] of g) if (x.m > bestP) { bestP = x.m; best = id; bestName = x.n; }
-                if (best !== A.lider) { A.lider = best; if (best != null) this.emit({ type: 'arcKing', id: best, name: bestName || 'PLAYER' }); }
+                const r = [];
+                for (const p of this.players.values()) { if (!p.alive || !p.cells.length) continue; r.push([p.id, this.arcPuntos(p)]); }
+                const g = new Map(); for (const e of this.enemies) g.set(e.id, (g.get(e.id) || 0) + e.mass);
+                for (const [id, m] of g) r.push([id, m]);
+                r.sort((a, b) => b[1] - a[1]);
+                A.podio = r.slice(0, 3).map(x => x[0]); A.lider = A.podio[0] != null ? A.podio[0] : null;
             }
             // Estado para los clientes (tambien para quien entra a media partida).
             if (cambioFase || this.now - A.emitAt >= 250) {

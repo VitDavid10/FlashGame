@@ -16255,8 +16255,9 @@
                 case 'arc': arcSt = Object.assign({}, ev, { at: performance.now() }); break;
                 case 'arcKing': {
                     const yo = ev.id === 'me' || (sim && sim.myId && ev.id === sim.myId);
-                    if (ev.killed) spawnFloatingText(yo ? 'KING SLAIN! +25% MASS' : (ev.name || 'A PLAYER') + ' SLAYED THE KING', '#ffd23a');
-                    else spawnFloatingText(yo ? 'YOU ARE THE KING!' : 'NEW KING: ' + (ev.name || 'A PLAYER'), '#ffd23a');
+                    // Solo cuando se comen una corona (ya no se avisa de cada NEW KING: salia demasiado).
+                    if (ev.killed && yo) spawnFloatingText('CROWN #' + (ev.puesto || 1) + ' SLAIN! +' + (ev.pct || 30) + '% MASS', '#ffd23a');
+                    else if (ev.killed && (ev.puesto || 1) === 1) spawnFloatingText((ev.name || 'A PLAYER') + ' SLAYED THE KING', '#ffd23a');
                     break;
                 }
                 case 'arcTax': {

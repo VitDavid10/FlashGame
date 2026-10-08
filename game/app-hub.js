@@ -1828,7 +1828,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => 'Tip: in ARCADE, when only 3 players are left the match ends and those 3 win.',
         () => 'Tip: the GOLDEN VIRUS gives +25% mass to the first one who touches it.',
         () => 'Tip: in ARCADE the ranking goes by score: every kill adds 10% to your mass, up to x2.',
-        () => 'Tip: the player with the crown leads the room. Eat them for +25% mass and a double kill.',
+        () => 'Tip: in ARCADE the top 3 wear a crown. Eat one for +30%, +20% or +10% mass (the king also counts as a double kill).',
         () => 'Tip: in CLASSIC, when you eat someone you take everything they were carrying.',
         () => 'Tip: leaving CLASSIC early costs a penalty: 20% with no kills, 10% with one kill, none from 2 kills.',
         () => 'Tip: in CLASSIC your match ends when you reach 5 kills (pentakill), when you leave, or at the 15 minute limit.',
