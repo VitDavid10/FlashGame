@@ -11594,7 +11594,11 @@
         els.result.style.display = 'flex';
         hideGameHUD();
     }
+    // El reloj local llamaba a esto en cada frame tras acabar la partida: la pantalla final se repintaba (con los puntos de los bots bajando) y el sonido sonaba una y otra vez. Una vez por partida.
+    let _finSim = null;
     function finishGameSuccess() {
+        if (_finSim && _finSim === sim) return;
+        _finSim = sim;
         try { Quests.flushArcadeSkills(); Quests.endMatch('matchEnd'); } catch (e) {}
         try { if (window.pwAq) pwAq.lifeEnd(myCells().length > 0 && !isSpectating, _miPuesto, true); } catch (e) {}
         hideCountdownNumber(); if (!(typeof netState !== 'undefined' && netState && netState.squad)) SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer');
