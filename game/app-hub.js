@@ -439,9 +439,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-lv{font-size:.44em}
 #appHub.pc .ah-line{left:5.9em;top:3.75em;width:18em}
 #appHub.pc .ah-ico{top:.8em;right:1.1em;gap:.5em}
-#appHub.pc .ah-btn{width:2.25em;height:2.25em}
-#appHub.pc .ah-btn svg{width:1.05em;height:1.05em}
-#appHub.pc .ah-sp{font-size:.56em}
+#appHub.pc .ah-btn{width:1.9em;height:1.9em}
+#appHub.pc .ah-btn svg{width:.9em;height:.9em}
+#appHub.pc .ah-sp{font-size:.5em}
 #appHub.pc .ah-it{left:3.2em}
 #appHub.pc .ah-it[data-a=pill]{top:5.5em!important}
 #appHub.pc .ah-it[data-a=arenas]{top:9.05em!important}
@@ -457,19 +457,26 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it .s{font-size:.4em;margin-top:.8em}
 #appHub.pc .ah-it .bar{width:7em}
 #appHub.pc #ahPillSub{position:absolute;left:23em;top:1.45em;margin:0;gap:1.2em}
-#appHub.pc #ahPillSub img{width:3.9em;height:3.9em}
+#appHub.pc #ahPillSub img,#appHub.pc #ahPillSub .hk{width:3.9em;height:3.9em}
+#ahPillSub .hk{display:inline-block;box-sizing:border-box;width:3.4em;height:3.4em;border:.25em solid #3b4a40;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 .2em rgba(0,0,0,.6)}
 #appHub.pc .ah-it.sel:before{border-color:var(--ac);background:linear-gradient(180deg,#0b0e01,#050700)}
 #appHub.pc .ah-it.sel:after{background:#1d2913;left:13.54em}
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:17.6em;bottom:.35em;z-index:6}
-#appHub.pc .ah-room .med{width:2.7em;height:2.7em}
-#appHub.pc .ah-room .med>svg{width:1.3em;height:1.3em}
+#appHub.pc .ah-room{right:16.2em;bottom:1.45em;z-index:6;gap:.3em}
+#appHub.pc .ah-room .med{width:2.2em;height:2.2em}
+#appHub.pc .ah-room .med>svg{width:1.05em;height:1.05em}
+#appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
+#appHub.pc .ah-room .v{font-size:.36em}
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:max-content;min-width:min(28.7em,100%);max-width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:auto;bottom:2em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:5.375em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
+.ph>.px.pmax{margin-left:auto}.ph>.pmax+.px{margin-left:.5em}.ph>.cnt+.pmax{margin-left:.7em}
+#appHub:not(.pc) .pmax{display:none}
+#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv){background:rgba(3,6,4,.9);justify-content:center;align-items:center;padding:0;pointer-events:auto;z-index:8}
+#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:auto;font-size:1em}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:22.5em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
@@ -858,7 +865,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const word = mode === 'classic' ? 'CLASSIC' : 'ARCADE';
         $('#ahRooms .mw').src = 'img/mode-title/' + word + '-word.png';
         drawPill($('#ahPillIco'), 64, 0.78);
-        $('#ahPillSub').innerHTML = '<img src="' + skIcon(picks[0]) + '"><img src="' + skIcon(picks[1]) + '">' + (picks[0] && picks[1] ? '' : 'PICK 2 SKILLS');
+        // Skill elegida: su icono; sin elegir: el hueco vacio (antes un texto PICK 2 SKILLS).
+        $('#ahPillSub').innerHTML = [0, 1].map(i => picks[i] ? '<img src="' + skIcon(picks[i]) + '">' : '<span class="hk"></span>').join('');
         $('#ahRoomV').innerHTML = word + ' · <b class="' + (room === 'Free' || room === 'offline' ? '' : 'usd') + '">' + (room === 'offline' ? 'OFFLINE' : room === 'Free' ? 'FREE' : '$' + room.replace('$', '')) + '</b>';
         try {
             // Barra = misiones hechas hoy sobre las 3 que se pueden marcar; la insignia = las que aun puedes marcar.
@@ -1752,6 +1760,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         hub.querySelectorAll('#ahSk .tb').forEach(b => b.onclick = () => {
             const pg = $('#ahSk .pin .pg'); if (pg) pg.remove();
             pillTab = b.dataset.t; skInfo = null; renderPill();
+        });
+        hub.querySelectorAll('.ov .ph>.px').forEach(px => {
+            const ov = px.closest('.ov'); if (!ov || ov.querySelector('.pmax') || px.textContent.trim() !== 'CLOSE') return;
+            const b = document.createElement('button'); b.className = 'px pmax'; b.textContent = 'FULL';
+            const repinta = () => requestAnimationFrame(() => { try { placa(ov.querySelector('.pnl'), 1); } catch (x) {} });
+            b.onclick = () => { const f = ov.classList.toggle('full'); b.textContent = f ? 'SMALL' : 'FULL'; repinta(); };
+            px.addEventListener('click', () => { if (ov.classList.contains('full')) { ov.classList.remove('full'); b.textContent = 'FULL'; } });
+            px.before(b);
         });
         $('.ah-play').onclick = async () => {
             const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
