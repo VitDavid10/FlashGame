@@ -248,7 +248,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .co .sw b.sel{outline:.16em solid #fff;outline-offset:.12em}
 .qg{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:.45em}
 .qc{position:relative;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.35em .55em;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
-.qc .k{font-size:.36em;line-height:1.4;letter-spacing:.1em;color:var(--mut)}
+.qc .k{font-size:.36em;line-height:1.4;letter-spacing:.1em;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qc .t{font-size:.44em;line-height:1.5;letter-spacing:.04em;margin-top:.35em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:.15em .15em 0 #000}
 .qc .d{font-family:'VT323',monospace;font-size:.78em;color:#9fb3aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qc .b{display:flex;align-items:center;justify-content:space-between}
@@ -1383,18 +1383,31 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             st.textContent = '#aqHud{position:absolute;right:8px;top:90px;z-index:55;display:none;max-width:52vw;text-align:right;font-family:\'Press Start 2P\',monospace;font-size:7px;line-height:1.5;pointer-events:none;text-shadow:1px 1px 0 #000}' +
                 '#aqHud.show{display:block}#aqHud .h{color:#8aa096;margin-bottom:3px}' +
                 '#aqHud .r{background:rgba(6,10,8,.55);border-right:3px solid #ccff00;padding:3px 7px;margin-bottom:3px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-                '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-right-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}';
+                '#aqHud .r b{font-weight:400;color:#ccff00;margin-left:6px}#aqHud .r.ok{border-right-color:#00ff66;color:#00ff66}#aqHud .r.ok b{color:#00ff66}' +
+                // PC: a la izquierda de todo y como el cuadro de TOP MASS; el cuadro de BUFFS baja debajo (lo coloca aqHud).
+                'html.pw-app body:not(.mobile-allowed) #aqHud{right:auto;left:15px;top:75px;width:240px;max-width:none;text-align:left;box-sizing:border-box;background:rgba(10,10,10,.8);border:2px solid #1f7a4a;box-shadow:3px 3px 0 rgba(0,0,0,.6);padding:10px}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .h{font-size:14px;color:#9dffc4;text-align:center;letter-spacing:2px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #333;text-shadow:2px 2px 0 #000}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r{background:none;border:none;border-left:3px solid #ccff00;padding:3px 0 3px 7px;margin-bottom:6px;font-size:8px;white-space:normal;line-height:1.6;text-overflow:clip}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r b{display:block;margin:2px 0 0}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r.ok{border-left-color:#00ff66}';
             document.head.appendChild(st);
             el = document.createElement('div'); el.id = 'aqHud';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(el);
         }
         const a = aqLoad(), rows = a.pins.map(id => aqList().find(m => m.id === id)).filter(Boolean);
-        if (!aqHudOn || !rows.length) { el.classList.remove('show'); return; }
+        if (!aqHudOn || !rows.length) { el.classList.remove('show'); aqBuffs(); return; }
         el.innerHTML = '<div class="h">MISSIONS</div>' + rows.map(m => {
             const ok = !!a.done[m.id], v = Math.min(m.goal, ok ? m.goal : (a.prog[m.id] | 0));
             return '<div class="r' + (ok ? ' ok' : '') + '">' + (ok ? '✓ ' : '') + m.t + '<b>' + fmtN(v) + '/' + fmtN(m.goal) + '</b></div>';
         }).join('');
         el.classList.add('show');
+        aqBuffs();
+    }
+    function aqBuffs() {
+        const el = document.getElementById('aqHud'), bt = document.getElementById('buffTable');
+        if (!bt) return;
+        const pc = document.documentElement.classList.contains('pw-app') && !document.body.classList.contains('mobile-allowed');
+        bt.style.top = (pc && el && el.classList.contains('show')) ? Math.round(el.getBoundingClientRect().bottom + 10) + 'px' : '';
     }
     function renderQuests() {
         const g = $('#ahQG'); g.innerHTML = '';
@@ -1411,7 +1424,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const c = document.createElement('div');
             c.className = 'qc' + (ok ? ' done' : '') + (pin ? ' pin' : '');
             const estado = ok ? (a.claimed[m.id] ? 'DONE' : 'CLAIM') : '+' + m.pts + ' SP';
-            c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + (pin ? ' · IN GAME' : '') + '</div><div class="t"></div></div>' +
+            c.innerHTML = '<div><div class="k">' + m.tier + ' · ' + (m.kind === 'm' ? 'ONE MATCH' : 'TODAY') + '</div><div class="t"></div></div>' +
                 '<div class="qp"><i style="width:' + Math.round(v / m.goal * 100) + '%"></i></div>' +
                 '<div class="b"><span class="n">' + fmtN(v) + '/' + fmtN(m.goal) + '</span><span class="pts">' + estado + '</span></div>';
             c.querySelector('.t').textContent = m.t;
