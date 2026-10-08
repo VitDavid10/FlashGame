@@ -150,7 +150,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys.on.out{animation:ahSysOut .35s ease-in both}
 @keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
 @keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
-.ah-fb.ah-avb{left:14.3em;top:1.8em;right:auto;z-index:6}
+.ah-fb.ah-avb{left:14.3em;top:1.8em;right:auto;z-index:4}
+#appHub:not(.pc):has(.ov.open) .ah-fb,#appHub:not(.pc):has(.ov.open) .ah-bdg{visibility:hidden}
 #appHub.pc .ah-avb{left:15.7em;top:2.3em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
@@ -353,9 +354,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
 #ahPr .pr-bt{margin-top:1.2em}#ahPr .pr-w{margin-top:.35em}
 .tb .pz-dot{display:inline-block;min-width:1.4em;box-sizing:border-box;padding:.3em .4em .2em;background:#e5302f;color:#fff;font-style:normal;font-size:.7em;line-height:1;text-align:center;margin-left:.6em;vertical-align:.2em;box-shadow:0 0 0 .18em #000}
-.pz-l{display:flex;flex-direction:column;gap:.45em;height:4.9em;overflow-y:auto;overflow-x:hidden;margin-top:.9em;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+#ahPz .ph .tb{white-space:nowrap;width:auto;padding:.5em 1.4em}
+.pz-l{display:flex;flex-direction:column;gap:.35em;height:calc(4 * 1.5em + 3 * .35em);overflow-y:auto;overflow-x:hidden;margin-top:.9em;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
 .pz-l .pz-r{flex:none}
-.pz-r{display:flex;align-items:center;gap:1em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.6em .9em}
+.pz-r{display:flex;align-items:center;gap:1em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.3em .9em}
 .pz-r .m{font-size:.5em;color:#fff;min-width:6.5em}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
 .pz-r .a{font-size:.55em;color:#ffd23a;text-align:right}.pz-r .s{font-size:.36em;min-width:6.5em;text-align:right;letter-spacing:.08em}
 .pz-r .s.ok{color:var(--mut)}.pz-r .s.no{color:#ffd23a}.pz-r.done .a{color:var(--mut)}
@@ -1592,6 +1594,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const fecha = t => { const d = new Date(t); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
             $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY' + (h.usd != null ? ' (' + cortoUsd(h.usd) + ')' : '') + '</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
                 : '<div class="pz-e">EMPTY<br>WIN A PAID ARENA MATCH TO GET PRIZES</div>';
+            const fl = $('#ahPzL'), f0 = fl.firstElementChild;   // alto exacto de 4 filas, haya las que haya
+            if (f0 && f0.classList.contains('pz-r')) fl.style.height = (4 * f0.offsetHeight + 3 * (parseFloat(getComputedStyle(fl).rowGap) || 0)) + 'px';
             $('#ahPzT').textContent = fmt(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '');
             $('#ahPzAll').disabled = !(total > 0);
             $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); refreshClaims(false); });
