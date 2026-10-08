@@ -359,7 +359,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pz-l .pz-r{flex:none}
 .pz-r{display:flex;align-items:center;gap:1em;padding:.55em .4em;border-bottom:.07em dashed rgba(255,255,255,.12)}
 .pz-r:last-child{border-bottom:0}
-.pz-r .m{font-size:.5em;color:#fff;min-width:6.5em}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
+.pz-r .m{font-size:.5em;color:#fff;width:12.5em;flex:none;white-space:nowrap}.pz-r .d{font-size:.38em;color:var(--mut);flex:1}
 .pz-r .a{font-size:.55em;color:#ffd23a;text-align:right}.pz-r .s{font-size:.36em;min-width:6.5em;text-align:right;letter-spacing:.08em}
 .pz-r .s.ok{color:var(--mut)}.pz-r .s.no{color:#ffd23a}.pz-r.done .a{color:var(--mut)}
 .pz-e{font-size:.45em;color:var(--mut);text-align:center;margin:auto;line-height:2}
