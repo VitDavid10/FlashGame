@@ -1388,7 +1388,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 'html.pw-app body:not(.mobile-allowed) #aqHud{right:auto;left:15px;top:75px;width:240px;max-width:none;text-align:left;box-sizing:border-box;background:rgba(10,10,10,.8);border:2px solid #1f7a4a;box-shadow:3px 3px 0 rgba(0,0,0,.6);padding:10px}' +
                 'html.pw-app body:not(.mobile-allowed) #aqHud .h{font-size:14px;color:#9dffc4;text-align:center;letter-spacing:2px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #333;text-shadow:2px 2px 0 #000}' +
                 'html.pw-app body:not(.mobile-allowed) #aqHud .r{background:none;border:none;border-left:3px solid #ccff00;padding:3px 0 3px 7px;margin-bottom:6px;font-size:8px;white-space:normal;line-height:1.6;text-overflow:clip}' +
-                'html.pw-app body:not(.mobile-allowed) #aqHud .r b{display:block;margin:2px 0 0}' +
+                'html.pw-app body:not(.mobile-allowed) #aqHud .r{display:flex;justify-content:space-between;align-items:center;gap:8px}html.pw-app body:not(.mobile-allowed) #aqHud .r b{margin:0;flex:none}' +
                 'html.pw-app body:not(.mobile-allowed) #aqHud .r.ok{border-left-color:#00ff66}';
             document.head.appendChild(st);
             el = document.createElement('div'); el.id = 'aqHud';
