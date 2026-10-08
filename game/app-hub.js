@@ -187,6 +187,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ahr-g .cell .ly i.g{background:#00ff88}.ahr-g .cell .ly i.y{background:#ffce3d}.ahr-g .cell .ly i.r{background:#ff5a4e}
 .ahr-g .cell .more{font-size:.28em;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
 .ahr-g .cell .st.live{color:#00ff88}.ahr-g .cell .st.wait{color:#ffd23a}
+#ahRooms .ph .cnt{margin-left:.3em}
 .ahr-b{display:grid;grid-template-columns:1fr 1.18fr;gap:.9em;margin-top:.95em}
 .ahr-box{position:relative;box-sizing:border-box;border:.12em solid color-mix(in srgb,var(--k,#c8ff00) 55%,#000);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
 .ahr-box>b{position:absolute;left:.7em;top:0;transform:translateY(-58%);font-weight:400;font-size:.4em;letter-spacing:.1em;background:var(--k,#c8ff00);color:#0b0f05;padding:.5em .8em .4em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
