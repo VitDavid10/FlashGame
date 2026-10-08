@@ -465,7 +465,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:16.2em;bottom:1.45em;z-index:6;gap:.3em}
+#appHub.pc .ah-room{right:16.2em;bottom:1.09em;z-index:6;gap:.3em}
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
 #appHub.pc .ah-room .med>svg{width:1.05em;height:1.05em}
 #appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
@@ -869,8 +869,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahPillSub').innerHTML = [0, 1].map(i => picks[i] ? '<img src="' + skIcon(picks[i]) + '">' : '<span class="hk"></span>').join('');
         $('#ahRoomV').innerHTML = word + ' · <b class="' + (room === 'Free' || room === 'offline' ? '' : 'usd') + '">' + (room === 'offline' ? 'OFFLINE' : room === 'Free' ? 'FREE' : '$' + room.replace('$', '')) + '</b>';
         try {
-            // Barra = misiones hechas hoy sobre las 3 que se pueden marcar; la insignia = las que aun puedes marcar.
-            const q = aqLoad(), hechas = Object.keys(q.done).length, faltan = Math.max(0, AQ_MAX - q.pins.length - hechas);
+            // Barra = misiones hechas hoy sobre las 3 que se pueden marcar; la insignia = todas las misiones del dia que aun no estan hechas.
+            const q = aqLoad(), hechas = Object.keys(q.done).length, faltan = Math.max(0, aqList().length - hechas);
             $('#ahQBar').style.width = Math.round(Math.min(1, hechas / AQ_MAX) * 100) + '%';
             $('#ahQBdg').textContent = faltan; $('#ahQBdg').style.display = faltan ? '' : 'none';
         } catch (e) {}
