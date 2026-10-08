@@ -418,14 +418,14 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:17.6em;bottom:1.6em;z-index:6}
+#appHub.pc .ah-room{right:18.2em;bottom:1em;z-index:6}
 #appHub.pc .ah-room .med{width:2.7em;height:2.7em}
 #appHub.pc .ah-room .med>svg{width:1.3em;height:1.3em}
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:28.7em;top:auto;bottom:2em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:5.375em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:38.6em!important;height:22.5em;font-size:.765em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:22.5em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
 .sk-g .cell .inf:active{color:var(--ac)}
@@ -783,7 +783,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const girado = document.body.classList.contains('mobile-allowed');
         // PC (ventana ancha, sin girar): el mismo hub repartido en 48em x 27em (1em = 40px a 1920x1080).
         hub.classList.toggle('pc', !girado);
-        hub.style.fontSize = (girado ? Math.min(innerWidth, innerHeight) / U * 16 : Math.min(innerHeight / 27, innerWidth / 48)) + 'px';
+        const fs = girado ? Math.min(innerWidth, innerHeight) / U * 16 : Math.min(innerHeight / 27, innerWidth / 48);
+        hub.style.fontSize = fs + 'px';
+        hub.style.setProperty('--hw', (innerWidth / fs).toFixed(2));   // ancho de la ventana en em del hub (>= 48): los paneles de PC se estiran hasta el borde derecho
+
     }
     const skIcon = id => id ? 'img/skill-icons-pixel/' + id + '.png' : '';
     function paintStatic() {
