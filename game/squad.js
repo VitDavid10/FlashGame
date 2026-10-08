@@ -27,7 +27,7 @@
         box: { rooms: null, friends: null }, pc: {}, roster: null, rel: null,
         ticketTimer: null, practiceTimer: null, enterBusy: false, after: null,
         x: 'unknown', token: null, prof: null, idAt: 0,
-        friends: { friends: [], inReq: [], outReq: [] }, rooms: [], chat: {}, chatWith: null, unread: {}, roomsTimer: null,
+        friends: { friends: [], inReq: [], outReq: [] }, rooms: [], chat: {}, chatWith: null, unread: {}, roomsTimer: null, watch: (() => { try { return JSON.parse(localStorage.getItem('pw_fwatch')) || {}; } catch (e) { return {}; } })(),
         invites: [],
         mute: (() => { try { return JSON.parse(localStorage.getItem('pw_wmute')) || { all: false, ids: {} }; } catch (e) { return { all: false, ids: {} }; } })(),
     };
@@ -465,14 +465,13 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         else if (m.t === 'sqTicket') onTicket(m);
         else if (m.t === 'sqMe') { S.prof = m.me; }
         else if (m.t === 'sqFriends') { S.friends = { friends: m.friends, inReq: m.inReq, outReq: m.outReq }; S.note = ''; render(); }
-        else if (m.t === 'sqPresence') { const f = S.friends.friends.find(x => x.id === m.id); if (f) { f.st = m.st; render(); } }
+        else if (m.t === 'sqPresence') { const f = S.friends.friends.find(x => x.id === m.id); if (f) { const antes = f.q; f.st = m.st; f.q = m.q || null; if (f.q && !antes && S.watch[f.id]) avisoListo(f); render(); } }
         else if (m.t === 'sqRooms') { S.rooms = m.rooms; render(); }
         else if (m.t === 'sqInvited') { S.note = 'Invite sent!'; S.err = ''; render(); }
         else if (m.t === 'sqFriendReq') { if (!S.mute.all) toast({ kind: 'friend', pic: m.from.p, text: esc(nameOf(m.from)) + ' wants to be your friend', warm: true, actions: [['ACCEPT', () => send({ a: 'faccept', id: m.from.id }), 1], ['LATER', null]] }); render(); }
         else if (m.t === 'sqInvite') onInvite(m);
         else if (m.t === 'sqReadyCheck') onReadyCheck(m);
         else if (m.t === 'sqRivals') { S.rivals = m.list || []; S.pillUsd = m.pillUsd || 0; S.quote = m.quote || []; render(); }
-        else if (m.t === 'sqBracket') onBracket(m);
         else if (m.t === 'sqPropose') onPropose(m);
         else if (m.t === 'squadPrize') onPrize(m);
         else if (m.t === 'sqClaim') onClaim(m);
@@ -492,7 +491,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         // Con el menu a la vista, los avisos sin botones van a la placa SYSTEM del hub (cola, un aviso a la vez).
         if (window.PWSys && document.body.classList.contains('hub-on') && (o.kind || (!o.actions && !o.pic))) {
             const d = document.createElement('div'); d.innerHTML = o.text;
-            window.PWSys.push(d.textContent, 12000, o.kind ? 0 : 1, o.kind ? { kind: o.kind, pic: o.pic, actions: o.actions } : undefined); snd('alert'); return;
+            window.PWSys.push(d.textContent, 12000, o.kind ? 0 : 1, { kind: o.kind || 'arena', pic: o.pic, actions: o.actions }); snd('alert'); return;
         }
         const bid = (o.center || (!o.actions && !o.pic)) ? 'sqToastC' : 'sqToast';   // los avisos sin botones (CANCELLED, premios...) van centrados; susurros e invitaciones a la izquierda
         let box = document.getElementById(bid);
@@ -1128,12 +1127,11 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             return '<div class="sq-rv-h' + (hi ? '' : ' free') + '">' + (hi ? 'UP TO $' + hi : 'FREE') + '</div>' + body;
         }).join('');
     }
-    // Alguien ha entrado en tu tramo de precio (buscando o mirando): aviso con boton para ir a por el.
-    function onBracket(m) {
+    // Un amigo con el aviso activado (ALERT en FRIENDS) esta LISTO buscando partida: aviso ARENA con boton para ir a por el.
+    function avisoListo(f) {
         if (S.party && (S.party.state !== 'idle' || S.party.rc || S.party.cm)) return;
-        toast({ text: esc(m.who) + (m.ready ? ' is READY for ' : ' is looking for ') + m.size + 'V' + m.size + ' · ' + usdLbl(m.cents / 100), warm: true, ms: 9000,
-            actions: [['FIGHT', () => lanzar(m.size, m.cents / 100), 1], ['X', null]] });
-        snd('alert');
+        toast({ kind: 'arena', pic: f.p, text: esc(friendName(f)) + ' is READY for ' + f.q.size + 'V' + f.q.size + ' · ' + usdLbl(f.q.cents / 100), ms: 12000,
+            actions: [['FIGHT', () => lanzar(f.q.size, f.q.cents / 100), 1], ['X', null]] });
     }
     // Un companero propone partida: al lider le sale el aviso y si acepta se lanza.
     function onPropose(m) {
@@ -1216,9 +1214,9 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             '<div class="sq-it">' + pic(f) + '<div class="w">' + (S.nickEdit === f.id
                 ? '<input class="sq-in" id="sqNick" maxlength="16" placeholder="NICKNAME (ONLY YOU SEE IT)" value="' + esc(nicks[f.id] || '') + '" autocomplete="off">'
                 : '<div class="n">' + esc(friendName(f)) + (S.unread[f.id] ? '<span class="sq-bd">' + S.unread[f.id] + '</span>' : '') + '</div>') +
-            '<div class="s ' + f.st + '"><i></i>' + ST[f.st] + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
+            '<div class="s ' + f.st + '"><i></i>' + (f.q ? 'READY ' + f.q.size + 'V' + f.q.size + ' · ' + usdLbl(f.q.cents / 100) : ST[f.st]) + (nicks[f.id] ? ' · ' + esc(nameOf(f)) : '') + '</div></div>' +
             (S.nickEdit === f.id ? '<div class="a"><button class="sq-b sm on" data-nks="' + f.id + '">SAVE</button><button class="sq-b sm" data-nkc="1">X</button></div>' :
-            '<div class="a">' + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm' + (S.mute.ids[f.id] ? ' on' : '') + '" data-mu="' + f.id + '">' + (S.mute.ids[f.id] ? 'UNMUTE' : 'MUTE') + '</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
+            '<div class="a">' + (f.q ? '<button class="sq-b sm gold" data-fight="' + f.id + '">FIGHT</button>' : '') + (canInvite && f.st !== 'off' && !(p && p.members.some(x => x.uid === f.id)) ? '<button class="sq-b sm on" data-inv="' + f.id + '"' + (searching ? ' data-warn="1"' : '') + '>INVITE</button>' : '') + '<button class="sq-b sm' + (S.unread[f.id] ? ' blink' : '') + '" data-w="' + f.id + '"' + (f.st === 'off' ? ' disabled' : '') + '>WHISPER</button><button class="sq-b sm" data-nk="' + f.id + '">NICK</button><button class="sq-b sm' + (S.watch[f.id] ? ' on' : '') + '" data-wt="' + f.id + '">' + (S.watch[f.id] ? 'ALERT ON' : 'ALERT') + '</button><button class="sq-b sm' + (S.mute.ids[f.id] ? ' on' : '') + '" data-mu="' + f.id + '">' + (S.mute.ids[f.id] ? 'UNMUTE' : 'MUTE') + '</button><button class="sq-b sm red" data-rm="' + f.id + '">X</button></div>') + '</div>').join('');
         return '<div class="sq sq-fixed">' + tabs + grp + aviso +
             '<div class="sq-row" style="flex-wrap:nowrap"><input class="sq-in" id="sqAdd" maxlength="48" placeholder="ADD: @X NAME, WALLET OR CODE" autocomplete="off"><button class="sq-b sm on" data-a="fadd">ADD</button><button class="sq-b sm' + (S.mute.all ? ' red' : '') + '" data-a="muteall">' + (S.mute.all ? 'POPUPS OFF' : 'POPUPS ON') + '</button></div>' +
             invHtml + reqs + '<div class="sq-h">FRIENDS · ' + F.friends.filter(f => f.st !== 'off').length + ' ONLINE</div>' +
@@ -1294,6 +1292,8 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         const codeIn = b.querySelector('#sqCode');
         if (codeIn) codeIn.onkeydown = e => { if (e.key === 'Enter') b.querySelector('[data-a="cmjoin"]').click(); };
         const guardaMute = () => { try { localStorage.setItem('pw_wmute', JSON.stringify(S.mute)); } catch (e) {} };
+        b.querySelectorAll('[data-wt]').forEach(x => x.onclick = () => { snd('simpleselect'); const id = x.dataset.wt; if (S.watch[id]) delete S.watch[id]; else S.watch[id] = 1; try { localStorage.setItem('pw_fwatch', JSON.stringify(S.watch)); } catch (e) {} render(); });
+        b.querySelectorAll('[data-fight]').forEach(x => x.onclick = () => { const f = S.friends.friends.find(y => y.id === x.dataset.fight); if (f && f.q) { snd('simpleselect'); lanzar(f.q.size, f.q.cents / 100); } });
         b.querySelectorAll('[data-mu]').forEach(x => x.onclick = () => { snd('simpleselect'); const id = x.dataset.mu; if (S.mute.ids[id]) delete S.mute.ids[id]; else S.mute.ids[id] = 1; guardaMute(); render(); });
         b.querySelectorAll('[data-tab]').forEach(x => x.onclick = () => { if (x.disabled) return; snd('simpleselect'); S.frTab = x.dataset.tab; render(); });
         b.querySelectorAll('[data-nk]').forEach(x => x.onclick = () => { S.nickEdit = x.dataset.nk; render(); const i = b.querySelector('#sqNick'); if (i) i.focus(); });

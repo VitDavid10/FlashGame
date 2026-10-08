@@ -126,7 +126,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-it:active .med{transform:translateY(.1em)}
 .ah-dot{width:.55em;height:.55em;background:#00ff66;animation:ahBl 1s steps(2) infinite}
 @keyframes ahBl{50%{opacity:.2}}
-.ah-bdg{position:absolute;left:2.3em;top:-.2em;background:#e5302f;font-size:.42em;padding:.35em .45em .25em;box-shadow:0 0 0 .2em #000}
+.ah-bdg{position:absolute;left:2.4em;top:-.1em;background:#e5302f;font-size:.3em;padding:.35em .45em .25em;box-shadow:0 0 0 .2em #000}
 #ahPill{position:absolute;left:24.15em;top:3.2em;width:22em;height:14.2em;cursor:pointer}
 .ah-room{position:absolute;right:15.9em;bottom:.6em;width:5em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.4em}
 .ah-room .sw{position:absolute;right:-.45em;top:-.3em;width:1.35em;height:1.35em;border-radius:50%;background:var(--ac);color:#04150c;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 .12em #000}
@@ -143,15 +143,15 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-play:active{transform:translateY(.12em)}
 .ah-sys{position:absolute;left:21.5em;right:13.5em;top:.85em;z-index:4;display:none;padding:.85em 1em .5em;box-sizing:border-box;background:linear-gradient(180deg,#0b0e01,#050700);border:.1em solid #4d5f17;box-shadow:.15em .22em 0 rgba(0,0,0,.6);pointer-events:none}
 .ah-sys.on{display:block}
-#appHub:has(.ov.open) .ah-sys{visibility:hidden}
+#appHub:not(.pc):has(.ov.open) .ah-sys{visibility:hidden}
 .ah-sys b{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:var(--ac);color:#0b0f05;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 .ah-sys span{display:block;flex:1;min-width:0;font-size:.5em;line-height:1.6;letter-spacing:.03em;text-transform:uppercase}
 .ah-sys.on{display:flex;align-items:center;gap:1em;animation:ahSysIn .4s cubic-bezier(.2,.9,.3,1) both}
 .ah-sys.on.out{animation:ahSysOut .35s ease-in both}
 @keyframes ahSysIn{from{opacity:0;transform:translateY(.9em)}to{opacity:1;transform:none}}
 @keyframes ahSysOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(.5em)}}
-.ah-fb.ah-avb{left:4.1em;top:0;right:auto;z-index:6}
-#appHub.pc .ah-avb{left:4.5em;top:.2em}
+.ah-fb.ah-avb{left:4.2em;top:.15em;right:auto;z-index:6}
+#appHub.pc .ah-avb{left:4.5em;top:.3em}
 .ah-sys .pic{display:none;flex:none;width:2.4em;height:2.4em;border-radius:50%;background:#2c3630 center/cover;box-shadow:0 0 0 .12em #000;align-self:center;transform:translateY(-.17em)}
 .ah-sys.pic .pic{display:block}
 .ah-sys .acts{display:none;flex:none;gap:.6em;align-self:center;transform:translateY(-.17em)}
@@ -162,6 +162,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-sys.k-whisper b{background:#3fa0ff}
 .ah-sys.k-friend{--kb:#b57bff;--kd:#7a55b0;border-color:#7a55b0;background:linear-gradient(180deg,#0d0814,#06030a)}
 .ah-sys.k-friend b{background:#b57bff}
+.ah-sys.k-arena{--kb:#ffb02e;--kd:#a8741a;border-color:#a8741a;background:linear-gradient(180deg,#140d02,#0a0601)}
+.ah-sys.k-arena b{background:#ffb02e}
 .ah-sys.k-invite{--kb:#ff5a4a;--kd:#a8453a;border-color:#a8453a;background:linear-gradient(180deg,#140706,#0a0302)}
 .ah-sys.k-invite b{background:#ff5a4a}
 .ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,4,.9);z-index:5}
@@ -173,7 +175,22 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ph .w{font-family:'Russo One',sans-serif;font-size:.8em;letter-spacing:.14em;color:#fff}
 .ph .cnt{margin-left:auto;font-family:'Russo One',sans-serif;font-size:.72em;letter-spacing:.1em;color:var(--ac)}
 .px{font-family:'Russo One',sans-serif;font-size:.66em;letter-spacing:.1em;padding:.45em 1em;border:.14em solid #2c3630;color:#7d8a82;background:none}
-.ahr-g{display:grid;grid-template-columns:repeat(6,1fr);gap:.5em;margin-top:.9em}
+.ahr-g{display:grid;grid-template-columns:repeat(6,1fr);gap:.5em;margin-top:.8em}
+.ahr-g .cell{padding:.55em .25em .4em;gap:.22em;min-width:0}
+.ahr-g .cell .ly{display:flex;align-items:center;justify-content:center;gap:.35em;width:100%;font-family:'VT323',monospace;font-size:.78em;line-height:1;color:#b6c4bc}
+.ahr-g .cell .ly b{font-weight:400;color:var(--mut)}
+.ahr-g .cell .ly i{width:.42em;height:.42em;background:#56635b;flex:none}
+.ahr-g .cell .ly i.g{background:#00ff88}.ahr-g .cell .ly i.y{background:#ffce3d}.ahr-g .cell .ly i.r{background:#ff5a4e}
+.ahr-g .cell .more{font-size:.28em;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
+.ahr-g .cell .st.live{color:#00ff88}.ahr-g .cell .st.wait{color:#ffd23a}
+.ahr-b{display:grid;grid-template-columns:1fr 1.18fr;gap:.9em;margin-top:.95em}
+.ahr-box{position:relative;box-sizing:border-box;border:.1em solid var(--edge);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
+.ahr-box>b{position:absolute;left:.7em;top:0;transform:translateY(-58%);font-weight:400;font-size:.4em;letter-spacing:.1em;background:var(--ac);color:#0b0f05;padding:.5em .8em .4em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
+.ahr-r{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;font-size:.46em;letter-spacing:.06em;padding:.5em 0;border-bottom:.08em dashed rgba(255,255,255,.12);color:var(--mut)}
+.ahr-r:last-child{border-bottom:0}
+.ahr-r span{color:#fff;text-align:right}.ahr-r span.usd{color:#ffd23a}.ahr-r span.live{color:#00ff88}.ahr-r span.wait{color:#ffd23a}
+.ahr-n{display:flex;align-items:center;gap:.7em;font-size:.44em;line-height:1.35;letter-spacing:.05em;padding:.42em 0;color:#fff}
+.ahr-n i{font-style:normal;flex:none;background:var(--ac);color:#0b0f05;padding:.3em .5em .2em;min-width:2em;text-align:center}
 .cell{position:relative;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;cursor:pointer}
 .ahr-g .cell{padding:.9em .3em .7em;gap:.55em}
 .cell .p{font-size:1em;text-shadow:.16em .16em 0 #000}
@@ -241,7 +258,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 @keyframes pyBlink{50%{opacity:.25}}
 #ahAr,#ahFr{z-index:7}
 .ah-btn{position:relative}
-.ah-fb{position:absolute;right:-.35em;top:-.35em;min-width:1.5em;background:#e5302f;color:#fff;font-style:normal;font-size:.42em;line-height:1;text-align:center;padding:.4em .35em .25em;box-shadow:0 0 0 .2em #000}
+.ah-fb{position:absolute;right:-.35em;top:-.35em;min-width:1.4em;background:#e5302f;color:#fff;font-style:normal;font-size:.3em;line-height:1;text-align:center;padding:.4em .35em .25em;box-shadow:0 0 0 .2em #000}
 .ah-fb:empty{display:none}
 #ahAv{z-index:7}#ahUn{z-index:8}#ahIc{z-index:9}
 /* ICON UNLOCKED: el icono de perfil nuevo en una tarjeta cuadrada que entra
@@ -376,7 +393,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) #ahPillSub{margin-top:.5em}
 #appHub:not(.pc) #ahPillSub img{width:3.4em;height:3.4em}
 #appHub:not(.pc) .ah-it .bar{width:7em}
-#appHub:not(.pc) .ah-sys{left:3.6em;right:auto;width:20.8em;top:auto;bottom:.35em;padding:.62em .9em .3em}
+#appHub:not(.pc) .ah-sys{left:3.6em;right:auto;width:20.8em;top:auto;bottom:.9em;padding:.62em .9em .3em}
 #appHub:not(.pc) .ah-sys span{font-size:.38em;line-height:1.5}
 #appHub:not(.pc) .ah-sys b{font-size:.32em}
 #appHub:not(.pc) .ah-sys .pic{width:2.1em;height:2.1em}
@@ -386,10 +403,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big .sq-av{width:9em}
 #appHub:not(.pc) #ahAr .sq-side:not(.n3) .sq-grp.big .sq-av .sq-pic{font-size:1.6em}
 #appHub:not(.pc) #ahAr .sq-pbox .sq-near{font-size:.42em;white-space:nowrap}
-/* ROOMS en el movil: mas amplio, como en PC, y con consejo debajo */
-#appHub:not(.pc) .ahr-g{grid-template-columns:repeat(4,1fr);gap:.7em}
-#appHub:not(.pc) .ahr-g .cell{padding:1.25em .3em 1em;gap:.7em}
-#appHub:not(.pc) #ahRooms .foot{margin-top:1em;padding:.5em .6em .2em;border-top:.07em solid rgba(255,255,255,.07);font-size:1.05em;line-height:1.3}
+#appHub:not(.pc) #ahAr .sq.find .sq-q{position:relative;top:-.9em}
 
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
@@ -427,7 +441,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:17.6em;bottom:1.6em;z-index:6}
+#appHub.pc .ah-room{right:17.6em;bottom:.35em;z-index:6}
 #appHub.pc .ah-room .med{width:2.7em;height:2.7em}
 #appHub.pc .ah-room .med>svg{width:1.3em;height:1.3em}
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:28.7em;top:auto;bottom:2em}
@@ -742,7 +756,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-play"><span>PLAY</span></div>
 <div class="ov" id="ahRooms"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><img class="mw" alt=""><span class="w">ROOMS</span><span class="cnt" id="ahrOn"></span><button class="px">CLOSE</button></div>
-  <div class="ahr-g" id="ahrG"></div><div class="foot">Paid rooms take the entry from your in-game $PILLY</div></div></div></div>
+  <div class="ahr-g" id="ahrG"></div>
+  <div class="ahr-b"><div class="ahr-box" id="ahrInfo"></div><div class="ahr-box" id="ahrRules"></div></div></div></div></div>
 <div class="ov" id="ahAv"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">AVATAR</button><span class="cnt"></span><button class="px">DONE</button></div>
   <div class="sk-b"><div class="sk-pill"><div class="av-big" id="ahAvBig"></div></div>
@@ -912,40 +927,45 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0);
         if ($('#ahRooms').classList.contains('open')) renderRooms();
     }
-    const ROOM_TIPS = [
-        'Tip: paid rooms take the entry from your in-game $PILLY.',
-        'Tip: the bigger the entry, the bigger the prize for the top players.',
-        'Tip: OFFLINE is free practice against bots, no wallet needed.',
-        'Tip: the bar shows how full each room is. A room starts when enough players are in.',
-        'Tip: want to play with friends? Use ARENAS for 1v1, 2v2 and 3v3.'
-    ];
-    let roomTipN = Math.floor(Math.random() * ROOM_TIPS.length);
+    // Salas: cada tarjeta enseña sus layers con su aforo; debajo, ROOM INFO de la elegida y las reglas del modo.
+    const ROOM_RULES = {
+        arcade: ['Draft a skill every 30s', 'Eat, split and survive', 'Top players split the pot', 'Paid rooms take the entry from your in-game $PILLY'],
+        classic: ['Eat cells, split and farm viruses', 'Kill 5 players (pentakill) for the max profit', 'Leaving early costs a penalty up to 20%', 'Paid rooms take the entry from your in-game $PILLY']
+    };
     function renderRooms() {
-        if (!hub.classList.contains('pc') && !$('#ahRooms').classList.contains('open-tip')) { $('#ahRooms .foot').textContent = ROOM_TIPS[roomTipN++ % ROOM_TIPS.length]; $('#ahRooms').classList.add('open-tip'); }
         const g = $('#ahrG'), mine = rooms.filter(r => r.mode === mode);
         $('#ahrOn').textContent = mine.reduce((a, r) => a + (r.players || 0), 0) + ' ONLINE';
         g.innerHTML = '';
+        const dot = (l, cap) => l.players >= cap ? 'r' : l.state === 'playing' ? 'g' : l.players > 0 ? 'y' : '';
         const off = document.createElement('div');
         off.className = 'cell' + (room === 'offline' ? ' sel' : '');
-        off.innerHTML = '<div class="p" style="font-size:.62em;line-height:1.6em">OFFLINE</div><div class="f"><i style="width:0"></i></div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
-        off.onclick = () => { room = 'offline'; renderRooms(); paintStatic(); setTimeout(() => $('#ahRooms').classList.remove('open'), 220); };
+        off.innerHTML = '<div class="p" style="font-size:.62em;line-height:1.6em">OFFLINE</div><div class="n">VS BOTS</div><div class="st">PRACTICE</div>';
+        off.onclick = () => { room = 'offline'; renderRooms(); paintStatic(); };
         g.appendChild(off);
+        const info = { offline: { t: 'OFFLINE', rows: [['ENTRY', 'FREE'], ['PLAYERS', 'VS BOTS'], ['STATUS', 'PRACTICE'], ['PRIZE', 'NONE']] } };
         PRICES.forEach(p => {
-            const r = mine.find(x => x.room === p) || { players: 0, cap: 70, state: 'waiting', needed: 5 };
-            const lock = false;
-            const est = lock ? 'PC ONLY' : r.state === 'playing' ? 'IN GAME' : r.players >= (r.needed || 5) ? 'STARTING' : 'WAITING';
+            const r = mine.find(x => x.room === p) || { players: 0, cap: 70, state: 'waiting', needed: 5, layers: [] };
+            const cap = r.maxPlayers || 35, lys = (r.layers || []).filter(l => !l.disabled).slice(0, 3);
+            const live = (r.players || 0) > 0 || r.state === 'playing';
+            const free = p === 'Free', lbl = free ? 'FREE' : '$' + p.replace('$', '');
             const c = document.createElement('div');
-            c.className = 'cell' + (p === room ? ' sel' : '') + (lock ? ' lock' : '');
-            c.innerHTML = `<div class="p${p === 'Free' ? '' : ' usd'}"${p === 'Free' ? ' style="font-size:.62em;line-height:1.6em"' : ''}>${p === 'Free' ? 'FREE' : '$' + p.replace('$', '')}</div>
-              <div class="f"><i style="width:${Math.min(100, Math.round((r.players || 0) / (r.cap || 70) * 100))}%"></i></div>
-              <div class="n">${r.players || 0}/${r.cap || 70}</div><div class="st">${est}</div>`;
-            c.onclick = () => {
-                if (lock) { c.animate([{ transform: 'translateX(-.2em)' }, { transform: 'translateX(.2em)' }, { transform: 'none' }], { duration: 160 }); return; }
-                room = p; renderRooms(); paintStatic();
-                setTimeout(() => $('#ahRooms').classList.remove('open'), 220);
-            };
+            c.className = 'cell' + (p === room ? ' sel' : '');
+            c.innerHTML = '<div class="p' + (free ? '' : ' usd') + '"' + (free ? ' style="font-size:.62em;line-height:1.6em"' : '') + '>' + lbl + '</div>' +
+                (lys.length ? lys.map(l => '<div class="ly"><b>L' + l.layerIdx + '</b><i class="' + dot(l, cap) + '"></i>' + l.players + '/' + (l.maxPlayers || cap) + '</div>').join('') : '<div class="ly"><b>L1</b><i></i>0/' + cap + '</div>') +
+                ((r.layers || []).length > lys.length || (r.layers || []).length < 2 ? '<div class="more">UP TO ' + Math.max(4, (r.layers || []).length) + ' LAYERS</div>' : '') +
+                '<div class="st ' + (live ? 'live' : 'wait') + '">' + (live ? 'LIVE' : 'WAITING') + '</div>';
+            c.onclick = () => { room = p; renderRooms(); paintStatic(); };
             g.appendChild(c);
+            const best = lys.slice().sort((x, y) => (y.players >= cap ? -1 : y.players) - (x.players >= cap ? -1 : x.players))[0];
+            info[p] = { t: lbl + ' · L' + (best ? best.layerIdx : 1), rows: [
+                ['ENTRY', free ? 'FREE' : '<span class="usd">' + lbl + ' · ' + (r.pillFee ? Number(r.pillFee).toLocaleString('en-US') + ' $PILLY' : '') + '</span>'],
+                ['PLAYERS', (best ? best.players : 0) + '/' + cap],
+                ['STATUS', '<span class="' + (live ? 'live' : 'wait') + '">' + (r.state === 'playing' ? 'IN GAME' : live ? 'LIVE' : 'WAITING') + '</span>'],
+                ['PRIZE', mode === 'classic' ? 'KILL LOOT' : 'TOP 10']] };
         });
+        const cur = info[room] || info.offline;
+        $('#ahrInfo').innerHTML = '<b>ROOM INFO · ' + cur.t + '</b>' + cur.rows.map(x => '<div class="ahr-r">' + x[0] + (/^<span/.test(x[1]) ? x[1] : '<span>' + x[1] + '</span>') + '</div>').join('');
+        $('#ahrRules').innerHTML = '<b>RULES</b>' + (ROOM_RULES[mode] || ROOM_RULES.arcade).map((t, k) => '<div class="ahr-n"><i>0' + (k + 1) + '</i>' + t.toUpperCase() + '</div>').join('');
         placa($('#ahRooms .pnl'), 1);
     }
 
@@ -1657,7 +1677,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (a === 'x') { conectaX(); return; }
         if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp'].includes(a)) cierraPaneles();
         if (a === 'htp') { htpPag = 0; htpSk = null; $('#ahHtp').classList.add('open'); renderHtp(); return; }
-        if (a === 'rooms') { $('#ahRooms').classList.remove('open-tip'); $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
+        if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
         if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('rooms', $('#ahArBody')); placa($('#ahAr .pnl'), 1); }
         else if (a === 'friends') { const fr = $('#ahFr'); fr.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('friends', $('#ahFrBody')); placa($('#ahFr .pnl'), 1); }
         else if (a === 'store') openStore('shop');
@@ -1740,7 +1760,16 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => 'Tip: change your pill color and skin in THE PILL.',
         () => 'Tip: customize your profile and connect it to X.'
     ];
-    const TAGS = { sys: 'SYSTEM', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
+    const TAGS = { sys: 'SYSTEM', arena: 'ARENA', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
+    // Movil: la placa se centra en el hueco entre QUESTS y el borde de abajo, sea cual sea su numero de lineas.
+    function colocaPlaca(e) {
+        if (hub.classList.contains('pc')) { e.style.bottom = ''; return; }
+        requestAnimationFrame(() => {
+            const q = $('.ah-it[data-a=quests]'), fs = parseFloat(hub.style.fontSize) || 16; if (!q) return;
+            const sup = q.offsetTop + 2.9 * fs, alto = hub.offsetHeight, h = e.offsetHeight;
+            e.style.bottom = Math.max(.2 * fs, (alto - sup - h) / 2) + 'px';
+        });
+    }
     const SysQ = (() => {
         const q = []; let cur = null, n = 0, tm = null, tipN = Math.floor(Math.random() * TIPS.length);
         const el = () => $('#ahSys');
@@ -1751,6 +1780,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             e.querySelector('span').textContent = m.text;
             e.querySelector('.pic').style.backgroundImage = m.pic ? 'url("' + String(m.pic).replace(/"/g, '') + '")' : '';
             const ac = e.querySelector('.acts'); ac.innerHTML = '';
+            colocaPlaca(e);
             (m.actions || []).forEach(a => { const b = document.createElement('button'); b.textContent = a[0]; if (!a[2]) b.className = 'n'; b.onclick = ev => { ev.stopPropagation(); try { SoundManager.play('simpleselect'); } catch (x) {} fin(); if (a[1]) a[1](); }; ac.appendChild(b); });
         }
         // Al acabar un aviso se funde; si hay otro esperando sale enseguida, y si no, la placa descansa 5 s antes del siguiente consejo.
@@ -1797,7 +1827,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             PWSquad.prizes(w, (total, list, usd) => {
                 const n = (list || []).length, b = $('#ahAvB');
                 if (b) b.textContent = n ? String(Math.min(n, 99)) : '';
-                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + corto(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '') + ' waiting to be claimed.', 12000, 0); }
+                if (avisa && total > 0 && !claimAvisado) { claimAvisado = true; SysQ.push('You have ' + corto(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '') + ' waiting to be claimed.', 12000, 0, { kind: 'arena' }); }
             });
         } catch (e) {}
     }
