@@ -12068,7 +12068,8 @@
         },
         connect() {
             // App: la unica wallet es la del movil (Seed Vault por MWA), sin selector.
-            if (EN_APP) { this.connectWith('mwa'); return; }
+            // (En PC con el menu nuevo no hay Seed Vault: sale el selector de siempre.)
+            if (EN_APP && document.body.classList.contains('mobile-allowed')) { this.connectWith('mwa'); return; }
             // Como en la web principal: selector con las 3 wallets para que el
             // usuario ELIJA. Antes se conectaba a la primera instalada que se
             // encontrara (orden fijo phantom→solflare→backpack): si tenias

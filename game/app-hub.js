@@ -265,7 +265,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sn .cell .pr.own{color:var(--ac)}
 .sn .cell.buy{border:.14em solid #ffd23a}
 .sn .cell.buy .pr{color:#04150c;background:#ffd23a;padding:.35em .5em}
-#ahSv{z-index:7}
+#ahSv,#ahIc,#ahUn{z-index:9}
 /* Gente jugando en el modo: punto animado + numero sobre las espadas (sin texto). */
 .ah-pl{position:absolute;right:calc(100% + .45em);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:.3em;font-size:.78em;text-shadow:.12em .12em 0 #000}
 .ah-pl b{font-weight:400;color:#fff;font-size:.8em}
@@ -481,6 +481,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:22.5em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
+#appHub.pc #ahSt .sn .cell canvas{width:4.6em;height:4.6em}
+#appHub.pc #ahSt .sn{gap:.6em}
+#appHub.pc #ahSt .foot{margin-top:1.8em}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
 .sk-g .cell .inf:active{color:var(--ac)}
 .sk-g.sk-inf{display:flex;flex-direction:column;gap:.5em;padding:.2em .3em}
@@ -1652,17 +1655,29 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // Wallet del movil: la misma firma de entrada que el airdrop (gratis, sin tx).
     // Devuelve true si quedo conectada.
     async function loginWallet() {
-        // Movil: Mobile Wallet Adapter. PC: la extension del navegador (Phantom, Solflare o Backpack).
+        // Movil: Mobile Wallet Adapter. PC: el selector de wallets de siempre (Phantom / Backpack / Solflare).
         const pc = hub.classList.contains('pc');
         let wname = 'mwa', p = null;
-        if (window.GameWallet) {
-            if (!pc) p = GameWallet.getProvider('mwa');
-            else for (const n of ['phantom', 'solflare', 'backpack']) { p = GameWallet.getProvider(n); if (p) { wname = n; break; } }
-        }
-        if (!p) { try { showSystemMsg(pc ? 'No wallet found in this browser. Install Phantom, Solflare or Backpack and reload.' : 'The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return false; }
+        if (pc) {
+            if (!(GameWallet.address && GameWallet.provider)) {
+                GameWalletUI.connect();   // abre el selector; connectWith deja GameWallet.address y .provider
+                const t0 = Date.now();
+                // Espera a que el selector termine (elegir wallet + firmar en la extension); si se cierra y no pasa nada en 30 s, se da por cancelado.
+                let cerradoDesde = 0;
+                while (!(GameWallet.address && GameWallet.provider) && Date.now() - t0 < 120000) {
+                    const m = document.getElementById('walletPickerModal');
+                    if (m && m.style.display !== 'none') cerradoDesde = 0; else if (!cerradoDesde) cerradoDesde = Date.now();
+                    if (cerradoDesde && Date.now() - cerradoDesde > 30000) break;
+                    await new Promise(r => setTimeout(r, 300));
+                }
+                if (!(GameWallet.address && GameWallet.provider)) return false;
+            }
+            p = GameWallet.provider; try { wname = localStorage.getItem('pw_wallet') || 'phantom'; } catch (e) {}
+        } else if (window.GameWallet) p = GameWallet.getProvider('mwa');
+        if (!p) { try { showSystemMsg('The phone wallet is not ready yet. Try again in a moment.', 'WALLET'); } catch (e) {} return false; }
         try {
-            const r = await p.connect();
-            const addr = r.publicKey.toString();
+            const r = pc ? { publicKey: p.publicKey || { toString: () => GameWallet.address } } : await p.connect();
+            const addr = pc ? GameWallet.address : r.publicKey.toString();
             const post = (path, body) => fetch('/api/airdrop/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json());
             const { nonce, message } = await post('nonce', {});
             const out = await p.signMessage(new TextEncoder().encode(message));
