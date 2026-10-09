@@ -447,6 +447,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-ti{font-size:.74em;letter-spacing:.06em;text-shadow:.12em .12em 0 #000}
 .cr-de{font-size:.46em;color:var(--mut);line-height:1.7;letter-spacing:.03em}
 .cr-list{flex:1;min-width:0;display:flex;flex-direction:column;gap:.55em;overflow-y:auto;padding-right:.2em}.cr-list .cr-card{flex:1 1 0;min-height:0}.cr-card>div:last-child{flex:1;min-width:0}.cr-card .cr-c1{line-height:1.25}.cr-card .cr-c2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cr-list .cr-card{overflow:hidden;align-items:stretch;padding:0 .7em 0 0}.cr-list .cr-th{width:auto;height:100%;box-shadow:none}.cr-list .cr-card>div:last-child{align-self:center}.cr-list .cr-c1{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cr-list .cr-c2{-webkit-line-clamp:1;margin-top:.35em}
 .cr-card{display:flex;align-items:center;gap:.8em;padding:.5em .7em .5em .5em;background:rgba(0,0,0,.28);border:.12em solid rgba(255,255,255,.07);cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;flex:none}
 .cr-card.off{cursor:default;opacity:.55}.cr-card.off:hover{border-color:rgba(255,255,255,.07);box-shadow:none}
 .cr-num{font-size:.7em;color:var(--ac);width:1.4em;text-align:center;flex:none}
@@ -475,6 +476,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-sk .cell{justify-content:center;gap:.4em;transition:border-color .18s,box-shadow .18s}.cr-sk .cell:hover{border-color:color-mix(in srgb,var(--ac) 70%,#000);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 30%,transparent)}.cr-sk .cell img{width:3.2em;height:3.2em;image-rendering:pixelated}.cr-sk .cell.on{border-color:var(--ac);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 35%,transparent)}
 .cr-img{flex:1;min-height:0;background:#000 center/contain no-repeat;border:.12em solid var(--edge)}
 .cr-sk .cell .nm{font-size:.4em;letter-spacing:.06em}
+.cr-ti+.cr-de{margin-top:.7em}
+.cr-skg{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);grid-template-rows:auto auto;gap:.8em 1em;align-content:start}
+.cr-skg .cr-vid{flex:none;width:100%;aspect-ratio:16/9}.cr-skg .cr-sk{align-self:center}.cr-skg>div:nth-child(3){padding:0 7%}
+.cr-skn{font-size:.42em;line-height:1.8;letter-spacing:.03em;color:var(--mut);text-align:center;padding:0 .5em}
+#appHub.pc .ov.full .cr-skg{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}#appHub.pc .ov.full .cr-sk{grid-template-columns:repeat(2,minmax(0,1fr))}#appHub.pc .ov.full .cr-sk .cell{aspect-ratio:auto;padding:.4em 0}#appHub.pc .ov.full .cr-sk .cell img{width:2.8em;height:2.8em}
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:none}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
@@ -531,7 +537,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) .ph>.px:last-child{margin-left:auto}
 #appHub:not(.pc) .pmax{display:none}
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv){background:rgba(3,6,4,.9);justify-content:center;align-items:center;padding:0;pointer-events:auto;z-index:8}
-#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:24em;font-size:1em}
+/* FULL: la letra y los botones se quedan como en pequeno (.765em); lo que crece es el panel (40em x 24em del hub), y con el los videos e imagenes. */
+#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc(min(40em, (var(--hw,48) - 2) * 1em) / .765)!important;height:calc(24em / .765);font-size:.765em}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:24em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
@@ -544,6 +551,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:6em;height:6em}
 #appHub.pc .co{gap:1.3em}#appHub.pc .co .sw{flex:1;grid-template-columns:repeat(13,1fr);gap:.4em}
 #appHub.pc #ahSt .sn,#appHub.pc #ahSk .sn{gap:.6em}
+#appHub.pc #ahSk .sk-g .cell img,#appHub.pc #ahSk .sk-slot img{image-rendering:auto}
+/* THE PILL en FULL: la pildora y los huecos de skill crecen con el panel. */
+#appHub.pc #ahSk.full .sk-pill{width:13em}#appHub.pc #ahSk.full .sk-pill canvas{width:9em;height:9em}#appHub.pc #ahSk.full .sk-slot{width:4.2em;height:4.2em}#appHub.pc #ahSk.full .sk-g .cell img{width:6.4em;height:6.4em}#appHub.pc #ahSt.full .sn .cell canvas,#appHub.pc #ahSk.full .sn .cell canvas{width:9em;height:9em}
 #appHub.pc #ahSt .foot,#appHub.pc #ahSk .foot{margin-top:1.8em}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
 .sk-g .cell .inf:active{color:var(--ac)}
@@ -925,9 +935,12 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const fs = girado ? Math.min(innerWidth, innerHeight) / U * 16 : Math.min(innerHeight / 27, innerWidth / 48);
         hub.style.fontSize = fs + 'px';
         hub.style.setProperty('--hw', (innerWidth / fs).toFixed(2));   // ancho de la ventana en em del hub (>= 48): los paneles de PC se estiran hasta el borde derecho
+        const sy = $('#ahSys'); if (sy && sy.classList.contains('on')) colocaPlaca(sy);
 
     }
     const skIcon = id => id ? 'img/skill-icons-pixel/' + id + '.png' : '';
+    // PC, donde las skills se ven grandes: los iconos clasicos de img/ (nitidos); el pixel a ese tamano se ve borroso.
+    const skIconG = id => id && hub.classList.contains('pc') ? '../img/' + id + '.png' : skIcon(id);
     function paintStatic() {
         const ac = MODES[mode];
         hub.style.setProperty('--ac', ac);
@@ -1106,7 +1119,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         hub.querySelectorAll('.sk-slot').forEach(sl => {
             const i = +sl.dataset.s, id = picks[i];
             sl.className = 'sk-slot' + (id ? ' full' : '') + (i === slotSel && pillTab === 'skills' ? ' act' : '');
-            sl.innerHTML = id ? '<img src="' + skIcon(id) + '">' : '';
+            sl.innerHTML = id ? '<img src="' + skIconG(id) + '">' : '';
         });
         if (pillTab === 'color') {
             const co = $('#ahCo'); co.innerHTML = '';
@@ -1139,7 +1152,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             SKILLS.forEach(([id, nm]) => {
                 const c = document.createElement('div');
                 c.className = 'cell' + (picks.includes(id) ? ' used' : '');
-                c.innerHTML = '<img src="' + skIcon(id) + '"><div class="nm">' + nm + '</div>' + (dat(id) ? '<button class="inf">INFO</button>' : '');
+                c.innerHTML = '<img src="' + skIconG(id) + '"><div class="nm">' + nm + '</div>' + (dat(id) ? '<button class="inf">INFO</button>' : '');
                 const bi = c.querySelector('.inf');
                 if (bi) bi.onclick = ev => { ev.stopPropagation(); skInfo = id; try { SoundManager.play('simpleselect'); } catch (e) {} renderPill(); };
                 c.onclick = () => {
@@ -2026,7 +2039,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         } else {
             const SID = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
             const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
-            b.innerHTML = '<div class="cr-main"><div class="cr-vid"></div><div><div class="cr-ti"></div><div class="cr-de"></div></div></div><div class="cr-sk"></div>';
+            // Rejilla 2x2: arriba el video (siempre 16:9, no baila al cambiar de skill) y las 8 skills; debajo, a la misma altura, su texto y la nota.
+            b.innerHTML = '<div class="cr-skg"><div class="cr-vid"></div><div class="cr-sk"></div><div><div class="cr-ti"></div><div class="cr-de"></div></div><div class="cr-skn">Every 30 seconds in a match you pick a new skill. Use them with <b style="white-space:nowrap;font-weight:400">1 · 2 · 3 · 4</b>.</div></div>';
             const d = dat(coreSk);
             if (d) { b.querySelector('.cr-vid').innerHTML = crVideo(d.video, 'autoplay loop muted'); b.querySelector('.cr-ti').textContent = d.name; b.querySelector('.cr-de').textContent = d.desc; }
             const g = b.querySelector('.cr-sk');
@@ -2193,10 +2207,18 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => 'Tip: customize your profile and connect it to X.'
     ];
     const TAGS = { sys: 'SYSTEM', arena: 'ARENA', whisper: 'WHISPER', friend: 'FRIEND', invite: 'GROUP' };
-    // Movil: la placa se centra en el hueco entre QUESTS y el borde de abajo, sea cual sea su numero de lineas.
+    // La placa se centra en el hueco entre la ultima fila del menu (movil: QUESTS; PC: PILLWARS CORE) y el borde de abajo,
+    // sea cual sea su numero de lineas. Se mira PC/movil ya en el siguiente cuadro: el primer aviso sale antes de scale().
     function colocaPlaca(e) {
-        if (hub.classList.contains('pc')) { e.style.bottom = ''; return; }
         requestAnimationFrame(() => {
+            if (hub.classList.contains('pc')) {
+                e.style.bottom = '';
+                const c = $('.ah-it[data-a=core]'); if (!c) return;
+                const sup = c.getBoundingClientRect().bottom - hub.getBoundingClientRect().top, h = e.offsetHeight, eti = e.querySelector('b').offsetHeight * .62;
+                e.style.top = (sup + Math.max(0, (hub.offsetHeight - sup - h - eti) / 2) + eti) + 'px';
+                return;
+            }
+            e.style.top = '';
             const q = $('.ah-it[data-a=quests]'), fs = parseFloat(hub.style.fontSize) || 16; if (!q) return;
             const sup = q.offsetTop + 2.9 * fs, alto = hub.offsetHeight, h = e.offsetHeight;
             e.style.bottom = Math.max(.2 * fs, (alto - sup - h) / 2) + 'px';
