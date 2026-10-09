@@ -463,7 +463,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:after{background:#1d2913;left:13.54em}
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
-#appHub.pc #ahPill{left:25em;top:4.4em;width:20em;height:15em}
+#appHub.pc #ahPill{left:25em;top:5.45em;width:20em;height:12.9em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
 #appHub.pc .ah-room{right:16.2em;bottom:.73em;z-index:6;gap:.3em}
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
@@ -827,7 +827,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="pr-r">
     <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div><button class="tb red" id="ahPrUnW" style="display:none">UNLINK WALLET</button>
       <div class="k" style="margin-top:1.1em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
-      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button></div></div>
+      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button><button class="tb on" id="ahPrAir" style="display:none"></button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
   <div class="foot">Tap EDIT AVATAR to change your picture</div></div></div></div>
@@ -1723,6 +1723,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // CLAIM: premios de arenas (historial con lo cobrado y lo pendiente). El punto avisa si hay algo por cobrar.
         $('#ahPrPzC').style.display = conectada ? '' : 'none';
         $('#ahPrPzC').onclick = abrePremios;
+        airClaim();
         $('#ahPrPzDot').style.display = 'none';
         if (w && window.PWSquad) PWSquad.prizes(w, (total, list) => { const d = $('#ahPrPzDot'); d.textContent = (list || []).length ? String(Math.min((list || []).length, 99)) : ''; d.style.display = total > 0 ? '' : 'none'; });
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
@@ -1745,6 +1746,20 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         };
         if (!w || !window.PWSquad) return pinta(0, [], null, []);
         PWSquad.prizes(w, pinta);
+    }
+    // Claim del airdrop (solo devnet): 10K $PILLY una vez, para quien tenga wallet firmada + X vinculado.
+    async function airClaim(hacer) {
+        const b = $('#ahPrAir'); if (!b) return;
+        let j = null;
+        try { j = await (await fetch('/api/airdrop-claim', hacer ? { method: 'POST' } : { cache: 'no-store' })).json(); } catch (e) {}
+        if (hacer) {
+            try { showSystemMsg(j && j.ok ? 'Airdrop claim sent: +' + j.amount.toLocaleString('en-US') + ' $PILLY. It arrives in your wallet in a moment.' : 'Airdrop claim failed: ' + ((j && j.reason) || 'try again'), 'AIRDROP'); } catch (e) {}
+            return airClaim();
+        }
+        if (!j || !j.ok || !j.devnet || !(j.available || j.claimed)) { b.style.display = 'none'; return; }
+        b.style.display = ''; b.disabled = !j.available;
+        b.textContent = j.available ? 'AIRDROP CLAIM · ' + Math.round(j.amount / 1000) + 'K $PILLY' : 'AIRDROP CLAIMED';
+        b.onclick = () => { b.disabled = true; airClaim(true); };
     }
     function conectaX() { openProfile(); }
     const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
