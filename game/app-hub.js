@@ -346,6 +346,12 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #ahPrAddX{position:absolute;right:.7em;top:.6em;width:auto;padding:.4em .8em;font-size:.5em}
 #ahPrAddX.red,#ahPrUnW{color:#ff8a7a;border-color:#7a2a26}
 #ahPrUnW{position:absolute;right:.7em;top:3.9em;width:auto;padding:.4em .8em;font-size:.5em}   /* separado del de X */
+/* HIDE X ACCOUNT: placa gris debajo de UNLINK WALLET (o en su sitio si no hay wallet) */
+#ahPrHx{position:absolute;right:.7em;top:7.2em;width:auto;padding:.4em .8em;font-size:.5em;color:#9aa49e;border-color:#3d4641;background:#151a17}#ahPrHx.on{color:#e8eee9;border-color:#7c8781}#ahPrUnW[style*="none"]+#ahPrHx{top:3.9em}
+/* PC: el recuadro de la wallet llega abajo; ABOUT ME ocupa el hueco y los botones van al borde de abajo. En movil no sale. */
+.pr-bio{display:none}#appHub.pc #ahPr .pr-box{display:flex;flex-direction:column}#appHub.pc #ahPr .pr-bt{margin-top:auto}
+#appHub.pc .pr-bio{display:flex;flex-direction:column;flex:1;min-height:0;margin:1em 0 .9em}
+.pr-bio textarea{flex:1;min-height:2.6em;resize:none;margin-top:.45em;box-sizing:border-box;background:rgba(0,0,0,.35);border:.07em solid rgba(255,255,255,.1);color:#cfd8d2;font-family:'VT323',monospace;font-size:.95em;line-height:1.15;padding:.4em .6em;outline:none}.pr-bio textarea:focus{border-color:var(--ac)}
 .pr-fc{display:flex;flex-direction:column;align-items:center;gap:.5em;cursor:pointer}
 .pr-fc .k{font-size:.32em;color:var(--mut);letter-spacing:.12em}
 .pr-fc b{font-size:.58em;font-weight:400;color:#ffd23a;letter-spacing:.14em;text-shadow:.12em .12em 0 #000}
@@ -903,8 +909,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="ph"><button class="tb on">PROFILE</button><span class="cnt" id="ahPrSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sk-pill pr-me"><div class="pr-pic" id="ahPrPic"></div><div class="pr-at" id="ahPrAt"></div><div class="pr-ic" id="ahPrIc"></div><div class="pr-cl" id="ahPrCl"></div><div class="pr-fc" id="ahPrFc"></div></div>
   <div class="pr-r">
-    <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div><button class="tb red" id="ahPrUnW" style="display:none">UNLINK WALLET</button>
+    <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div><button class="tb red" id="ahPrUnW" style="display:none">UNLINK WALLET</button><button class="tb" id="ahPrHx" style="display:none">HIDE X ACCOUNT</button>
       <div class="k" style="margin-top:1.1em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
+      <div class="pr-bio"><div class="k">ABOUT ME</div><textarea id="ahPrBio" maxlength="140" spellcheck="false" autocomplete="off"></textarea></div>
       <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
@@ -1414,7 +1421,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     document.addEventListener('change', e => { if (e.target && (e.target.id === 'colTop' || e.target.id === 'colBot')) guardaColores(); }, true);
     // Cualquier cambio de un ajuste de la cuenta (lo escriba quien lo escriba) adelanta la sincronizacion.
     try {
-        const _set = Storage.prototype.setItem, _PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols'];
+        const _set = Storage.prototype.setItem, _PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols', 'pw_bio', 'pw_hidex'];
         Storage.prototype.setItem = function (k, v) { const r = _set.apply(this, arguments); if (this === window.localStorage && _PK.indexOf(k) >= 0) { try { cuentaSyncPronto(); } catch (e) {} } return r; };
     } catch (e) {}
     function aqSave() { try { localStorage.setItem('pw_aq', JSON.stringify(aq)); } catch (e) {} cuentaSyncPronto(); }
@@ -1428,7 +1435,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try {
             const a = aqLoad(), body = { aq: { day: a.day, pins: a.pins, prog: a.prog, done: a.done, claimed: a.claimed, pt: a.pt || 0 } };
             // ajustes de la cuenta (avisos de amigos, apodos, skills de salida, nombre): cada clave lleva su hora de cambio
-            const PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols'];
+            const PK = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols', 'pw_bio', 'pw_hidex'];
             let snap = {}; try { snap = JSON.parse(localStorage.getItem('pw_pref_t')) || {}; } catch (e) {}
             body.prefs = {};
             PK.forEach(k => {
@@ -1471,6 +1478,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 if (cambiadas.includes('pw_start_skills')) { try { picks = JSON.parse(localStorage.getItem('pw_start_skills')) || [null, null]; } catch (e) {} }
                 if (cambiadas.includes('pw_pillcols')) { aplicaColores(); }
                 if (cambiadas.includes('pw_app_name')) { try { guardaNombre(localStorage.getItem('pw_app_name')); } catch (e) {} }
+                if (cambiadas.includes('pw_hidex')) { try { if (window.PWSquad) PWSquad.refreshAv(); } catch (e) {} }
+                if (cambiadas.some(k => k === 'pw_hidex' || k === 'pw_bio') && $('#ahPr').classList.contains('open')) { try { pintaAvatarEditor(); } catch (e) {} }
                 try { if (window.PWSquad && PWSquad.reloadPrefs) PWSquad.reloadPrefs(); } catch (e) {}
                 cambio = true;
             }
@@ -1733,6 +1742,27 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 else quita();
             } : () => loginX();
         }
+        // HIDE X ACCOUNT: en las partidas sale el nombre de la pildora en vez de tu @ (lo guarda el servidor con el saludo de PWSquad).
+        const hx = $('#ahPrHx');
+        if (hx) {
+            const oculto = () => { try { return localStorage.getItem('pw_hidex') === '1'; } catch (e) { return false; } };
+            hx.style.display = xUser ? '' : 'none';
+            hx.classList.toggle('on', oculto()); hx.textContent = oculto() ? 'SHOW X ACCOUNT' : 'HIDE X ACCOUNT';
+            hx.onclick = () => {
+                const on = !oculto();
+                try { localStorage.setItem('pw_hidex', on ? '1' : '0'); } catch (e) {}
+                try { if (window.PWSquad) PWSquad.refreshAv(); } catch (e) {}
+                hx.classList.toggle('on', on); hx.textContent = on ? 'SHOW X ACCOUNT' : 'HIDE X ACCOUNT';
+                try { SysQ.push(on ? 'Your @ is hidden in matches: players will see your pill name.' : 'Your @ shows again in matches.', 6000, 0); } catch (e) {}
+            };
+        }
+        // ABOUT ME (solo PC): tu descripcion; por defecto un saludo con tu @.
+        const bio = $('#ahPrBio');
+        if (bio) {
+            let guardada = ''; try { guardada = localStorage.getItem('pw_bio') || ''; } catch (e) {}
+            bio.value = guardada || ('Nice to meet you! ' + (xUser ? 'Follow me on X @' + xUser.u : 'See you in the arena.'));
+            bio.oninput = () => { try { localStorage.setItem('pw_bio', bio.value.slice(0, 140)); } catch (e) {} };
+        }
         fc.onclick = () => { if (!xCode) return; try { navigator.clipboard.writeText(xCode); } catch (e) {} const b = fc.querySelector('b'); if (b) { b.textContent = 'COPIED'; setTimeout(() => { b.textContent = xCode.toUpperCase(); }, 1200); } };
     }
     // Editor del avatar: estilo, fondo y, con la pildora, sus colores o una skin tuya.
@@ -1817,6 +1847,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // Historial de premios de arenas: los cobrados salen CLAIMED; lo pendiente se cobra todo con CLAIM ALL.
     function abrePremios() {
         const ov = $('#ahPz'), w = window.GameWallet && GameWallet.address;
+        // Desde el perfil en FULL, CLAIM tambien se abre en FULL (si no, parecia que no se habia abierto).
+        const full = hub.classList.contains('pc') && $('#ahPr').classList.contains('full'), pm = ov.querySelector('.pmax');
+        ov.classList.toggle('full', full); if (pm) pm.textContent = full ? 'SMALL' : 'FULL';
         ov.classList.add('open'); placa($('#ahPz .pnl'), 1);
         $('#ahPzL').innerHTML = '<div class="pz-e">LOADING...</div>';
         const fmt = corto;

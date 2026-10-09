@@ -350,6 +350,25 @@ test('en el mapa sale el nombre de THE PILL (o ninguno); en grupos y amigos, el 
     assert.equal(juega(y), '', 'sin nombre elegido, ningun nombre en el mapa');
 });
 
+test('HIDE X ACCOUNT: en grupos y partidas sale el nombre de la pildora (o PLAYER) en vez del @, y sin la foto de X', () => {
+    const sq = make();
+    const x = fakeWs(), tk = token.sign({ id: 'HHHHHHH', u: 'hugo', n: 'Hugo', p: 'https://pbs.twimg.com/profile_images/hugo.png' });
+    say(sq, x, { a: 'hello', token: tk, name: 'Pildora', hx: true });
+    say(sq, x, { a: 'create' });
+    assert.equal(x.last('sqParty').members[0].name, 'Pildora');
+    assert.equal(x.last('sqParty').members[0].pic || '', '', 'sin la foto de X');
+    say(sq, x, { a: 'leave' });
+    const y = fakeWs();
+    say(sq, y, { a: 'hello', token: token.sign({ id: 'IIIIIII', u: 'ines', n: 'Ines', p: '' }), name: 'PLAYER', hx: true });
+    say(sq, y, { a: 'create' });
+    assert.equal(y.last('sqParty').members[0].name, 'PLAYER', 'sin nombre elegido: PLAYER');
+    say(sq, y, { a: 'leave' });
+    // al quitarlo vuelve el @ (y un saludo sin hx no lo cambia)
+    say(sq, x, { a: 'hello', token: tk, name: 'Pildora', hx: false });
+    say(sq, x, { a: 'create' });
+    assert.equal(x.last('sqParty').members[0].name, '@hugo');
+});
+
 test('las posiciones de companeros llegan solo a los del mismo equipo y no a los virtuales', () => {
     const sq = make();
     const a = user(sq, 'AAAAAAA', 'ana'), b = user(sq, 'BBBBBBB', 'bob');

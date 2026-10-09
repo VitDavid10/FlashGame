@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const FILE = path.join(__dirname, 'accountsync.json');
 const ID = /^[a-z0-9-]{1,40}$/i;
-const PREF_KEYS = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols'];
+const PREF_KEYS = ['pw_wmute', 'pw_nicks', 'pw_fwatch', 'pw_start_skills', 'pw_app_name', 'pw_pillcols', 'pw_bio', 'pw_hidex'];
 
 function create(opts) {
     const file = opts && opts.file !== undefined ? opts.file : FILE;

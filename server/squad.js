@@ -94,7 +94,7 @@ function createSquad(deps) {
     function identOf(ws, fallback) {
         // name = como te ven los demas en grupos, amigos y pantallas previas (tu @ de X o, sin X, el resumen de tu wallet).
         // gn = el nombre que sale sobre tu pildora en el mapa: el que pones en THE PILL y, si no pones ninguno, ninguno.
-        if (ws.pwId) { const p = social.pub(ws.pwId); return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), gn: p.dn || '', pic: p.p, av: p.av }; }   // pub ya quita la foto si eligio icono propio
+        if (ws.pwId) { const p = social.pub(ws.pwId); if (p.hx) return { uid: ws.pwId, name: cleanName(p.dn || 'PLAYER'), gn: p.dn || '', pic: '', av: p.av }; return { uid: ws.pwId, name: cleanName(p.u ? '@' + p.u : p.n), gn: p.dn || '', pic: p.p, av: p.av }; }   // hx: HIDE X ACCOUNT, sale el nombre de la pildora   // pub ya quita la foto si eligio icono propio
         const typed = cleanName(fallback);
         return { uid: null, name: typed, gn: typed === 'PLAYER' ? '' : typed, pic: '', av: null };
     }

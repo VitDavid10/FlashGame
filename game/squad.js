@@ -463,7 +463,9 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     function myAv() { try { return window._hubAvatar ? window._hubAvatar() : null; } catch (e) { return null; } }
     // noPic: con un icono elegido en el perfil, tu foto de X no se ensena (sale el icono).
     const noPic = () => { try { return !!localStorage.getItem('pw_avatar'); } catch (e) { return false; } };
-    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName(), noPic: noPic() }); }
+    // hx: HIDE X ACCOUNT en el perfil (en las partidas sale el nombre de la pildora en vez de tu @).
+    const hideX = () => { try { return localStorage.getItem('pw_hidex') === '1'; } catch (e) { return false; } };
+    function refreshAv() { if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName(), noPic: noPic(), hx: hideX() }); }
     function connect(then) {
         if (S.ws && S.ws.readyState === 1) { then && then(); return; }
         if (then) S.after = then;   // si ya se esta conectando, se ejecuta al abrir
@@ -474,7 +476,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
             S.ws = ws;
             ws.onopen = () => {
                 S.conn = 'open'; S.retry = 0;
-                if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName(), noPic: noPic() });   // antes que cualquier otra orden
+                if (S.token) send({ a: 'hello', token: S.token, av: myAv(), name: myName(), noPic: noPic(), hx: hideX() });   // antes que cualquier otra orden
                 render(); const f = S.after; S.after = null; f && f();
             };
             ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } onMsg(m); };
