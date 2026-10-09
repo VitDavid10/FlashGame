@@ -439,7 +439,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-lv{font-size:.44em}
 #appHub.pc .ah-line{left:5.9em;top:2.55em;width:18em}
 #appHub.pc .ah-ico{top:.45em;right:1.1em;gap:.4em}
-#appHub.pc .ah-btn{width:1.35em;height:1.35em}
+#appHub.pc .ah-btn{width:1.35em;height:1.35em;border-width:2px}
+#appHub.pc .tb,#appHub.pc .px{border-width:2px}
 #appHub.pc .ah-btn svg{width:.65em;height:.65em}
 #appHub.pc .ah-sp{font-size:.4em}
 #appHub.pc .ah-it{left:3.2em}

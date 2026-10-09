@@ -1284,7 +1284,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         if (S.party && !imLeader()) { send({ a: 'propose', price: usd, size: n }); S.note = 'Proposal sent to your leader'; render(); return; }
         S.usd = usd; try { localStorage.setItem('pw_arusd', String(usd)); } catch (e) {}
         S.lanza = Date.now();   // la vista (precio / rivales) se queda hasta que llega la sala de espera: asi no parpadea el menu QUICK MATCH / FIND RIVALS / MATCH CUSTOM
-        start(() => { send({ a: 'play', mode: arMode(), price: usd, ready: !usd }); abreSala(true); });   // gratis: pulsar es tu LISTO; de pago: PAY & READY
+        start(() => { send({ a: 'play', mode: arMode(), price: usd, ready: false }); abreSala(true); });   // gratis o de pago: siempre sale el LISTO (en gratis ya no se da por pulsado: puede haber alguien esperando)
     }
     function quick() { lanzar(S.arStep ? S.arStep.size : groupSize(), S.usd | 0); }
     // PAY & READY: primero se confirma la entrada (precio exacto) y luego se firma.
