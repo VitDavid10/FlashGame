@@ -464,6 +464,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-mode .tg{font-size:.4em;color:var(--mut);letter-spacing:.1em}
 .cr-mode ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.7em;font-size:.46em;line-height:1.6;color:#cfe0d6}
 .cr-mode li{padding-left:1.3em;position:relative}.cr-mode li:before{content:"";position:absolute;left:0;top:.5em;width:.55em;height:.55em;background:var(--k)}
+.cr-two{flex:1;display:grid;grid-template-columns:repeat(2,1fr);gap:1em;min-height:0;align-content:start}.cr-two .cr-th img{object-fit:contain;background:#000}.cr-two .cr-c1{font-size:.7em;margin-top:.3em}.cr-two .cr-c2{font-size:.46em;line-height:1.7}
 .cr-bas{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;min-height:0;overflow:hidden}
 .cr-bc{display:flex;flex-direction:column;gap:.5em;padding:.6em;background:rgba(0,0,0,.28);border:.12em solid rgba(255,255,255,.07);min-height:0;transition:border-color .2s,box-shadow .2s}
 .cr-bc:hover{border-color:var(--ac);box-shadow:0 0 1em color-mix(in srgb,var(--ac) 30%,transparent)}
@@ -908,7 +909,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="sk-b"><div class="qg" id="ahQG"></div></div>
   <div class="foot" id="ahQFoot">Airdrop points for the $PILLY Genesis Drop</div></div></div></div>
 <div class="ov" id="ahCore"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
-  <div class="ph"><button class="tb on" data-c="watch">WATCH</button><button class="tb" data-c="basics">BASICS</button><button class="tb" data-c="modes">MODES</button><button class="tb" data-c="skills">SKILLS</button><span class="cnt" id="ahCoreSp"></span><button class="px">CLOSE</button></div>
+  <div class="ph"><button class="tb on" data-c="watch">WATCH</button><button class="tb" data-c="core">CORE</button><button class="tb" data-c="basics">BASICS</button><button class="tb" data-c="modes">MODES</button><button class="tb" data-c="skills">SKILLS</button><span class="cnt" id="ahCoreSp"></span><button class="px">CLOSE</button></div>
   <div class="cr-b" id="ahCoreB"></div></div></div></div>
 <div class="ov" id="ahSk"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb" data-t="skills">SKILLS</button><button class="tb" data-t="color">COLOR</button><button class="tb" data-t="skins">SKIN</button><span class="cnt" id="ahSkSp"></span><button class="px">CLOSE</button></div>
@@ -1946,12 +1947,17 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
 
     // ---------- PILLWARS CORE: guias y videos (solo PC) ----------
-    // WATCH: en orden y numerados. src = video, img = imagen; off = aun no esta hecho (sale, pero no se abre).
+    // WATCH: los videos, en orden. off = aun no esta hecho (sale, pero no se abre).
     const CORE_VIDEOS = [
         { src: '../video/pillwars-origin.mp4', t: 'ORIGIN', d: 'Where PillWars comes from.', tag: 'STORY' },
-        { img: 'img/core/agar.png', t: 'INSPIRED BY AGAR.IO', d: 'The classic cell-eating game, with skills and real stakes.', tag: 'IDEA' },
+        { src: '../video/social/01_gameplay_vertical.mp4', t: 'GAMEPLAY', d: 'A real match, in a few seconds.', tag: 'GAMEPLAY' },
         { off: true, t: 'GAME MODES', d: 'Classic, Arcade and Arenas explained. Coming soon.', tag: 'SOON' },
-        { img: 'img/core/basics.png', t: 'EAT · HUNT · SURVIVE', d: 'The basics in one picture, plus 8 skills to outplay.', tag: 'BASICS' }
+        { src: '../video/social/02_skills_montage.mp4', t: 'SKILLS MONTAGE', d: 'All the skills in action.', tag: 'SKILLS' }
+    ];
+    // CORE: las dos imagenes que explican el juego, con su texto.
+    const CORE_IMGS = [
+        { img: 'img/core/agar.png', t: 'INSPIRED BY AGAR.IO', d: 'PillWars takes the classic cell-eating formula (eat, grow, split) and adds skills, game modes and real prizes.' },
+        { img: 'img/core/basics.png', t: 'EAT · HUNT · SURVIVE', d: 'Eat the food to grow. Bigger eats smaller, so swallow other players whole. Someone is always bigger: split, dodge, hide. And 8 skills to outplay everyone.' }
     ];
     let coreTab = 'watch', coreVid = 0, coreSk = 'clon';
     const crVideo = (src, extra) => '<video ' + (extra || '') + ' playsinline src="' + src + '"></video>';
@@ -1969,10 +1975,18 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             CORE_VIDEOS.forEach((c, i) => {
                 const k = document.createElement('div'); k.className = 'cr-card' + (i === coreVid ? ' on' : '') + (c.off ? ' off' : '');
                 const th = c.src ? '<video muted preload="metadata" playsinline src="' + c.src + '#t=0.8"></video>' : c.img ? '<img alt="" src="' + c.img + '">' : '';
-                k.innerHTML = '<div class="cr-num">' + (i + 1) + '</div><div class="cr-th">' + th + '<i>' + c.tag + '</i></div><div><div class="cr-c1"></div><div class="cr-c2"></div></div>';
+                k.innerHTML = '<div class="cr-th">' + th + '<i>' + c.tag + '</i></div><div><div class="cr-c1"></div><div class="cr-c2"></div></div>';
                 k.querySelector('.cr-c1').textContent = c.t; k.querySelector('.cr-c2').textContent = c.d;
                 if (!c.off) k.onclick = () => { coreVid = i; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); };
                 l.appendChild(k);
+            });
+        } else if (coreTab === 'core') {
+            b.innerHTML = '<div class="cr-two"></div>';
+            CORE_IMGS.forEach(c => {
+                const k = document.createElement('div'); k.className = 'cr-bc';
+                k.innerHTML = '<div class="cr-th" style="aspect-ratio:16/9"><img alt="" src="' + c.img + '"></div><div class="cr-c1"></div><div class="cr-c2"></div>';
+                k.querySelector('.cr-c1').textContent = c.t; k.querySelector('.cr-c2').textContent = c.d;
+                b.querySelector('.cr-two').appendChild(k);
             });
         } else if (coreTab === 'basics') {
             const sl = (typeof guideSlides !== 'undefined' ? guideSlides : []).map((c, i) => i === 2
