@@ -432,19 +432,19 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
 #appHub.pc .ah-it[data-a=friends]{display:flex}
-#appHub.pc .ah-top{height:2.05em}
+#appHub.pc .ah-top{height:2.45em}
 #appHub.pc .ah-top:after{height:.07em}
 #appHub.pc .ah-ava{left:.5em;top:.2em;width:3.7em;height:3.7em;z-index:5}
-#appHub.pc .ah-who{left:4.8em;top:.22em;gap:.2em}
-#appHub.pc .ah-name{font-size:.52em}
-#appHub.pc .ah-lv{font-size:.32em}
-#appHub.pc .ah-line{left:4.8em;top:1.5em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
+#appHub.pc .ah-who{left:4.8em;top:.3em;gap:.22em}
+#appHub.pc .ah-name{font-size:.62em}
+#appHub.pc .ah-lv{font-size:.38em}
+#appHub.pc .ah-line{left:4.8em;top:1.85em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
 #appHub.pc .ah-line:after{width:.3em;height:.3em;top:-.1em;right:-.2em}
-#appHub.pc .ah-ico{top:.2em;right:1.1em;gap:.35em}
-#appHub.pc .ah-btn{width:1.25em;height:1.25em;border-width:2px}
+#appHub.pc .ah-ico{top:.5em;right:1.1em;gap:.4em}
+#appHub.pc .ah-btn{width:1.45em;height:1.45em;border-width:2px}
 #appHub.pc .tb,#appHub.pc .px{border-width:2px}
-#appHub.pc .ah-btn svg{width:.65em;height:.65em}
-#appHub.pc .ah-sp{font-size:.34em}
+#appHub.pc .ah-btn svg{width:.75em;height:.75em}
+#appHub.pc .ah-sp{font-size:.4em}
 #appHub.pc .ah-it{left:3.2em}
 #appHub.pc .ah-it[data-a=pill]{top:4em!important}
 #appHub.pc .ah-it[data-a=arenas]{top:7.55em!important}
@@ -485,7 +485,13 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:24.5em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
-#appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:4.6em;height:4.6em}
+#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding-bottom:1.1em}
+#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>:is(.sk-b,.pz-l,.ahr-g,.htp,#ahArBody,#ahFrBody){flex:1 1 0;min-height:0;height:auto}
+#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>.foot{margin-top:auto;padding-top:.5em}
+#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>.pz-f{margin-top:.6em}
+#appHub.pc .ov:not(.full) .sk-b>.sn,#appHub.pc .ov:not(.full) .sk-b>.qg,#appHub.pc .ov:not(.full) .sk-b>.sk-g{align-self:stretch}
+#appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:6em;height:6em}
+#appHub.pc .co{gap:1.3em}#appHub.pc .co .sw{flex:1;grid-template-columns:repeat(13,1fr);gap:.4em}
 #appHub.pc #ahSt .sn,#appHub.pc #ahSk .sn{gap:.6em}
 #appHub.pc #ahSt .foot,#appHub.pc #ahSk .foot{margin-top:1.8em}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
