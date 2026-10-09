@@ -46,6 +46,7 @@
         bag: '<path d="M9 3.6h6c.6 0 1 .5.8 1.1-.2.6-.7 1-1.3 1H9.5c-.6 0-1.1-.4-1.3-1-.2-.6.2-1.1.8-1.1z"/><path d="M6.2 9.6c0-1.9 1.6-3.4 3.5-3.4h4.6c1.9 0 3.5 1.5 3.5 3.4v4.2H6.2z"/><circle cx="12" cy="9.8" r="1.7" fill="#000"/><rect x="6.2" y="14.9" width="11.6" height="5.6" rx="1.4"/>',
         ghost: '<path d="M12 2.8a7.2 7.2 0 00-7.2 7.2v11l2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8 2.4-1.8 2.4 1.8V10A7.2 7.2 0 0012 2.8z"/><circle cx="9.3" cy="10.2" r="1.4" fill="#07140f"/><circle cx="14.7" cy="10.2" r="1.4" fill="#07140f"/>',
         back: '<path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"/>',
+        core: '<path d="M3.2 4.6h17.6v11.2H3.2z"/><path d="M10 7.6v5.2l4.6-2.6z" fill="#07140f"/><path d="M7 19.4h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
         gear: '<path fill-rule="evenodd" d="M19.64,9.64 L22.45,10.21 L22.45,13.79 L19.64,14.36 L19.08,15.73 L20.66,18.12 L18.12,20.66 L15.73,19.08 L14.36,19.64 L13.79,22.45 L10.21,22.45 L9.64,19.64 L8.27,19.08 L5.88,20.66 L3.34,18.12 L4.92,15.73 L4.36,14.36 L1.55,13.79 L1.55,10.21 L4.36,9.64 L4.92,8.27 L3.34,5.88 L5.88,3.34 L8.27,4.92 L9.64,4.36 L10.21,1.55 L13.79,1.55 L14.36,4.36 L15.73,4.92 L18.12,3.34 L20.66,5.88 L19.08,8.27Z M12,8.6 a3.4,3.4 0 1,0 .01,0Z"/>',
         music: '<path d="M9 17.5V5.2l10-2v11.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.6" cy="17.6" r="2.6"/><circle cx="16.6" cy="15" r="2.6"/>',
         sound: '<path d="M3.5 9h4l5-4v14l-5-4h-4z"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -113,6 +114,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-btn.off:after{content:"";position:absolute;left:18%;right:18%;top:50%;height:.16em;background:#ff4a4a;transform:rotate(-45deg);box-shadow:0 0 0 .06em #000}
 .ah-sp{display:flex;align-items:center;gap:.5em;margin-right:.5em;font-size:.62em;letter-spacing:.06em;text-shadow:.15em .15em 0 #000}
 .ah-sp .u{color:var(--ac)}
+.ah-sp .pu{color:var(--mut);margin-left:.1em}
 .ah-sp[hidden]{display:none}
 .ah-it{position:absolute;left:3.6em;z-index:0;display:flex;align-items:center;gap:.9em;cursor:pointer}
 .ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:18.5em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
@@ -389,7 +391,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sk-g .cell .nm{font-size:.4em;letter-spacing:.06em}
 .sk-g .cell.used{opacity:.35}
 #ahSkSp,#ahStSp,#ahQSp,#ahPrSp{display:none!important}
-.ah-btn[data-a=htp],.ah-it[data-a=friends]{display:none}
+.ah-btn[data-a=htp],.ah-it[data-a=friends],.ah-it[data-a=core]{display:none}
+.ah-it[data-a=core]{--c:#ff7ad9}
 .ah-it[data-a=friends]{--c:#b57bff}
 .htp{height:14.4em;display:flex;flex-direction:column;gap:.6em;margin-top:.8em}
 .htp-g{display:grid;grid-template-columns:repeat(4,1fr);gap:.5em;flex:1}
@@ -428,6 +431,46 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub:not(.pc) #ahAr .sq-pbox .sq-near{font-size:.42em;white-space:nowrap}
 #appHub:not(.pc) #ahAr .sq.find .sq-q{position:relative;top:-.9em}
 
+
+/* ===== PILLWARS CORE (solo PC): guias y videos ===== */
+.cr-b{display:flex;gap:1em;margin-top:.9em;min-height:0}
+.cr-b>*{animation:crIn .35s ease both}.cr-b>*:nth-child(2){animation-delay:.07s}.cr-b>*:nth-child(3){animation-delay:.14s}
+@keyframes crIn{from{opacity:0;transform:translateY(.7em)}to{opacity:1;transform:none}}
+.cr-main{flex:1.6;min-width:0;display:flex;flex-direction:column;gap:.7em}
+.cr-vid{position:relative;flex:1;min-height:0;background:#000;border:.12em solid var(--edge);overflow:hidden}
+.cr-vid video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.cr-poster{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;cursor:pointer;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--ac) 24%,#06100a),#020503 75%)}
+.cr-poster .pl{width:3.6em;height:3.6em;border-radius:50%;border:.18em solid var(--ac);position:relative;transition:transform .2s,background .2s}
+.cr-poster .pl:after{content:"";position:absolute;left:1.3em;top:.9em;border-left:1.2em solid var(--ac);border-top:.9em solid transparent;border-bottom:.9em solid transparent}
+.cr-poster:hover .pl{transform:scale(1.1);background:rgba(255,255,255,.07)}
+.cr-poster .k{font-size:.42em;letter-spacing:.14em;color:var(--mut)}
+.cr-ti{font-size:.74em;letter-spacing:.06em;text-shadow:.12em .12em 0 #000}
+.cr-de{font-size:.46em;color:var(--mut);line-height:1.7;letter-spacing:.03em}
+.cr-list{flex:1;min-width:0;display:flex;flex-direction:column;gap:.55em;overflow-y:auto;padding-right:.2em}
+.cr-card{display:flex;align-items:center;gap:.8em;padding:.5em .7em .5em .5em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);cursor:pointer;transition:transform .18s,border-color .18s,background .18s;flex:none}
+.cr-card:hover{transform:translateX(.3em);border-color:color-mix(in srgb,var(--ac) 60%,#000)}
+.cr-card.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 8%,rgba(0,0,0,.28))}
+.cr-th{width:6.4em;aspect-ratio:16/9;flex:none;background:#000;position:relative;overflow:hidden;box-shadow:0 0 0 .1em #000}
+.cr-th video,.cr-th img{width:100%;height:100%;object-fit:cover;display:block}
+.cr-th i{position:absolute;right:.25em;bottom:.2em;font-size:.4em;font-style:normal;background:rgba(0,0,0,.75);padding:.2em .5em}
+.cr-c1{font-size:.62em;letter-spacing:.05em}.cr-c2{font-size:.4em;color:var(--mut);margin-top:.5em;line-height:1.5}
+.cr-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;min-height:0}
+.cr-mode{position:relative;display:flex;flex-direction:column;gap:.7em;padding:.9em;background:linear-gradient(180deg,color-mix(in srgb,var(--k) 18%,#06100a),color-mix(in srgb,var(--k) 5%,#06100a));border:.12em solid color-mix(in srgb,var(--k) 55%,#000);overflow:hidden;transition:transform .2s}
+.cr-mode:hover{transform:translateY(-.25em)}
+.cr-mode:before{content:"";position:absolute;left:0;top:0;right:0;height:.35em;background:var(--k)}
+.cr-mode h3{margin:.3em 0 0;font-size:.95em;letter-spacing:.08em;font-weight:400;color:var(--k);text-shadow:.12em .12em 0 #000}
+.cr-mode .tg{font-size:.4em;color:var(--mut);letter-spacing:.1em}
+.cr-mode ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.7em;font-size:.46em;line-height:1.6;color:#cfe0d6}
+.cr-mode li{padding-left:1.3em;position:relative}.cr-mode li:before{content:"";position:absolute;left:0;top:.5em;width:.55em;height:.55em;background:var(--k)}
+.cr-bas{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;min-height:0;overflow:hidden}
+.cr-bc{display:flex;flex-direction:column;gap:.5em;padding:.6em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);min-height:0;transition:border-color .2s,transform .2s}
+.cr-bc:hover{border-color:var(--ac);transform:translateY(-.2em)}
+.cr-bc{overflow:hidden}.cr-bc .cr-th{width:100%;aspect-ratio:4/3}
+.cr-keys{display:flex;flex-wrap:wrap;gap:.5em .9em;font-size:.46em;color:#cfe0d6;align-items:center}
+.cr-keys b{background:#0d1a13;border:.14em solid #2c3630;padding:.3em .7em;font-weight:400;color:var(--ac);margin-right:.5em;letter-spacing:.08em}
+.cr-sk{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:.55em;min-height:0}
+.cr-sk .cell{justify-content:center;gap:.4em}.cr-sk .cell img{width:3.2em;height:3.2em;image-rendering:pixelated}.cr-sk .cell.on{border-color:var(--ac)}
+.cr-sk .cell .nm{font-size:.4em;letter-spacing:.06em}
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
@@ -435,10 +478,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-top{height:2.45em}
 #appHub.pc .ah-top:after{height:.07em}
 #appHub.pc .ah-ava{left:.5em;top:.2em;width:3.7em;height:3.7em;z-index:5}
-#appHub.pc .ah-who{left:4.8em;top:.3em;gap:.22em}
+#appHub.pc .ah-who{left:4.8em;top:.62em;gap:.22em}
 #appHub.pc .ah-name{font-size:.62em}
 #appHub.pc .ah-lv{font-size:.38em}
-#appHub.pc .ah-line{left:4.8em;top:1.85em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
+#appHub.pc .ah-line{left:4.8em;top:2.2em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
 #appHub.pc .ah-line:after{width:.3em;height:.3em;top:-.1em;right:-.2em}
 #appHub.pc .ah-ico{top:.5em;right:1.1em;gap:.4em}
 #appHub.pc .ah-btn{width:1.45em;height:1.45em;border-width:2px}
@@ -446,13 +489,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn svg{width:.75em;height:.75em}
 #appHub.pc .ah-sp{font-size:.4em}
 #appHub.pc .ah-it{left:3.2em}
-#appHub.pc .ah-it[data-a=pill]{top:4em!important}
-#appHub.pc .ah-it[data-a=arenas]{top:7.55em!important}
-#appHub.pc .ah-it[data-a=friends]{top:11.1em!important}
-#appHub.pc .ah-it[data-a=store]{top:14.65em!important}
-#appHub.pc .ah-it[data-a=quests]{top:18.2em!important}
-#appHub.pc .ah-it:before{left:1.4em;top:-.15em;width:12em;height:3em}
-#appHub.pc .ah-it:after{left:13.4em;top:-.15em;width:.5em;height:3em}
+#appHub.pc .ah-it[data-a=pill]{top:4.1em!important}
+#appHub.pc .ah-it[data-a=arenas]{top:7.05em!important}
+#appHub.pc .ah-it[data-a=friends]{top:10em!important}
+#appHub.pc .ah-it[data-a=store]{top:12.95em!important}
+#appHub.pc .ah-it[data-a=quests]{top:15.9em!important}
+#appHub.pc .ah-it[data-a=core]{top:18.85em!important;display:flex}
+#appHub.pc{--bw:17em}
+#appHub.pc:has(.ov.open:not(#ahIc):not(#ahUn):not(#ahSv)){--bw:12em}
+#appHub.pc .ah-it:before{left:1.4em;top:-.05em;width:var(--bw);height:2.8em;transition:width .45s cubic-bezier(.3,1.25,.4,1)}
+#appHub.pc .ah-it:after{left:calc(1.4em + var(--bw));top:-.05em;width:.5em;height:2.8em;transition:left .45s cubic-bezier(.3,1.25,.4,1)}
 #appHub.pc .ah-it .med{width:2.7em;height:2.7em}
 #appHub.pc .ah-it .med svg{width:1.25em;height:1.25em}
 #appHub.pc .ah-it .med canvas{width:2.3em;height:2.3em}
@@ -463,7 +509,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahPillSub img,#appHub.pc #ahPillSub .hk{width:3.9em;height:3.9em}
 #ahPillSub .hk{display:inline-block;box-sizing:border-box;width:3.4em;height:3.4em;border:.25em solid #3b4a40;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 .2em rgba(0,0,0,.6)}
 #appHub.pc .ah-it.sel:before{border-color:var(--ac);background:linear-gradient(180deg,#0b0e01,#050700)}
-#appHub.pc .ah-it.sel:after{background:#1d2913;left:13.54em}
+#appHub.pc .ah-it.sel:after{background:#1d2913;left:calc(1.54em + var(--bw))}
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:27.5em;top:5.6em;width:16em;height:10.32em}
@@ -474,7 +520,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
 #appHub.pc .ah-room .v{font-size:.36em}
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:max-content;min-width:min(28.7em,100%);max-width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:auto;bottom:2em}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:3.875em 0 0 17.5em;pointer-events:none}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:4.1em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
 .ph>.px.pmax{margin-left:auto}.ph>.pmax+.px{margin-left:.5em}.ph>.cnt+.pmax{margin-left:.7em}
 #ahSkSp+.pmax,#ahStSp+.pmax,#ahQSp+.pmax,#ahPrSp+.pmax{margin-left:auto}
@@ -483,10 +529,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv){background:rgba(3,6,4,.9);justify-content:center;align-items:center;padding:0;pointer-events:auto;z-index:8}
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:auto;font-size:1em}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:24.5em;font-size:.765em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:23.8em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
 #appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding-bottom:1.1em}
-#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>:is(.sk-b,.pz-l,.ahr-g,.htp,#ahArBody,#ahFrBody){flex:1 1 0;min-height:0;height:auto}
+#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>:is(.sk-b,.pz-l,.ahr-g,.htp,.cr-b,#ahArBody,#ahFrBody){flex:1 1 0;min-height:0;height:auto}
 #appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>.foot{margin-top:auto;padding-top:.5em}
 #appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>.pz-f{margin-top:.6em}
 #appHub.pc .ov:not(.full) .sk-b>.sn,#appHub.pc .ov:not(.full) .sk-b>.qg,#appHub.pc .ov:not(.full) .sk-b>.sk-g{align-self:stretch}
@@ -720,6 +766,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const t = (Math.floor(v * f + 1e-9) / f).toFixed(dec);
         return '$' + (i >= 0 ? String(parseFloat(t)) + un[i] : t);
     }
+    // Precio de 1 $PILLY en dolares (lo manda el servidor con /api/rooms); 0 si aun no se sabe.
+    const pillUsd = () => { try { return (typeof _lastRoomsData !== 'undefined' && _lastRoomsData && Number(_lastRoomsData.pillUsd)) || 0; } catch (e) { return 0; } };
+    const conUsd = v => { const u = pillUsd(); return u > 0 ? ' (' + cortoUsd(v * u) + ')' : ''; };
     // Tu $PILLY dentro del juego, al lado de los SP (solo con wallet conectada).
     function pintaPilly() {
         const box = document.querySelector('#appHub .ah-py'); if (!box) return;
@@ -728,6 +777,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (!w) return;
         const v = Number(GameWalletUI.gameBalance) || 0, el = document.getElementById('ahPy');
         el.textContent = corto(v);
+        const pu = document.getElementById('ahPyU'); if (pu) pu.textContent = conUsd(v).trim();
         if (pyPrev != null && v !== pyPrev && !_enPartida && pyTras) {
             pyTras = false;
             box.classList.remove('py-up', 'py-dn'); void box.offsetWidth;
@@ -790,13 +840,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-top"></div><div class="ah-line"></div>
 <div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div><i class="ah-fb ah-avb" id="ahAvB"></i>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
-<div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
+<div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span><span class="pu" id="ahPyU"></span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
   <div class="ah-btn" data-a="htp">${svg('gear')}</div><div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.7em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="arenas" style="top:8.3em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}<i class="ah-fb" id="ahFrB2"></i></div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
 <div class="ah-it" data-a="store" style="top:11.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:15.5em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
+<div class="ah-it" data-a="core" style="top:0"><div class="med">${svg('core')}</div><div><div class="t">PILLWARS CORE</div><div class="s">GUIDES · VIDEOS</div></div></div>
 <canvas id="ahPill"></canvas>
 <div class="ah-sys" id="ahSys"><b>SYSTEM</b><i class="pic"></i><span></span><div class="acts"></div></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
@@ -852,6 +903,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="ph"><button class="tb on">QUESTS</button><span class="qb" id="ahQBoost"></span><span class="cnt" id="ahQSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="qg" id="ahQG"></div></div>
   <div class="foot" id="ahQFoot">Airdrop points for the $PILLY Genesis Drop</div></div></div></div>
+<div class="ov" id="ahCore"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><button class="tb on" data-c="watch">WATCH</button><button class="tb" data-c="basics">BASICS</button><button class="tb" data-c="modes">MODES</button><button class="tb" data-c="skills">SKILLS</button><span class="cnt" id="ahCoreSp"></span><button class="px">CLOSE</button></div>
+  <div class="cr-b" id="ahCoreB"></div></div></div></div>
 <div class="ov" id="ahSk"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb" data-t="skills">SKILLS</button><button class="tb" data-t="color">COLOR</button><button class="tb" data-t="skins">SKIN</button><span class="cnt" id="ahSkSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sk-pill"><input id="ahName" maxlength="12" placeholder="YOUR NAME" autocomplete="off" spellcheck="false"><canvas id="ahSkPill"></canvas><div class="sk-slots"><div class="sk-slot" data-s="0"></div><div class="sk-slot" data-s="1"></div></div><div class="sk-lab">YOUR 2 SKILLS</div></div>
@@ -1728,7 +1782,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahPrDep').style.display = $('#ahPrWd').style.display = conectada ? '' : 'none';
         saldoJuego = 0;
         if (w) try { saldoJuego = (await (await fetch('/api/warbalance?wallet=' + w, { cache: 'no-store' })).json()).pill || 0; } catch (e) {}
-        $('#ahPrBal').textContent = Math.floor(saldoJuego).toLocaleString('en-US');
+        $('#ahPrBal').textContent = Math.floor(saldoJuego).toLocaleString('en-US') + conUsd(saldoJuego);
         // CLAIM: premios de arenas (historial con lo cobrado y lo pendiente). El punto avisa si hay algo por cobrar.
         $('#ahPrPzC').style.display = conectada ? '' : 'none';
         $('#ahPrPzC').onclick = abrePremios;
@@ -1883,8 +1937,74 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahHtpD').innerHTML = Array.from({ length: n }, (_, i) => '<i class="' + (i === htpPag ? 'on' : '') + '"></i>').join('');
         placa($('#ahHtp .pnl'), 1);
     }
+
+    // ---------- PILLWARS CORE: guias y videos (solo PC) ----------
+    // Para anadir un video: una linea en CORE_VIDEOS (src relativo a /game/, titulo, texto corto).
+    const CORE_VIDEOS = [
+        { src: '../video/Trailer.mp4', t: 'TRAILER', d: 'The official PillWars trailer.', tag: 'TRAILER' },
+        { src: '../video/pillwars-origin.mp4', t: 'ORIGIN', d: 'Where PillWars comes from.', tag: 'STORY' },
+        { src: '../video/social/01_gameplay_vertical.mp4', t: 'GAMEPLAY', d: 'A match, in a few seconds.', tag: 'GAMEPLAY' },
+        { src: '../video/social/02_skills_montage.mp4', t: 'SKILLS MONTAGE', d: 'All the skills in action.', tag: 'SKILLS' }
+    ];
+    let coreTab = 'watch', coreVid = 0, coreSk = 'clon';
+    const crVideo = (src, extra) => '<video ' + (extra || '') + ' playsinline src="' + src + '"></video>';
+    function renderCore() {
+        const b = $('#ahCoreB'); b.innerHTML = '';
+        hub.querySelectorAll('#ahCore .tb').forEach(t => t.classList.toggle('on', t.dataset.c === coreTab));
+        if (coreTab === 'watch') {
+            const v = CORE_VIDEOS[coreVid] || CORE_VIDEOS[0];
+            b.innerHTML = '<div class="cr-main"><div class="cr-vid"><div class="cr-poster"><div class="pl"></div><div class="k">TAP TO PLAY</div></div></div><div><div class="cr-ti"></div><div class="cr-de"></div></div></div><div class="cr-list"></div>';
+            b.querySelector('.cr-ti').textContent = v.t; b.querySelector('.cr-de').textContent = v.d;
+            b.querySelector('.cr-poster').onclick = () => {
+                const box = b.querySelector('.cr-vid'); box.innerHTML = crVideo(v.src, 'controls autoplay'); try { SoundManager.play('simpleselect'); } catch (x) {}
+            };
+            const l = b.querySelector('.cr-list');
+            CORE_VIDEOS.forEach((c, i) => {
+                const k = document.createElement('div'); k.className = 'cr-card' + (i === coreVid ? ' on' : '');
+                k.innerHTML = '<div class="cr-th"><video muted preload="metadata" playsinline src="' + c.src + '#t=0.8"></video><i>' + c.tag + '</i></div><div><div class="cr-c1"></div><div class="cr-c2"></div></div>';
+                k.querySelector('.cr-c1').textContent = c.t; k.querySelector('.cr-c2').textContent = c.d;
+                k.onclick = () => { coreVid = i; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); };
+                l.appendChild(k);
+            });
+        } else if (coreTab === 'basics') {
+            const sl = typeof guideSlides !== 'undefined' ? guideSlides : [];
+            b.innerHTML = '<div class="cr-main"><div class="cr-bas"></div><div class="cr-keys"><span><b>MOUSE</b>STEER</span><span><b>SPACE</b>SPLIT</span><span><b>1 · 2 · 3 · 4</b>USE YOUR SKILLS</span></div></div>';
+            const g = b.querySelector('.cr-bas');
+            sl.forEach(c => {
+                const k = document.createElement('div'); k.className = 'cr-bc';
+                k.innerHTML = '<div class="cr-th"><video muted loop playsinline preload="metadata" src="' + c.video + '#t=0.8"></video></div><div class="cr-c1"></div><div class="cr-c2"></div>';
+                k.querySelector('.cr-c1').textContent = c.title.replace(/:$/, ''); k.querySelector('.cr-c2').textContent = c.desc;
+                const vd = k.querySelector('video');
+                k.onmouseenter = () => { try { vd.play(); } catch (e) {} }; k.onmouseleave = () => { try { vd.pause(); } catch (e) {} };
+                g.appendChild(k);
+            });
+        } else if (coreTab === 'modes') {
+            const M = [
+                { k: '#00ffaa', n: 'CLASSIC', tg: 'THE ORIGINAL', li: ['15 minute matches on a huge map.', 'Only the SHOOT skill (key 1).', 'Reach 5 kills (a pentakill) and the match ends.', 'Leaving early costs a fee: 50% with no kills, 20% with 1, 10% with 2 or more.', 'When you eat someone you take everything they were carrying.'] },
+                { k: '#c8ff00', n: 'ARCADE', tg: 'ROGUELIKE MECHANICS', li: ['Matches last 3:00 and the safe zone shrinks.', 'You start empty and pick a new skill every 30 seconds.', 'Out of the zone you lose mass, and eating gives you much less.', 'The ranking goes by score: every kill adds 10% to your mass, up to x2.', 'Reach the Top 10 to win.'] },
+                { k: '#ff5a4a', n: 'ARENAS', tg: '1V1 · 2V2 · 3V3', li: ['Team matches: play solo or with up to 3 friends.', 'FREE rooms and paid rooms with real prizes.', 'Pick your 2 skills in THE PILL before each match.', 'If a bot eats an enemy you still receive 90% of the tokens they carried.', 'Prizes are collected from CLAIM in your profile.'] }
+            ];
+            b.innerHTML = '<div class="cr-grid"></div>';
+            M.forEach(m => { const c = document.createElement('div'); c.className = 'cr-mode'; c.style.setProperty('--k', m.k); c.innerHTML = '<div class="tg">' + m.tg + '</div><h3>' + m.n + '</h3><ul>' + m.li.map(x => '<li>' + x + '</li>').join('') + '</ul>'; b.querySelector('.cr-grid').appendChild(c); });
+        } else {
+            const SID = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
+            const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
+            b.innerHTML = '<div class="cr-main"><div class="cr-vid"></div><div><div class="cr-ti"></div><div class="cr-de"></div></div></div><div class="cr-sk"></div>';
+            const d = dat(coreSk);
+            if (d) { b.querySelector('.cr-vid').innerHTML = crVideo(d.video, 'autoplay loop muted'); b.querySelector('.cr-ti').textContent = d.name; b.querySelector('.cr-de').textContent = d.desc; }
+            const g = b.querySelector('.cr-sk');
+            SKILLS.forEach(([id, nm]) => {
+                const c = document.createElement('div'); c.className = 'cell' + (id === coreSk ? ' on' : '');
+                c.innerHTML = '<img src="' + skIcon(id) + '"><div class="nm">' + nm + '</div>';
+                c.onclick = () => { coreSk = id; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); };
+                g.appendChild(c);
+            });
+        }
+        placa($('#ahCore .pnl'), 1);
+    }
+    function openCore() { $('#ahCore').classList.add('open'); renderCore(); }
     // La barra del menu abierto se marca (contorno lima, interior oscuro).
-    const BARRA_DE = { ahSk: 'pill', ahAr: 'arenas', ahFr: 'friends', ahSt: 'store', ahQ: 'quests' };
+    const BARRA_DE = { ahCore: 'core', ahSk: 'pill', ahAr: 'arenas', ahFr: 'friends', ahSt: 'store', ahQ: 'quests' };
     function marcaBarra() {
         const abierto = Object.keys(BARRA_DE).find(id => $('#' + id) && $('#' + id).classList.contains('open'));
         hub.querySelectorAll('.ah-it').forEach(b => b.classList.toggle('sel', !!abierto && b.dataset.a === BARRA_DE[abierto]));
@@ -1894,13 +2014,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const a = it.dataset.a;
         try { SoundManager.play('simpleselect'); } catch (x) {}
         if (a === 'x') { if (hub.classList.contains('pc')) cierraPaneles(); conectaX(); return; }
-        if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp'].includes(a)) cierraPaneles();
+        if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp', 'core'].includes(a)) cierraPaneles();
         if (a === 'htp') { htpPag = 0; htpSk = null; $('#ahHtp').classList.add('open'); renderHtp(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
         if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('rooms', $('#ahArBody')); placa($('#ahAr .pnl'), 1); }
         else if (a === 'friends') { const fr = $('#ahFr'); fr.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('friends', $('#ahFrBody')); placa($('#ahFr .pnl'), 1); }
         else if (a === 'store') openStore('shop');
         else if (a === 'quests') openQuests();
+        else if (a === 'core') openCore();
         else if (a === 'pill') {
             openPill();
         }
@@ -1909,6 +2030,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     function wire() {
         hub.addEventListener('click', tap);
+        hub.querySelectorAll('#ahCore .tb').forEach(t => t.onclick = () => { coreTab = t.dataset.c; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); });
         $('#ahHtpP').onclick = () => { const n = (typeof guideSlides !== 'undefined' ? guideSlides.length : 0) + 1; htpPag = (htpPag + n - 1) % n; htpSk = null; renderHtp(); };
         $('#ahHtpN').onclick = () => { const n = (typeof guideSlides !== 'undefined' ? guideSlides.length : 0) + 1; htpPag = (htpPag + 1) % n; htpSk = null; renderHtp(); };
         new MutationObserver(marcaBarra).observe(hub, { subtree: true, attributes: true, attributeFilter: ['class'] });
