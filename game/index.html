@@ -9263,6 +9263,8 @@
     function confirmNameChoice() {
         const v = document.getElementById('mobileNameField').value.trim();
         if (v) document.getElementById('playerNameInput').value = v.slice(0, 12);
+        // El nombre se guarda (y viaja con la cuenta): antes se perdia al recargar.
+        if (v) { try { if (window._hubNombre) window._hubNombre(v.slice(0, 12)); else localStorage.setItem('pw_app_name', v.slice(0, 12)); } catch (e) {} }
         document.getElementById('nameChoiceModal').style.display = 'none';
         const kind = _pendingNameKind; _pendingNameKind = null;
         if (kind) continueChoosePlay(kind);

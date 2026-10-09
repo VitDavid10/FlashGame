@@ -436,7 +436,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-b{display:flex;gap:1em;margin-top:.9em;min-height:0}
 .cr-b>*{animation:crIn .35s ease both}.cr-b>*:nth-child(2){animation-delay:.07s}.cr-b>*:nth-child(3){animation-delay:.14s}
 @keyframes crIn{from{opacity:0;transform:translateY(.7em)}to{opacity:1;transform:none}}
-.cr-main{flex:1.6;min-width:0;display:flex;flex-direction:column;gap:.7em}
+.cr-main{flex:1.75;min-width:0;display:flex;flex-direction:column;gap:.7em}
 .cr-vid{position:relative;flex:1;min-height:0;background:#000;border:.12em solid var(--edge);overflow:hidden}
 .cr-vid video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
 .cr-poster{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7em;cursor:pointer;background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--ac) 24%,#06100a),#020503 75%)}
@@ -446,55 +446,58 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-poster .k{font-size:.42em;letter-spacing:.14em;color:var(--mut)}
 .cr-ti{font-size:.74em;letter-spacing:.06em;text-shadow:.12em .12em 0 #000}
 .cr-de{font-size:.46em;color:var(--mut);line-height:1.7;letter-spacing:.03em}
-.cr-list{flex:1;min-width:0;display:flex;flex-direction:column;gap:.55em;overflow-y:auto;padding-right:.2em}
-.cr-card{display:flex;align-items:center;gap:.8em;padding:.5em .7em .5em .5em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);cursor:pointer;transition:transform .18s,border-color .18s,background .18s;flex:none}
-.cr-card:hover{transform:translateX(.3em);border-color:color-mix(in srgb,var(--ac) 60%,#000)}
+.cr-list{flex:1;min-width:0;display:flex;flex-direction:column;gap:.55em;overflow-y:auto;padding-right:.2em}.cr-list .cr-card{flex:1 1 0;min-height:0}.cr-card>div:last-child{flex:1;min-width:0}.cr-card .cr-c1{line-height:1.25}.cr-card .cr-c2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cr-card{display:flex;align-items:center;gap:.8em;padding:.5em .7em .5em .5em;background:rgba(0,0,0,.28);border:.12em solid rgba(255,255,255,.07);cursor:pointer;transition:border-color .18s,background .18s,box-shadow .18s;flex:none}
+.cr-card.off{cursor:default;opacity:.55}.cr-card.off:hover{border-color:rgba(255,255,255,.07);box-shadow:none}
+.cr-num{font-size:.7em;color:var(--ac);width:1.4em;text-align:center;flex:none}
+.cr-card:hover{border-color:color-mix(in srgb,var(--ac) 70%,#000);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 30%,transparent)}
 .cr-card.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 8%,rgba(0,0,0,.28))}
-.cr-th{width:6.4em;aspect-ratio:16/9;flex:none;background:#000;position:relative;overflow:hidden;box-shadow:0 0 0 .1em #000}
+.cr-th{width:5.4em;aspect-ratio:16/9;flex:none;background:#000;position:relative;overflow:hidden;box-shadow:0 0 0 .1em #000}
 .cr-th video,.cr-th img{width:100%;height:100%;object-fit:cover;display:block}
 .cr-th i{position:absolute;right:.25em;bottom:.2em;font-size:.4em;font-style:normal;background:rgba(0,0,0,.75);padding:.2em .5em}
-.cr-c1{font-size:.62em;letter-spacing:.05em}.cr-c2{font-size:.4em;color:var(--mut);margin-top:.5em;line-height:1.5}
+.cr-c1{font-size:.56em;letter-spacing:.05em}.cr-c2{font-size:.38em;color:var(--mut);margin-top:.5em;line-height:1.5}
 .cr-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;min-height:0}
-.cr-mode{position:relative;display:flex;flex-direction:column;gap:.7em;padding:.9em;background:linear-gradient(180deg,color-mix(in srgb,var(--k) 18%,#06100a),color-mix(in srgb,var(--k) 5%,#06100a));border:.12em solid color-mix(in srgb,var(--k) 55%,#000);overflow:hidden;transition:transform .2s}
-.cr-mode:hover{transform:translateY(-.25em)}
+.cr-mode{position:relative;display:flex;flex-direction:column;gap:.7em;padding:.9em;background:linear-gradient(180deg,color-mix(in srgb,var(--k) 18%,#06100a),color-mix(in srgb,var(--k) 5%,#06100a));border:.12em solid color-mix(in srgb,var(--k) 55%,#000);overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.cr-mode:hover{border-color:var(--k);box-shadow:0 0 1em color-mix(in srgb,var(--k) 35%,transparent)}
 .cr-mode:before{content:"";position:absolute;left:0;top:0;right:0;height:.35em;background:var(--k)}
 .cr-mode h3{margin:.3em 0 0;font-size:.95em;letter-spacing:.08em;font-weight:400;color:var(--k);text-shadow:.12em .12em 0 #000}
 .cr-mode .tg{font-size:.4em;color:var(--mut);letter-spacing:.1em}
 .cr-mode ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.7em;font-size:.46em;line-height:1.6;color:#cfe0d6}
 .cr-mode li{padding-left:1.3em;position:relative}.cr-mode li:before{content:"";position:absolute;left:0;top:.5em;width:.55em;height:.55em;background:var(--k)}
 .cr-bas{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;min-height:0;overflow:hidden}
-.cr-bc{display:flex;flex-direction:column;gap:.5em;padding:.6em;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);min-height:0;transition:border-color .2s,transform .2s}
-.cr-bc:hover{border-color:var(--ac);transform:translateY(-.2em)}
+.cr-bc{display:flex;flex-direction:column;gap:.5em;padding:.6em;background:rgba(0,0,0,.28);border:.12em solid rgba(255,255,255,.07);min-height:0;transition:border-color .2s,box-shadow .2s}
+.cr-bc:hover{border-color:var(--ac);box-shadow:0 0 1em color-mix(in srgb,var(--ac) 30%,transparent)}
 .cr-bc{overflow:hidden}.cr-bc .cr-th{width:100%;aspect-ratio:4/3}
 .cr-keys{display:flex;flex-wrap:wrap;gap:.5em .9em;font-size:.46em;color:#cfe0d6;align-items:center}
 .cr-keys b{background:#0d1a13;border:.14em solid #2c3630;padding:.3em .7em;font-weight:400;color:var(--ac);margin-right:.5em;letter-spacing:.08em}
-.cr-sk{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:.55em;min-height:0}
-.cr-sk .cell{justify-content:center;gap:.4em}.cr-sk .cell img{width:3.2em;height:3.2em;image-rendering:pixelated}.cr-sk .cell.on{border-color:var(--ac)}
+.cr-sk{flex:0 0 40%;align-self:center;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55em}.cr-sk .cell{aspect-ratio:1;min-width:0}
+.cr-sk .cell{justify-content:center;gap:.4em;transition:border-color .18s,box-shadow .18s}.cr-sk .cell:hover{border-color:color-mix(in srgb,var(--ac) 70%,#000);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 30%,transparent)}.cr-sk .cell img{width:3.2em;height:3.2em;image-rendering:pixelated}.cr-sk .cell.on{border-color:var(--ac);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 35%,transparent)}
+.cr-img{flex:1;min-height:0;background:#000 center/contain no-repeat;border:.12em solid var(--edge)}
 .cr-sk .cell .nm{font-size:.4em;letter-spacing:.06em}
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
-#appHub.pc .ah-btn[data-a=htp]{display:flex}
+#appHub.pc .ah-btn[data-a=htp]{display:none}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
 #appHub.pc .ah-it[data-a=friends]{display:flex}
-#appHub.pc .ah-top{height:2.45em}
+#appHub.pc .ah-top{height:2.8em}
 #appHub.pc .ah-top:after{height:.07em}
 #appHub.pc .ah-ava{left:.5em;top:.2em;width:3.7em;height:3.7em;z-index:5}
-#appHub.pc .ah-who{left:4.8em;top:.62em;gap:.22em}
+#appHub.pc .ah-who{left:4.8em;top:.95em;gap:.22em}
 #appHub.pc .ah-name{font-size:.62em}
 #appHub.pc .ah-lv{font-size:.38em}
-#appHub.pc .ah-line{left:4.8em;top:2.2em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
+#appHub.pc .ah-line{left:4.8em;top:2.55em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
 #appHub.pc .ah-line:after{width:.3em;height:.3em;top:-.1em;right:-.2em}
-#appHub.pc .ah-ico{top:.5em;right:1.1em;gap:.4em}
+#appHub.pc .ah-ico{top:.68em;right:1.1em;gap:.4em}
 #appHub.pc .ah-btn{width:1.45em;height:1.45em;border-width:2px}
 #appHub.pc .tb,#appHub.pc .px{border-width:2px}
 #appHub.pc .ah-btn svg{width:.75em;height:.75em}
 #appHub.pc .ah-sp{font-size:.4em}
 #appHub.pc .ah-it{left:3.2em}
-#appHub.pc .ah-it[data-a=pill]{top:4.1em!important}
-#appHub.pc .ah-it[data-a=arenas]{top:7.05em!important}
-#appHub.pc .ah-it[data-a=friends]{top:10em!important}
-#appHub.pc .ah-it[data-a=store]{top:12.95em!important}
-#appHub.pc .ah-it[data-a=quests]{top:15.9em!important}
-#appHub.pc .ah-it[data-a=core]{top:18.85em!important;display:flex}
+#appHub.pc .ah-it[data-a=pill]{top:4.35em!important}
+#appHub.pc .ah-it[data-a=arenas]{top:7.45em!important}
+#appHub.pc .ah-it[data-a=friends]{top:10.55em!important}
+#appHub.pc .ah-it[data-a=store]{top:13.65em!important}
+#appHub.pc .ah-it[data-a=quests]{top:16.75em!important}
+#appHub.pc .ah-it[data-a=core]{top:19.85em!important;display:flex}
 #appHub.pc{--bw:17em}
 #appHub.pc:has(.ov.open:not(#ahIc):not(#ahUn):not(#ahSv)){--bw:12em}
 #appHub.pc .ah-it:before{left:1.4em;top:-.05em;width:var(--bw);height:2.8em;transition:width .45s cubic-bezier(.3,1.25,.4,1)}
@@ -513,29 +516,30 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:27.5em;top:5.6em;width:16em;height:10.32em}
-#appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
+#appHub.pc .ah-play{right:2.2em;bottom:.75em;width:14.6em;height:3.8em;z-index:6}
 #appHub.pc .ah-room{right:16.2em;bottom:.73em;z-index:6;gap:.3em}
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
 #appHub.pc .ah-room .med>svg{width:1.05em;height:1.05em}
 #appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
 #appHub.pc .ah-room .v{font-size:.36em}
-#appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:max-content;min-width:min(28.7em,100%);max-width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:auto;bottom:2em}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:4.1em 0 0 17.5em;pointer-events:none}
+#appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:max-content;min-width:min(28.7em,100%);max-width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:39em;bottom:auto}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:4.3em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
 .ph>.px.pmax{margin-left:auto}.ph>.pmax+.px{margin-left:.5em}.ph>.cnt+.pmax{margin-left:.7em}
 #ahSkSp+.pmax,#ahStSp+.pmax,#ahQSp+.pmax,#ahPrSp+.pmax{margin-left:auto}
 #appHub:not(.pc) .ph>.px:last-child{margin-left:auto}
 #appHub:not(.pc) .pmax{display:none}
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv){background:rgba(3,6,4,.9);justify-content:center;align-items:center;padding:0;pointer-events:auto;z-index:8}
-#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:auto;font-size:1em}
+#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:24em;font-size:1em}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:23.8em;font-size:.765em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:24em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
-#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding-bottom:1.1em}
-#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>:is(.sk-b,.pz-l,.ahr-g,.htp,.cr-b,#ahArBody,#ahFrBody){flex:1 1 0;min-height:0;height:auto}
-#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>.foot{margin-top:auto;padding-top:.5em}
-#appHub.pc .ov:not(.full):not(#ahIc):not(#ahUn):not(#ahSv) .pin>.pz-f{margin-top:.6em}
-#appHub.pc .ov:not(.full) .sk-b>.sn,#appHub.pc .ov:not(.full) .sk-b>.qg,#appHub.pc .ov:not(.full) .sk-b>.sk-g{align-self:stretch}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding-bottom:1.1em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin>:is(.sk-b,.pz-l,.ahr-g,.htp,.cr-b,#ahArBody,#ahFrBody){flex:1 1 0;min-height:0;height:auto}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin>.foot{margin-top:auto;padding-top:.5em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin>.pz-f{margin-top:.6em}
+#appHub.pc .ov .sk-b>.sn,#appHub.pc .ov .sk-b>.qg,#appHub.pc .ov .sk-b>.sk-g{align-self:stretch}
+#appHub.pc .sk-g:not(.sk-inf) .cell{justify-content:center;gap:.5em}#appHub.pc .sk-g .cell img{width:4.6em;height:4.6em}#appHub.pc .sk-g .cell .nm{font-size:.48em}#appHub.pc .sk-g .cell .inf{font-size:.42em}
 #appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:6em;height:6em}
 #appHub.pc .co{gap:1.3em}#appHub.pc .co .sw{flex:1;grid-template-columns:repeat(13,1fr);gap:.4em}
 #appHub.pc #ahSt .sn,#appHub.pc #ahSk .sn{gap:.6em}
@@ -547,7 +551,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .sk-inf .ih img{width:3.4em;height:3.4em;image-rendering:pixelated;box-shadow:0 0 0 .15em var(--edge);background:#000}
 .sk-inf .ih b{font-weight:400;font-size:.7em;letter-spacing:.08em;flex:1;text-shadow:.15em .15em 0 #000}
 .sk-inf .ih button{font-family:'Russo One',sans-serif;font-size:.4em;letter-spacing:.08em;padding:.5em 1.2em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
-.sk-inf .id{font-size:.4em;line-height:1.7;color:var(--mut)}
+.sk-inf .id{font-size:.44em;line-height:1.7;color:#cfe0d6;flex:none}
 .sk-inf video{flex:1;min-height:0;width:100%;background:#000;object-fit:contain;box-shadow:0 0 0 .15em var(--edge)}
 `;
     const cssModales = `
@@ -1125,7 +1129,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
             if (skInfo && dat(skInfo)) {
                 const d = dat(skInfo), nm = (SKILLS.find(x => x[0] === skInfo) || [0, d.name])[1];
-                g.innerHTML = '<div class="ih"><img src="' + skIcon(skInfo) + '"><b>' + nm + '</b><button>BACK</button></div><div class="id"></div><video autoplay loop muted playsinline></video>';
+                g.innerHTML = '<div class="ih"><b>' + nm + '</b><button>BACK</button></div><video autoplay loop muted playsinline></video><div class="id"></div>';
                 g.querySelector('.id').textContent = d.desc;
                 g.querySelector('video').src = d.video;
                 g.querySelector('button').onclick = () => { skInfo = null; try { SoundManager.play('simpleselect'); } catch (e) {} renderPill(); };
@@ -1168,11 +1172,11 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const bot = (document.getElementById('colBot') || {}).value || '#00e05a';
         todas.slice(skinPage * porPag, skinPage * porPag + porPag).forEach(code => {
             const c = document.createElement('div'); c.className = 'cell' + ((code || null) === (puesta || null) ? ' sel' : '');
-            const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+            const cv = document.createElement('canvas'); cv.width = cv.height = 128;
             const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
             let o = null;
-            try { o = code ? paisPillRot(24, code, -Math.PI / 4) : pixPillSpriteRot(24, top, bot, -Math.PI / 4, true); } catch (e) {}
-            if (o) { const k = 60 / o.cv.width; g.drawImage(o.cv, 32 - o.cv.width * k / 2, 32 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); }
+            try { o = code ? paisPillRot(44, code, -Math.PI / 4) : pixPillSpriteRot(44, top, bot, -Math.PI / 4, true); } catch (e) {}
+            if (o) { const k = 120 / o.cv.width; g.drawImage(o.cv, 64 - o.cv.width * k / 2, 64 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); }
             const nm = document.createElement('div'); nm.className = 'nm';
             try { nm.textContent = code ? skinNombreCelda(code) : 'YOUR COLORS'; } catch (e) { nm.textContent = code || 'YOUR COLORS'; }
             c.append(cv, nm);
@@ -1212,9 +1216,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         todos.slice(shopPage * porPag, shopPage * porPag + porPag).forEach(code => {
             const tengo = typeof paisTengo === 'function' && paisTengo(code);
             const c = document.createElement('div'); c.className = 'cell' + (buying === code ? ' buy' : '');
-            const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+            const cv = document.createElement('canvas'); cv.width = cv.height = 128;
             const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-            try { const o = paisPillRot(24, code, -Math.PI / 4), k = 60 / o.cv.width; g.drawImage(o.cv, 32 - o.cv.width * k / 2, 32 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); } catch (e) {}
+            try { const o = paisPillRot(44, code, -Math.PI / 4), k = 120 / o.cv.width; g.drawImage(o.cv, 64 - o.cv.width * k / 2, 64 - o.cv.height * k / 2, o.cv.width * k, o.cv.height * k); } catch (e) {}
             const nm = document.createElement('div'); nm.className = 'nm';
             try { nm.textContent = skinNombreCelda(code); } catch (e) { nm.textContent = code; }
             const pr = document.createElement('div');
@@ -1615,6 +1619,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try { localStorage.setItem('pw_app_name', v); } catch (e) {}
         $('.ah-name').textContent = (v || 'PLAYER').toUpperCase();
     }
+    window._hubNombre = guardaNombre;
+    // Nombre escrito a mano en el menu antiguo: tambien se guarda en la cuenta.
+    document.addEventListener('input', e => { if (e.isTrusted && e.target && e.target.id === 'playerNameInput') { try { localStorage.setItem('pw_app_name', String(e.target.value || '').slice(0, 12)); } catch (x) {} } }, true);
     function openPill(tab) {
         $('#ahName').value = ((document.getElementById('playerNameInput') || {}).value || '');
         $('#ahSk .pin .pg') && $('#ahSk .pin .pg').remove();
@@ -1899,7 +1906,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     const PANELES = '.ov:not(#ahIc):not(#ahUn):not(#ahSv)';
     function cierraPaneles() {
         hub.querySelectorAll(PANELES + '.open').forEach(o => {
-            o.classList.remove('open');
+            o.classList.remove('open'); o.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (e) {} });
             if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests();
             const pg = o.querySelector('.pg'); if (pg) pg.remove();
         });
@@ -1939,12 +1946,12 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
 
     // ---------- PILLWARS CORE: guias y videos (solo PC) ----------
-    // Para anadir un video: una linea en CORE_VIDEOS (src relativo a /game/, titulo, texto corto).
+    // WATCH: en orden y numerados. src = video, img = imagen; off = aun no esta hecho (sale, pero no se abre).
     const CORE_VIDEOS = [
-        { src: '../video/Trailer.mp4', t: 'TRAILER', d: 'The official PillWars trailer.', tag: 'TRAILER' },
         { src: '../video/pillwars-origin.mp4', t: 'ORIGIN', d: 'Where PillWars comes from.', tag: 'STORY' },
-        { src: '../video/social/01_gameplay_vertical.mp4', t: 'GAMEPLAY', d: 'A match, in a few seconds.', tag: 'GAMEPLAY' },
-        { src: '../video/social/02_skills_montage.mp4', t: 'SKILLS MONTAGE', d: 'All the skills in action.', tag: 'SKILLS' }
+        { img: 'img/core/agar.png', t: 'INSPIRED BY AGAR.IO', d: 'The classic cell-eating game, with skills and real stakes.', tag: 'IDEA' },
+        { off: true, t: 'GAME MODES', d: 'Classic, Arcade and Arenas explained. Coming soon.', tag: 'SOON' },
+        { img: 'img/core/basics.png', t: 'EAT · HUNT · SURVIVE', d: 'The basics in one picture, plus 8 skills to outplay.', tag: 'BASICS' }
     ];
     let coreTab = 'watch', coreVid = 0, coreSk = 'clon';
     const crVideo = (src, extra) => '<video ' + (extra || '') + ' playsinline src="' + src + '"></video>';
@@ -1952,36 +1959,40 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const b = $('#ahCoreB'); b.innerHTML = '';
         hub.querySelectorAll('#ahCore .tb').forEach(t => t.classList.toggle('on', t.dataset.c === coreTab));
         if (coreTab === 'watch') {
-            const v = CORE_VIDEOS[coreVid] || CORE_VIDEOS[0];
-            b.innerHTML = '<div class="cr-main"><div class="cr-vid"><div class="cr-poster"><div class="pl"></div><div class="k">TAP TO PLAY</div></div></div><div><div class="cr-ti"></div><div class="cr-de"></div></div></div><div class="cr-list"></div>';
+            if (!CORE_VIDEOS[coreVid] || CORE_VIDEOS[coreVid].off) coreVid = 0;
+            const v = CORE_VIDEOS[coreVid];
+            b.innerHTML = '<div class="cr-main"><div class="cr-vid"></div><div><div class="cr-ti"></div><div class="cr-de"></div></div></div><div class="cr-list"></div>';
             b.querySelector('.cr-ti').textContent = v.t; b.querySelector('.cr-de').textContent = v.d;
-            b.querySelector('.cr-poster').onclick = () => {
-                const box = b.querySelector('.cr-vid'); box.innerHTML = crVideo(v.src, 'controls autoplay'); try { SoundManager.play('simpleselect'); } catch (x) {}
-            };
+            // El video empieza solo y sin sonido (los controles dejan activarlo); al cambiar de pestaña o cerrar se para.
+            b.querySelector('.cr-vid').innerHTML = v.src ? crVideo(v.src, 'controls autoplay muted loop') : '<div class="cr-img" style="position:absolute;inset:0;border:none;background-image:url(' + v.img + ')"></div>';
             const l = b.querySelector('.cr-list');
             CORE_VIDEOS.forEach((c, i) => {
-                const k = document.createElement('div'); k.className = 'cr-card' + (i === coreVid ? ' on' : '');
-                k.innerHTML = '<div class="cr-th"><video muted preload="metadata" playsinline src="' + c.src + '#t=0.8"></video><i>' + c.tag + '</i></div><div><div class="cr-c1"></div><div class="cr-c2"></div></div>';
+                const k = document.createElement('div'); k.className = 'cr-card' + (i === coreVid ? ' on' : '') + (c.off ? ' off' : '');
+                const th = c.src ? '<video muted preload="metadata" playsinline src="' + c.src + '#t=0.8"></video>' : c.img ? '<img alt="" src="' + c.img + '">' : '';
+                k.innerHTML = '<div class="cr-num">' + (i + 1) + '</div><div class="cr-th">' + th + '<i>' + c.tag + '</i></div><div><div class="cr-c1"></div><div class="cr-c2"></div></div>';
                 k.querySelector('.cr-c1').textContent = c.t; k.querySelector('.cr-c2').textContent = c.d;
-                k.onclick = () => { coreVid = i; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); };
+                if (!c.off) k.onclick = () => { coreVid = i; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); };
                 l.appendChild(k);
             });
         } else if (coreTab === 'basics') {
-            const sl = typeof guideSlides !== 'undefined' ? guideSlides : [];
-            b.innerHTML = '<div class="cr-main"><div class="cr-bas"></div><div class="cr-keys"><span><b>MOUSE</b>STEER</span><span><b>SPACE</b>SPLIT</span><span><b>1 · 2 · 3 · 4</b>USE YOUR SKILLS</span></div></div>';
+            const sl = (typeof guideSlides !== 'undefined' ? guideSlides : []).map((c, i) => i === 2
+                ? { video: '../video/social/02_skills_montage.mp4', title: 'COMBAT MECHANICS', desc: 'Use your skills to get the upper hand over your rivals. The right skill at the right moment wins the fight.' }
+                : c);
+            const keys = hub.classList.contains('pc')
+                ? '<span><b>MOUSE</b>STEER</span><span><b>SPACE</b>SPLIT</span><span><b>1 · 2 · 3 · 4</b>USE YOUR SKILLS</span>'
+                : '<span><b>JOYSTICK</b>MOVE</span><span><b>SPLIT</b>BUTTON</span><span><b>TAP A SKILL</b>USE IT</span>';
+            b.innerHTML = '<div class="cr-main"><div class="cr-bas"></div><div class="cr-keys">' + keys + '</div></div>';
             const g = b.querySelector('.cr-bas');
             sl.forEach(c => {
                 const k = document.createElement('div'); k.className = 'cr-bc';
-                k.innerHTML = '<div class="cr-th"><video muted loop playsinline preload="metadata" src="' + c.video + '#t=0.8"></video></div><div class="cr-c1"></div><div class="cr-c2"></div>';
+                k.innerHTML = '<div class="cr-th">' + crVideo(c.video, 'autoplay muted loop') + '</div><div class="cr-c1"></div><div class="cr-c2"></div>';
                 k.querySelector('.cr-c1').textContent = c.title.replace(/:$/, ''); k.querySelector('.cr-c2').textContent = c.desc;
-                const vd = k.querySelector('video');
-                k.onmouseenter = () => { try { vd.play(); } catch (e) {} }; k.onmouseleave = () => { try { vd.pause(); } catch (e) {} };
                 g.appendChild(k);
             });
         } else if (coreTab === 'modes') {
             const M = [
-                { k: '#00ffaa', n: 'CLASSIC', tg: 'THE ORIGINAL', li: ['15 minute matches on a huge map.', 'Only the SHOOT skill (key 1).', 'Reach 5 kills (a pentakill) and the match ends.', 'Leaving early costs a fee: 50% with no kills, 20% with 1, 10% with 2 or more.', 'When you eat someone you take everything they were carrying.'] },
-                { k: '#c8ff00', n: 'ARCADE', tg: 'ROGUELIKE MECHANICS', li: ['Matches last 3:00 and the safe zone shrinks.', 'You start empty and pick a new skill every 30 seconds.', 'Out of the zone you lose mass, and eating gives you much less.', 'The ranking goes by score: every kill adds 10% to your mass, up to x2.', 'Reach the Top 10 to win.'] },
+                { k: '#00ffaa', n: 'CLASSIC', tg: 'THE ORIGINAL', li: ['15 minute matches on a huge map.', 'All 8 skills are in play.', 'Reach 5 kills (a pentakill) and the match ends.', 'Leaving early costs a fee: 50% with no kills, 20% with 1, 10% with 2 or more.', 'When you eat someone you take everything they were carrying.'] },
+                { k: '#c8ff00', n: 'ARCADE', tg: 'ROGUELIKE MECHANICS', li: ['Matches last 3:00 and the safe zone keeps shrinking.', 'Random events: FOOD RAIN, GOLDEN VIRUS, NO SPLIT, TAX ON THE TOP and HEAVY.', 'You start empty and pick a new skill every 30 seconds.', 'Out of the zone you lose mass, and eating gives you much less.', 'The ranking goes by score: every kill adds 10% to your mass, up to x2.', 'Reach the Top 10 to win.'] },
                 { k: '#ff5a4a', n: 'ARENAS', tg: '1V1 · 2V2 · 3V3', li: ['Team matches: play solo or with up to 3 friends.', 'FREE rooms and paid rooms with real prizes.', 'Pick your 2 skills in THE PILL before each match.', 'If a bot eats an enemy you still receive 90% of the tokens they carried.', 'Prizes are collected from CLAIM in your profile.'] }
             ];
             b.innerHTML = '<div class="cr-grid"></div>';
@@ -2035,7 +2046,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('#ahHtpN').onclick = () => { const n = (typeof guideSlides !== 'undefined' ? guideSlides.length : 0) + 1; htpPag = (htpPag + 1) % n; htpSk = null; renderHtp(); };
         new MutationObserver(marcaBarra).observe(hub, { subtree: true, attributes: true, attributeFilter: ['class'] });
         $('#ahPill').addEventListener('click', () => { try { SoundManager.play('simpleselect'); } catch (x) {} openPill('color'); });
-        const cerrar = o => { o.classList.remove('open');
+        const cerrar = o => { o.classList.remove('open'); o.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (e) {} });
             if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests(); if (o.id === 'ahSk' || o.id === 'ahSt') { const pg = o.querySelector('.pg'); if (pg) pg.remove(); } };
         hub.querySelectorAll('.px').forEach(b => b.onclick = () => cerrar(b.closest('.ov')));
         hub.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) cerrar(o); }));

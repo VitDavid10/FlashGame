@@ -118,3 +118,6 @@ tools/origin-video/public/perks/seeker-banner.png
 tools/origin-video/public/perks/ds-*.png
 server/arena-pay.json
 server/arena-pay-ledger.jsonl
+
+# Ajustes de cada cuenta sincronizados entre dispositivos (datos del servidor)
+server/accountsync.json
