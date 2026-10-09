@@ -432,17 +432,19 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
 #appHub.pc .ah-it[data-a=friends]{display:flex}
-#appHub.pc .ah-top{height:2.6em}
-#appHub.pc .ah-ava{left:.6em;top:.38em;width:4.7em;height:4.7em;z-index:5}
-#appHub.pc .ah-who{left:5.9em;top:.4em;gap:.3em}
-#appHub.pc .ah-name{font-size:.74em}
-#appHub.pc .ah-lv{font-size:.44em}
-#appHub.pc .ah-line{left:5.9em;top:2.55em;width:18em}
-#appHub.pc .ah-ico{top:.45em;right:1.1em;gap:.4em}
-#appHub.pc .ah-btn{width:1.35em;height:1.35em;border-width:2px}
+#appHub.pc .ah-top{height:1.75em}
+#appHub.pc .ah-top:after{height:.07em}
+#appHub.pc .ah-ava{left:.5em;top:.2em;width:3.7em;height:3.7em;z-index:5}
+#appHub.pc .ah-who{left:4.8em;top:.22em;gap:.2em}
+#appHub.pc .ah-name{font-size:.52em}
+#appHub.pc .ah-lv{font-size:.32em}
+#appHub.pc .ah-line{left:4.8em;top:1.5em;width:18em;height:.11em;box-shadow:0 .05em 0 #000}
+#appHub.pc .ah-line:after{width:.3em;height:.3em;top:-.1em;right:-.2em}
+#appHub.pc .ah-ico{top:.2em;right:1.1em;gap:.35em}
+#appHub.pc .ah-btn{width:1.25em;height:1.25em;border-width:2px}
 #appHub.pc .tb,#appHub.pc .px{border-width:2px}
 #appHub.pc .ah-btn svg{width:.65em;height:.65em}
-#appHub.pc .ah-sp{font-size:.4em}
+#appHub.pc .ah-sp{font-size:.34em}
 #appHub.pc .ah-it{left:3.2em}
 #appHub.pc .ah-it[data-a=pill]{top:5.5em!important}
 #appHub.pc .ah-it[data-a=arenas]{top:9.05em!important}
