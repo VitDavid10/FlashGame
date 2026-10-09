@@ -481,7 +481,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-sk{flex:0 0 40%;align-self:center;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55em}.cr-sk .cell{aspect-ratio:1;min-width:0}
 .cr-sk .cell{justify-content:center;gap:.4em;transition:border-color .18s,box-shadow .18s}.cr-sk .cell:hover{border-color:color-mix(in srgb,var(--ac) 70%,#000);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 30%,transparent)}.cr-sk .cell img{width:3.2em;height:3.2em;image-rendering:pixelated}.cr-sk .cell.on{border-color:var(--ac);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 35%,transparent)}
 .cr-img{flex:1;min-height:0;background:#000 center/contain no-repeat;border:.12em solid var(--edge)}
-.cr-sk .cell .nm{font-size:.4em;letter-spacing:.06em}
+.cr-sk .cell .nm{font-size:.34em;letter-spacing:.06em}.cr-sk .cell{padding:.35em .2em .45em}
 .cr-ti+.cr-de{margin-top:.7em}
 .cr-skg{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);grid-template-rows:auto auto;gap:.8em 1em;align-content:start}
 .cr-skg .cr-vid{flex:none;width:100%;aspect-ratio:16/9}.cr-skg .cr-sk{align-self:center}.cr-skg>div:nth-child(3){padding:0 7%}

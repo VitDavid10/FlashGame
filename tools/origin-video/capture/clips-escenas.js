@@ -15,7 +15,7 @@ const AYUDAS = `(() => {
     // Nadie que no sea parte de la escena a menos de R del jugador.
     despeja(R) { const k = h.centro(); for (const e of sim.enemies) { if (h.keep.has(e)) continue; const dx = e.x - k.x, dy = e.y - k.y, d = Math.hypot(dx, dy) || 1; if (d < R) { e.x = k.x + dx / d * (R + 400); e.y = k.y + dy / d * (R + 400); } } },
     // Un bot de una sola pieza, para hacer de presa o de cazador.
-    bot(r, x, y) { const n = {}; for (const e of sim.enemies) n[e.id] = (n[e.id] || 0) + 1; const b = sim.enemies.find(e => n[e.id] === 1 && !h.keep.has(e)); h.keep.add(b); b.r = r; h.fija(b, x, y); return b; },
+    bot(r, x, y) { const n = {}; for (const e of sim.enemies) n[e.id] = (n[e.id] || 0) + 1; const b = sim.enemies.find(e => n[e.id] === 1 && !h.keep.has(e)); h.keep.add(b); b.r = r; b.botSkills = []; h.fija(b, x, y); return b; },   // sin skills: que no saque su SHIELD en mitad del clip
     fija(b, x, y) { b.x = x; b.y = y; b.vx = 0; b.vy = 0; b.boostX = 0; b.boostY = 0; b.sprintTime = 0; b.immuneTime = 0; b.tpPhase = 0; b.lastSplitTime = sim.now; },
     vivo(b) { return sim.enemies.includes(b); },
     virusCerca(x, y) { return sim.viruses.slice().sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0]; },
