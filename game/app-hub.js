@@ -468,7 +468,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-bas{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;min-height:0;overflow:hidden}
 .cr-bc{display:flex;flex-direction:column;gap:.5em;padding:.6em;background:rgba(0,0,0,.28);border:.12em solid rgba(255,255,255,.07);min-height:0;transition:border-color .2s,box-shadow .2s}
 .cr-bc:hover{border-color:var(--ac);box-shadow:0 0 1em color-mix(in srgb,var(--ac) 30%,transparent)}
-.cr-bc{overflow:hidden}.cr-bc .cr-th{width:100%;aspect-ratio:4/3}
+.cr-bc{overflow:hidden}.cr-bc .cr-th{width:100%;aspect-ratio:16/9}
 .cr-keys{display:flex;flex-wrap:wrap;gap:.5em .9em;font-size:.46em;color:#cfe0d6;align-items:center}
 .cr-keys b{background:#0d1a13;border:.14em solid #2c3630;padding:.3em .7em;font-weight:400;color:var(--ac);margin-right:.5em;letter-spacing:.08em}
 .cr-sk{flex:0 0 40%;align-self:center;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55em}.cr-sk .cell{aspect-ratio:1;min-width:0}
@@ -1921,7 +1921,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
         if (htpPag === 0 && htpSk && dat(htpSk)) {
             const d = dat(htpSk), nm = (SKILLS.find(x => x[0] === htpSk) || [0, d.name])[1];
-            body.innerHTML = '<div class="ih"><img src="' + skIcon(htpSk) + '" style="width:3.4em;height:3.4em;image-rendering:pixelated"><span class="ht" style="flex:1"></span><button class="hb">BACK</button></div><div class="hd"></div><video autoplay loop muted playsinline></video>';
+            body.innerHTML = '<div class="ih"><img src="' + skIcon(htpSk) + '" style="width:3.4em;height:3.4em;image-rendering:pixelated"><span class="ht" style="flex:1"></span><button class="hb">BACK</button></div><video autoplay loop muted playsinline></video><div class="hd"></div>';
             body.querySelector('.ih').style.cssText = 'display:flex;align-items:center;gap:.8em';
             body.querySelector('.ht').textContent = nm; body.querySelector('.hd').textContent = d.desc; body.querySelector('video').src = d.video;
             body.querySelector('.hb').onclick = () => { htpSk = null; renderHtp(); };
@@ -1937,7 +1937,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         } else {
             const sl = slides[htpPag - 1];
             if (sl) {
-                body.innerHTML = '<div class="ht"></div><div class="hd"></div><video autoplay loop muted playsinline></video>';
+                body.innerHTML = '<div class="ht"></div><video autoplay loop muted playsinline></video><div class="hd"></div>';
                 body.querySelector('.ht').textContent = sl.title; body.querySelector('.hd').textContent = sl.desc; body.querySelector('video').src = sl.video;
             }
         }

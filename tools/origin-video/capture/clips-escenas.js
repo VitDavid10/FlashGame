@@ -72,17 +72,24 @@ module.exports = async ({ js, partida, avanza, graba, clip }) => {
         window.__vx = v.x; window.__vy = v.y; window.__ax = v.x - ${dYo}; window.__ay = v.y; h.pon(__ax, __ay);
         window.__cam = { x: v.x + ${camDx}, y: v.y }; window.__rx = v.x + ${dRival}; ${rRival ? `window.__r = h.bot(${rRival}, __rx, v.y);` : ''}`;
 
-    // ---- COMBAT: un rival grande se acerca; dos disparos al virus de en medio y sale volando contra el ----
-    await clip('combat', async () => {
-        await prepara(0.95, duelo(0.95, 60, 280, 90, 380, 55), `h.soloVirus(__v, 1400); h.fija(__r, __rx, __vy); h.ancla(__ax, __ay); h.mira(__vx, __vy);`);
-        const cada = P(`h.soloVirus(__v, 1400); if (h.vivo(__r) && !window.__suelto) { __rx -= 1.2; h.fija(__r, __rx, __vy); } h.ancla(__ax, __ay); h.mira(__vx, __vy);`);
-        await graba(12, cada);
-        await usa(2, '__vx', '__vy');
-        await graba(32, cada);
-        await usa(2, '__vx', '__vy');
-        await graba(14, cada);
-        await js(`window.__suelto = true`);
-        await graba(56, cada);
+    // ---- COMBO: te persigue uno enorme; SPRINT para escapar, MAGNET mientras corres y BLINK cuando ya te alcanza ----
+    await clip('combo', async () => {
+        await prepara(0.85, `h.radio(45); h.pon(0, 0); window.__gap = 700; window.__g = h.bot(110, -700, 0); window.__cam = { x: -350, y: 0 };`,
+            `h.dir(400, 0); const k = h.centro(); h.fija(__g, k.x - __gap, k.y); __cam.x = k.x - __gap / 2; __cam.y = k.y;`, 30);
+        // El cazador va detras a __gap (que se acorta o se alarga); la camara, entre los dos.
+        const sigue = dg => P(`h.dir(400, 0); window.__gap += ${dg}; const k = h.centro(); if (h.vivo(__g)) h.fija(__g, k.x - __gap, k.y);
+            const tx = k.x - __gap / 2; __cam.x += (tx - __cam.x) * 0.15; __cam.y += (k.y - __cam.y) * 0.15;`);
+        await graba(24, sigue(-8));
+        await usa(3);
+        await graba(26, sigue(4));
+        await js(`__h.comida(60, 120, 300)`);
+        await usa(5);
+        await graba(34, sigue(-8));
+        await js(`(() => { const k = __h.centro(), pa = sim.puntoAzar; sim.puntoAzar = () => ({ x: k.x + 650, y: k.y - 260 }); __h.skill(4, k.x + 300, k.y); window.__pa = pa; })()`);
+        await graba(2, sigue(0));
+        await js(`sim.puntoAzar = window.__pa`);
+        // Ya en el sitio nuevo: el cazador sigue de largo y la camara se va contigo.
+        await graba(50, P(`h.dir(400, 0); if (h.vivo(__g)) h.fija(__g, __g.x + 4, __g.y); const k = h.centro(); __cam.x += (k.x - 150 - __cam.x) * 0.08; __cam.y += (k.y - __cam.y) * 0.08;`));
     });
 
     // ---- SHOOT: primer disparo, el virus se vuelve morado; segundo, sale disparado y revienta al rival ----
@@ -152,13 +159,19 @@ module.exports = async ({ js, partida, avanza, graba, clip }) => {
         await graba(72, P(`h.ancla(0, 0); h.mira(300, 60);`));
     });
 
-    // ---- GAMBLE: sale el JACKPOT ----
+    // ---- GAMBLE: primero pierde (-5000) y luego sale el JACKPOT (+15000) ----
     await clip('gamble', async () => {
-        await prepara(1.4, `h.radio(40); h.pon(0, 0);`, `h.ancla(0, 0); h.mira(300, 60);`);
-        await graba(18, P(`h.ancla(0, 0); h.mira(300, 60);`));
-        await js(`(() => { window.__rnd = Math.random; Math.random = () => 0.9; __h.skill(8, 0, 0); })()`);
-        await graba(1, P(`h.ancla(0, 0); h.mira(300, 60);`));
-        await js(`Math.random = window.__rnd`);
-        await graba(72, P(`h.ancla(0, 0); h.mira(300, 60);`));
+        await prepara(1.2, `h.radio(42); h.pon(0, 0);`, `h.ancla(0, 0); h.mira(300, 60);`);
+        const cada = P(`h.ancla(0, 0); h.mira(300, 60);`);
+        const tira = async azar => {
+            await js(`(() => { window.__rnd = Math.random; Math.random = () => ${azar}; __h.skill(8, 0, 0); })()`);
+            await graba(1, cada);
+            await js(`Math.random = window.__rnd`);
+        };
+        await graba(15, cada);
+        await tira(0.1);
+        await graba(50, cada);
+        await tira(0.9);
+        await graba(60, cada);
     });
 };

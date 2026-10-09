@@ -2545,7 +2545,7 @@
             flex-grow: 0;
         }
 
-        .card-video-player { width: 100%; height: 100%; object-fit: cover; }
+        .card-video-player { width: 100%; height: 100%; object-fit: contain; background: #000; }
         
         #cardSkillDesc {
             margin-top: 10px;
@@ -2847,7 +2847,7 @@
             width: 100%; height: 250px; background: #000; border: 1px solid #333; border-radius: 8px;
             overflow: hidden; display: flex; align-items: center; justify-content: center;
         }
-        .gc-video-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .gc-video-box video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
         .gc-skills-title { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #7d8a82; letter-spacing: 1px; margin-bottom: 24px; text-align: center; }
         .gc-skills-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
         .gc-skill {
@@ -5754,9 +5754,9 @@
     let currentGuideIndex = 0;
     // CORREGIDO: Rutas a videos con ../
     const guideSlides = [
-        { video: '../video/Split.mp4', title: 'THE SPLIT (SPACE):', desc: 'Essential for killing. You launch half your mass forward to eat enemies. High risk, high reward. You can split into up to 16 pieces.' },
-        { video: '../video/Virus.mp4', title: 'VIRUS FARMING:', desc: 'Touching a virus splits you into three pieces, but grants a mass bonus. You can use viruses to grow faster, at the risk of becoming too divided. and more vulnerable.' },
-        { video: '../video/Viral.mp4', title: 'COMBAT MECHANICS:', desc: 'Use SHOOT (1) to hit viruses from a distance. The first shot corrupts a virus, turning it purple. Shoot it again to trigger an explosive projectile. that damages nearby players. Keep moving to avoid incoming fire.' }
+        { video: '../video/clips/split.mp4', title: 'THE SPLIT (SPACE):', desc: 'Essential for killing. You launch half your mass forward to eat enemies. High risk, high reward. You can split into up to 16 pieces.' },
+        { video: '../video/clips/virus.mp4', title: 'VIRUS FARMING:', desc: 'Touching a virus splits you into three pieces, but grants a mass bonus. You can use viruses to grow faster, at the risk of becoming too divided. and more vulnerable.' },
+        { video: '../video/clips/combo.mp4', title: 'COMBINE YOUR SKILLS:', desc: 'Skills stack. Being hunted? SPRINT to get away, MAGNET to grab food on the run and, when they catch up, BLINK out of reach.' }
     ];
 
     function nextGuide(e) {
@@ -5783,14 +5783,14 @@
     }
     // CORREGIDO: Rutas a videos e imágenes con ../
     const SKILL_DESCRIPTIONS = {
-        1: { name: "CLON", desc: "THE FARMER. Shoots a mass projectile. IMPORTANT: If it hits a VIRUS, it clones it and grants you a NEW SKILL card. Cooldown: 1s.", video: "../video/Clon.mp4", icon: "../img/clon.png" },
-        2: { name: "SHOOT", desc: "OFFENSIVE. Fires mass projectiles to damage enemies or push viruses. Does not grant skills. Cost: 2500 Mass.", video: "../video/Shoot.mp4", icon: "../img/shoot.png" },
-        3: { name: "SPRINT", desc: "MOBILITY. Boosts movement speed by 50% for 10 seconds. Great for chasing or escaping. Passive effect: Gold aura.", video: "../video/Sprint.mp4", icon: "../img/sprint.png" },
-        4: { name: "BLINK", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks.", video: "../video/Tp.mp4", icon: "../img/tp.png" },
-        5: { name: "MAGNET", desc: "UTILITY. Automatically pulls nearby food pellets towards your cells for 8 seconds. Radius: 200px.", video: "../video/Magnet.mp4", icon: "../img/iman.png" },
-        6: { name: "SHIELD", desc: "DEFENSE. Grants total immunity to viruses and being eaten by larger players for 3 seconds. Visual: Purple forcefield.", video: "../video/Inmune.mp4", icon: "../img/inmune.png" },
-        7: { name: "PLUS", desc: "GROWTH. Instantly grants a large amount of mass (5k - 12k) distributed among your cells.", video: "../video/Plus.mp4", icon: "../img/big.png" },
-        8: { name: "GAMBLE", desc: "RISK. 50% chance to gain 15,000 Mass (JACKPOT). 50% chance to lose 5,000 Mass. Do you feel lucky?", video: "../video/Gamble.mp4", icon: "../img/random.png" }
+        1: { name: "CLON", desc: "THE FARMER. Shoots a mass projectile. IMPORTANT: If it hits a VIRUS, it clones it and grants you a NEW SKILL card. Cooldown: 1s.", video: "../video/clips/clon.mp4", icon: "../img/clon.png" },
+        2: { name: "SHOOT", desc: "OFFENSIVE. Shoot a virus once and it turns purple; shoot it again and it flies off, blasting any rival in its way. Does not grant skills. Cost: 2500 Mass.", video: "../video/clips/shoot.mp4", icon: "../img/shoot.png" },
+        3: { name: "SPRINT", desc: "MOBILITY. Boosts movement speed by 50% for 10 seconds. Great for chasing or escaping. Passive effect: Gold aura.", video: "../video/clips/sprint.mp4", icon: "../img/sprint.png" },
+        4: { name: "BLINK", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks.", video: "../video/clips/blink.mp4", icon: "../img/tp.png" },
+        5: { name: "MAGNET", desc: "UTILITY. Automatically pulls nearby food pellets towards your cells for 8 seconds. Radius: 200px.", video: "../video/clips/magnet.mp4", icon: "../img/iman.png" },
+        6: { name: "SHIELD", desc: "DEFENSE. Grants total immunity to viruses and being eaten by larger players for 3 seconds. Visual: Purple forcefield.", video: "../video/clips/shield.mp4", icon: "../img/inmune.png" },
+        7: { name: "PLUS", desc: "GROWTH. Instantly grants a large amount of mass (5k - 12k) distributed among your cells.", video: "../video/clips/plus.mp4", icon: "../img/big.png" },
+        8: { name: "GAMBLE", desc: "RISK. 50% chance to gain 15,000 Mass (JACKPOT). 50% chance to lose 5,000 Mass. Do you feel lucky?", video: "../video/clips/gamble.mp4", icon: "../img/random.png" }
     };
 
     const TooltipManager = {

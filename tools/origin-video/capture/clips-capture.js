@@ -12,7 +12,7 @@ const path = require('path');
 const WS = require('../../../node_modules/ws');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
-const OUT = path.resolve(process.argv[2] || path.join(ROOT, 'video', 'clips-nuevos'));
+const OUT = path.resolve(process.argv[2] || path.join(ROOT, 'video', 'clips'));
 const SOLO = process.argv[3] ? process.argv[3].split(',') : null;
 const TMP = path.join(require('os').tmpdir(), 'pw-clips');
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
