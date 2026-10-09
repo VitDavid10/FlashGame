@@ -3393,6 +3393,7 @@
         .winner-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; font-weight: bold; color: #ccc; }
         .winner-item span:last-child { color: var(--primary); font-family: 'Russo One'; }
         #actionBar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) scale(1.56); transform-origin: bottom center; display: none; gap: 8px; z-index: 15; padding: 8px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; border-radius: 12px; pointer-events: auto; backdrop-filter: blur(5px); }
+        body.mobile-allowed.exit-open #aqHud { display: none !important; }
         .ab-slot .ab-key { position: absolute; left: 0; top: 0; min-width: 13px; padding: 2px 3px 1px; text-align: center; font: 8px 'Press Start 2P', monospace; color: var(--primary); background: rgba(0,0,0,.82); border-right: 1px solid #333; border-bottom: 1px solid #333; border-radius: 0 0 6px 0; pointer-events: none; z-index: 3; }
         body.mobile-allowed .ab-slot .ab-key { display: none; }
         .ab-slot { width: 50px; height: 50px; background: #151515; border: 2px solid #333; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; transition: transform 0.1s; overflow: hidden; cursor: grab; }
@@ -6967,6 +6968,7 @@
                 'body.pixel-pack #exitModal .btn-confirm:hover:not(:disabled){filter:brightness(1.15)}' +
                 'body.pixel-pack #exitModal .btn-confirm:disabled{filter:grayscale(.6) brightness(.75);cursor:wait}';
         }
+        css += 'body.pixel-pack:not(.mobile-allowed) #exitModal .btn-confirm.px-short:not(.px-exitnow){font-size:15px!important}';
         if (cartelUsesAtlas('exit-now')) {
             // EXIT NOW (forfeit de arcade): este si trae el texto horneado
             css += 'body.pixel-pack #exitModal .btn-confirm.px-exitnow{border:none!important;border-radius:0!important;box-shadow:none!important;' +
@@ -10834,6 +10836,15 @@
     // cambia, la otra tambien: el cartel de CASHOUT se pinta con esta y el cobro
     // lo hace aquella, y si no coinciden el jugador ve una cifra y cobra otra.
     function exitFeePct(kills) { if (kills >= 2) return 10; if (kills >= 1) return 20; return 50; }
+    // Etiquetas cortas (LEAVE, EXIT, BACK TO MENU...) del boton del cartel de salida: en PC iban a 8px junto a un CANCEL enorme.
+    (function () {
+        const b = document.getElementById('btnConfirmExit'); if (!b) return;
+        const ajusta = () => b.classList.toggle('px-short', b.textContent.trim().length <= 12);
+        new MutationObserver(ajusta).observe(b, { childList: true, characterData: true, subtree: true }); ajusta();
+        // Con el cartel de salida abierto, las misiones del HUD (movil) se esconden.
+        const em = document.getElementById('exitModal');
+        if (em) new MutationObserver(() => document.body.classList.toggle('exit-open', em.style.display === 'flex')).observe(em, { attributes: true, attributeFilter: ['style'] });
+    })();
     function toggleExitModal() {
         if(!gameRunning) return;
         const modal = document.getElementById('exitModal'); const btn = document.getElementById('btnConfirmExit'); const title = document.getElementById('exitModalTitle'); const desc = document.getElementById('exitModalDesc');
