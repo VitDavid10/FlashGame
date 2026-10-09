@@ -1751,6 +1751,12 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     // Login de X por el NAVEGADOR del movil (dentro del WebView X acababa en su propia app y no volvia). Antes de
     // salir se guarda un secreto; el servidor devuelve a la app por pillwars://xlogin y solo con ese secreto se canjea.
     async function loginX() {
+        // PC: no hay app ni intent://; login normal en esta misma pestaña (la cookie de sesion ya es la de la wallet) y vuelve a /game/.
+        if (hub.classList.contains('pc') || !/Android/i.test(navigator.userAgent)) {
+            const ret = /^\/[A-Za-z0-9_\-\/]{0,120}$/.test(location.pathname) ? location.pathname : '/game/';
+            location.href = '/airdrop-auth/x/login?ret=' + encodeURIComponent(ret);
+            return;
+        }
         const sec = b64u(crypto.getRandomValues(new Uint8Array(32)));
         try { localStorage.setItem('pw_xs', sec); } catch (e) {}
         const h = b64u(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sec)));
