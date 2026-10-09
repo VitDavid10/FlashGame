@@ -532,6 +532,9 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:max-content;min-width:min(28.7em,100%);max-width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:39em;bottom:auto}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:4.3em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
+/* PC: el panel entra deslizandose desde el menu mientras las barras se acortan; en FULL crece desde el centro. */
+@keyframes ahPnlIn{from{opacity:0;transform:translateX(-1.4em)}to{opacity:1;transform:none}}@keyframes ahPnlFull{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+#appHub.pc .ov.open:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{animation:ahPnlIn .34s cubic-bezier(.2,.9,.3,1) .06s both}#appHub.pc .ov.open.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{animation:ahPnlFull .26s cubic-bezier(.2,.9,.3,1) both}
 .ph>.px.pmax{margin-left:auto}.ph>.pmax+.px{margin-left:.5em}.ph>.cnt+.pmax{margin-left:.7em}
 #ahSkSp+.pmax,#ahStSp+.pmax,#ahQSp+.pmax,#ahPrSp+.pmax{margin-left:auto}
 #appHub:not(.pc) .ph>.px:last-child{margin-left:auto}
@@ -554,7 +557,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahSk .sk-g .cell img,#appHub.pc #ahSk .sk-slot img{image-rendering:auto}
 /* THE PILL en FULL: la pildora y los huecos de skill crecen con el panel. */
 #appHub.pc #ahSk.full .sk-pill{width:13em}#appHub.pc #ahSk.full .sk-pill canvas{width:9em;height:9em}#appHub.pc #ahSk.full .sk-slot{width:4.2em;height:4.2em}#appHub.pc #ahSk.full .sk-g .cell img{width:6.4em;height:6.4em}#appHub.pc #ahSt.full .sn .cell canvas,#appHub.pc #ahSk.full .sn .cell canvas{width:9em;height:9em}
-#appHub.pc #ahSt .foot,#appHub.pc #ahSk .foot{margin-top:1.8em}
+#appHub.pc #ahSt .foot,#appHub.pc #ahSk .foot{margin-top:1.8em}#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pin>.foot{font-size:.8em;padding-top:2.8em;margin-bottom:.3em;opacity:.75}
 .sk-g .cell .inf{font-family:'Russo One',sans-serif;font-size:.36em;letter-spacing:.08em;padding:.35em .9em;margin-top:.15em;background:var(--in2);border:.15em solid var(--edge);color:var(--mut);cursor:pointer}
 .sk-g .cell .inf:active{color:var(--ac)}
 .sk-g.sk-inf{display:flex;flex-direction:column;gap:.5em;padding:.2em .3em}
