@@ -485,8 +485,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-ti+.cr-de{margin-top:.7em}
 /* Filas fijas: el video llena su hueco (sea cual sea la ventana) y el texto tiene alto fijo, asi nada se mueve al cambiar de skill. */
 .cr-skg{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) 5em;gap:.8em 1em}
-.cr-skg .cr-vid{flex:none;width:100%;height:100%;min-height:0}.cr-skg>div:nth-child(3){overflow:hidden}.cr-skg .cr-sk{align-self:center}.cr-skg>div:nth-child(3){padding:0 7%}
-.cr-skn{font-size:.34em;line-height:1.7;letter-spacing:.03em;color:var(--mut);opacity:.8;text-align:center;padding:0 .5em;align-self:end}
+.cr-skg .cr-vid{flex:none;width:100%;height:100%;min-height:0}.cr-skt{overflow:hidden}
+/* Derecha: las 8 skills arriba (a ras del video) y la nota justo debajo. */
+.cr-skc{grid-column:2;grid-row:1/3;display:flex;flex-direction:column;gap:.9em;min-height:0}.cr-skc .cr-sk{flex:none}.cr-skt{padding:0 7%}
+.cr-skn{font-size:.34em;line-height:1.7;letter-spacing:.03em;color:var(--mut);opacity:.8;text-align:center;padding:0 .5em}
 #appHub.pc .ov.full .cr-skg{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}#appHub.pc .ov.full .cr-sk{grid-template-columns:repeat(2,minmax(0,1fr))}#appHub.pc .ov.full .cr-sk .cell{aspect-ratio:auto;padding:.4em 0}#appHub.pc .ov.full .cr-sk .cell img{width:2.8em;height:2.8em}
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:none}
@@ -2077,7 +2079,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const SID = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
             const dat = id => (typeof SKILL_DESCRIPTIONS !== 'undefined' && SKILL_DESCRIPTIONS[SID[id]]) || null;
             // Rejilla 2x2: arriba el video (siempre 16:9, no baila al cambiar de skill) y las 8 skills; debajo, a la misma altura, su texto y la nota.
-            b.innerHTML = '<div class="cr-skg"><div class="cr-vid"></div><div class="cr-sk"></div><div><div class="cr-ti"></div><div class="cr-de"></div></div><div class="cr-skn">Every 30 seconds in a match you pick a new skill. Use them with <b style="white-space:nowrap;font-weight:400">1 · 2 · 3 · 4</b>.</div></div>';
+            b.innerHTML = '<div class="cr-skg"><div class="cr-vid"></div><div class="cr-skc"><div class="cr-sk"></div><div class="cr-skn">Every 30 seconds in a match you pick a new skill. Use them with <b style="white-space:nowrap;font-weight:400">1 · 2 · 3 · 4</b>.</div></div><div class="cr-skt"><div class="cr-ti"></div><div class="cr-de"></div></div></div>';
             const d = dat(coreSk);
             if (d) { b.querySelector('.cr-vid').innerHTML = crVideo(d.video, 'autoplay loop muted'); b.querySelector('.cr-ti').textContent = d.name; b.querySelector('.cr-de').textContent = d.desc; }
             const g = b.querySelector('.cr-sk');
