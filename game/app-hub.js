@@ -483,9 +483,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-img{flex:1;min-height:0;background:#000 center/contain no-repeat;border:.12em solid var(--edge)}
 .cr-sk .cell .nm{font-size:.34em;letter-spacing:.06em}.ic-tr{position:relative;display:block;line-height:0}.ic-tr:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.28) 1px,transparent 1px) 0 0/.2em .2em,linear-gradient(rgba(0,0,0,.28) 1px,transparent 1px) 0 0/.2em .2em;pointer-events:none}.cr-sk .ic-tr img{image-rendering:auto}.cr-sk .cell{padding:.35em .2em .45em}
 .cr-ti+.cr-de{margin-top:.7em}
-.cr-skg{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);grid-template-rows:auto auto;gap:.8em 1em;align-content:start}
-.cr-skg .cr-vid{flex:none;width:100%;aspect-ratio:16/9}.cr-skg .cr-sk{align-self:center}.cr-skg>div:nth-child(3){padding:0 7%}
-.cr-skn{font-size:.42em;line-height:1.8;letter-spacing:.03em;color:var(--mut);text-align:center;padding:0 .5em}
+/* Filas fijas: el video llena su hueco (sea cual sea la ventana) y el texto tiene alto fijo, asi nada se mueve al cambiar de skill. */
+.cr-skg{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) 5em;gap:.8em 1em}
+.cr-skg .cr-vid{flex:none;width:100%;height:100%;min-height:0}.cr-skg>div:nth-child(3){overflow:hidden}.cr-skg .cr-sk{align-self:center}.cr-skg>div:nth-child(3){padding:0 7%}
+.cr-skn{font-size:.34em;line-height:1.7;letter-spacing:.03em;color:var(--mut);opacity:.8;text-align:center;padding:0 .5em;align-self:end}
 #appHub.pc .ov.full .cr-skg{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}#appHub.pc .ov.full .cr-sk{grid-template-columns:repeat(2,minmax(0,1fr))}#appHub.pc .ov.full .cr-sk .cell{aspect-ratio:auto;padding:.4em 0}#appHub.pc .ov.full .cr-sk .cell img{width:2.8em;height:2.8em}
 /* ===== PC: el mismo hub repartido para pantalla ancha (48em x 27em; 1em = 40px a 1920x1080) ===== */
 #appHub.pc .ah-btn[data-a=htp]{display:none}
@@ -560,7 +561,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:6em;height:6em}
 #appHub.pc .co{gap:1.3em}#appHub.pc .co .sw{flex:1;grid-template-columns:repeat(13,1fr);gap:.4em}
 #appHub.pc #ahSt .sn,#appHub.pc #ahSk .sn{gap:.6em}
-#appHub.pc #ahSk .sk-g .cell img,#appHub.pc #ahSk .sk-slot img{image-rendering:auto}
+#appHub.pc #ahSk .sk-g .cell img{image-rendering:auto}
 /* THE PILL en FULL: la pildora y los huecos de skill crecen con el panel. */
 #appHub.pc #ahSk.full .sk-pill{width:13em}#appHub.pc #ahSk.full .sk-pill canvas{width:9em;height:9em}#appHub.pc #ahSk.full .sk-slot{width:4.2em;height:4.2em}#appHub.pc #ahSk.full .sk-g .cell img{width:6.4em;height:6.4em}#appHub.pc #ahSt.full .sn .cell canvas,#appHub.pc #ahSk.full .sn .cell canvas{width:9em;height:9em}
 #appHub.pc #ahSt .foot,#appHub.pc #ahSk .foot{margin-top:1.8em}#appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pin>.foot{font-size:.8em;padding-top:2.8em;margin-bottom:.3em;opacity:.75}
@@ -1129,7 +1130,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         hub.querySelectorAll('.sk-slot').forEach(sl => {
             const i = +sl.dataset.s, id = picks[i];
             sl.className = 'sk-slot' + (id ? ' full' : '') + (i === slotSel && pillTab === 'skills' ? ' act' : '');
-            sl.innerHTML = id ? '<img src="' + skIconG(id) + '">' : '';
+            sl.innerHTML = id ? '<img src="' + skIcon(id) + '">' : '';
         });
         if (pillTab === 'color') {
             const co = $('#ahCo'); co.innerHTML = '';
