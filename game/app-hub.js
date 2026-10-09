@@ -1948,12 +1948,24 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 
     // ---------- PILLWARS CORE: guias y videos (solo PC) ----------
     // WATCH: los videos, en orden. off = aun no esta hecho (sale, pero no se abre).
+    // Videos en video/social/1.mp4, 2.mp4, 4.mp4 y 5.mp4 (el 3, GAME MODES, aun no esta hecho).
+    // Si un archivo no esta en el servidor su tarjeta no sale; ORIGIN usa el video antiguo mientras falte el 1.
     const CORE_VIDEOS = [
-        { src: '../video/pillwars-origin.mp4', t: 'ORIGIN', d: 'Where PillWars comes from.', tag: 'STORY' },
-        { src: '../video/social/01_gameplay_vertical.mp4', t: 'GAMEPLAY', d: 'A real match, in a few seconds.', tag: 'GAMEPLAY' },
+        { src: '../video/social/1.mp4', alt: '../video/pillwars-origin.mp4', t: 'PILLWARS ORIGIN', d: 'Where PillWars comes from.', tag: 'STORY' },
+        { src: '../video/social/2.mp4', t: 'HOW TO PLAY PILLWARS', d: 'Everything you need for your first match.', tag: 'GUIDE' },
         { off: true, t: 'GAME MODES', d: 'Classic, Arcade and Arenas explained. Coming soon.', tag: 'SOON' },
-        { src: '../video/social/02_skills_montage.mp4', t: 'SKILLS MONTAGE', d: 'All the skills in action.', tag: 'SKILLS' }
+        { src: '../video/social/4.mp4', t: 'PILLWARS ON SEEKER', d: 'Play PillWars on the Solana Seeker.', tag: 'SEEKER' },
+        { src: '../video/social/5.mp4', t: 'JOIN THE PILLWARS COMMUNITY', d: 'Meet the players and follow the news.', tag: 'COMMUNITY' }
     ];
+    // Que videos existen de verdad (se mira una vez con HEAD).
+    let coreHay = null;
+    async function coreMira() {
+        if (coreHay) return;
+        coreHay = {};
+        await Promise.all(CORE_VIDEOS.filter(c => c.src).map(async c => { try { coreHay[c.src] = (await fetch(c.src, { method: 'HEAD', cache: 'no-store' })).ok; } catch (e) { coreHay[c.src] = false; } }));
+        CORE_VIDEOS.forEach(c => { if (c.src && !coreHay[c.src]) { if (c.alt) c.src = c.alt; else c.falta = true; } });
+        if ($('#ahCore').classList.contains('open') && coreTab === 'watch') renderCore();
+    }
     // CORE: las dos imagenes que explican el juego, con su texto.
     const CORE_IMGS = [
         { img: 'img/core/agar.png', t: 'INSPIRED BY AGAR.IO', d: 'PillWars takes the classic cell-eating formula (eat, grow, split) and adds skills, game modes and real prizes.' },
@@ -1965,7 +1977,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const b = $('#ahCoreB'); b.innerHTML = '';
         hub.querySelectorAll('#ahCore .tb').forEach(t => t.classList.toggle('on', t.dataset.c === coreTab));
         if (coreTab === 'watch') {
-            if (!CORE_VIDEOS[coreVid] || CORE_VIDEOS[coreVid].off) coreVid = 0;
+            coreMira();
+            if (!CORE_VIDEOS[coreVid] || CORE_VIDEOS[coreVid].off || CORE_VIDEOS[coreVid].falta) coreVid = 0;
             const v = CORE_VIDEOS[coreVid];
             b.innerHTML = '<div class="cr-main"><div class="cr-vid"></div><div><div class="cr-ti"></div><div class="cr-de"></div></div></div><div class="cr-list"></div>';
             b.querySelector('.cr-ti').textContent = v.t; b.querySelector('.cr-de').textContent = v.d;
@@ -1973,6 +1986,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             b.querySelector('.cr-vid').innerHTML = v.src ? crVideo(v.src, 'controls autoplay muted loop') : '<div class="cr-img" style="position:absolute;inset:0;border:none;background-image:url(' + v.img + ')"></div>';
             const l = b.querySelector('.cr-list');
             CORE_VIDEOS.forEach((c, i) => {
+                if (c.falta) return;
                 const k = document.createElement('div'); k.className = 'cr-card' + (i === coreVid ? ' on' : '') + (c.off ? ' off' : '');
                 const th = c.src ? '<video muted preload="metadata" playsinline src="' + c.src + '#t=0.8"></video>' : c.img ? '<img alt="" src="' + c.img + '">' : '';
                 k.innerHTML = '<div class="cr-th">' + th + '<i>' + c.tag + '</i></div><div><div class="cr-c1"></div><div class="cr-c2"></div></div>';
