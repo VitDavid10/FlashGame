@@ -432,7 +432,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
 #appHub.pc .ah-it[data-a=friends]{display:flex}
-#appHub.pc .ah-top{height:1.75em}
+#appHub.pc .ah-top{height:2.05em}
 #appHub.pc .ah-top:after{height:.07em}
 #appHub.pc .ah-ava{left:.5em;top:.2em;width:3.7em;height:3.7em;z-index:5}
 #appHub.pc .ah-who{left:4.8em;top:.22em;gap:.2em}
@@ -446,11 +446,11 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn svg{width:.65em;height:.65em}
 #appHub.pc .ah-sp{font-size:.34em}
 #appHub.pc .ah-it{left:3.2em}
-#appHub.pc .ah-it[data-a=pill]{top:5.5em!important}
-#appHub.pc .ah-it[data-a=arenas]{top:9.05em!important}
-#appHub.pc .ah-it[data-a=friends]{top:12.6em!important}
-#appHub.pc .ah-it[data-a=store]{top:16.15em!important}
-#appHub.pc .ah-it[data-a=quests]{top:19.7em!important}
+#appHub.pc .ah-it[data-a=pill]{top:4em!important}
+#appHub.pc .ah-it[data-a=arenas]{top:7.55em!important}
+#appHub.pc .ah-it[data-a=friends]{top:11.1em!important}
+#appHub.pc .ah-it[data-a=store]{top:14.65em!important}
+#appHub.pc .ah-it[data-a=quests]{top:18.2em!important}
 #appHub.pc .ah-it:before{left:1.4em;top:-.15em;width:12em;height:3em}
 #appHub.pc .ah-it:after{left:13.4em;top:-.15em;width:.5em;height:3em}
 #appHub.pc .ah-it .med{width:2.7em;height:2.7em}
@@ -474,7 +474,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
 #appHub.pc .ah-room .v{font-size:.36em}
 #appHub.pc .ah-sys{font-size:.6em;left:5.5em;right:auto;width:max-content;min-width:min(28.7em,100%);max-width:clamp(28.7em,calc((var(--hw,48) - 30.2) / .6 * 1em),43.3em);top:auto;bottom:2em}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:5.375em 0 0 17.5em;pointer-events:none}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv){background:transparent;justify-content:flex-start;align-items:flex-start;padding:3.875em 0 0 17.5em;pointer-events:none}
 #appHub.pc .ov.open .pnl{pointer-events:auto}
 .ph>.px.pmax{margin-left:auto}.ph>.pmax+.px{margin-left:.5em}.ph>.cnt+.pmax{margin-left:.7em}
 #ahSkSp+.pmax,#ahStSp+.pmax,#ahQSp+.pmax,#ahPrSp+.pmax{margin-left:auto}
@@ -483,7 +483,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv){background:rgba(3,6,4,.9);justify-content:center;align-items:center;padding:0;pointer-events:auto;z-index:8}
 #appHub.pc .ov.full:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:40em!important;height:auto;font-size:1em}
 #appHub.pc #ahAr,#appHub.pc #ahFr{z-index:5}
-#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:22.5em;font-size:.765em}
+#appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pnl{width:calc((var(--hw,48) - 18.6) / .765 * 1em)!important;height:24.5em;font-size:.765em}
 #appHub.pc .ov:not(#ahIc):not(#ahUn):not(#ahSv) .pin{padding-bottom:2.8em}
 #appHub.pc #ahSt .sn .cell canvas,#appHub.pc #ahSk .sn .cell canvas{width:4.6em;height:4.6em}
 #appHub.pc #ahSt .sn,#appHub.pc #ahSk .sn{gap:.6em}
