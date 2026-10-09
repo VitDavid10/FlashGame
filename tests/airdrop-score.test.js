@@ -34,9 +34,9 @@ test('a fresh user has zero points and an empty daily state', () => {
 });
 
 test('a kill mission pays once when the goal is reached, not again', () => {
-    const { sc } = engine();
+    const { sc, now } = engine();
     const u = user();
-    const id = missionId(new Date().toISOString().slice(0, 10), 'EASY');
+    const id = missionId(new Date(now()).toISOString().slice(0, 10), 'EASY');
     sc.beginMatch(u);
     // Drive every EASY-tier quest's counter past its goal is overkill; instead
     // just confirm kills accumulate and the "kill 1 enemy" style quest, if

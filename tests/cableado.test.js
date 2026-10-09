@@ -27,7 +27,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const lee = (f) => fs.readFileSync(path.join(__dirname, '..', 'server', f), 'utf8');
+const lee = (f) => fs.readFileSync(path.join(__dirname, '..', 'server', f), 'utf8').replace(/\r\n/g, '\n');
 const INDEX = lee('index.js');
 const ROOM_LOOP = lee('room-loop.js');
 

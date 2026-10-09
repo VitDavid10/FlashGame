@@ -2003,9 +2003,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
                 b.querySelector('.cr-two').appendChild(k);
             });
         } else if (coreTab === 'basics') {
-            const sl = (typeof guideSlides !== 'undefined' ? guideSlides : []).map((c, i) => i === 2
-                ? { video: '../video/social/02_skills_montage.mp4', title: 'COMBAT MECHANICS', desc: 'Use your skills to get the upper hand over your rivals. The right skill at the right moment wins the fight.' }
-                : c);
+            const sl = typeof guideSlides !== 'undefined' ? guideSlides : [];
             const keys = hub.classList.contains('pc')
                 ? '<span><b>MOUSE</b>STEER</span><span><b>SPACE</b>SPLIT</span><span><b>1 · 2 · 3 · 4</b>USE YOUR SKILLS</span>'
                 : '<span><b>JOYSTICK</b>MOVE</span><span><b>SPLIT</b>BUTTON</span><span><b>TAP A SKILL</b>USE IT</span>';
