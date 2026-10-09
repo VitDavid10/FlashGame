@@ -3205,7 +3205,7 @@ const httpServer = http.createServer(async (req, res) => {
         const elegible = devnet && !!(acc && acc.x && acc.x.id && acc.wallet && isSolAddr(acc.wallet));
         const reg = faucet.airdrop || (faucet.airdrop = { byX: {}, byWallet: {} });
         const hecho = !!(acc && elegible && (reg.byX[acc.x.id] || reg.byWallet[acc.wallet]));
-        if (req.method === 'GET') { reply({ ok: true, devnet, available: elegible && !hecho, claimed: hecho, amount: AIRDROP_CLAIM_PILL }); return; }
+        if (req.method === 'GET') { reply({ ok: true, devnet, available: elegible && !hecho, claimed: hecho, amount: AIRDROP_CLAIM_PILL, at: hecho ? (reg.byX[acc.x.id] || reg.byWallet[acc.wallet] || 0) : 0 }); return; }
         if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify({ ok: false, reason: 'too many requests, wait a minute' })); return; }
         if (!devnet) { reply({ ok: false, reason: 'not available' }); return; }
         if (!elegible) { reply({ ok: false, reason: 'link your X account and sign in with your wallet first' }); return; }

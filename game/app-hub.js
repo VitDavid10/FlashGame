@@ -827,7 +827,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="pr-r">
     <div class="pr-box"><button class="tb" id="ahPrAddX" style="display:none">+ CONNECT X</button><div class="k">WALLET</div><div class="pr-w" id="ahPrW">NOT CONNECTED</div><button class="tb red" id="ahPrUnW" style="display:none">UNLINK WALLET</button>
       <div class="k" style="margin-top:1.1em">IN-GAME $PILLY</div><div class="pr-bal" id="ahPrBal">0</div>
-      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button><button class="tb on" id="ahPrAir" style="display:none"></button></div></div>
+      <div class="pr-bt"><button class="tb on" id="ahPrCon">CONNECT WALLET</button><button class="tb" id="ahPrDep">DEPOSIT</button><button class="tb" id="ahPrWd">WITHDRAW</button><button class="tb" id="ahPrPzC">CLAIM<i class="pz-dot" id="ahPrPzDot"></i></button></div></div>
     <div class="pr-st"><div class="cell"><div class="k">MATCHES</div><div class="v" id="ahPrM">0</div></div><div class="cell"><div class="k">BEST KILLS</div><div class="v" id="ahPrK">0</div></div><div class="cell"><div class="k">BEST MASS</div><div class="v" id="ahPrMs">0</div></div></div>
   </div></div>
   <div class="foot">Tap EDIT AVATAR to change your picture</div></div></div></div>
@@ -1723,9 +1723,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // CLAIM: premios de arenas (historial con lo cobrado y lo pendiente). El punto avisa si hay algo por cobrar.
         $('#ahPrPzC').style.display = conectada ? '' : 'none';
         $('#ahPrPzC').onclick = abrePremios;
-        airClaim();
         $('#ahPrPzDot').style.display = 'none';
-        if (w && window.PWSquad) PWSquad.prizes(w, (total, list) => { const d = $('#ahPrPzDot'); d.textContent = (list || []).length ? String(Math.min((list || []).length, 99)) : ''; d.style.display = total > 0 ? '' : 'none'; });
+        if (w && window.PWSquad) airStatus().then(air => PWSquad.prizes(w, (total, list) => { const d = $('#ahPrPzDot'), n = (list || []).length + (air && air.available ? 1 : 0); d.textContent = n ? String(Math.min(n, 99)) : ''; d.style.display = (total > 0 || n) ? '' : 'none'; }));
         if (window.GameWalletUI && conectada) GameWalletUI.gameBalance = saldoJuego;
     }
     // Historial de premios de arenas: los cobrados salen CLAIMED; lo pendiente se cobra todo con CLAIM ALL.
@@ -1734,32 +1733,36 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         ov.classList.add('open'); placa($('#ahPz .pnl'), 1);
         $('#ahPzL').innerHTML = '<div class="pz-e">LOADING...</div>';
         const fmt = corto;
+        let air = null;
         const pinta = (total, list, usd, hist) => {
+            const totArena = total;
+            if (air) { hist = [{ air: true, claimed: air.claimed, amount: air.amount, at: air.at || Date.now() }].concat(hist || []); if (air.available) total += air.amount; }
             const fecha = t => { const d = new Date(t); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase() + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE') + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY' + (h.usd != null ? ' (' + cortoUsd(h.usd) + ')' : '') + '</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
+            $('#ahPzL').innerHTML = hist.length ? hist.map(h => '<div class="pz-r' + (h.claimed ? ' done' : '') + '"><div class="m">' + (h.air ? 'AIRDROP' : (h.size || 1) + 'V' + (h.size || 1) + ' · ' + (h.cents ? '$' + h.cents / 100 : 'FREE')) + '</div><div class="d">' + fecha(h.at) + '</div><div class="a">+' + fmt(h.amount) + ' $PILLY' + (h.usd != null ? ' (' + cortoUsd(h.usd) + ')' : '') + '</div><div class="s ' + (h.claimed ? 'ok' : 'no') + '">' + (h.claimed ? 'CLAIMED' : 'TO CLAIM') + '</div></div>').join('')
                 : '<div class="pz-e">EMPTY<br>WIN A PAID ARENA MATCH TO GET PRIZES</div>';
             const fl = $('#ahPzL'), f0 = fl.firstElementChild;   // alto exacto de 4 filas, haya las que haya
             if (f0 && f0.classList.contains('pz-r')) { const cs = getComputedStyle(fl); fl.style.height = (4 * f0.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)) + 'px'; }
             $('#ahPzT').textContent = fmt(total) + ' $PILLY' + (usd != null ? ' (' + cortoUsd(usd) + ')' : '');
             $('#ahPzAll').disabled = !(total > 0);
-            $('#ahPzAll').onclick = () => window.PWSquad && PWSquad.claimAll(() => { abrePremios(); pintaWallet(); refreshClaims(false); });
+            $('#ahPzAll').onclick = async () => {
+                if (air && air.available) await airCobra();
+                if (totArena > 0 && window.PWSquad) PWSquad.claimAll(() => { abrePremios(); pintaWallet(); refreshClaims(false); });
+                else { abrePremios(); pintaWallet(); }
+            };
         };
         if (!w || !window.PWSquad) return pinta(0, [], null, []);
-        PWSquad.prizes(w, pinta);
+        airStatus().then(a => { air = a; PWSquad.prizes(w, pinta); });
     }
     // Claim del airdrop (solo devnet): 10K $PILLY una vez, para quien tenga wallet firmada + X vinculado.
-    async function airClaim(hacer) {
-        const b = $('#ahPrAir'); if (!b) return;
+    // Sale en la lista de CLAIM como un premio mas, con AIRDROP donde las arenas ponen 2V2.
+    async function airStatus() {
+        try { const j = await (await fetch('/api/airdrop-claim', { cache: 'no-store' })).json(); return j && j.ok && j.devnet && (j.available || j.claimed) ? j : null; } catch (e) { return null; }
+    }
+    async function airCobra() {
         let j = null;
-        try { j = await (await fetch('/api/airdrop-claim', hacer ? { method: 'POST' } : { cache: 'no-store' })).json(); } catch (e) {}
-        if (hacer) {
-            try { showSystemMsg(j && j.ok ? 'Airdrop claim sent: +' + j.amount.toLocaleString('en-US') + ' $PILLY. It arrives in your wallet in a moment.' : 'Airdrop claim failed: ' + ((j && j.reason) || 'try again'), 'AIRDROP'); } catch (e) {}
-            return airClaim();
-        }
-        if (!j || !j.ok || !j.devnet || !(j.available || j.claimed)) { b.style.display = 'none'; return; }
-        b.style.display = ''; b.disabled = !j.available;
-        b.textContent = j.available ? 'AIRDROP CLAIM · ' + Math.round(j.amount / 1000) + 'K $PILLY' : 'AIRDROP CLAIMED';
-        b.onclick = () => { b.disabled = true; airClaim(true); };
+        try { j = await (await fetch('/api/airdrop-claim', { method: 'POST' })).json(); } catch (e) {}
+        try { showSystemMsg(j && j.ok ? 'Airdrop claimed: +' + j.amount.toLocaleString('en-US') + ' $PILLY. It arrives in your wallet in a moment.' : 'Airdrop claim failed: ' + ((j && j.reason) || 'try again'), 'AIRDROP'); } catch (e) {}
+        return !!(j && j.ok);
     }
     function conectaX() { openProfile(); }
     const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
