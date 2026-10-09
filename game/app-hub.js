@@ -364,7 +364,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-box{flex:1;background:rgba(0,0,0,.28);border:.07em solid rgba(255,255,255,.07);padding:.7em .9em}
 .pr-box .k,.pr-st .k{font-size:.38em;color:var(--mut);letter-spacing:.1em}
 .pr-w{font-size:.48em;margin-top:.5em;letter-spacing:.04em;cursor:pointer;word-break:break-all}
-.pr-bal{font-size:1em;color:#ffd23a;margin-top:.35em;text-shadow:.12em .12em 0 #000}
+.pr-bal{font-family:'VT323',monospace;font-size:1.9em;line-height:1;letter-spacing:.02em;color:#ffd23a;margin-top:.2em;text-shadow:.06em .06em 0 #000}   /* VT323: en la letra pixel del menu el 8 grande parecia una S */
 #ahPr .pr-bt{margin-top:1.2em}#ahPr .pr-w{margin-top:.35em}
 .tb .pz-dot{display:inline-block;min-width:1.4em;box-sizing:border-box;padding:.3em .4em .2em;background:#e5302f;color:#fff;font-style:normal;font-size:.7em;line-height:1;text-align:center;margin-left:.6em;vertical-align:.2em;box-shadow:0 0 0 .18em #000}
 #ahPz .ph .tb{white-space:nowrap;width:auto;padding:.5em 1.4em}
@@ -481,7 +481,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .cr-sk{flex:0 0 40%;align-self:center;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55em}.cr-sk .cell{aspect-ratio:1;min-width:0}
 .cr-sk .cell{justify-content:center;gap:.4em;transition:border-color .18s,box-shadow .18s}.cr-sk .cell:hover{border-color:color-mix(in srgb,var(--ac) 70%,#000);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 30%,transparent)}.cr-sk .cell img{width:3.2em;height:3.2em;image-rendering:pixelated}.cr-sk .cell.on{border-color:var(--ac);box-shadow:0 0 .8em color-mix(in srgb,var(--ac) 35%,transparent)}
 .cr-img{flex:1;min-height:0;background:#000 center/contain no-repeat;border:.12em solid var(--edge)}
-.cr-sk .cell .nm{font-size:.34em;letter-spacing:.06em}.cr-sk .cell{padding:.35em .2em .45em}
+.cr-sk .cell .nm{font-size:.34em;letter-spacing:.06em}.ic-tr{position:relative;display:block;line-height:0}.ic-tr:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.28) 1px,transparent 1px) 0 0/.2em .2em,linear-gradient(rgba(0,0,0,.28) 1px,transparent 1px) 0 0/.2em .2em;pointer-events:none}.cr-sk .ic-tr img{image-rendering:auto}.cr-sk .cell{padding:.35em .2em .45em}
 .cr-ti+.cr-de{margin-top:.7em}
 .cr-skg{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);grid-template-rows:auto auto;gap:.8em 1em;align-content:start}
 .cr-skg .cr-vid{flex:none;width:100%;aspect-ratio:16/9}.cr-skg .cr-sk{align-self:center}.cr-skg>div:nth-child(3){padding:0 7%}
@@ -2082,7 +2082,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const g = b.querySelector('.cr-sk');
             SKILLS.forEach(([id, nm]) => {
                 const c = document.createElement('div'); c.className = 'cell' + (id === coreSk ? ' on' : '');
-                c.innerHTML = '<img src="' + skIcon(id) + '"><div class="nm">' + nm + '</div>';
+                c.innerHTML = '<i class="ic-tr"><img src="../img/' + id + '.png"></i><div class="nm">' + nm + '</div>';   // icono nitido con trama pixel suave encima
                 c.onclick = () => { coreSk = id; try { SoundManager.play('simpleselect'); } catch (x) {} renderCore(); };
                 g.appendChild(c);
             });
