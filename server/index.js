@@ -3195,32 +3195,26 @@ const httpServer = http.createServer(async (req, res) => {
         return;
     }
 
-    // --- Airdrop claim (SOLO devnet): 10.000 $PILLY, una vez, a la wallet firmada que tenga X vinculado. ---
-    // En el juego final este claim sera para quienes participaron en el airdrop. Es una transferencia on-chain real
-    // desde el treasury (igual que el faucet), asi que en mainnet el endpoint ni responde: solo devnet.
+    // --- Airdrop claim (SOLO devnet): 10.000 $PILLY de saldo DEL JUEGO, una vez, a la wallet firmada que tenga X vinculado. ---
+    // En el juego final este claim sera para quienes participaron en el airdrop. Se abona al saldo interno (warbank),
+    // igual que los premios de arena: sin transaccion on-chain. En mainnet el endpoint ni responde: solo devnet.
     if (urlPath === '/api/airdrop-claim' && (req.method === 'GET' || req.method === 'POST')) {
         const reply = o => { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
         const devnet = /devnet/i.test(solana.RPC || '');
         const acc = airdrop.xAccountOf(req);
         const elegible = devnet && !!(acc && acc.x && acc.x.id && acc.wallet && isSolAddr(acc.wallet));
-        const reg = faucet.airdrop || (faucet.airdrop = { byX: {}, byWallet: {} });
-        const hecho = !!(acc && elegible && (reg.byX[acc.x.id] || reg.byWallet[acc.wallet]));
-        if (req.method === 'GET') { reply({ ok: true, devnet, available: elegible && !hecho, claimed: hecho, amount: AIRDROP_CLAIM_PILL, at: hecho ? (reg.byX[acc.x.id] || reg.byWallet[acc.wallet] || 0) : 0 }); return; }
+        // 'airdropGame': registro nuevo (el anterior enviaba tokens on-chain y no abonaba saldo del juego).
+        const reg = faucet.airdropGame || (faucet.airdropGame = { byX: {}, byWallet: {} });
+        const hecho = !!(elegible && (reg.byX[acc.x.id] || reg.byWallet[acc.wallet]));
+        if (req.method === 'GET') { reply({ ok: true, devnet, available: elegible && !hecho, claimed: hecho, amount: AIRDROP_CLAIM_PILL, wallet: elegible ? acc.wallet : null, at: hecho ? (reg.byX[acc.x.id] || reg.byWallet[acc.wallet] || 0) : 0 }); return; }
         if (rpcRateLimited(req)) { res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify({ ok: false, reason: 'too many requests, wait a minute' })); return; }
         if (!devnet) { reply({ ok: false, reason: 'not available' }); return; }
         if (!elegible) { reply({ ok: false, reason: 'link your X account and sign in with your wallet first' }); return; }
         if (hecho) { reply({ ok: false, reason: 'already claimed' }); return; }
-        if (!solana.canWithdraw()) { reply({ ok: false, reason: 'the server has no treasury key' }); return; }
-        // Marca ANTES de enviar (evita doble claim con peticiones solapadas); si falla, se revierte.
         reg.byX[acc.x.id] = reg.byWallet[acc.wallet] = Date.now(); faucetDirty = true;
-        solana.withdraw(acc.wallet, AIRDROP_CLAIM_PILL).then(sig => {
-            logAdmin('-', 'Airdrop claim', acc.wallet.slice(0, 6) + '… @' + acc.x.username + ' +' + AIRDROP_CLAIM_PILL);
-            reply({ ok: true, amount: AIRDROP_CLAIM_PILL, sig });
-        }).catch(e => {
-            delete reg.byX[acc.x.id]; delete reg.byWallet[acc.wallet]; faucetDirty = true;
-            log('Airdrop claim FALLO (' + acc.wallet.slice(0, 6) + '…): ' + e.message);
-            reply({ ok: false, reason: 'on-chain send failed' });
-        });
+        warbank.credit(acc.wallet, AIRDROP_CLAIM_PILL); logTx('airdrop', acc.wallet, AIRDROP_CLAIM_PILL, '');
+        logAdmin('-', 'Airdrop claim', acc.wallet.slice(0, 6) + '… @' + acc.x.username + ' +' + AIRDROP_CLAIM_PILL);
+        reply({ ok: true, amount: AIRDROP_CLAIM_PILL, wallet: acc.wallet });
         return;
     }
 

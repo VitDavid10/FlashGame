@@ -432,16 +432,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
 #appHub.pc .ah-it[data-a=friends]{display:flex}
-#appHub.pc .ah-top{height:3.1em}
+#appHub.pc .ah-top{height:2.6em}
 #appHub.pc .ah-ava{left:.6em;top:.38em;width:4.7em;height:4.7em;z-index:5}
-#appHub.pc .ah-who{left:5.9em;top:.55em;gap:.4em}
+#appHub.pc .ah-who{left:5.9em;top:.4em;gap:.3em}
 #appHub.pc .ah-name{font-size:.74em}
 #appHub.pc .ah-lv{font-size:.44em}
-#appHub.pc .ah-line{left:5.9em;top:2.95em;width:18em}
-#appHub.pc .ah-ico{top:.6em;right:1.1em;gap:.45em}
-#appHub.pc .ah-btn{width:1.6em;height:1.6em}
-#appHub.pc .ah-btn svg{width:.75em;height:.75em}
-#appHub.pc .ah-sp{font-size:.44em}
+#appHub.pc .ah-line{left:5.9em;top:2.55em;width:18em}
+#appHub.pc .ah-ico{top:.45em;right:1.1em;gap:.4em}
+#appHub.pc .ah-btn{width:1.35em;height:1.35em}
+#appHub.pc .ah-btn svg{width:.65em;height:.65em}
+#appHub.pc .ah-sp{font-size:.4em}
 #appHub.pc .ah-it{left:3.2em}
 #appHub.pc .ah-it[data-a=pill]{top:5.5em!important}
 #appHub.pc .ah-it[data-a=arenas]{top:9.05em!important}
@@ -463,7 +463,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel:after{background:#1d2913;left:13.54em}
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
-#appHub.pc #ahPill{left:25em;top:5.45em;width:20em;height:12.9em}
+#appHub.pc #ahPill{left:27.5em;top:5.6em;width:16em;height:10.32em}
 #appHub.pc .ah-play{right:2.2em;bottom:1.3em;width:14.6em;height:3.8em;z-index:6}
 #appHub.pc .ah-room{right:16.2em;bottom:.73em;z-index:6;gap:.3em}
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
@@ -1761,7 +1761,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     async function airCobra() {
         let j = null;
         try { j = await (await fetch('/api/airdrop-claim', { method: 'POST' })).json(); } catch (e) {}
-        try { showSystemMsg(j && j.ok ? 'Airdrop claimed: +' + j.amount.toLocaleString('en-US') + ' $PILLY. It arrives in your wallet in a moment.' : 'Airdrop claim failed: ' + ((j && j.reason) || 'try again'), 'AIRDROP'); } catch (e) {}
+        try { showSystemMsg(j && j.ok ? 'Airdrop claimed: +' + j.amount.toLocaleString('en-US') + ' $PILLY added to your in-game balance (' + String(j.wallet || '').slice(0, 4) + '...' + String(j.wallet || '').slice(-4) + ').' : 'Airdrop claim failed: ' + ((j && j.reason) || 'try again'), 'AIRDROP'); } catch (e) {}
         return !!(j && j.ok);
     }
     function conectaX() { openProfile(); }
