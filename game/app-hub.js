@@ -432,16 +432,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-btn[data-a=htp]{display:flex}
 #appHub.pc .ah-btn[data-a=friends]{display:none}
 #appHub.pc .ah-it[data-a=friends]{display:flex}
-#appHub.pc .ah-top{height:3.9em}
+#appHub.pc .ah-top{height:3.1em}
 #appHub.pc .ah-ava{left:.6em;top:.38em;width:4.7em;height:4.7em;z-index:5}
-#appHub.pc .ah-who{left:5.9em;top:.9em;gap:.5em}
+#appHub.pc .ah-who{left:5.9em;top:.55em;gap:.4em}
 #appHub.pc .ah-name{font-size:.74em}
 #appHub.pc .ah-lv{font-size:.44em}
-#appHub.pc .ah-line{left:5.9em;top:3.75em;width:18em}
-#appHub.pc .ah-ico{top:.8em;right:1.1em;gap:.5em}
-#appHub.pc .ah-btn{width:1.9em;height:1.9em}
-#appHub.pc .ah-btn svg{width:.9em;height:.9em}
-#appHub.pc .ah-sp{font-size:.5em}
+#appHub.pc .ah-line{left:5.9em;top:2.95em;width:18em}
+#appHub.pc .ah-ico{top:.6em;right:1.1em;gap:.45em}
+#appHub.pc .ah-btn{width:1.6em;height:1.6em}
+#appHub.pc .ah-btn svg{width:.75em;height:.75em}
+#appHub.pc .ah-sp{font-size:.44em}
 #appHub.pc .ah-it{left:3.2em}
 #appHub.pc .ah-it[data-a=pill]{top:5.5em!important}
 #appHub.pc .ah-it[data-a=arenas]{top:9.05em!important}
