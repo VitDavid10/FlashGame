@@ -41,6 +41,23 @@ function addOwned(cid, skinId) {
 
 // Enlaza un cid a una cuenta de X y le pasa lo que tuviera (solo suma).
 // Devuelve false si ya estaba enlazado a esa cuenta (no habia nada que mover).
+// Cuenta de wallet ('w_<wallet>', la que se usa mientras no hay X) -> cuenta de X: se suma todo y los cids
+// que apuntaban a la de wallet pasan a la de X. Sin esto, al enlazar X despues, los SP se quedaban en la 'w_'.
+function migraWallet(acct, wallet) {
+    const w = wallet && acct && acct.startsWith('x_') ? 'w_' + wallet : null;
+    if (!w) return false;
+    let cambio = false;
+    if (data.points[w]) { data.points[acct] = (data.points[acct] | 0) + (data.points[w] | 0); delete data.points[w]; cambio = true; }
+    if (data.owned[w]) {
+        if (!data.owned[acct]) data.owned[acct] = [];
+        for (const s of data.owned[w]) if (!data.owned[acct].includes(s)) data.owned[acct].push(s);
+        delete data.owned[w]; cambio = true;
+    }
+    for (const k of Object.keys(data.links)) if (data.links[k] === w) { data.links[k] = acct; cambio = true; }
+    if (cambio) dirty = true;
+    return cambio;
+}
+
 function linkCid(cid, acct) {
     if (!cid || !acct || cid === acct) return false;
     if (data.links[cid] === acct) return false;
@@ -63,7 +80,7 @@ function linkCid(cid, acct) {
 module.exports = {
     getPoints, addPoints, spendPoints,
     ownedOf, addOwned,
-    cuenta, linkCid,
+    cuenta, linkCid, migraWallet,
     get _points() { return data.points; },
     get _owned() { return data.owned; },
 };

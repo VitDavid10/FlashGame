@@ -143,6 +143,11 @@ function equipar({ cid, wallet, code }) {
 function vincular(cid, acct, wallet) {
     if (!cid) return { ok: false, error: 'no session' };
     const antes = data.equipped[cid] || null;
+    if (wallet && skinpoints.migraWallet(acct, wallet)) {
+        const w = 'w_' + wallet;
+        if (data.equipped[w]) { if (!data.equipped[acct]) data.equipped[acct] = data.equipped[w]; delete data.equipped[w]; }
+        dirty = true;
+    }
     if (skinpoints.linkCid(cid, acct)) {
         if (antes && !data.equipped[acct]) data.equipped[acct] = antes;
         delete data.equipped[cid];

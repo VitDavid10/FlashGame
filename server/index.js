@@ -2916,7 +2916,7 @@ const httpServer = http.createServer(async (req, res) => {
         const acc = airdrop.xAccountOf(req);
         if (!acc) { res.end(JSON.stringify({ ok: false, error: 'connect X or your wallet first' })); return; }
         if (!isValidClientId(cid)) { res.end(JSON.stringify({ ok: false, error: 'no session' })); return; }
-        const r = skinshop.vincular(cid, acc.id, null);
+        const r = skinshop.vincular(cid, acc.id, acc.wallet || null);
         res.end(JSON.stringify(Object.assign(r, { x: acc.x ? { username: acc.x.username, name: acc.x.name, pic: acc.x.pic || '' } : null, wallet: acc.wallet })));
         return;
     }
