@@ -533,6 +533,23 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:27.5em;top:5.6em;width:16em;height:10.32em}
+/* PRUEBA (?arena=1, solo PC): mini arena viva alrededor de la pildora y tira de datos en directo encima de PLAY. */
+#ahArena,#ahLive{display:none}
+#appHub.pc.arena #ahArena{display:block;position:absolute;left:22.5em;top:3.2em;width:calc((var(--hw,48) - 22.5) * 1em);height:17.6em;pointer-events:none;image-rendering:pixelated}
+#appHub.pc.arena #ahLive{display:block;position:absolute;right:2.2em;bottom:5.35em;width:19.4em;height:5.1em;box-sizing:border-box;padding:.95em .9em .4em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.1em solid var(--bar);box-shadow:.15em .22em 0 rgba(0,0,0,.6);z-index:6;pointer-events:none}
+#ahLive .tag{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:#ff3b3b;color:#fff;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
+#ahLive .on{position:absolute;right:.8em;top:.45em;font-size:.4em;letter-spacing:.08em;color:var(--mut);display:flex;align-items:center;gap:.6em}
+#ahLive .on em{font-style:normal;color:var(--ac)}
+#ahLive .dot{display:inline-block;width:.75em;height:.75em;background:#ff3b3b;box-shadow:0 0 .6em #ff3b3b;animation:ahLiveDot 1.2s steps(2) infinite}
+#ahLive .feed{display:flex;flex-direction:column;gap:.18em;overflow:hidden;height:100%}
+#ahLive .ev{display:flex;align-items:center;gap:.55em;height:1.1em;flex:none;transition:opacity .4s}
+#ahLive .ev canvas{width:1.1em;height:1.1em;image-rendering:pixelated;flex:none}
+#ahLive .ev span{font-size:.47em;letter-spacing:.04em;color:#e8eee9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ahLive .ev span em{font-style:normal;color:var(--ac)}#ahLive .ev span b{font-weight:400;color:#ffd23a}
+#ahLive .ev:nth-child(2){opacity:.62}#ahLive .ev:nth-child(3){opacity:.32}
+#ahLive .ev.nuevo{animation:ahLiveIn .45s cubic-bezier(.2,.9,.3,1) both}
+@keyframes ahLiveIn{from{opacity:0;transform:translateY(-.9em)}to{opacity:1;transform:none}}
+@keyframes ahLiveDot{50%{opacity:.25}}
 #appHub.pc .ah-play{right:2.2em;bottom:.75em;width:14.6em;height:3.8em;z-index:6}
 #appHub.pc .ah-room{right:16.2em;bottom:.73em;z-index:6;gap:.3em}
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
@@ -869,14 +886,14 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-ava med" data-a="x"><img alt="" hidden><span class="npc">${svg('npc')}</span></div><i class="ah-fb ah-avb" id="ahAvB"></i>
 <div class="ah-who" data-a="x"><div class="ah-name">PLAYER</div><div class="ah-lv" id="ahX">TAP TO CONNECT X</div></div>
 <div class="ah-ico"><div class="ah-sp ah-py" hidden><span id="ahPy">0</span><span class="u">$PILLY</span><span class="pu" id="ahPyU"></span></div><div class="ah-sp"><span id="ahSp">0</span><span class="u">SP</span></div>
-  <div class="ah-btn" data-a="htp">${svg('gear')}</div><div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div><div class="ah-btn" data-a="back">${svg('back')}</div></div>
+  <div class="ah-btn" data-a="htp">${svg('gear')}</div><div class="ah-btn" data-a="friends">${svg('friends')}<i class="ah-fb" id="ahFrB"></i></div><div class="ah-btn" data-a="music">${svg('music')}</div></div>
 <div class="ah-it" data-a="pill" style="top:4.7em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="arenas" style="top:8.3em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}<i class="ah-fb" id="ahFrB2"></i></div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
 <div class="ah-it" data-a="store" style="top:11.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:15.5em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <div class="ah-it" data-a="core" style="top:0"><div class="med">${svg('core')}</div><div><div class="t">PILLWARS CORE</div><div class="s">GUIDES · VIDEOS</div></div></div>
-<canvas id="ahPill"></canvas>
+<canvas id="ahArena"></canvas><div id="ahLive"><b class="tag">LIVE</b><span class="on"><i class="dot"></i><em id="ahLiveOn">0</em> ONLINE</span><div class="feed" id="ahLiveFeed"></div></div><canvas id="ahPill"></canvas>
 <div class="ah-sys" id="ahSys"><b>SYSTEM</b><i class="pic"></i><span></span><div class="acts"></div></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>
@@ -946,6 +963,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const girado = document.body.classList.contains('mobile-allowed');
         // PC (ventana ancha, sin girar): el mismo hub repartido en 48em x 27em (1em = 40px a 1920x1080).
         hub.classList.toggle('pc', !girado);
+        hub.classList.toggle('arena', ARENA_PRUEBA && !girado);
         const fs = girado ? Math.min(innerWidth, innerHeight) / U * 16 : Math.min(innerHeight / 27, innerWidth / 48);
         hub.style.fontSize = fs + 'px';
         hub.style.setProperty('--hw', (innerWidth / fs).toFixed(2));   // ancho de la ventana en em del hub (>= 48): los paneles de PC se estiran hasta el borde derecho
@@ -1043,15 +1061,125 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const sw = o.S || o.cv.width, sh = o.S || o.cv.height, cx0 = PILL_W / 2, cy0 = PILL_H / 2;
         const e = splitEstado(t), bob = Math.round(Math.sin(t / 380) * 2);
         const pinta = (x, y, w) => g.drawImage(o.cv, 0, 0, sw, sh, Math.round(x - w / 2), Math.round(y - w * sh / sw / 2), w, w * sh / sw);
-        if (e.d <= 0) { pinta(cx0, cy0 + bob, 96 * 0.92 * e.k); return; }
+        if (e.d <= 0) { pinta(cx0, cy0 + bob, 96 * 0.92 * e.k * (1 + _arGulp)); return; }
         const n = splitTrozos(Math.floor(t / SPLIT_CICLO));
         const chico = Math.min(0.6, 0.92 / Math.sqrt(n) * 1.15), w = 96 * (0.92 + (chico - 0.92) * e.d);
         splitSitios(n, 96 * chico).forEach(([r, a]) => pinta(cx0 + Math.cos(a) * r * e.d * 1.25, cy0 + Math.sin(a) * r * e.d * 0.78 + bob, w));
     }
     window._hubSplit = (cv, t) => drawPillSplit(cv, t);   // pruebas
+
+    // ---------- PRUEBA (?arena=1, solo PC): mini arena viva alrededor de la pildora ----------
+    // Comida que va a la pildora (se la "traga" con un pulso), bots pequenos que la esquivan, de vez en
+    // cuando uno grande que caza a uno pequeno, y dos virus. Mismos sprites que la partida. 10 px por em.
+    const ARENA_PRUEBA = /[?&]arena=1\b/.test(location.search);
+    let _arGulp = 0;
+    const AR = { W: 0, H: 0, comida: [], bots: [], fx: [], ult: 0, caza: 0 };
+    const arRnd = (a, b) => a + Math.random() * (b - a);
+    const AR_COLS = [['#ff2a2a', '#ffd23a'], ['#1e6bff', '#00cfff'], ['#b000ff', '#ff4fd8'], ['#ff8a00', '#ffffff'], ['#00e0b0', '#1e6bff'], ['#ff2a80', '#5a5aff'], ['#ffffff', '#ff2a2a']];
+    const AR_COMIDA = ['#ffffff', '#ccff00', '#ff5fa2', '#4d9bff', '#ffce3d', '#00ffaa'];
+    function arBorde() {   // un punto en el borde del lienzo, para entrar desde fuera
+        const l = Math.floor(Math.random() * 4);
+        return l === 0 ? { x: -8, y: arRnd(10, AR.H - 10) } : l === 1 ? { x: AR.W + 8, y: arRnd(10, AR.H - 10) } : l === 2 ? { x: arRnd(10, AR.W - 10), y: -8 } : { x: arRnd(10, AR.W - 10), y: AR.H + 8 };
+    }
+    function arComida(c) {
+        let x, y, n = 0;
+        do { x = arRnd(6, AR.W - 6); y = arRnd(6, AR.H - 6); } while (Math.hypot(x - c.x, y - c.y) < 60 && ++n < 20);
+        return { x, y, vx: arRnd(-.004, .004), vy: arRnd(-.004, .004), s: Math.random() < .35 ? 5 : 4, col: AR_COMIDA[(Math.random() * AR_COMIDA.length) | 0], born: performance.now() };
+    }
+    function arBot(grande) {
+        const b = arBorde(), cols = AR_COLS[(Math.random() * AR_COLS.length) | 0];
+        return { x: b.x, y: b.y, vx: 0, vy: 0, w: grande ? 24 : 10 + ((Math.random() * 5) | 0), top: cols[0], bot: cols[1], grande, tx: arRnd(20, AR.W - 20), ty: arRnd(15, AR.H - 15), fin: 0 };
+    }
+    function arenaPaso(t) {
+        const cv = $('#ahArena'); if (!cv) return;
+        const r = cv.getBoundingClientRect(); if (!r.width) return;
+        const H = 176, W = Math.round(r.width / r.height * H);
+        if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; AR.W = W; AR.H = H; AR.comida = []; AR.bots = []; }
+        const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H);
+        const pr = $('#ahPill').getBoundingClientRect(), c = { x: (pr.left + pr.width / 2 - r.left) / r.width * W, y: (pr.top + pr.height / 2 - r.top) / r.height * H };
+        const dt = Math.min(50, AR.ult ? t - AR.ult : 16); AR.ult = t;
+        while (AR.comida.length < 46) AR.comida.push(arComida(c));
+        if (AR.bots.filter(b => !b.grande).length < 4 && Math.random() < .02) AR.bots.push(arBot(false));
+        if (!AR.caza) AR.caza = t + 6000;
+        if (t > AR.caza && !AR.bots.some(b => b.grande) && AR.bots.some(b => !b.grande && b.x > 0 && b.x < W)) { AR.bots.push(arBot(true)); AR.caza = t + arRnd(9000, 13000); }
+        const virus = [{ x: W * .1, y: H * .78, s: 22, seed: 3 }, { x: W * .9, y: H * .2, s: 18, seed: 8 }];
+        // comida: deriva lenta; cerca de la pildora la atrae y se la come
+        for (let i = AR.comida.length - 1; i >= 0; i--) {
+            const f = AR.comida[i], dx = c.x - f.x, dy = c.y - f.y, d = Math.hypot(dx, dy) || 1;
+            if (d < 80) { const k = (80 - d) / 80 * .00035 * dt; f.vx += dx / d * k; f.vy += dy / d * k; }
+            f.x += f.vx * dt; f.y += f.vy * dt;
+            if (f.x < 2 || f.x > W - 2) f.vx *= -1;
+            if (f.y < 2 || f.y > H - 2) f.vy *= -1;
+            let comida = d < 20;
+            for (const b of AR.bots) if (Math.hypot(b.x - f.x, b.y - f.y) < b.w * .8) { comida = true; break; }
+            if (comida) { if (d < 20) { _arGulp = Math.min(.07, _arGulp + .025); AR.fx.push({ x: f.x, y: f.y, t0: t, col: f.col, n: 3 }); } AR.comida.splice(i, 1); }
+        }
+        _arGulp *= Math.pow(.9, dt / 16);
+        // bots: pasean y esquivan la pildora; el grande persigue al pequeno mas cercano, se lo come y se va
+        for (let i = AR.bots.length - 1; i >= 0; i--) {
+            const b = AR.bots[i]; if (!b) continue;
+            let tx = b.tx, ty = b.ty, vel = b.grande ? .034 : .03;
+            if (b.grande) {
+                if (b.fin) { tx = b.salida.x; ty = b.salida.y; if (t > b.fin) { AR.bots.splice(i, 1); continue; } }
+                else {
+                    const presa = AR.bots.filter(o => !o.grande).sort((p, q) => Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y))[0];
+                    if (!presa) { b.fin = t + 6000; b.salida = arBorde(); }
+                    else { tx = presa.x; ty = presa.y; if (Math.hypot(presa.x - b.x, presa.y - b.y) < b.w * .7) { AR.fx.push({ x: presa.x, y: presa.y, t0: t, col: presa.top, n: 10 }); presa.muerto = true; b.w += 3; b.fin = t + 6000; b.salida = arBorde(); } }
+                }
+            } else {
+                if (Math.hypot(b.tx - b.x, b.ty - b.y) < 8) { b.tx = arRnd(15, W - 15); b.ty = arRnd(12, H - 12); }
+                const caz = AR.bots.find(o => o.grande && !o.fin);
+                if (caz && Math.hypot(caz.x - b.x, caz.y - b.y) < 70) { tx = b.x + (b.x - caz.x); ty = b.y + (b.y - caz.y); vel = .045; }
+            }
+            let ax = tx - b.x, ay = ty - b.y; const da = Math.hypot(ax, ay) || 1; ax /= da; ay /= da;
+            const dc = Math.hypot(b.x - c.x, b.y - c.y) || 1, evita = 52 + b.w;
+            if (dc < evita) { const k = (evita - dc) / evita * 2.2; ax += (b.x - c.x) / dc * k; ay += (b.y - c.y) / dc * k; }
+            const n = Math.hypot(ax, ay) || 1; b.vx += (ax / n * vel - b.vx) * .06; b.vy += (ay / n * vel - b.vy) * .06;
+            b.x += b.vx * dt; b.y += b.vy * dt;
+        }
+        AR.bots = AR.bots.filter(b => !b.muerto);
+        // dibujo: comida, virus, bots y chispas
+        for (const f of AR.comida) { g.globalAlpha = Math.min(1, (t - f.born) / 600); try { g.drawImage(pixDotSprite(f.s, f.col, 'f'), Math.round(f.x - f.s / 2), Math.round(f.y - f.s / 2)); } catch (e) {} }
+        g.globalAlpha = 1;
+        for (const v of virus) { try { const spr = pixVirusSprite(v.s, 0), ang = ((Math.floor(t / (90 + v.s)) + v.seed) % 16) * (Math.PI / 8) * (v.seed % 2 ? 1 : -1); g.save(); g.translate(Math.round(v.x), Math.round(v.y)); g.rotate(ang); g.drawImage(spr, -v.s / 2, -v.s / 2); g.restore(); } catch (e) {} }
+        for (const b of AR.bots) {
+            try { const o = pixPillSpriteRot(b.w, b.top, b.bot, -Math.PI / 4, true)   /* las pildoras no giran: siempre en diagonal, como en la partida */; const S = o.S || o.cv.width; g.drawImage(o.cv, 0, 0, S, S, Math.round(b.x - S / 2), Math.round(b.y - S / 2), S, S); } catch (e) {}
+        }
+        for (let i = AR.fx.length - 1; i >= 0; i--) {
+            const f = AR.fx[i], k = (t - f.t0) / 450; if (k >= 1) { AR.fx.splice(i, 1); continue; }
+            g.globalAlpha = 1 - k; g.fillStyle = f.col;
+            for (let j = 0; j < f.n; j++) { const a = j / f.n * Math.PI * 2 + f.t0, rr = 2 + k * (f.n > 4 ? 14 : 6); g.fillRect(Math.round(f.x + Math.cos(a) * rr), Math.round(f.y + Math.sin(a) * rr), 2, 2); }
+        }
+        g.globalAlpha = 1;
+    }
+    // Placa LIVE (PRUEBA): ONLINE es real; los sucesos son de ejemplo hasta que el servidor mande los de verdad.
+    // Sale uno nuevo arriba cada 3,8 s (con el reloj del menu) y los anteriores se apagan; caben 3.
+    const LIVE_DEMO = [
+        { c: ['#ff2a2a', '#ffd23a'], t: '<em>@icefox</em> ATE <em>@rcer</em> <b>+1,240 $PILLY</b>' },
+        { c: ['#1e6bff', '#00cfff'], t: '<em>@nasa</em> TOP TODAY · <b>14 KILLS</b>' },
+        { c: ['#b000ff', '#ff4fd8'], t: 'ARENAS 2V2 · MATCH IN <b>0:08</b>' },
+        { c: ['#ff8a00', '#ffffff'], t: '<em>@doge</em> PENTAKILL IN CLASSIC <b>$5</b>' },
+        { c: ['#00e0b0', '#1e6bff'], t: '<em>@mars</em> BOUGHT THE <b>SPAIN</b> SKIN' },
+    ];
+    let liveI = 0, liveT = 0;
+    function livePaso(t) {
+        const f = $('#ahLiveFeed'); if (!f) return;
+        if (!liveT) { for (let k = 0; k < 2; k++) { liveT = 1; livePaso(-1e9); } f.querySelectorAll('.nuevo').forEach(e => e.classList.remove('nuevo')); liveT = t; }   // empieza ya con sucesos
+        else if (t - liveT < 3800 && t > 0) return;
+        if (t > 0) liveT = t;
+        const d = LIVE_DEMO[liveI++ % LIVE_DEMO.length], ev = document.createElement('div');
+        ev.className = 'ev nuevo';
+        const cv = document.createElement('canvas'); cv.width = cv.height = 16;
+        try { const o = pixPillSpriteRot(8, d.c[0], d.c[1], -Math.PI / 4, true), S = o.S || o.cv.width, g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(o.cv, 0, 0, S, S, (16 - S) / 2, (16 - S) / 2, S, S); } catch (e) {}
+        const sp = document.createElement('span'); sp.innerHTML = d.t;
+        ev.appendChild(cv); ev.appendChild(sp);
+        f.insertBefore(ev, f.firstChild);
+        while (f.children.length > 3) f.lastChild.remove();
+    }
+
     function loop(t) {
         if (!hub.classList.contains('on')) return;
-        paintBg(); drawPillSplit($('#ahPill'), t);
+        paintBg(); if (hub.classList.contains('arena')) { arenaPaso(t); livePaso(t); } drawPillSplit($('#ahPill'), t);
         requestAnimationFrame(loop);
     }
 
@@ -1062,6 +1190,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         try { rooms = (await (await fetch('/api/rooms', { cache: 'no-store' })).json()).rooms || []; sinRed = false; } catch (e) { sinRed = true; }
         const mine = rooms.filter(r => r.mode === mode);
         $('#ahOnline').textContent = mine.reduce((a, r) => a + (r.players || 0), 0);
+        if ($('#ahLiveOn')) $('#ahLiveOn').textContent = rooms.reduce((a, r) => a + (r.players || 0), 0);
         if ($('#ahRooms').classList.contains('open')) renderRooms();
     }
     // Salas: cada tarjeta enseña sus layers con su aforo; debajo, ROOM INFO de la elegida y las reglas del modo.
@@ -2116,7 +2245,6 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             openPill();
         }
         else if (a === 'music') { try { toggleMusic(); } catch (x) {} paintStatic(); }
-        else if (a === 'back') { hide(); try { goBackToModes(); } catch (x) {} try { pantallaInicio(); } catch (x) {} }   // sin pantalla de modos: atras es TAP TO START
     }
     function wire() {
         hub.addEventListener('click', tap);
