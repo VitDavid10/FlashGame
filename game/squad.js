@@ -1555,6 +1555,9 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     function guardPlay(proceed) {
         const p = S.party;
         if (!p || !(p.state === 'queued' || p.rc)) return proceed();
+        const sal = () => { send({ a: 'leave' }); S.party = null; S.err = ''; rivalsBanner(); render(); proceed(); };
+        // Con el cartel unificado del menu: salir es la accion negativa (roja, a la derecha) y quedarse, gris a la izquierda.
+        if (typeof window.pwConfirm === 'function') { window.pwConfirm('ARENA QUEUE', 'You are in the arena queue. Playing a normal room leaves the queue and your group.', 'LEAVE & PLAY', 'STAY', sal); return; }
         let el = document.getElementById('sqGuard');
         if (!el) {
             el = document.createElement('div'); el.id = 'sqGuard';

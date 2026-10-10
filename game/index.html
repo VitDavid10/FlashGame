@@ -1810,9 +1810,20 @@
         .pw-placa h3 { font-family: 'Russo One', sans-serif !important; font-size: 14px !important; letter-spacing: .16em !important; color: #fff !important; text-shadow: none !important; margin: 0 0 10px !important; background: none !important; }
         .pw-placa p { font-family: 'Russo One', sans-serif !important; font-size: 12px !important; line-height: 1.6 !important; color: #b9c4bf !important; margin: 0 0 18px !important; letter-spacing: .02em !important; text-transform: none !important; }
         .pw-placa .ac { display: flex !important; gap: 12px !important; justify-content: center !important; margin: 0 !important; }
-        .pw-placa .ac button { width: 118px !important; flex: none !important; height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; font-family: 'Russo One', sans-serif !important; font-size: 11px !important; letter-spacing: .12em !important; padding: 9px 6px !important; margin: 0 !important;
+        .pw-placa .ac button { width: auto !important; min-width: 104px; white-space: nowrap; flex: none !important; height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; font-family: 'Russo One', sans-serif !important; font-size: 11px !important; letter-spacing: .12em !important; padding: 9px 6px !important; margin: 0 !important;
             border: 2px solid #4b5550 !important; border-image: none !important; border-radius: 0 !important; background: #2c3630 !important; background-image: none !important; box-shadow: none !important; color: #e8ecea !important; text-shadow: none !important; clip-path: none !important; transform: none; cursor: pointer; }
         .pw-placa .ac button.n { border-color: #7a2a26 !important; background: #5a1d1a !important; color: #ffb3a8 !important; }
+        /* Carteles unificados (10-oct-2026): confirmar en verde a la izquierda, cancelar/cerrar en rojo a la derecha,
+           accion negativa en rojo a la derecha con CANCEL gris, avisos con OK gris. */
+        .pw-placa .ac button.si { border-color: #2fae52 !important; background: #1f7a37 !important; color: #eafff0 !important; }
+        .pw-placa .ac button { padding: 9px 14px !important; }
+        #pwConf .pc-b p { white-space: pre-line; }
+        /* Cuenta atras de la app: como el aviso de RIVAL FOUND (letra pixel dorada con brillo sobre fondo oscuro). */
+        #cdNum.cd-app { position: fixed !important; inset: 0 !important; transform: none !important; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: rgba(3,6,4,.55); pointer-events: none; z-index: 9990; font-family: 'Press Start 2P', monospace; text-align: center; }
+        #cdNum.cd-app .a { font-size: 22px; color: #ffd23a; text-shadow: 3px 3px 0 #000, 0 0 18px #ffd23a; letter-spacing: 1px; }
+        #cdNum.cd-app .n { font-size: 84px; line-height: 1; color: #ffd23a; text-shadow: 5px 5px 0 #000, 0 0 30px #ffd23a; animation: cdAppIn .35s cubic-bezier(.2,.9,.3,1.4) both; }
+        #cdNum.cd-app .b { font-size: 12px; color: #9bbfff; text-shadow: 2px 2px 0 #000; }
+        @keyframes cdAppIn { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
         .sys-title { color: var(--primary) !important; text-shadow: 0 0 14px rgba(0,255,136,0.4); }
         /* Android pinta un recuadro azul translucido sobre lo que acabas de
            tocar y lo deja ahi un momento: al abrirse un cartel encima (p.ej.
@@ -14476,7 +14487,13 @@
         const glowPx = opts.glowPx || 0;
         const glow = glowPx ? modeHex : (opts.glow !== undefined ? opts.glow : null);
         const glowFilter = glowPx ? ('drop-shadow(0 0 ' + glowPx + 'px ' + modeHex + ') drop-shadow(0 0 ' + Math.round(glowPx * 2.2) + 'px ' + modeHex + ')') : 'none';
-        if (pixelMode) {
+        if (EN_APP && !opts.font && !opts.fill && !opts.plain) {
+            // App: como el aviso de RIVAL FOUND de arenas.
+            el.className = 'cd-app';
+            el.innerHTML = '<div class="a"></div><div class="n"></div><div class="b">GET READY</div>';
+            el.querySelector('.a').textContent = label; el.querySelector('.n').textContent = n;
+            if (label !== 'MATCH STARTING') el.querySelector('.b').remove();
+        } else if (pixelMode) {
             // Etiqueta como cartel pixel encima del número (antes era texto CSS
             // pequeño que se perdía al lado del dígito grande). MATCH STARTING/
             // ENDING tienen su PNG horneado por modo; si falta, fuente procedural.
@@ -15004,6 +15021,13 @@
         const m = document.getElementById('sysModal');
         const titleEl = document.getElementById('sysModalTitle');
         const t = title || 'NOTICE';
+        // App (menu nuevo): el cartel unificado, en gris y con OK gris.
+        if (EN_APP && typeof window.pwAviso === 'function') {
+            m.style.display = 'none';
+            window.pwAviso(t, message);
+            try { SoundManager.play((t === 'DEPOSIT COMPLETE' || t === 'WITHDRAW COMPLETE') ? 'simpleselect' : 'little'); } catch (e) {}
+            return;
+        }
         // El modal es UNO solo y se repinta en cada aviso: hay que borrar los
         // estilos que deja la rama de titulo en texto, o el siguiente aviso los
         // hereda.
@@ -15128,35 +15152,48 @@
     // Confirmacion (SI / NO) con el cartel de los avisos: lo usan los avisos de arenas (game/squad.js).
     // Recuadro de los paneles (el mismo marco que dibuja drawPlacaCaja) con un margen interior propio:
     // drawPlacaCaja deja el relleno de la caja igual al grosor del marco, asi que el aire va en .pw-placa-in.
-    function pwPlaca(box) {
+    function pwPlaca(box, hex) {
         if (!box || typeof drawPlacaCaja !== 'function') return;
         box.classList.add('pw-placa');
         let cv = box.querySelector(':scope>canvas.pw-placa-cv');
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'pw-placa-cv'; box.prepend(cv); }
         let inn = box.querySelector(':scope>.pw-placa-in');
         if (!inn) { inn = document.createElement('div'); inn.className = 'pw-placa-in'; [...box.childNodes].forEach(n => { if (n !== cv) inn.appendChild(n); }); box.appendChild(inn); }
-        const hex = '#ccff00';   // CLASSIC con los colores de ARCADE
-        requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, hex, 1); if (box._placaPad) box.style.setProperty('padding', box._placaPad + 'px', 'important'); });   // el marco ocupa su grosor; el aire va dentro
+        hex = hex || '#ccff00';   // CLASSIC con los colores de ARCADE
+        // Grosor FIJO: placaGrosor() sale del ancho del panel del menu antiguo y segun estuviera visible o no el marco salia gordisimo.
+        requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, hex, 8 / placaGrosor()); if (box._placaPad) box.style.setProperty('padding', box._placaPad + 'px', 'important'); });   // el marco ocupa su grosor; el aire va dentro
     }
     window.pwPlaca = pwPlaca;
     // Avisos SI/NO (arenas, desvincular X...): sin sonido; confirmar gris y cancelar rojo, del mismo tamano.
-    window.pwConfirm = function (title, text, yes, no, onYes, onNo) {
+    // Cartel unificado del menu nuevo (app): titulo blanco, texto y botones. color: lima (general), verde (wallet/dinero) o gris (avisos).
+    const PW_POP_HEX = { lime: '#ccff00', green: '#2fbf55', gray: '#8a948f' };
+    window.pwPopup = function (o) {
         let ov = document.getElementById('pwConf');
         if (!ov) {
             ov = document.createElement('div'); ov.id = 'pwConf';
-            ov.innerHTML = '<div class="pc-b"><h3></h3><p></p><div class="ac"><button class="y"></button><button class="n"></button></div></div>';
+            ov.innerHTML = '<div class="pc-b"><h3></h3><p></p><div class="ac"></div></div>';
             (window.pwSquadFrame ? window.pwSquadFrame() : document.body).appendChild(ov);
         }
         const b = ov.querySelector('.pc-b');
-        b.querySelector('h3').textContent = title; b.querySelector('p').innerText = text;
-        const y = b.querySelector('.y'), n = b.querySelector('.n');
-        y.textContent = yes; n.textContent = no;
+        b.querySelector('h3').textContent = o.title; b.querySelector('p').innerText = o.text || '';
+        const ac = b.querySelector('.ac'); ac.innerHTML = '';
         const cierra = () => { ov.classList.remove('on'); };
-        y.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onYes) onYes(); };
-        n.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (onNo) onNo(); };
+        (o.botones || []).forEach(x => {
+            const bt = document.createElement('button'); bt.textContent = x.t; if (x.k === 'si') bt.className = 'si'; else if (x.k === 'no') bt.className = 'n';
+            bt.onclick = () => { try { SoundManager.play('simpleselect'); } catch (e) {} cierra(); if (x.fn) x.fn(); };
+            ac.appendChild(bt);
+        });
         ov.classList.add('on');
-        pwPlaca(b);
+        pwPlaca(b, PW_POP_HEX[o.color] || PW_POP_HEX.lime);
     };
+    // SI / NO. Confirmar en verde a la izquierda y cancelar en rojo a la derecha; si lo que se confirma es negativo
+    // (UNLINK, LEAVE...), la accion va en rojo a la derecha y el cancelar en gris a la izquierda. Lo de wallet/dinero, marco verde.
+    window.pwConfirm = function (title, text, yes, no, onYes, onNo) {
+        const neg = /^(UNLINK|LEAVE|EXIT|REMOVE|DELETE|FORFEIT|KICK)/i.test(String(yes));
+        const wal = /ENTRY|WALLET|DEPOSIT|WITHDRAW|\$PILLY|PAY|CLAIM/i.test(String(title));
+        pwPopup({ title, text, color: wal ? 'green' : 'lime', botones: neg ? [{ t: no, k: 'ok', fn: onNo }, { t: yes, k: 'no', fn: onYes }] : [{ t: yes, k: 'si', fn: onYes }, { t: no, k: 'no', fn: onNo }] });
+    };
+    window.pwAviso = function (title, text) { pwPopup({ title, text, color: 'gray', botones: [{ t: 'OK', k: 'ok' }] }); };
 
     function abandonNet(texto) { cancelMatchmakingUX(); practiceMode = false; setLobbyBanner(null); sim = null; gameRunning = false; netState = null; returnToMenu(); if (texto) showSystemMsg(texto); }
 

@@ -676,20 +676,39 @@ html:not(.ah-wal-hub) :is(#gameDepositModal,#gameWithdrawModal) canvas.hub-placa
 /* DEPOSIT solo dice lo que hay en la wallet; WITHDRAW, lo que hay en el juego. */
 html.pw-app #gameDepositModal .gm-row:has(#gdGame){display:none!important}
 html.pw-app #gameDepositModal .gm-row:has(#gdWallet){margin-bottom:14px!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal){background:rgba(3,6,4,.9)!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox{position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;transform:none!important;width:380px!important;max-width:none!important;padding:18px 24px 14px!important;text-align:center}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox:before,html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox:after{display:none!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gameModalBox>*:not(.hub-placa){position:relative;z-index:1}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) h3{font-family:'Russo One',sans-serif!important;font-size:15px!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin:4px 0 14px!important;background:none!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gm-row{font-family:'Russo One',sans-serif!important;font-size:12px!important;line-height:1.7!important;color:#cfd8d3!important;display:flex;justify-content:space-between}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .gm-row b{color:#fff!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) label{font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.1em;color:var(--hub-ac)!important;display:block;text-align:left;margin-top:4px}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important;font-size:13px!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn{background:var(--hub-ac)!important;background-image:none!important;border:none!important;border-image:none!important;filter:none!important;min-height:0!important;border-radius:0!important;box-shadow:none!important;color:#04150c!important;
-  font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.12em!important;padding:9px 6px!important;text-shadow:none!important;flex:none!important;width:118px!important}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts{gap:12px;margin-top:16px}
-html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal) .ah-gm-acts>.gm-btn.ah-gm-close{background:none!important;border:2px solid #2c3630!important;color:#7d8a82!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal){background:rgba(3,6,4,.9)!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) :is(.gameModalBox,.pw-modal-box){position:relative;background:none!important;border:none!important;border-image:none!important;box-shadow:none!important;transform:none!important;width:380px!important;max-width:none!important;padding:18px 24px 14px!important;text-align:center}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) :is(.gameModalBox,.pw-modal-box):before,html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) :is(.gameModalBox,.pw-modal-box):after{display:none!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) :is(.gameModalBox,.pw-modal-box)>canvas.hub-placa{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;image-rendering:pixelated}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) :is(.gameModalBox,.pw-modal-box)>*:not(.hub-placa){position:relative;z-index:1}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) h3{font-family:'Russo One',sans-serif!important;font-size:15px!important;letter-spacing:.16em!important;color:#fff!important;text-shadow:none!important;margin:4px 0 14px!important;background:none!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) .gm-row{font-family:'Russo One',sans-serif!important;font-size:12px!important;line-height:1.7!important;color:#cfd8d3!important;display:flex;justify-content:space-between}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) .gm-row b{color:#fff!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) label{font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.1em;color:#9fb0a6!important;display:block;text-align:left;margin-top:4px}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) input{background:#050c09!important;border:2px solid #2c4a3f!important;color:#fff!important;border-radius:0!important;font-size:13px!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) .ah-gm-acts>.gm-btn{background:#1f7a37!important;background-image:none!important;border:none!important;border-image:none!important;filter:none!important;min-height:0!important;border-radius:0!important;box-shadow:none!important;color:#eafff0!important;outline:2px solid #2fae52;outline-offset:-2px;
+  font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.12em!important;padding:9px 6px!important;text-shadow:none!important;flex:none!important;width:auto!important;min-width:104px;white-space:nowrap;padding:9px 14px!important}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) .ah-gm-acts{gap:12px;margin-top:16px}
+html.ah-wal-hub body.hub-on :is(#gameDepositModal,#gameWithdrawModal,#gameTopUpModal,#walletPickerModal,#prizeModal,#lateJoinModal) .ah-gm-acts>.gm-btn.ah-gm-close{background:#5a1d1a!important;outline-color:#7a2a26;color:#ffb3a8!important}.ah-gm-acts>.gm-btn.ah-gm-gris{background:#2c3630!important;outline-color:#4b5550;color:#e8ecea!important}
+/* CONNECT WALLET: titulo en texto, filas grandes con el icono de cada wallet y CANCEL rojo. */
+html.ah-wal-hub body.hub-on #walletPickerModal .pw-modal-box{width:340px!important;display:flex;flex-direction:column;align-items:stretch;gap:10px}
+html.ah-wal-hub body.hub-on #walletPickerModal .wp-title{display:none!important}
+html.ah-wal-hub body.hub-on #walletPickerModal .wp-btn{display:flex!important;align-items:center;gap:14px;height:52px!important;min-height:0!important;padding:0 16px!important;margin:0!important;width:auto!important;background:#0c1a12!important;background-image:none!important;border:2px solid #2c4a3f!important;border-image:none!important;border-radius:0!important;box-shadow:none!important;filter:none!important;color:#fff!important;font-family:'Russo One',sans-serif!important;font-size:14px!important;letter-spacing:.14em!important;text-shadow:none!important;transform:none!important;clip-path:none!important}
+html.ah-wal-hub body.hub-on #walletPickerModal .wp-btn:hover{border-color:#2fae52!important}
+html.ah-wal-hub body.hub-on #walletPickerModal .wp-btn img{width:30px!important;height:30px!important;border-radius:7px;object-fit:cover;margin:0!important}
+html.ah-wal-hub body.hub-on #walletPickerModal .pw-modal-cancel{align-self:center;margin-top:6px!important;width:auto!important;min-width:104px;height:auto!important;padding:9px 14px!important;background:#5a1d1a!important;border:2px solid #7a2a26!important;color:#ffb3a8!important;font-family:'Russo One',sans-serif!important;font-size:11px!important;letter-spacing:.12em!important;border-radius:0!important;box-shadow:none!important}
+html.ah-wal-hub body.hub-on :is(#walletPickerModal,#lateJoinModal) .ah-h3{font-family:'Russo One',sans-serif;font-size:15px;letter-spacing:.16em;color:#fff;text-align:center;margin:2px 0 6px}
+/* YOU WON y HEADS UP */
+html.ah-wal-hub body.hub-on #prizeModal #prizeTitle{color:#fff!important}
+html.ah-wal-hub body.hub-on #lateJoinModal .pw-modal-title{display:none!important}
+html.ah-wal-hub body.hub-on #lateJoinModal #ljBody{font-family:'Russo One',sans-serif!important;font-size:12px!important;color:#cfd8d3!important;text-align:left}
+html.ah-wal-hub body.hub-on #lateJoinModal .ri-actions,html.ah-wal-hub body.hub-on #lateJoinModal .pw-modal-cancel{display:none!important}
+/* Ventanas de salir de la partida: su marco gris, al tamano de los demas carteles. */
+html.pw-app #exitModal .exit-box{scale:.8!important}
+/* Paneles pequenos del menu (SKIN UNLOCKED, ver skin, ICON UNLOCKED): botones compactos, confirmar verde a la izquierda y cerrar rojo a la derecha. */
+.sv-bt{justify-content:center}.sv-bt .tb{flex:none!important;width:auto!important;min-width:6.5em;white-space:nowrap;padding:.55em 1.1em!important}
+.sv-bt .tb.on{order:-1;background:#1f7a37!important;border-color:#2fae52!important;color:#eafff0!important}
+.sv-bt .tb:not(.on){background:#5a1d1a!important;border-color:#7a2a26!important;color:#ffb3a8!important}
 /* SKIN del editor de avatar: "sin skin" es una casilla del mismo tamano que las demas. */
 
 /* DEPOSIT, NOT ENOUGH $PILLY...: la animacion de entrada (fadeIn) mueve con
@@ -759,8 +778,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         // (pensado para cuando iba solo): en la fila con CLOSE se salia de la caja.
         ['gdConfirm', 'gwdConfirm'].forEach(id => { const e = document.getElementById(id); if (e) e.style.removeProperty('transform'); });
         if (!document.body.classList.contains('hub-on') || getComputedStyle(m).display === 'none') return;
-        if (m.id === 'walletPickerModal') return;   // el selector de wallet conserva su cartel de siempre (el marco placa lo descuadraba)
-        const walHub = document.documentElement.classList.contains('ah-wal-hub') && (m.id === 'gameDepositModal' || m.id === 'gameWithdrawModal');
+        const walHub = document.documentElement.classList.contains('ah-wal-hub') && ['gameDepositModal', 'gameWithdrawModal', 'gameTopUpModal', 'walletPickerModal', 'prizeModal', 'lateJoinModal'].includes(m.id);
         if (m.classList.contains('gameModal') && m.id !== 'gameTopUpModal' && !walHub) return;
         const box = m.querySelector('.pw-modal-box, .gameModalBox'); if (!box || typeof drawPlacaCaja !== 'function') return;
         // CLOSE en vez de la x de la esquina (se montaba encima del titulo).
@@ -769,7 +787,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         let cv = box.querySelector(':scope>canvas.hub-placa');
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'hub-placa'; box.prepend(cv); }
         requestAnimationFrame(() => {
-            cv._placaKey = ''; drawPlacaCaja(box, cv, MODES[mode], 1);
+            // Carteles unificados: verde lo de wallet/dinero, lima el resto; grosor fijo (el de placaGrosor variaba).
+            const verde = ['gameDepositModal', 'gameWithdrawModal', 'gameTopUpModal', 'walletPickerModal', 'prizeModal'].includes(m.id);
+            cv._placaKey = ''; drawPlacaCaja(box, cv, verde ? '#2fbf55' : MODES[mode], typeof placaGrosor === 'function' ? 8 / placaGrosor() : 1);
             // drawPlacaCaja deja el relleno igual al grosor del marco: se le suma el mismo aire por los cuatro lados.
             if (walHub && box._placaPad) box.style.setProperty('padding', (box._placaPad + 16) + 'px ' + (box._placaPad + 18) + 'px ' + (box._placaPad + 18) + 'px', 'important');
         });
@@ -853,13 +873,31 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     });
     // DEPOSIT / WITHDRAW: el boton de confirmar y un CLOSE en la misma fila.
     [['gameDepositModal', 'gdConfirm', 'DEPOSIT', () => GameWalletUI.closeDeposit()],
-     ['gameWithdrawModal', 'gwdConfirm', 'WITHDRAW', () => GameWalletUI.closeWithdraw()]].forEach(([mid, bid, txt, cerrar]) => {
+     ['gameWithdrawModal', 'gwdConfirm', 'WITHDRAW', () => GameWalletUI.closeWithdraw()],
+     ['gameTopUpModal', 'tuConfirm', 'DEPOSIT AND PLAY', () => GameWalletUI.cancelTopUp()]].forEach(([mid, bid, txt, cerrar]) => {
         const ok = document.getElementById(bid); if (!ok || ok.parentElement.classList.contains('ah-gm-acts')) return;
         const fila = document.createElement('div'); fila.className = 'ah-gm-acts';
         ok.parentElement.insertBefore(fila, ok); fila.appendChild(ok); ok.textContent = txt;
         const c = document.createElement('button'); c.className = 'gm-btn ah-gm-close'; c.textContent = 'CLOSE'; c.onclick = cerrar;
         fila.appendChild(c);
     });
+    // NOT ENOUGH $PILLY: su X y su CLOSE de abajo sobran (ya hay CLOSE en la fila).
+    try { const tu = document.querySelector('#gameTopUpModal .gameModalBox'); if (tu) tu.querySelectorAll(':scope>.close, :scope>.gm-close, :scope>button:not(.gm-btn)').forEach(e => e.style.display = 'none'); } catch (e) {}
+    // YOU WON: SHARE (verde) y CONTINUE (gris, es un aviso) en una fila.
+    try { const pa = document.querySelector('#prizeModal .prize-actions'); if (pa) { pa.classList.add('ah-gm-acts'); document.getElementById('prizeContinue').classList.add('ah-gm-gris'); } } catch (e) {}
+    // HEADS UP (entrar tarde): titulo en texto y OK verde + CANCEL rojo en una fila.
+    try {
+        const lj = document.querySelector('#lateJoinModal .pw-modal-box');
+        if (lj && !lj.querySelector('.ah-gm-acts')) {
+            const h = document.createElement('div'); h.className = 'ah-h3'; h.textContent = 'HEADS UP'; lj.insertBefore(h, lj.firstChild);
+            const fila = document.createElement('div'); fila.className = 'ah-gm-acts';
+            const ok = document.createElement('button'); ok.className = 'gm-btn'; ok.textContent = 'JOIN ANYWAY'; ok.onclick = () => confirmLateJoin();
+            const no = document.createElement('button'); no.className = 'gm-btn ah-gm-close'; no.textContent = 'CANCEL'; no.onclick = () => closeLateJoin();
+            fila.appendChild(ok); fila.appendChild(no); lj.appendChild(fila);
+        }
+        const wp = document.querySelector('#walletPickerModal .pw-modal-box');
+        if (wp && !wp.querySelector('.ah-h3')) { const h = document.createElement('div'); h.className = 'ah-h3'; h.textContent = 'CONNECT WALLET'; wp.insertBefore(h, wp.firstChild); }
+    } catch (e) {}
     // Teclado del movil: en horizontal tapa media pantalla y el campo de la
     // cantidad quedaba debajo. Al escribir, el cartel sube lo justo para que el
     // campo quede a la vista; al soltar el teclado vuelve a su sitio.
