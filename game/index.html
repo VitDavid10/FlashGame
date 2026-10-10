@@ -15677,6 +15677,17 @@
         } else ov.classList.add('ls-inicio');
         ov.style.display = 'flex';
         lsPaintBg();
+        // PC (no en la app del movil): boton para volver a la web, con el estilo de las placas del menu.
+        if (!/Solana Mobile Web Shell/.test(navigator.userAgent) && !document.body.classList.contains('mobile-allowed') && !document.getElementById('lsWeb')) {
+            const st = document.createElement('style');
+            st.textContent = '#lsWeb{position:absolute;left:24px;top:22px;z-index:5;display:flex;align-items:center;gap:10px;padding:11px 16px 9px;background:linear-gradient(180deg,#0b0e01,#050700);border:2px solid #4d5f17;box-shadow:3px 4px 0 rgba(0,0,0,.6);color:#ccff00;font:11px "Press Start 2P",monospace;letter-spacing:1.5px;text-decoration:none;cursor:pointer;transition:border-color .15s,box-shadow .15s}' +
+                '#lsWeb:hover{border-color:#ccff00;box-shadow:3px 4px 0 rgba(0,0,0,.6),0 0 14px rgba(204,255,0,.35)}#lsWeb svg{width:12px;height:12px;fill:currentColor}';
+            document.head.appendChild(st);
+            const bw = document.createElement('a'); bw.id = 'lsWeb'; bw.href = '/';
+            bw.innerHTML = '<svg viewBox="0 0 8 8"><path d="M5 0h2v2H5zM3 2h2v2H3zM1 4h2v0H1zM1 3h2v2H1zM3 5h2v2H3zM5 6h2v2H5z"/></svg>BACK TO WEB';
+            bw.addEventListener('click', e => e.stopPropagation());
+            ov.appendChild(bw);
+        }
         // La flecha roja del selector vuelve AQUI (no a la web, dentro de la
         // app), y en ese momento la musica de menu ya estaba sonando: sin
         // esto se oia detras de TAP TO START. Solo se pausa (no stopMenuMusic,
