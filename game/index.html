@@ -1820,7 +1820,9 @@
         #pwConf .pc-b p { white-space: pre-line; }
         /* Cuenta atras de la app: como el aviso de RIVAL FOUND (letra pixel dorada con brillo sobre fondo oscuro). */
         #cdNum.cd-app { position: fixed !important; inset: 0 !important; transform: none !important; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: rgba(3,6,4,.55); pointer-events: none; z-index: 9990; font-family: 'Press Start 2P', monospace; text-align: center; }
-        #cdNum.cd-app .a { font-size: 22px; color: #ffd23a; text-shadow: 3px 3px 0 #000, 0 0 18px #ffd23a; letter-spacing: 1px; }
+        #cdNum.cd-app .a { font-size: 22px; color: #ffd23a; text-shadow: 3px 3px 0 #000, 0 0 18px #ffd23a; letter-spacing: 1px; white-space: nowrap; }
+        body.mobile-allowed #cdNum.cd-app .a { font-size: 16px; }
+        body.mobile-allowed #cdNum.cd-app .n { font-size: 64px; }
         #cdNum.cd-app .n { font-size: 84px; line-height: 1; color: #ffd23a; text-shadow: 5px 5px 0 #000, 0 0 30px #ffd23a; animation: cdAppIn .35s cubic-bezier(.2,.9,.3,1.4) both; }
         #cdNum.cd-app .b { font-size: 12px; color: #9bbfff; text-shadow: 2px 2px 0 #000; }
         @keyframes cdAppIn { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
