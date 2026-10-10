@@ -209,7 +209,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ahr-g .cell .st.live{color:#00ff88}.ahr-g .cell .st.wait{color:#ffd23a}
 #ahRooms .ph .cnt{margin-left:.3em}
 .ahr-b{display:grid;grid-template-columns:1fr 1.18fr;gap:.9em;margin-top:.95em}
-.ahr-box{position:relative;box-sizing:border-box;border:.12em solid color-mix(in srgb,var(--k,#c8ff00) 55%,#000);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
+.ahr-box{position:relative;box-sizing:border-box;border:.2em solid color-mix(in srgb,var(--k,#c8ff00) 55%,#000);background:rgba(0,0,0,.22);padding:.95em .8em .35em;min-width:0}
 .ahr-box>b{position:absolute;left:.7em;top:0;transform:translateY(-58%);font-weight:400;font-size:.4em;letter-spacing:.1em;background:var(--k,#c8ff00);color:#0b0f05;padding:.5em .8em .4em;box-shadow:0 0 0 .2em #000;white-space:nowrap}
 .ahr-r{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;font-size:.46em;letter-spacing:.06em;padding:.5em 0;border-bottom:.08em dashed rgba(255,255,255,.12);color:var(--mut)}
 .ahr-r:last-child{border-bottom:0}
@@ -704,7 +704,9 @@ html.ah-wal-hub body.hub-on #lateJoinModal .pw-modal-title{display:none!importan
 html.ah-wal-hub body.hub-on #lateJoinModal #ljBody{font-family:'Russo One',sans-serif!important;font-size:12px!important;color:#cfd8d3!important;text-align:left}
 html.ah-wal-hub body.hub-on #lateJoinModal .ri-actions,html.ah-wal-hub body.hub-on #lateJoinModal .pw-modal-cancel{display:none!important}
 /* Ventanas de salir de la partida: su marco gris, al tamano de los demas carteles. */
-html.pw-app #exitModal .exit-box{scale:.8!important}html.pw-app body.mobile-allowed #exitModal .exit-box{scale:1.05!important}
+html.pw-app #exitModal .exit-box{scale:.8!important}
+#appHub.pc :is(#ahIc,#ahUn,#ahSv) .pnl{font-size:.68em}#appHub.pc :is(#ahIc,#ahUn,#ahSv) .sv-bt .tb{font-size:.62em}
+html.pw-app #gameStakeModal{display:none!important}html.pw-app body.mobile-allowed #exitModal .exit-box{scale:1.05!important}
 /* Paneles pequenos del menu (SKIN UNLOCKED, ver skin, ICON UNLOCKED): botones compactos, confirmar verde a la izquierda y cerrar rojo a la derecha. */
 .sv-bt{justify-content:center}.sv-bt .tb{flex:none!important;width:auto!important;min-width:6.5em;white-space:nowrap;padding:.55em 1.1em!important}
 .sv-bt .tb.on{order:-1;background:#1f7a37!important;border-color:#2fae52!important;color:#eafff0!important}
@@ -789,7 +791,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         requestAnimationFrame(() => {
             // Carteles unificados: verde lo de wallet/dinero, lima el resto; grosor fijo (el de placaGrosor variaba).
             const verde = ['gameDepositModal', 'gameWithdrawModal', 'gameTopUpModal', 'walletPickerModal'].includes(m.id);
-            cv._placaKey = ''; drawPlacaCaja(box, cv, verde ? '#2fbf55' : MODES[mode], typeof placaGrosor === 'function' ? 8 / placaGrosor() : 1);
+            cv._placaKey = ''; drawPlacaCaja(box, cv, verde ? '#2fbf55' : MODES[mode], hub.classList.contains('pc') ? 0.75 : 1.3);   // marco algo mas grueso que el de los menus (pedido de David)
             // drawPlacaCaja deja el relleno igual al grosor del marco: se le suma el mismo aire por los cuatro lados.
             if (walHub && box._placaPad) box.style.setProperty('padding', (box._placaPad + 16) + 'px ' + (box._placaPad + 18) + 'px ' + (box._placaPad + 18) + 'px', 'important');
         });
@@ -902,7 +904,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function subeCampo(inp) {
         const box = inp.closest('.gameModalBox, .pw-modal-box, #ahFr .pnl, #ahAr .pnl'); if (!box) return;
         const vv = window.visualViewport, alto = window.innerHeight;
-        const visible = vv && vv.height < alto - 60 ? vv.height : alto * 0.5;
+        if (!(vv && vv.height < alto - 60)) return;   // sin teclado en pantalla (PC) no se mueve nada
+        const visible = vv.height;
         box.style.removeProperty('translate');
         const r = inp.getBoundingClientRect(), falta = r.bottom + 10 - visible;
         if (falta > 0) box.style.setProperty('translate', '0 ' + (-falta) + 'px');

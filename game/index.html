@@ -15162,8 +15162,14 @@
         let inn = box.querySelector(':scope>.pw-placa-in');
         if (!inn) { inn = document.createElement('div'); inn.className = 'pw-placa-in'; [...box.childNodes].forEach(n => { if (n !== cv) inn.appendChild(n); }); box.appendChild(inn); }
         hex = hex || '#ccff00';   // CLASSIC con los colores de ARCADE
-        // Grosor FIJO: placaGrosor() sale del ancho del panel del menu antiguo y segun estuviera visible o no el marco salia gordisimo.
-        requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, hex, 8 / placaGrosor()); if (box._placaPad) box.style.setProperty('padding', box._placaPad + 'px', 'important'); });   // el marco ocupa su grosor; el aire va dentro
+        // Algo mas grueso que los paneles del menu nuevo (estos usan la mitad en PC y entero en movil).
+        const hubPc = !!(document.getElementById('appHub') && document.getElementById('appHub').classList.contains('pc'));
+        const gris = hex === '#8a948f';
+        requestAnimationFrame(() => {
+            cv._placaKey = '';
+            // Los avisos grises llevan tambien la pantalla gris (el verde de dentro no pegaba con el marco gris).
+            const scr = PLACA.SCREEN; if (gris) PLACA.SCREEN = [30, 34, 33];
+            try { drawPlacaCaja(box, cv, hex, hubPc ? 0.75 : 1.3); } finally { PLACA.SCREEN = scr; } if (box._placaPad) box.style.setProperty('padding', box._placaPad + 'px', 'important'); });   // el marco ocupa su grosor; el aire va dentro
     }
     window.pwPlaca = pwPlaca;
     // Avisos SI/NO (arenas, desvincular X...): sin sonido; confirmar gris y cancelar rojo, del mismo tamano.
