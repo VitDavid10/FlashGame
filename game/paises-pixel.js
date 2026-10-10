@@ -457,7 +457,11 @@ function paisPrecioTexto(pill) { return pill >= 1000 ? (pill / 1000) + 'K' : Str
 let paisContexto = () => ({ cid: null, wallet: null, provider: null });
 function paisSetContexto(fn) { paisContexto = fn; }
 
-let _paisEstado = { sp: 0, pill: 0, owned: [], equipped: null };
+// La skin puesta se recuerda en el dispositivo: sin esto, hasta que contestaba /api/skins
+// (en el movil tarda) se veia la pildora de colores y luego saltaba a la skin.
+const _PAIS_EQ_KEY = 'pw_skin_eq';
+let _paisEstado = { sp: 0, pill: 0, owned: [], equipped: (() => { try { const v = localStorage.getItem(_PAIS_EQ_KEY) || ''; return /^[\w-]{1,24}$/.test(v) ? v : null; } catch (e) { return null; } })() };
+function _paisPon(e) { _paisEstado = e; try { localStorage.setItem(_PAIS_EQ_KEY, e.equipped || ''); } catch (x) {} }
 function paisMias() { return _paisEstado.owned || []; }
 function paisTengo(code) { return paisMias().indexOf(code) !== -1; }
 function paisPuesta() { return _paisEstado.equipped || null; }
@@ -475,7 +479,7 @@ async function paisSync() {
         const url = '/api/skins' + (c.wallet ? '?wallet=' + encodeURIComponent(c.wallet) : '');
         const r = await fetch(url, { headers: { 'X-Client-Id': c.cid || '' }, cache: 'no-store' });
         const j = await r.json();
-        if (j && Array.isArray(j.owned)) _paisEstado = j;
+        if (j && Array.isArray(j.owned)) _paisPon(j);
     } catch (e) {}
     return _paisEstado;
 }
@@ -506,7 +510,7 @@ async function paisComprar(code, moneda) {
     try {
         const r = await fetch('/api/skins/buy', { method: 'POST', headers: _paisCab(), body: JSON.stringify(cuerpo) });
         const j = await r.json();
-        if (j.estado) _paisEstado = j.estado;
+        if (j.estado) _paisPon(j.estado);
         return j;
     } catch (e) { return { ok: false, error: 'server unreachable' }; }
 }
@@ -518,7 +522,7 @@ async function paisPoner(code) {
     try {
         const r = await fetch('/api/skins/equip', { method: 'POST', headers: _paisCab(), body: JSON.stringify({ code, wallet: c.wallet || null }) });
         const j = await r.json();
-        if (j.estado) _paisEstado = j.estado;
+        if (j.estado) _paisPon(j.estado);
         return j;
     } catch (e) { return { ok: false, error: 'server unreachable' }; }
 }
@@ -534,7 +538,7 @@ async function paisConvertir(pill) {
     try {
         const r = await fetch('/api/skins/convert', { method: 'POST', headers: _paisCab(), body: JSON.stringify({ pill, nonce: _paisNonce(), wallet: c.wallet, pay }) });
         const j = await r.json();
-        if (j.estado) _paisEstado = j.estado;
+        if (j.estado) _paisPon(j.estado);
         return j;
     } catch (e) { return { ok: false, error: 'server unreachable' }; }
 }
