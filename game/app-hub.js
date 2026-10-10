@@ -536,16 +536,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 /* PRUEBA (?arena=1, solo PC): mini arena viva alrededor de la pildora y tira de datos en directo encima de PLAY. */
 #ahArena,#ahLive{display:none}
 #appHub.pc.arena #ahArena{display:block;position:absolute;left:22.5em;top:3.2em;width:calc((var(--hw,48) - 22.5) * 1em);height:17.6em;pointer-events:none;image-rendering:pixelated}
-#appHub.pc.arena #ahLive{display:block;position:absolute;right:2.2em;bottom:5.35em;width:19.4em;height:5.1em;box-sizing:border-box;padding:.95em .9em .4em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.1em solid var(--bar);box-shadow:.15em .22em 0 rgba(0,0,0,.6);z-index:6;pointer-events:none}
+#appHub.pc.arena #ahLive{display:block;position:absolute;right:2.2em;bottom:5.3em;width:16.4em;height:4.2em;box-sizing:border-box;padding:.85em .75em .35em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.1em solid var(--bar);box-shadow:.15em .22em 0 rgba(0,0,0,.6);z-index:6;pointer-events:none}
 #ahLive .tag{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:#ff3b3b;color:#fff;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 #ahLive .on{position:absolute;right:.8em;top:.45em;font-size:.4em;letter-spacing:.08em;color:var(--mut);display:flex;align-items:center;gap:.6em}
 #ahLive .on em{font-style:normal;color:var(--ac)}
 #ahLive .dot{display:inline-block;width:.75em;height:.75em;background:#ff3b3b;box-shadow:0 0 .6em #ff3b3b;animation:ahLiveDot 1.2s steps(2) infinite}
 #ahLive .feed{display:flex;flex-direction:column;gap:.18em;overflow:hidden;height:100%}
-#ahLive .ev{display:flex;align-items:center;gap:.55em;height:1.1em;flex:none;transition:opacity .4s}
-#ahLive .ev canvas{width:1.1em;height:1.1em;image-rendering:pixelated;flex:none}
-#ahLive .ev span{font-size:.47em;letter-spacing:.04em;color:#e8eee9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#ahLive .ev span em{font-style:normal;color:var(--ac)}#ahLive .ev span b{font-weight:400;color:#ffd23a}
+#ahLive .ev{display:flex;align-items:center;gap:.45em;height:.9em;flex:none;transition:opacity .4s}
+#ahLive .ev canvas{width:.9em;height:.9em;image-rendering:pixelated;flex:none}
+#ahLive .ev span{font-size:.4em;letter-spacing:.04em;color:#e8eee9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ahLive .ev span em{font-style:normal;color:var(--ac)}#ahLive .ev span b{font-weight:400;color:#ffd23a}#ahLive .ev span i{font-style:normal;color:var(--mut)}
 #ahLive .ev:nth-child(2){opacity:.62}#ahLive .ev:nth-child(3){opacity:.32}
 #ahLive .ev.nuevo{animation:ahLiveIn .45s cubic-bezier(.2,.9,.3,1) both}
 @keyframes ahLiveIn{from{opacity:0;transform:translateY(-.9em)}to{opacity:1;transform:none}}
@@ -1154,12 +1154,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     // Placa LIVE (PRUEBA): ONLINE es real; los sucesos son de ejemplo hasta que el servidor mande los de verdad.
     // Sale uno nuevo arriba cada 3,8 s (con el reloj del menu) y los anteriores se apagan; caben 3.
+    // Lo que gana la gente, en $PILLY y en dolares (de ejemplo: el servidor aun no manda estos sucesos).
     const LIVE_DEMO = [
-        { c: ['#ff2a2a', '#ffd23a'], t: '<em>@icefox</em> ATE <em>@rcer</em> <b>+1,240 $PILLY</b>' },
-        { c: ['#1e6bff', '#00cfff'], t: '<em>@nasa</em> TOP TODAY · <b>14 KILLS</b>' },
-        { c: ['#b000ff', '#ff4fd8'], t: 'ARENAS 2V2 · MATCH IN <b>0:08</b>' },
-        { c: ['#ff8a00', '#ffffff'], t: '<em>@doge</em> PENTAKILL IN CLASSIC <b>$5</b>' },
-        { c: ['#00e0b0', '#1e6bff'], t: '<em>@mars</em> BOUGHT THE <b>SPAIN</b> SKIN' },
+        { c: ['#ff2a2a', '#ffd23a'], t: '<em>@icefox</em> <b>+1,240 $PILLY</b> <i>($3.10)</i>' },
+        { c: ['#1e6bff', '#00cfff'], t: '<em>@nasa</em> <b>+5,600 $PILLY</b> <i>($14.00)</i>' },
+        { c: ['#b000ff', '#ff4fd8'], t: '<em>@mars</em> <b>+820 $PILLY</b> <i>($2.05)</i>' },
+        { c: ['#ff8a00', '#ffffff'], t: '<em>@doge</em> <b>+12,400 $PILLY</b> <i>($31.00)</i>' },
+        { c: ['#00e0b0', '#1e6bff'], t: '<em>@eth</em> <b>+2,000 $PILLY</b> <i>($5.00)</i>' },
     ];
     let liveI = 0, liveT = 0;
     function livePaso(t) {
