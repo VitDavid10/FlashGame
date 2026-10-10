@@ -522,10 +522,10 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it .med{width:2.7em;height:2.7em}
 #appHub.pc .ah-it .med svg{width:1.25em;height:1.25em}
 #appHub.pc .ah-it .med canvas{width:2.3em;height:2.3em}
-#appHub.pc .ah-it .t{font-size:.6em}
-#appHub.pc .ah-it .s{font-size:.4em;margin-top:.8em}
+#appHub.pc .ah-it .t{font-size:.46em}
+#appHub.pc .ah-it .s{font-size:.32em;margin-top:.9em}
 #appHub.pc .ah-it .bar{width:7em}
-#appHub.pc #ahPillSub{position:absolute;left:23em;top:1.45em;margin:0;gap:1.2em}
+#appHub.pc #ahPillSub{position:absolute;left:23em;top:1.45em;margin:0;gap:1.2em;font-size:.4em}
 #appHub.pc #ahPillSub img,#appHub.pc #ahPillSub .hk{width:3.9em;height:3.9em}
 #ahPillSub .hk{display:inline-block;box-sizing:border-box;width:3.4em;height:3.4em;border:.25em solid #3b4a40;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 .2em rgba(0,0,0,.6)}
 #appHub.pc .ah-it.sel:before{border-color:var(--ac);background:linear-gradient(180deg,#0b0e01,#050700)}
