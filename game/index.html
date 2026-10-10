@@ -158,14 +158,14 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Play PillWars — Arcade &amp; Classic</title>
-    <meta name="description" content="Choose Arcade or Classic, pick your skin and jump into the arena. Split, use skills and eat the other pills to become the biggest. Free or $PILLY rooms.">
+    <title>Play PillWars — Classic &amp; Arenas</title>
+    <meta name="description" content="Play Classic or team up in Arenas, pick your skin and jump in. Split, use skills and eat the other pills to become the biggest. Free or $PILLY rooms.">
     <link rel="canonical" href="https://pillwars.fun/game/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="PillWars">
     <meta property="og:url" content="https://pillwars.fun/game/">
-    <meta property="og:title" content="Play PillWars — Arcade &amp; Classic">
-    <meta property="og:description" content="Choose Arcade or Classic, pick your skin and jump into the arena. Split, use skills and eat the other pills to become the biggest. Free or $PILLY rooms.">
+    <meta property="og:title" content="Play PillWars — Classic &amp; Arenas">
+    <meta property="og:description" content="Play Classic or team up in Arenas, pick your skin and jump in. Split, use skills and eat the other pills to become the biggest. Free or $PILLY rooms.">
     <meta property="og:image" content="https://pillwars.fun/img/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -5863,7 +5863,7 @@
         function gcDrawFrame() {
             if (typeof _pmFrameDraw !== 'function' || !gcCard.clientWidth) return;
             const primero = !gcInner.style.padding;
-            const hex = currentGameMode === 'classic' ? '#00ffaa' : '#ccff00';
+            const hex = '#ccff00';   // CLASSIC con los colores de ARCADE
             // 40px = grosor del mockup aprobado (general_card_preview.html),
             // no el PM_FRAME_T reducido de aqui (ese es solo para el cartel
             // de detalle de skin, ver su comentario en paises-pixel.js).
@@ -8772,7 +8772,8 @@
         currentGameMode = m;
         // Lo publica para las piezas que viven fuera de este script (el cartel de
         // REWARDS pinta su marco del color del modo).
-        try { document.body.dataset.modo = m || 'classic'; } catch (e) {}
+        // Siempre 'arcade': desde el 10-oct-2026 CLASSIC usa los colores de ARCADE (y ARCADE esta escondido). Solo pinta.
+        try { document.body.dataset.modo = 'arcade'; } catch (e) {}
         // La wallet (IN GAME + CONNECT/DEPOSIT) NO se enseña aqui: se enseña
         // abajo, junto con el resto del menu. Aqui salia al instante mientras la
         // transicion de paneles seguia corriendo, asi que durante 1,2s eran lo
@@ -14467,8 +14468,8 @@
         const cdDx = opts.dx | 0, cdDy = opts.dy | 0;
         if (cdDx || cdDy) el.style.transform = 'translate(' + cdDx + 'px,' + (-120 + cdDy) + 'px)';
         label = label || 'MATCH STARTING';
-        const modeKey = currentGameMode === 'classic' ? 'classic' : 'arcade';
-        const modeHex = modeKey === 'classic' ? '#00ffaa' : '#ccff00';
+        const modeKey = 'arcade';   // CLASSIC con los colores (y rotulos) de ARCADE
+        const modeHex = '#ccff00';
         // Rótulo Y dígito van SIN glow por defecto (David: se veía borroso; los
         // dos PNG horneados ya tienen su propio contorno/bisel, no les hace
         // falta). opts.glowPx activa el MISMO glow para los dos por igual.
@@ -15134,7 +15135,7 @@
         if (!cv) { cv = document.createElement('canvas'); cv.className = 'pw-placa-cv'; box.prepend(cv); }
         let inn = box.querySelector(':scope>.pw-placa-in');
         if (!inn) { inn = document.createElement('div'); inn.className = 'pw-placa-in'; [...box.childNodes].forEach(n => { if (n !== cv) inn.appendChild(n); }); box.appendChild(inn); }
-        const hex = (typeof currentGameMode !== 'undefined' && currentGameMode === 'classic') ? '#00ffaa' : '#ccff00';
+        const hex = '#ccff00';   // CLASSIC con los colores de ARCADE
         requestAnimationFrame(() => { cv._placaKey = ''; drawPlacaCaja(box, cv, hex, 1); if (box._placaPad) box.style.setProperty('padding', box._placaPad + 'px', 'important'); });   // el marco ocupa su grosor; el aire va dentro
     }
     window.pwPlaca = pwPlaca;
@@ -15693,6 +15694,8 @@
                 // al salir de esta pantalla.
                 try { SoundManager.playMenuMusic(); } catch (e) {}
                 ok();
+                // Sin pantalla de modos (ARCADE escondido desde el 10-oct-2026): del TAP TO START se entra directo al menu de CLASSIC.
+                if (EN_APP) { try { selectMode('classic', true); } catch (e) {} }
             }, { once: true });
         });
     }

@@ -106,7 +106,7 @@ const defs = [
   ['suggestions', '💬 COMMUNITY', 'Ideas for modes, skills, skins and features.', []],
   ['bugs', '💬 COMMUNITY', 'Public bug reports: device, browser and what happened. Private issues? Open a ticket in #contact.', []],
   ['flex-and-refs', '💬 COMMUNITY', 'Flex your points card and share your referral link here, and only here. Slow mode: one post per hour.', live([], staffOnly), { rate_limit_per_user: 3600 }],
-  ['looking-to-play', '🎮 GAME', 'Find people to jump into a room with. Say mode (Arcade/Classic) and region.', []],
+  ['looking-to-play', '🎮 GAME', 'Find people to jump into a room with. Say mode (Classic/Arenas) and region.', []],
   ['strategy', '🎮 GAME', 'Tips, skill picks, split tricks and how to win the Daily Arena.', []],
   ['high-scores', '🎮 GAME', 'Flex your best runs. Screenshot or it did not happen.', []],
   ['contact', '📨 SUPPORT', 'Collabs, private bug reports, support: open a ticket with the buttons.', readOnlyForAll.map(o => ({ ...o, id: role.Player.id, allow: s(VIEW | HISTORY | REACT) }))],
@@ -199,7 +199,7 @@ A free-to-play multiplayer .io arena game on Solana that runs in your browser. Y
 Yes. Free rooms are always free. Paid rooms in $PILLY will come after the token launches.
 
 **Which modes are there?**
-**Arcade:** a roguelike arena where you draft a skill every 30 seconds and the top 10 split the pot. **Classic:** a 15-minute match on a map twice as big, with only the shoot skill.
+**Classic:** a 15-minute match on a huge map with all 8 skills; eat a player and you take their $PILLY. **Arenas:** 1v1, 2v2 or 3v3 team battles, solo or with friends.
 
 **Can I play on mobile?**
 Yes, in the mobile browser. A Solana Seeker app is on the way.
@@ -231,7 +231,7 @@ Public bugs: ${ch('bugs')}. Private issues, collabs and partnerships: open a tic
 const ROADMAP = `# 🗺️ Roadmap
 
 **✅ Done**
-• Multiplayer arena with an authoritative server (anti-cheat), Arcade and Classic modes
+• Multiplayer arena with an authoritative server (anti-cheat), Classic and Arenas modes
 • Daily quests, skin shop, leaderboard
 • On-chain treasury with a time lock on project funds
 ${live(`• Genesis Drop (Season 0) is live

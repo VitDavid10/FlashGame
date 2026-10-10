@@ -318,8 +318,9 @@ html.enter #view-me .card-row>.panel:nth-child(2){animation-delay:.5s}
 .modes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
 .mode img{display:block;height:44px;width:auto;max-width:100%;image-rendering:pixelated;margin:0 0 14px}
 .mode .tag{margin-bottom:16px}
-.mode:first-child .tag{background:#4fcd92}
-.mode:last-child .tag{background:var(--arcade)}
+.mode:first-child .tag{background:var(--arcade)}
+.mode:last-child .tag{background:#ff5a4a}
+.mode .mtitle{font-family:var(--px);font-size:30px;line-height:44px;height:44px;color:#ff5a4a;text-shadow:4px 4px 0 #3a0d08;margin:0 0 14px;letter-spacing:2px}
 
 /* ---------- how to play ---------- */
 .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -382,7 +383,7 @@ footer{text-align:center;color:var(--dim);font-size:18px;margin-top:50px}
 }
 @media (max-width:820px){
   .connect-grid,.card-row,.tk-grid,.modes{grid-template-columns:1fr}
-  .mode img{height:34px}
+  .mode img{height:34px}.mode .mtitle{font-size:22px;line-height:34px;height:34px}
   .panel{padding:16px}
   .hudq{min-width:0;padding:6px 8px;right:8px;top:64px}
   .hudq li{font-size:15px} .hudq li u{font-size:14px}
@@ -625,7 +626,7 @@ else {
   <div class="shead">
     <div>
       <h2>DAILY ARENA</h2>
-      <p>Play an arcade match, clear the daily missions and bank airdrop points.</p>
+      <p>Play a match, clear the daily missions and bank airdrop points.</p>
     </div>
     <div class="reset">RESETS IN <b id="resetIn">--:--:--</b></div>
   </div>
@@ -666,7 +667,7 @@ else {
   </div>
   <div class="pillars">
     <div class="panel pillar"><b>SKILL, NOT LUCK</b><p>What decides who wins is how well you play: learn the mechanics, read the map and have a plan so you are never the one who gets eaten.</p></div>
-    <div class="panel pillar"><b>KILL AND SURVIVE TO EARN</b><p>Once $PILLY launches, eating other players will win you their $PILLY. In Classic it will only be yours once you leave the room alive. In Arcade you will have to survive to the end and finish in the top 10 of the room.</p></div>
+    <div class="panel pillar"><b>KILL AND SURVIVE TO EARN</b><p>Once $PILLY launches, eating other players will win you their $PILLY. In Classic it will only be yours once you leave the room alive. In Arenas you will fight 1v1, 2v2 or 3v3, and every rival your team takes down will pay you their $PILLY.</p></div>
     <div class="panel pillar"><b>STAKING IS COMING</b><p>The fees the game charges will go into a rewards pool. Staking is coming soon: lock your future $PILLY and share those fees with every other staker.</p></div>
   </div>
 
@@ -680,21 +681,21 @@ else {
   </div>
   <div class="modes">
     <div class="panel mode">
-      <img src="game/img/mode-title/CLASSIC-word-placa.png" alt="CLASSIC">
+      <img src="game/img/mode-title/CLASSIC-word-placa-lime.png" alt="CLASSIC">
       <span class="tag">STANDARD EXPERIENCE</span>
       <ul class="uses">
-        <li><span>A huge open map with <b>no clock</b>. Only splitting and shooting.</span></li>
+        <li><span>A huge open map, <b>matches of up to 15 minutes</b> and all 8 skills.</span></li>
         <li><span>Eat a player and <b>their $PILLY will be added to yours</b>. If you die, your killer will get yours.</span></li>
         <li><span><b>Cash out alive</b>, or win with 5 kills, to keep it.</span></li>
       </ul>
     </div>
     <div class="panel mode">
-      <img src="game/img/mode-title/ARCADE-word-placa.png" alt="ARCADE">
-      <span class="tag">ROGUELIKE EVOLUTION</span>
+      <div class="mtitle">ARENAS</div>
+      <span class="tag">TEAM BATTLES</span>
       <ul class="uses">
-        <li><span><b>3:50 matches</b>. Everyone starts from zero.</span></li>
-        <li><span>Pick a <b>random skill every 30 seconds</b> and build your pill as you go.</span></li>
-        <li><span>Every death will feed the pot. <b>The top 10 will split it</b>, with the most going to the top 3.</span></li>
+        <li><span><b>1v1, 2v2 or 3v3</b>. Play solo or team up with up to 3 friends.</span></li>
+        <li><span>Pick your <b>2 starting skills</b> before every match.</span></li>
+        <li><span>Every rival your team takes down <b>pays you their $PILLY</b>, even if a bot gets them first (90%).</span></li>
       </ul>
     </div>
   </div>
@@ -716,7 +717,7 @@ else {
   <div class="shead">
     <div>
       <h2>HOW TO PLAY</h2>
-      <p>One arcade match lasts 3:50. The arena is full of bots, and they come for you from the first second.</p>
+      <p>One match lasts 3:50. The arena is full of bots, and they come for you from the first second.</p>
     </div>
   </div>
   <div class="steps">
@@ -793,9 +794,9 @@ else {
   <div class="panel">
     <h3 class="ptitle">WHAT $PILLY WILL BE FOR</h3>
     <ul class="uses">
-      <li><span><b>Paid rooms.</b> Enter classic and arcade rooms with $PILLY and play for the pot.</span></li>
+      <li><span><b>Paid rooms.</b> Enter classic rooms and arenas with $PILLY and play for the pot.</span></li>
       <li><span><b>Skin shop.</b> Buy skins. Every $PILLY spent will be burned.</span></li>
-      <li><span><b>Rewards pool.</b> Room fees, the arcade cut and unclaimed pots will fill it.</span></li>
+      <li><span><b>Rewards pool.</b> Room fees and unclaimed pots will fill it.</span></li>
       <li><span><b>Staking (coming soon).</b> Stake your future $PILLY and share the fees in the rewards pool.</span></li>
     </ul>
   </div>

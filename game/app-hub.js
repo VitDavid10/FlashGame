@@ -9,9 +9,10 @@
     if (!document.documentElement.classList.contains('pw-app')) return;
 
     const U = 360;                      // 1em = 16px con 360 de alto
-    const MODES = { classic: '#00ffaa', arcade: '#ccff00' };
+    // CLASSIC lleva los colores de ARCADE (10-oct-2026: ARCADE escondido y a David le gustaban mas esos).
+    const MODES = { classic: '#ccff00', arcade: '#ccff00' };
     const THEME = {
-        classic: { bg: '#00130c', line: '#0b3326', top: 'rgba(0,10,6,.9)', inner: '#0f2c22', inner2: '#06120d', edge: '#1d4a3b', shade: '2,8,5', mut: '#8fbfae', bar: '#255f4c', p1: '#0a1a13', p2: '#04100b' },
+        classic: { bg: '#0d1200', line: '#28330a', top: 'rgba(8,10,0,.9)', inner: '#232a08', inner2: '#0d1003', edge: '#3d4a14', shade: '7,9,0', mut: '#b7c28a', bar: '#4d5f17', p1: '#0b0e01', p2: '#050700' },
         arcade: { bg: '#0d1200', line: '#28330a', top: 'rgba(8,10,0,.9)', inner: '#232a08', inner2: '#0d1003', edge: '#3d4a14', shade: '7,9,0', mut: '#b7c28a', bar: '#4d5f17', p1: '#0b0e01', p2: '#050700' },
     };
     const PRICES = ['Free', '2$', '5$', '10$', '20$'];
@@ -963,7 +964,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const th = THEME[mode];
         [['--bg', th.bg], ['--top', th.top], ['--in1', th.inner], ['--in2', th.inner2], ['--edge', th.edge], ['--sh', th.shade], ['--mut', th.mut], ['--bar', th.bar], ['--p1', th.p1], ['--p2', th.p2]].forEach(([k, v]) => hub.style.setProperty(k, v));
         const word = mode === 'classic' ? 'CLASSIC' : 'ARCADE';
-        $('#ahRooms .mw').src = 'img/mode-title/' + word + '-word.png';
+        $('#ahRooms .mw').src = 'img/mode-title/' + word + (word === 'CLASSIC' ? '-word-lime.png' : '-word.png');
         drawPill($('#ahPillIco'), 64, 0.78);
         // Skill elegida: su icono; sin elegir: el hueco vacio (antes un texto PICK 2 SKILLS).
         $('#ahPillSub').innerHTML = [0, 1].map(i => picks[i] ? '<img src="' + skIcon(picks[i]) + '">' : '<span class="hk"></span>').join('');
@@ -2005,7 +2006,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     const CORE_VIDEOS = [
         { src: '../video/social/1.mp4', alt: '../video/pillwars-origin.mp4', t: 'PILLWARS ORIGIN', d: 'Where PillWars comes from.', tag: 'STORY' },
         { src: '../video/social/2.mp4', t: 'HOW TO PLAY PILLWARS', d: 'Everything you need for your first match.', tag: 'GUIDE' },
-        { off: true, t: 'GAME MODES', d: 'Classic, Arcade and Arenas explained. Coming soon.', tag: 'SOON' },
+        { off: true, t: 'GAME MODES', d: 'Classic and Arenas explained. Coming soon.', tag: 'SOON' },
         { src: '../video/social/4.mp4', t: 'PILLWARS ON SEEKER', d: 'Play PillWars on the Solana Seeker.', tag: 'SEEKER' },
         { src: '../video/social/5.mp4', t: 'JOIN THE PILLWARS COMMUNITY', d: 'Meet the players and follow the news.', tag: 'COMMUNITY' }
     ];
@@ -2069,11 +2070,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             });
         } else if (coreTab === 'modes') {
             const M = [
-                { k: '#00ffaa', n: 'CLASSIC', tg: 'THE ORIGINAL', li: ['15 minute matches on a huge map.', 'All 8 skills are in play.', 'Reach 5 kills (a pentakill) and the match ends.', 'Leaving early costs a fee: 50% with no kills, 20% with 1, 10% with 2 or more.', 'When you eat someone you take everything they were carrying.'] },
-                { k: '#c8ff00', n: 'ARCADE', tg: 'ROGUELIKE MECHANICS', li: ['Matches last 3:00 and the safe zone keeps shrinking.', 'Random events: FOOD RAIN, GOLDEN VIRUS, NO SPLIT, TAX ON THE TOP and HEAVY.', 'You start empty and pick a new skill every 30 seconds.', 'Out of the zone you lose mass, and eating gives you much less.', 'The ranking goes by score: every kill adds 10% to your mass, up to x2.', 'Reach the Top 10 to win.'] },
+                { k: '#ccff00', n: 'CLASSIC', tg: 'THE ORIGINAL', li: ['15 minute matches on a huge map.', 'All 8 skills are in play.', 'Reach 5 kills (a pentakill) and the match ends.', 'Leaving early costs a fee: 50% with no kills, 20% with 1, 10% with 2 or more.', 'When you eat someone you take everything they were carrying.'] },
                 { k: '#ff5a4a', n: 'ARENAS', tg: '1V1 · 2V2 · 3V3', li: ['Team matches: play solo or with up to 3 friends.', 'FREE rooms and paid rooms with real prizes.', 'Pick your 2 skills in THE PILL before each match.', 'If a bot eats an enemy you still receive 90% of the tokens they carried.', 'Prizes are collected from CLAIM in your profile.'] }
             ];
-            b.innerHTML = '<div class="cr-grid"></div>';
+            b.innerHTML = '<div class="cr-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>';
             M.forEach(m => { const c = document.createElement('div'); c.className = 'cr-mode'; c.style.setProperty('--k', m.k); c.innerHTML = '<div class="tg">' + m.tg + '</div><h3>' + m.n + '</h3><ul>' + m.li.map(x => '<li>' + x + '</li>').join('') + '</ul>'; b.querySelector('.cr-grid').appendChild(c); });
         } else {
             const SID = { clon: 1, shoot: 2, sprint: 3, tp: 4, iman: 5, inmune: 6, big: 7, random: 8 };
@@ -2116,7 +2116,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             openPill();
         }
         else if (a === 'music') { try { toggleMusic(); } catch (x) {} paintStatic(); }
-        else if (a === 'back') { hide(); try { goBackToModes(); } catch (x) {} }
+        else if (a === 'back') { hide(); try { goBackToModes(); } catch (x) {} try { pantallaInicio(); } catch (x) {} }   // sin pantalla de modos: atras es TAP TO START
     }
     function wire() {
         hub.addEventListener('click', tap);
@@ -2219,22 +2219,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         () => { const l = aqList(); return 'Tip: complete the ' + l.length + ' daily quests to earn up to ' + l.reduce((a, m) => a + (m.pts || 0), 0) + ' SP.'; },
         () => 'Tip: tap up to 3 quests in QUESTS to follow them during the match.',
         () => 'Tip: quests reset every day at 00:00 UTC.',
-        () => 'Tip: you choose 2 skills at the start of every ARENAS and ARCADE match. Pick them in THE PILL.',
+        () => 'Tip: you choose 2 skills at the start of every ARENAS match. Pick them in THE PILL.',
         () => hub.classList.contains('pc') ? 'Tip: tap INFO in THE PILL or open HOW TO PLAY (the gear) to see how each skill works.' : 'Tip: tap INFO in THE PILL to see how each skill works.',
         () => 'Tip: add friends in FRIENDS to form a group for 2v2 and 3v3.',
         () => 'Tip: mute a friend in FRIENDS to stop their popups. Their whispers and invites pile up there instead.',
-        () => 'Tip: in ARCADE the prize depends on how many played: 6 to 9 the top 3 win, 10 to 19 the top 5, 20 or more the top 10.',
-        () => 'Tip: in ARCADE only the players still alive at the end get paid. Every paid place gets back more than its entry.',
-        () => 'Tip: an ARCADE match needs at least 6 players to start.',
-        () => 'Tip: in ARCADE the safe zone starts closing at minute 1. Outside it you lose mass every second, and the last phase is brutal.',
-        () => 'Tip: in ARCADE nobody can join after the first minute. Be there from the start.',
-        () => 'Tip: every 30 seconds ARCADE has an event. Good ones: food rain, golden virus, no split. Bad ones: tax on the top, heavy.',
-        () => 'Tip: TAX ON THE TOP takes 20% of the mass of the top 3. Being first has its price.',
-        () => 'Tip: during HEAVY the biggest pill moves slower. Time to hunt it.',
-        () => 'Tip: in ARCADE, when only 3 players are left the match ends and those 3 win.',
-        () => 'Tip: the GOLDEN VIRUS gives +25% mass to the first one who touches it.',
-        () => 'Tip: in ARCADE the ranking goes by score: every kill adds 10% to your mass, up to x2.',
-        () => 'Tip: in ARCADE the top 3 wear a crown. Eat one for +30%, +20% or +10% mass (the king also counts as a double kill).',
         () => 'Tip: in CLASSIC, when you eat someone you take everything they were carrying.',
         () => 'Tip: leaving CLASSIC early costs a penalty: 20% with no kills, 10% with one kill, none from 2 kills.',
         () => 'Tip: in CLASSIC your match ends when you reach 5 kills (pentakill), when you leave, or at the 15 minute limit.',
@@ -2367,7 +2355,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         if (/^#x(err)?=/.test(location.hash)) { const err = /xerr/.test(location.hash); history.replaceState(null, '', location.pathname + location.search); if (err) try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} }
         wire(); setInterval(() => { if (hub.classList.contains('on')) pullRooms(); }, 5000);
         addEventListener('resize', () => { if (hub.classList.contains('on')) { scale(); paintStatic(); } });
-        // Un menu por modo: se abre al elegir CLASSIC o ARCADE en la rueda.
+        // El menu se abre en CLASSIC directamente al tocar TAP TO START (ARCADE escondido desde el 10-oct-2026).
         const orig = window.selectMode;
         if (typeof orig === 'function') window.selectMode = function (m) { const r = orig.apply(this, arguments); show(m); return r; };
         window._hubShow = show; window._hubSyncX = syncX; window._hubUnlock = desbloqueada; window._hubConnectX = conectaX; window._hubAvatar = avatar; window._hubAvatarEl = avEl;
