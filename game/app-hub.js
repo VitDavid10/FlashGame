@@ -533,9 +533,12 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it.sel .t{color:var(--ac)}
 #appHub.pc .ah-it.sel:not([data-a=pill]) .med svg{color:#eaf5ef}
 #appHub.pc #ahPill{left:27.5em;top:5.6em;width:16em;height:10.32em}
+#appHub.pc.arena #ahPill{left:26.3em;top:4.83em;width:18.4em;height:11.87em}
 /* PRUEBA (?arena=1, solo PC): mini arena viva alrededor de la pildora y tira de datos en directo encima de PLAY. */
-#ahArena,#ahLive{display:none}
-#appHub.pc.arena #ahArena{display:block;position:absolute;left:22.5em;top:0;height:100%;width:calc((var(--hw,48) - 22.5) * 1em);pointer-events:none;image-rendering:pixelated}
+#ahArena,#ahLive,#ahPillNm{display:none}
+#appHub.pc.arena #ahPillNm{display:block;position:absolute;left:26.3em;top:4.5em;width:18.4em;text-align:center;pointer-events:none;line-height:1}
+#ahPillNm span{font-size:.5em;color:#fff;letter-spacing:.08em;text-shadow:.16em .16em 0 #000}
+#appHub.pc.arena #ahArena{display:block;position:absolute;left:22.5em;top:2.8em;height:calc(100% - 2.8em);width:calc((var(--hw,48) - 22.5) * 1em);pointer-events:none;image-rendering:pixelated}
 #appHub.pc.arena #ahLive{display:block;position:absolute;right:2.2em;bottom:5.3em;width:16.4em;height:4.2em;box-sizing:border-box;padding:.85em .75em .35em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.1em solid var(--bar);box-shadow:.15em .22em 0 rgba(0,0,0,.6);z-index:6;pointer-events:none}
 #ahLive .tag{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:#ff3b3b;color:#fff;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 #ahLive .on{position:absolute;right:.8em;top:.45em;font-size:.4em;letter-spacing:.08em;color:var(--mut);display:flex;align-items:center;gap:.6em}
@@ -932,7 +935,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-it" data-a="store" style="top:11.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
 <div class="ah-it" data-a="quests" style="top:15.5em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <div class="ah-it" data-a="core" style="top:0"><div class="med">${svg('core')}</div><div><div class="t">PILLWARS CORE</div><div class="s">GUIDES · VIDEOS</div></div></div>
-<canvas id="ahArena"></canvas><div id="ahLive"><b class="tag">LIVE</b><span class="on"><i class="dot"></i><em id="ahLiveOn">0</em> ONLINE</span><div class="feed" id="ahLiveFeed"></div></div><canvas id="ahPill"></canvas>
+<canvas id="ahArena"></canvas><div id="ahPillNm"><span></span></div><div id="ahLive"><b class="tag">LIVE</b><span class="on"><i class="dot"></i><em id="ahLiveOn">0</em> ONLINE</span><div class="feed" id="ahLiveFeed"></div></div><canvas id="ahPill"></canvas>
 <div class="ah-sys" id="ahSys"><b>SYSTEM</b><i class="pic"></i><span></span><div class="acts"></div></div>
 <div class="ah-room" data-a="rooms"><div class="med">${svg('rooms')}<span class="sw">${svg('swap')}</span></div><div class="v" id="ahRoomV"></div></div>
 <div class="ah-play"><span>PLAY</span></div>
@@ -1058,7 +1061,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const rgb = pixRgb(hex); g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')'; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
             // Si el login sigue pintando por detras ya mueve la comida (mismo estado): aqui solo se dibuja.
             const lo = document.getElementById('loginOverlay');
-            if (!(lo && lo.style.display === 'flex')) stepMenuDeco(W, H, performance.now(), true, []);
+            if (!(lo && lo.style.display === 'flex')) stepMenuDeco(W, H, performance.now(), !hub.classList.contains('arena'), []);   // en PC (arena viva) la comida esta quieta
             drawMenuDeco(g, W, H, true);
         } catch (e) { g.fillStyle = THEME[mode].bg; g.fillRect(0, 0, W, H); }
     }
@@ -1159,6 +1162,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         { const dx = obj.x - AR.off.x, dy = obj.y - AR.off.y, d = Math.hypot(dx, dy), paso = Math.min(d, vel * dt);
           if (d > .01) { AR.off.x += dx / d * paso; AR.off.y += dy / d * paso; } }
         pc.style.transform = (AR.off.x || AR.off.y) ? 'translate(' + (AR.off.x / 10).toFixed(2) + 'em,' + (AR.off.y / 10).toFixed(2) + 'em)' : '';
+        // el nombre que tienes puesto, encima de la pildora (va con ella)
+        const nm = $('#ahPillNm'), nmT = String((document.getElementById('playerNameInput') || {}).value || '').trim().toUpperCase();
+        if (nm) { nm.style.transform = pc.style.transform; const sp = nm.firstChild; if (sp.textContent !== nmT) sp.textContent = nmT; }
         const enCaza = Math.hypot(AR.off.x, AR.off.y) > 2;
         // comida: quieta; se la comen la grande (solo cuando sale) y las pequenas
         for (let i = AR.comida.length - 1; i >= 0; i--) {
