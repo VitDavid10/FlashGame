@@ -14,7 +14,9 @@
 
     // --- CONSTANTES DE JUEGO ---
     const WORLD_CONFIG = { arcade: { size: 3500 }, classic: { size: 7000 }, foodDensity: 40, virusDensity: 1 };
-    const SKILL_PARAMS = { clonCost: 2000, clonCooldown: 1000, clonSpeed: 40, shootCost: 2500, shootBulletSpeed: 20, shootVirusSpeed: 20, shootDmgThreshold: 15000, sprintSpeedMult: 1.5, sprintDuration: 10000, magnetForce: 3, magnetRange: 200, magnetDuration: 8000, shieldDuration: 3000, bigMin: 5000, bigMax: 12000 };
+    // Masa que dan o quitan las skills (CLON, SHOOT, PLUS, GAMBLE). 0.25 = un 75% menos (prueba del 11-oct-2026, con la comida).
+    const SKILL_MASS_MULT = 0.25;
+    const SKILL_PARAMS = { clonCost: 2000 * SKILL_MASS_MULT, clonCooldown: 1000, clonSpeed: 40, shootCost: 2500 * SKILL_MASS_MULT, shootBulletSpeed: 20, shootVirusSpeed: 20, shootDmgThreshold: 15000, sprintSpeedMult: 1.5, sprintDuration: 10000, magnetForce: 3, magnetRange: 200, magnetDuration: 8000, shieldDuration: 3000, bigMin: 5000 * SKILL_MASS_MULT, bigMax: 12000 * SKILL_MASS_MULT };
     const VIRUS_RADIUS = 70, VIRUS_GAIN_LOW = 5000, VIRUS_GAIN_HIGH = 10000, VIRUS_GAIN_THRESHOLD = 100000;
     /*
      * MAPA VIVO (classic, desde el 2-oct-2026): el mapa mide lo justo para que
@@ -445,7 +447,7 @@
             else if (id === 5) { siblings.forEach(s => s.magnetTime = SKILL_PARAMS.magnetDuration); showText("MAGNET", "#A020F0"); }
             else if (id === 6) { siblings.forEach(s => _ponShield(s)); showText("SHIELD", "#FFD700"); }
             else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin; let gainPerCell = totalGain / siblings.length; siblings.forEach(s => { s.r = Math.sqrt((s.mass + gainPerCell) / (Math.PI * PILL_RATIO)); s.flashColor = '#00ff00'; s.flashTime = 1000; s.spawnParticles(sim, 'PLUS'); }); showText("MASS UP", "#00FF00"); }
-            else if (id === 8) { let totalVal = (Math.random() < 0.5) ? -5000 : 15000; let valPerCell = totalVal / siblings.length; siblings.forEach(s => { let newMass = s.mass + valPerCell; if (newMass < 314) newMass = 314; s.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); s.flashColor = (totalVal >= 0) ? '#00ff00' : '#ff0000'; s.flashTime = 1000; s.spawnParticles(sim, totalVal >= 0 ? 'PLUS' : 'MINUS'); }); showText(totalVal >= 0 ? "JACKPOT!" : "FAIL!", totalVal >= 0 ? "#00FF00" : "#FF0000"); }
+            else if (id === 8) { let totalVal = ((Math.random() < 0.5) ? -5000 : 15000) * SKILL_MASS_MULT; let valPerCell = totalVal / siblings.length; siblings.forEach(s => { let newMass = s.mass + valPerCell; if (newMass < 314) newMass = 314; s.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); s.flashColor = (totalVal >= 0) ? '#00ff00' : '#ff0000'; s.flashTime = 1000; s.spawnParticles(sim, totalVal >= 0 ? 'PLUS' : 'MINUS'); }); showText(totalVal >= 0 ? "JACKPOT!" : "FAIL!", totalVal >= 0 ? "#00FF00" : "#FF0000"); }
         }
     }
 
@@ -895,7 +897,7 @@
             else if (id === 5) { activated = true; }
             else if (id === 6) { p.cells.forEach(c => _ponShield(c)); activated = true; }
             else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin, gainPerCell = (p.cells.length > 0) ? (totalGain / p.cells.length) : totalGain; p.cells.forEach(c => { c.r = Math.sqrt((c.mass + gainPerCell) / (Math.PI * PILL_RATIO)); c.flashColor = '#00ff00'; c.flashTime = 1000; c.spawnParticles(this, 'PLUS'); }); activated = true; }
-            else if (id === 8) { let totalVal = (Math.random() < 0.5) ? -5000 : 15000, valPerCell = (p.cells.length > 0) ? (totalVal / p.cells.length) : totalVal; p.cells.forEach(c => { let newMass = c.mass + valPerCell; if (newMass < 314) newMass = 314; c.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); c.flashColor = (valPerCell >= 0) ? '#00ff00' : '#ff0000'; c.flashTime = 1000; c.spawnParticles(this, valPerCell >= 0 ? 'PLUS' : 'MINUS'); }); activated = true; win = totalVal >= 0; }
+            else if (id === 8) { let totalVal = ((Math.random() < 0.5) ? -5000 : 15000) * SKILL_MASS_MULT, valPerCell = (p.cells.length > 0) ? (totalVal / p.cells.length) : totalVal; p.cells.forEach(c => { let newMass = c.mass + valPerCell; if (newMass < 314) newMass = 314; c.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); c.flashColor = (valPerCell >= 0) ? '#00ff00' : '#ff0000'; c.flashTime = 1000; c.spawnParticles(this, valPerCell >= 0 ? 'PLUS' : 'MINUS'); }); activated = true; win = totalVal >= 0; }
             if (activated) {
                 if (!p.godMode) skillObj.uses--;
                 if (id >= 3 && id <= 8) { p.skillState[id] = def.maxActive; }

@@ -5895,13 +5895,13 @@
     // CORREGIDO: Rutas a videos e imágenes con ../
     const SKILL_DESCRIPTIONS = {
         1: { name: "CLON", desc: "THE FARMER. Shoots a mass projectile. IMPORTANT: If it hits a VIRUS, it clones it and grants you a NEW SKILL card. Cooldown: 1s.", video: "../video/clips/clon.mp4", icon: "../img/clon.png" },
-        2: { name: "SHOOT", desc: "OFFENSIVE. Shoot a virus once and it turns purple; shoot it again and it flies off, blasting any rival in its way. Does not grant skills. Cost: 2500 Mass.", video: "../video/clips/shoot.mp4", icon: "../img/shoot.png" },
+        2: { name: "SHOOT", desc: "OFFENSIVE. Shoot a virus once and it turns purple; shoot it again and it flies off, blasting any rival in its way. Does not grant skills. Cost: 625 Mass.", video: "../video/clips/shoot.mp4", icon: "../img/shoot.png" },
         3: { name: "SPRINT", desc: "MOBILITY. Boosts movement speed by 50% for 10 seconds. Great for chasing or escaping. Passive effect: Gold aura.", video: "../video/clips/sprint.mp4", icon: "../img/sprint.png" },
         4: { name: "BLINK", desc: "EVASION. Instantly teleports all your cells to a random safe location near your center. Use to dodge attacks.", video: "../video/clips/blink.mp4", icon: "../img/tp.png" },
         5: { name: "MAGNET", desc: "UTILITY. Automatically pulls nearby food pellets towards your cells for 8 seconds. Radius: 200px.", video: "../video/clips/magnet.mp4", icon: "../img/iman.png" },
         6: { name: "SHIELD", desc: "DEFENSE. Grants total immunity to viruses and being eaten by larger players for 3 seconds. Visual: Purple forcefield.", video: "../video/clips/shield.mp4", icon: "../img/inmune.png" },
-        7: { name: "PLUS", desc: "GROWTH. Instantly grants a large amount of mass (5k - 12k) distributed among your cells.", video: "../video/clips/plus.mp4", icon: "../img/big.png" },
-        8: { name: "GAMBLE", desc: "RISK. 50% chance to gain 15,000 Mass (JACKPOT). 50% chance to lose 5,000 Mass. Do you feel lucky?", video: "../video/clips/gamble.mp4", icon: "../img/random.png" }
+        7: { name: "PLUS", desc: "GROWTH. Instantly grants mass (1.25k - 3k) distributed among your cells.", video: "../video/clips/plus.mp4", icon: "../img/big.png" },
+        8: { name: "GAMBLE", desc: "RISK. 50% chance to gain 3,750 Mass (JACKPOT). 50% chance to lose 1,250 Mass. Do you feel lucky?", video: "../video/clips/gamble.mp4", icon: "../img/random.png" }
     };
 
     const TooltipManager = {
@@ -11497,7 +11497,7 @@
             Quests.resetKills();
             // Las quests las cuenta el servidor: offline no suman (en la app se avisa).
             if (EN_APP) spawnFloatingText("OFFLINE: QUESTS DON'T COUNT", '#ffd23a', false);
-            const startCell = sim.spawnPlayer('me');
+            const startCell = sim.spawnPlayer('me', currentGameMode === 'classic' ? 15000 : 0);   // offline classic: 15 s inmune al entrar, como online
             camera.x = startCell.x; camera.y = startCell.y;
             // Arcade: las 2 skills de salida elegidas en THE PILL (sin god, que ya las tiene todas).
             if (currentGameMode !== 'classic' && !isGodMode) { sim.giveStartSkills('me', skillsDeSalida()); updateSkillsUI_Arcade(); }
@@ -16554,7 +16554,7 @@
                         else { const c = sim.spawnPlayer('me'); camera.x = c.x; camera.y = c.y; }
                     } else if (practiceMode && sim && !sim.isRemote) {
                         // En práctica (esperando sala online) se reaparece al instante
-                        const c = sim.spawnPlayer('me');
+                        const c = sim.spawnPlayer('me', currentGameMode === 'classic' ? 15000 : 0);
                         camera.x = c.x; camera.y = c.y;
                         closeSkillChoice();
                         SoundManager.play('death');
