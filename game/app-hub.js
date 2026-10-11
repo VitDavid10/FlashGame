@@ -1047,7 +1047,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
             const rgb = pixRgb(hex); g.fillStyle = 'rgb(' + rgb.map(v => Math.round(v * 0.30)).join(',') + ')'; g.fillRect(W - 1, 0, 1, H); g.fillRect(0, H - 1, W, 1);
             // Si el login sigue pintando por detras ya mueve la comida (mismo estado): aqui solo se dibuja.
             const lo = document.getElementById('loginOverlay');
-            if (!(lo && lo.style.display === 'flex')) stepMenuDeco(W, H, performance.now(), !hub.classList.contains('arena'), []);   // en PC (arena viva) la comida esta quieta
+            if (!(lo && lo.style.display === 'flex')) stepMenuDeco(W, H, performance.now(), false, []);   // la comida del fondo esta quieta (PC y movil)
             drawMenuDeco(g, W, H, true);
         } catch (e) { g.fillStyle = THEME[mode].bg; g.fillRect(0, 0, W, H); }
     }
