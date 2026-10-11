@@ -235,7 +235,9 @@ function createSocial(opts) {
 
     // Al parar el servidor (actualizar/reiniciar) se vuelca lo pendiente: el guardado va con 2 s de retraso y un reinicio rapido lo perdia.
     if (file) for (const sig of ['SIGTERM', 'SIGINT', 'beforeExit']) process.once(sig, () => { try { if (timer) flush(); } catch (e) {} });
-    return { handle, hello, onClose, pushPresence, pub, isOnline: id => online.has(id), flush, _data: () => data };
+    // Perfil publico de quien tiene esa wallet (para la placa LIVE del menu), o null.
+    const byWalletPub = w => { const id = byWallet.get(w); return id ? pub(id) : null; };
+    return { handle, hello, onClose, pushPresence, pub, byWallet: byWalletPub, isOnline: id => online.has(id), flush, _data: () => data };
 }
 
 module.exports = { createSocial };

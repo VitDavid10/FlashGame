@@ -536,7 +536,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 /* PRUEBA (?arena=1, solo PC): mini arena viva alrededor de la pildora y tira de datos en directo encima de PLAY. */
 #ahArena,#ahLive{display:none}
 #appHub.pc.arena #ahArena{display:block;position:absolute;left:22.5em;top:3.2em;width:calc((var(--hw,48) - 22.5) * 1em);height:17.6em;pointer-events:none;image-rendering:pixelated}
-#appHub.pc.arena #ahLive{display:block;position:absolute;right:2.2em;bottom:5.3em;width:16.4em;height:4.2em;box-sizing:border-box;padding:.85em .75em .35em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.1em solid var(--bar);box-shadow:.15em .22em 0 rgba(0,0,0,.6);z-index:6;pointer-events:none}
+#appHub.pc.arena #ahLive.hay{display:block;position:absolute;right:2.2em;bottom:5.3em;width:16.4em;height:4.2em;box-sizing:border-box;padding:.85em .75em .35em;background:linear-gradient(180deg,var(--p1),var(--p2));border:.1em solid var(--bar);box-shadow:.15em .22em 0 rgba(0,0,0,.6);z-index:6;pointer-events:none}
 #ahLive .tag{position:absolute;left:.8em;top:0;transform:translateY(-62%);font-size:.42em;letter-spacing:.12em;font-weight:400;background:#ff3b3b;color:#fff;padding:.55em .9em .45em;box-shadow:0 0 0 .2em #000}
 #ahLive .on{position:absolute;right:.8em;top:.45em;font-size:.4em;letter-spacing:.08em;color:var(--mut);display:flex;align-items:center;gap:.6em}
 #ahLive .on em{font-style:normal;color:var(--ac)}
@@ -1002,7 +1002,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const girado = document.body.classList.contains('mobile-allowed');
         // PC (ventana ancha, sin girar): el mismo hub repartido en 48em x 27em (1em = 40px a 1920x1080).
         hub.classList.toggle('pc', !girado);
-        hub.classList.toggle('arena', ARENA_PRUEBA && !girado);
+        hub.classList.toggle('arena', !girado);   // PC: mini arena viva alrededor de la pildora y placa LIVE
         const fs = girado ? Math.min(innerWidth, innerHeight) / U * 16 : Math.min(innerHeight / 27, innerWidth / 48);
         hub.style.fontSize = fs + 'px';
         hub.style.setProperty('--hw', (innerWidth / fs).toFixed(2));   // ancho de la ventana en em del hub (>= 48): los paneles de PC se estiran hasta el borde derecho
@@ -1107,10 +1107,9 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     window._hubSplit = (cv, t) => drawPillSplit(cv, t);   // pruebas
 
-    // ---------- PRUEBA (?arena=1, solo PC): mini arena viva alrededor de la pildora ----------
+    // ---------- PC: mini arena viva alrededor de la pildora ----------
     // Comida que va a la pildora (se la "traga" con un pulso), bots pequenos que la esquivan, de vez en
     // cuando uno grande que caza a uno pequeno, y dos virus. Mismos sprites que la partida. 10 px por em.
-    const ARENA_PRUEBA = /[?&]arena=1\b/.test(location.search);
     let _arGulp = 0;
     const AR = { W: 0, H: 0, comida: [], bots: [], fx: [], ult: 0, caza: 0 };
     const arRnd = (a, b) => a + Math.random() * (b - a);
@@ -1191,30 +1190,37 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         }
         g.globalAlpha = 1;
     }
-    // Placa LIVE (PRUEBA): ONLINE es real; los sucesos son de ejemplo hasta que el servidor mande los de verdad.
-    // Sale uno nuevo arriba cada 3,8 s (con el reloj del menu) y los anteriores se apagan; caben 3.
-    // Lo que gana la gente, en $PILLY y en dolares (de ejemplo: el servidor aun no manda estos sucesos).
-    const LIVE_DEMO = [
-        { c: ['#ff2a2a', '#ffd23a'], t: '<em>@icefox</em> <b>+1,240 $PILLY</b> <i>($3.10)</i>' },
-        { c: ['#1e6bff', '#00cfff'], t: '<em>@nasa</em> <b>+5,600 $PILLY</b> <i>($14.00)</i>' },
-        { c: ['#b000ff', '#ff4fd8'], t: '<em>@mars</em> <b>+820 $PILLY</b> <i>($2.05)</i>' },
-        { c: ['#ff8a00', '#ffffff'], t: '<em>@doge</em> <b>+12,400 $PILLY</b> <i>($31.00)</i>' },
-        { c: ['#00e0b0', '#1e6bff'], t: '<em>@eth</em> <b>+2,000 $PILLY</b> <i>($5.00)</i>' },
-    ];
-    let liveI = 0, liveT = 0;
-    function livePaso(t) {
+    // Placa LIVE: lo que de verdad cobra la gente en las salas de pago y las arenas (/api/live), en $PILLY y en dolares.
+    // Sin cobros recientes no sale la placa. Los nuevos entran de uno en uno por arriba y los de abajo se apagan; caben 3.
+    let liveUlt = -1, liveCola = [], liveT = 0;
+    const liveFmt = n => Math.round(n).toLocaleString('en-US');
+    function liveEv(d, anim) {
         const f = $('#ahLiveFeed'); if (!f) return;
-        if (!liveT) { for (let k = 0; k < 2; k++) { liveT = 1; livePaso(-1e9); } f.querySelectorAll('.nuevo').forEach(e => e.classList.remove('nuevo')); liveT = t; }   // empieza ya con sucesos
-        else if (t - liveT < 3800 && t > 0) return;
-        if (t > 0) liveT = t;
-        const d = LIVE_DEMO[liveI++ % LIVE_DEMO.length], ev = document.createElement('div');
-        ev.className = 'ev nuevo';
+        const ev = document.createElement('div'); ev.className = 'ev' + (anim ? ' nuevo' : '');
         const cv = document.createElement('canvas'); cv.width = cv.height = 16;
-        try { const o = pixPillSpriteRot(8, d.c[0], d.c[1], -Math.PI / 4, true), S = o.S || o.cv.width, g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(o.cv, 0, 0, S, S, (16 - S) / 2, (16 - S) / 2, S, S); } catch (e) {}
-        const sp = document.createElement('span'); sp.innerHTML = d.t;
-        ev.appendChild(cv); ev.appendChild(sp);
+        let h = 0; for (const ch of String(d.who)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        const c = AR_COLS[h % AR_COLS.length];
+        try { const o = pixPillSpriteRot(8, c[0], c[1], -Math.PI / 4, true), S = o.S || o.cv.width, g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(o.cv, 0, 0, S, S, (16 - S) / 2, (16 - S) / 2, S, S); } catch (e) {}
+        const sp = document.createElement('span');
+        const em = document.createElement('em'), b = document.createElement('b'), i = document.createElement('i');
+        em.textContent = d.who; b.textContent = '+' + liveFmt(d.pill) + ' $PILLY'; i.textContent = d.usd > 0 ? '($' + d.usd.toFixed(2) + ')' : '';
+        sp.append(em, ' ', b, ' ', i);
+        ev.append(cv, sp);
         f.insertBefore(ev, f.firstChild);
         while (f.children.length > 3) f.lastChild.remove();
+        $('#ahLive').classList.add('hay');
+    }
+    async function pullLive() {
+        if (!hub.classList.contains('arena')) return;
+        let ev = [];
+        try { ev = (await (await fetch('/api/live', { cache: 'no-store' })).json()).ev || []; } catch (e) { return; }
+        if (liveUlt < 0) { ev.slice(0, 3).reverse().forEach(d => liveEv(d, false)); }   // al abrir: los 3 ultimos, ya puestos
+        else liveCola.push(...ev.filter(d => d.id > liveUlt).reverse());
+        if (ev.length) liveUlt = Math.max(liveUlt, ev[0].id); else if (liveUlt < 0) liveUlt = 0;
+    }
+    function livePaso(t) {
+        if (!liveCola.length || t - liveT < 1500) return;
+        liveT = t; liveEv(liveCola.shift(), true);
     }
 
     function loop(t) {
@@ -2496,7 +2502,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     function show(m) {
         mode = m || 'classic'; hub.classList.add('on'); document.body.classList.add('hub-on');
         sysEntrada();
-        scale(); paintStatic(); pullRooms(); requestAnimationFrame(loop);
+        scale(); paintStatic(); pullRooms(); pullLive(); requestAnimationFrame(loop);
         try { if (window.PWSquad) PWSquad.boot(); } catch (e) {}   // amigos: invitaciones y susurros aunque el panel este cerrado
         try { aqRetry(); } catch (e) {}   // misiones hechas sin red o sin cuenta: se cobran al volver
         try { if (typeof paisSync === 'function') Promise.resolve(paisSync()).then(paintStatic); } catch (e) {}
@@ -2521,7 +2527,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         addEventListener('hashchange', () => { if (!canje() && /^#xerr=/.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} } });
         if (canje()) return;
         if (/^#x(err)?=/.test(location.hash)) { const err = /xerr/.test(location.hash); history.replaceState(null, '', location.pathname + location.search); if (err) try { showSystemMsg('Could not connect X. Try again.', 'X'); } catch (e) {} }
-        wire(); setInterval(() => { if (hub.classList.contains('on')) pullRooms(); }, 5000);
+        wire(); setInterval(() => { if (hub.classList.contains('on')) { pullRooms(); pullLive(); } }, 5000);
         addEventListener('resize', () => { if (hub.classList.contains('on')) { scale(); paintStatic(); } });
         // El menu se abre en CLASSIC directamente al tocar TAP TO START (ARCADE escondido desde el 10-oct-2026).
         const orig = window.selectMode;
