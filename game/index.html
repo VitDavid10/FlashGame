@@ -5440,7 +5440,7 @@
         // Recalcula el volumen de la música aplicando el master del servidor.
         applyMusicVolume: function() { this.music.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER); this.menuMusic.volume = Math.min(1, MUSIC_VOLUME * MUSIC_MASTER * 1.875); },
         play: function(name, pos = null) {
-            if(this.muted || !this.sounds[name]) return;
+            if(this.muted || !this.sounds[name] || document.hidden) return;   // con la pestana oculta no suena nada
             // Pantalla VS de arenas: ningun sonido del juego MIENTRAS SE VEA. Sin tiempos: en cuanto la pantalla desaparece (por lo que sea) vuelve el sonido.
             if (window._sqHush) { const ov = document.getElementById('sqEntry'); if (ov && ov.style.display !== 'none') return; window._sqHush = false; }
             // Volumen por distancia: lo que entra en pantalla suena fuerte, lo lejano
@@ -5512,7 +5512,7 @@
         playSplit: function() { const now = Date.now(); if (now - this.lastSplitTime < 150) return; this.lastSplitTime = now; this.play('split'); },
         // Phone with the page hidden (another app on top, screen locked): no
         // music may start in the background. See resumeActiveMusic.
-        hiddenOnPhone: function() { return document.hidden && document.body.classList.contains('mobile-allowed'); },
+        hiddenOnPhone: function() { return document.hidden; },   // pagina oculta (otra pestana en PC, otra app en el movil): no arranca musica
         // REJOIN: la musica de partida sigue por donde iba la sala (sin empezar de cero).
         playMusicAt: function(sec) {
             this.activeMusic = 'game'; this.syncMusicBtn(); if (this.musicMuted) return;
@@ -5625,11 +5625,18 @@
     // Phone (browser or the dApp Store app): going to another app or locking the
     // screen left the music playing in the background. Hidden: both tracks
     // pause. Visible again: the track that should be playing comes back, same
-    // rule as the first tap. Desktop is unchanged.
+    // rule as the first tap.
+    // PC tambien (pedido por David): otra pestana = silencio total, musica y efectos.
     document.addEventListener('visibilitychange', () => {
-        if (!document.body.classList.contains('mobile-allowed')) return;
-        if (document.hidden) { SoundManager.music.pause(); SoundManager.menuMusic.pause(); }
-        else resumeActiveMusic();
+        const ctx = SoundManager._ctx;
+        if (document.hidden) {
+            SoundManager.music.pause(); SoundManager.menuMusic.pause();
+            for (const k in SoundManager.sounds) { try { SoundManager.sounds[k].pause(); } catch (e) {} }
+            if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+        } else {
+            if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+            resumeActiveMusic();
+        }
     });
     function toggleAudio() { SoundManager.toggleSFX(); }
     function toggleMusic() { SoundManager.toggleMusic(); }
