@@ -560,8 +560,8 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #ahLive .ev.nuevo{animation:ahLiveIn .45s cubic-bezier(.2,.9,.3,1) both}
 @keyframes ahLiveIn{from{opacity:0;transform:translateY(-.9em)}to{opacity:1;transform:none}}
 @keyframes ahLiveDot{50%{opacity:.25}}
-#appHub.pc .ah-play{right:2.2em;bottom:.75em;width:14.6em;height:3.8em;z-index:6}
-#appHub.pc .ah-room{right:16.2em;bottom:.2em;z-index:6;gap:.3em}   /* el texto (FREE, OFFLINE) por debajo del borde de PLAY */
+#appHub.pc .ah-play{right:2.2em;bottom:1.15em;width:14.6em;height:3.8em;z-index:6}
+#appHub.pc .ah-room{right:16.2em;bottom:.6em;z-index:6;gap:.3em}   /* el texto (FREE, OFFLINE) por debajo del borde de PLAY */
 #appHub.pc .ah-room .med{width:2.2em;height:2.2em}
 #appHub.pc .ah-room .med>svg{width:1.05em;height:1.05em}
 #appHub.pc .ah-room .sw{width:1.1em;height:1.1em}#appHub.pc .ah-room .sw svg{width:.78em;height:.78em}
