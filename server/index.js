@@ -238,6 +238,7 @@ const WS_BACKPRESSURE_MAX = parseInt(process.env.WS_BACKPRESSURE_MAX, 10) || (64
 // inmune nada más entrar para coger skill y posicionarte. No cubre carga ni
 // matchmaking (eso ya pasó antes del spawn).
 const SPAWN_IMMUNE_MS = 3000;
+const CLASSIC_SPAWN_IMMUNE_MS = 15000;   // classic: los que entran tienen 15 s para situarse sin que se los coman
 const LOG_FILE = path.join(__dirname, 'connections.log');
 const STATS_FILE = path.join(__dirname, 'stats.json');
 const RULES_FILE = path.join(__dirname, 'roomrules.json');
@@ -1295,7 +1296,7 @@ const gameHost = createGameHost({
     CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
     MATCH_MS, CLASSIC_MATCH_MS,
     resumeTokens,
-    SPAWN_IMMUNE_MS,
+    SPAWN_IMMUNE_MS, CLASSIC_SPAWN_IMMUNE_MS,
     director, RESUME_GRACE_MS, sendEcon, entryFeePill,
 });
 // El runtime de sala (broadcast/lobby/startMatch/…) vive ahora en el GameHost

@@ -201,6 +201,8 @@
     // cuantos ticks re-eligen bocado. El radio se traduce en celdas del foodGrid
     // (150 de lado), asi que 600 son 9x9 celdas — barato y suficiente para no
     // quedarse quieto en una zona pelada.
+    // Lo que da cada bolita de comida. 0.25 = un 75% menos que antes (prueba pedida por David el 11-oct-2026).
+    const FOOD_GAIN_MULT = 0.25;
     const BOT_FOOD_RANGE = 600;
     const BOT_FOOD_RETARGET = 20;
     // Un bot que llega a 5 kills GANA y se va, igual que un jugador (en classic
@@ -1362,7 +1364,7 @@
                 for (let f of nearbyFoods) {
                     if (f.eaten) continue;
                     if (getEllipticalDist(c, f) < c.r + f.r) {
-                        let gain = (Math.PI * f.r * f.r * 2.5) * gainMultiplier;
+                        let gain = (Math.PI * f.r * f.r * 2.5) * gainMultiplier * FOOD_GAIN_MULT;
                         // Arcade: fuera de la zona segura se gana un 70% menos al comer (si no, comiendo se aguantaba el veneno).
                         if (this.arc && this.arc.fase > 0 && !this.dentroMapa(c.x, c.y, this.arc.s)) gain *= 0.3;
                         c.r = Math.sqrt((c.mass + gain) / (Math.PI * PILL_RATIO));

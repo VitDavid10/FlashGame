@@ -1140,6 +1140,8 @@
             /* App: 18 a la izquierda (top) y no 12, que las esquinas redondeadas
                de la Saga se comian el borde de MASS. */
             html.pw-app:not([data-hero]) body.mobile-allowed #ui { top: 18px !important; }
+            /* App: MASS y compania a la altura de sonido/musica/salir (centrados con esos botones: 2.15em del menu del movil). */
+            html.pw-app:not([data-hero]) body.mobile-allowed #ui { right: calc(min(100vw, 100vh) / 22.5 * 2.15 - 12px) !important; }
             /* El TIEMPO, arriba y centrado con el telefono girado (sin girar:
                borde derecho, a media altura). Iba pegado al mismo sitio que el
                resto del HUD. */
@@ -14793,7 +14795,7 @@
         const colTop = document.getElementById('colTop').value, colBot = document.getElementById('colBot').value;
         const p = sim.addPlayer('me', { name: playerName, colorBot: colBot, colorTop: colTop });
         p.godMode = false;
-        const c = sim.spawnPlayer('me');
+        const c = sim.spawnPlayer('me', mode === 'classic' ? 15000 : 0);   // classic: 15 s inmune al entrar, como online
         camera.x = c.x; camera.y = c.y; camera.scale = 0.8;
         explosions = [];
         isGodMode = false; isSpectating = false; currentGameMode = mode;

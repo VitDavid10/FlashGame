@@ -43,7 +43,7 @@ function createGameHost(deps) {
         CATALOG_MODES, PRICES, LAYERS_PER_COMBO, ownsCombo,
         MATCH_MS, CLASSIC_MATCH_MS,
         resumeTokens,
-        SPAWN_IMMUNE_MS,
+        SPAWN_IMMUNE_MS, CLASSIC_SPAWN_IMMUNE_MS,
         director, RESUME_GRACE_MS, sendEcon, entryFeePill,
     } = deps;
 
@@ -235,7 +235,8 @@ function createGameHost(deps) {
             if (room.state === 'playing' && cli && !cli._spawned) {
                 cli._spawned = true;
                 if (!room.sim.players.has(playerId)) room.sim.addPlayer(playerId, cli.opts || {});
-                room.sim.spawnPlayer(playerId, SPAWN_IMMUNE_MS);
+                // Classic: 15 s inmune al entrar (que no te coman nada mas aparecer); se ve con el aura morada del SHIELD.
+                room.sim.spawnPlayer(playerId, room.mode === 'classic' ? CLASSIC_SPAWN_IMMUNE_MS : SPAWN_IMMUNE_MS);
                 room.sim.giveStartSkills(playerId, (cli.opts || {}).startSkills);
                 refillBots(room);
             }
