@@ -425,7 +425,7 @@ try { if (fs.existsSync(TXLOG_FILE)) txLog = fs.readFileSync(TXLOG_FILE, 'utf8')
  * — ni en el explorador ni aqui. Con la firma completa, una busqueda en el panel
  * responde "esto se pago, aqui esta la transaccion".
  */
-const liveFeed = []; let liveSeq = 0;
+const liveFeed = []; let liveSeq = 0; const liveMenu = new Map();   // cid -> ultima vez que pidio /api/live
 function logTx(type, wallet, amount, detail, sig) {
     const entry = { fecha: new Date().toISOString(), type, wallet: wallet || '-', amount: amount | 0, detail: detail || '' };
     if (sig) entry.sig = sig;
@@ -2723,6 +2723,10 @@ const httpServer = http.createServer(async (req, res) => {
     }
     // --- Placa LIVE del menu: ultimos cobros, con el @ de X (o el nombre de la pildora si lo oculta, o la wallet acortada) ---
     if (urlPath === '/api/live') {
+        // ONLINE de la placa: tambien cuenta a quien esta en el menu (lo pide cada 5 s con su id de cliente).
+        const ahora = Date.now(), cidL = String(req.headers['x-client-id'] || '').trim().slice(0, 64) || ('ip:' + (req.socket.remoteAddress || ''));
+        liveMenu.set(cidL, ahora);
+        for (const [k, at] of liveMenu) if (ahora - at > 12000) liveMenu.delete(k);
         const usd1 = PILL_PER_DOLLAR > 0 ? 1 / PILL_PER_DOLLAR : 0;
         const ev = liveFeed.map(e => {
             let who = e.w.slice(0, 4) + '…' + e.w.slice(-4);
@@ -2730,7 +2734,7 @@ const httpServer = http.createServer(async (req, res) => {
             return { id: e.id, who, pill: e.pill, usd: Math.round(e.pill * usd1 * 100) / 100, at: e.at };
         });
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify({ ev }));
+        res.end(JSON.stringify({ ev, menu: liveMenu.size }));
         return;
     }
     // --- Estado público de salas (para el "ORACLE" del menú del juego) ---
