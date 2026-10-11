@@ -11621,7 +11621,17 @@
     // la pantalla de seleccion. Ahora se guarda para poder cancelarlo desde
     // returnToMenu, y ademas el callback comprueba que sigues en partida.
     let deathResultTimer = null;
-    function stopGame() { lootMio = []; const sqSpec = !!(netState && netState.squad && window._squadKind === 'match'); isSpectating = true; hideCountdownNumber(); if (!sqSpec) SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => { deathResultTimer = null; if (!gameRunning) return; setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
+    function stopGame() { const lootFin = lootMio.slice(); lootMio = []; const sqSpec = !!(netState && netState.squad && window._squadKind === 'match'); isSpectating = true; hideCountdownNumber(); if (!sqSpec) SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => {
+        deathResultTimer = null; if (!gameRunning) return;
+        // Classic (online y offline): DEFEAT con el diseno de fin de arenas y lo que pierdes. El resto de modos, GAME OVER de siempre.
+        if (currentGameMode === 'classic' && !(netState && netState.squad) && window.PWSquad && PWSquad.classicFin) {
+            const kills = parseInt(document.getElementById('killsVal').innerText, 10) || 0;
+            const carry = (typeof EconHUD !== 'undefined' && currentServer && currentServer !== 'Free' ? EconHUD.carry : 0) | 0;
+            finClassic({ reason: 'defeat', kills, carry, amount: 0, fee: 0, offline: !!(sim && !sim.isRemote), loot: lootFin });
+            return;
+        }
+        setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver');
+    }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -11780,7 +11790,7 @@
     // Pantalla final de CLASSIC (VICTORY al hacer pentakill o CASHOUT al salir vivo), con el diseno de fin de arenas
     // (game/squad.js classicFin): titulo por kills, todos los que aportan a tu carry y el total en $PILLY y en $.
     function finClassic(msg) {
-        const loot = (msg.loot && msg.loot.length ? msg.loot : lootMio).slice();
+        const loot = ((msg.loot && msg.loot.length) || msg.reason === 'defeat' ? (msg.loot || []) : lootMio).slice();
         const usd = a => (MONEY_IN_USD && pillRate > 0 && a > 0) ? '$' + (a / pillRate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
         const suma = loot.reduce((a, e) => a + (e.a | 0), 0);
         const carry = msg.carry | 0 || (msg.amount | 0) + (msg.fee | 0);
@@ -11793,7 +11803,8 @@
             tipo: msg.reason, kills: msg.kills | 0, offline: !!msg.offline, rows, entry: miEntrada, entryUsd: usd(miEntrada),
             carry, carryUsd: usd(carry), feePct: msg.feePct | 0, fee: msg.fee | 0, feeUsd: usd(msg.fee | 0),
             amount: msg.amount | 0, amountUsd: usd(msg.amount | 0),
-            onAgain: () => tryAgainOnline(), onMenu: () => returnToMenu()
+            onAgain: () => tryAgainOnline(), onMenu: () => returnToMenu(),
+            onSpectate: msg.reason === 'defeat' ? () => onSpectateClick() : null
         });
     }
     // Pantalla final de ARCADE (game/squad.js arcadeFin), igual en PC y en la app.
