@@ -3396,7 +3396,7 @@
         /* app en PC: la fila de ROOM/MASS/ALIVE/KILLS y el reloj van a la altura de los botones de sonido (centro a 40 px) */
         html.pw-app body:not(.mobile-allowed) #ui { top: 20px; height: 40px; align-items: center; box-sizing: border-box; }
         html.pw-app body:not(.mobile-allowed) #timerDisplay { top: 20px !important; line-height: 40px; }
-        html.pw-app body:not(.mobile-allowed) #skillChoiceOverlay { top: 78px !important; margin-top: 0 !important; }   /* SELECT A SKILL justo debajo del reloj */
+        html.pw-app body:not(.mobile-allowed) #skillChoiceOverlay { top: 96px !important; margin-top: 0 !important; }   /* SELECT A SKILL justo debajo del reloj */
         html.pw-app body:not(.mobile-allowed) #hudKills { display: none !important; }   /* el KILLS de la fila de arriba sobra: ya esta en el cuadro bajo TOP MASS */
         #timerDisplay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); color: #fff; font-family: 'Russo One'; font-size: 24px; text-shadow: 0 0 10px var(--primary); pointer-events: none; z-index: 10; display: none;}
         #leaderboard { position: absolute; top: 75px; right: 15px; background: rgba(10, 10, 10, 0.8); border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; width: 160px; pointer-events: none; z-index: 10; font-size: 12px; display: none; }
@@ -3412,32 +3412,66 @@
         body.mobile-allowed .ab-slot .ab-key { display: none; }
         .ab-slot { width: 50px; height: 50px; background: #151515; border: 2px solid #333; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; transition: transform 0.1s; overflow: hidden; cursor: grab; }
         .ab-slot:active { cursor: grabbing; }
-        /* App (11-oct-2026): botones de arriba (sonido, musica, salir) como los redondos del menu, en PC y movil;
-           apagado = icono tenue y tachado en rojo; salir en rojo. */
-        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) { border-radius: 50% !important; box-sizing: border-box; border: 3px solid !important;
-            border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128) !important;
-            background: radial-gradient(circle at 38% 32%, #232a08 0, #0d1003 62%) !important; box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000 !important; color: #eaf5ef; filter: none !important; }
+        /* App (11-oct-2026): en partida, los botones y casillas con la base de los botones redondos del menu
+           (ARENAS, FRIENDS...: aro lima con bisel y fondo oscuro). */
+        html.pw-app body { --pwL: rgb(230,255,128); --pwD: rgb(112,140,0); --pwMed: radial-gradient(circle at 38% 32%, #232a08 0, #0d1003 62%);
+            --pwHf: calc(min(100vh, 100vw * 27 / 48) / 27);   /* 1em del menu de PC */
+            --pwHm: calc(min(100vw, 100vh) / 22.5); }         /* 1em del menu del movil */
+        /* Sonido, musica y salir: como los del menu y del MISMO tamano (PC: 1.45em del menu; movil: 2.3em). Apagado = tenue y tachado; salir en rojo. */
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) { border-radius: 50% !important; box-sizing: border-box; border: 2px solid !important;
+            border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL) !important; background: var(--pwMed) !important;
+            box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000 !important; color: #eaf5ef; filter: none !important; }
         html.pw-app body #exitGameBtn.sound-btn { border-color: #ff9a8a #8c1d14 #8c1d14 #ff9a8a !important; background: radial-gradient(circle at 38% 32%, #3a1210 0, #160604 62%) !important; }
         html.pw-app body .sound-btn:is(#soundToggle, #musicToggle) > svg.sound-on { display: block !important; }
         html.pw-app body .sound-btn:is(#soundToggle, #musicToggle) > svg.sound-off { display: none !important; }
-        html.pw-app body #exitGameBtn > svg { display: block !important; fill: #ffb3a8; }
-        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) > svg { width: 52%; height: 52%; fill: #eaf5ef; filter: drop-shadow(1px 2px 0 #000); }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) > svg { display: block !important; width: 52% !important; height: 52% !important; fill: #eaf5ef; filter: drop-shadow(1px 2px 0 #000); }
         html.pw-app body #exitGameBtn > svg { fill: #ffb3a8; }
         html.pw-app body .sound-btn:is(#soundToggle, #musicToggle).muted > svg { opacity: .35; }
-        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle).muted::after { content: ""; position: absolute; left: 18%; right: 18%; top: 50%; height: 3px; background: #ff4a4a; transform: rotate(-45deg); box-shadow: 0 0 0 1px #000; pointer-events: none; }
-        /* App en PC: barra de habilidades con el marco de los botones del menu y la tecla debajo de cada casilla
-           (encendida en lima cuando la puedes usar; apagada si esta vacia o en recarga). El contador de cargas sigue igual. */
-        html.pw-app body:not(.mobile-allowed) #actionBar { background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; gap: 9px; padding: 4px 4px 20px; }
-        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot { overflow: visible; border-radius: 0 !important; border: 3px solid !important;
-            border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128) !important;
-            background: radial-gradient(circle at 38% 32%, #232a08 0, #0d1003 70%) !important; box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 2px 3px 0 rgba(0,0,0,.6) !important; }
-        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot .skill-icon { background-color: transparent !important; opacity: 1; background-size: 70%; }
-        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot:has(> .icon-empty) { border-color: #2f3a2c #1a2118 #1a2118 #2f3a2c !important; background: #0a0d0a !important; }
-        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot.active { box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 0 10px #ccff00 !important; }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle).muted::after { content: ""; position: absolute; left: 18%; right: 18%; top: 50%; height: 12%; background: #ff4a4a; transform: rotate(-45deg); box-shadow: 0 0 0 1px #000; pointer-events: none; }
+        html.pw-app body:not(.mobile-allowed) .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) { width: calc(var(--pwHf) * 1.45) !important; height: calc(var(--pwHf) * 1.45) !important; top: calc(var(--pwHf) * .68) !important; }
+        html.pw-app body:not(.mobile-allowed) #soundToggle { right: calc(var(--pwHf) * 1.1) !important; }
+        html.pw-app body:not(.mobile-allowed) #musicToggle { right: calc(var(--pwHf) * 2.95) !important; }
+        html.pw-app body:not(.mobile-allowed) #exitGameBtn { right: calc(var(--pwHf) * 4.8) !important; }
+        html.pw-app:not([data-hero]) body.mobile-allowed .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) { width: calc(var(--pwHm) * 2.3) !important; height: calc(var(--pwHm) * 2.3) !important; border-width: 3px !important; right: var(--pwHm) !important; }
+        html.pw-app:not([data-hero]) body.mobile-allowed #soundToggle { bottom: calc(var(--pwHm) * .9) !important; }
+        html.pw-app:not([data-hero]) body.mobile-allowed #musicToggle { bottom: calc(var(--pwHm) * 3.75) !important; }
+        html.pw-app:not([data-hero]) body.mobile-allowed #exitGameBtn { bottom: calc(var(--pwHm) * 6.6) !important; }
+        /* Casillas de habilidad (PC) y circulos del movil (skills, SHOOT y SPLIT): botones redondos del menu. En PC la tecla
+           va debajo, en lima si la puedes usar y gris si esta vacia o en recarga; el contador de cargas sigue donde estaba. */
+        html.pw-app body:not(.mobile-allowed) #actionBar { background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; gap: 10px; padding: 4px 4px 20px; }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot, html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) .tb-btn:is(.tb-shoot, .tb-split) { overflow: visible; border-radius: 50% !important; box-sizing: border-box;
+            border: 3px solid !important; border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL) !important; background: var(--pwMed) !important;
+            box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 2px 3px 0 1px rgba(0,0,0,.55) !important; }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) :is(#actionBar .ab-slot, .tb-btn.tb-shoot) .skill-icon { width: 66% !important; height: 66% !important; flex: none; background-color: transparent !important; background-size: 100% !important; opacity: 1; border-radius: 50%; }   /* recortado en redondo: el PNG pixel trae fondo negro cuadrado */
+                html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .icon-empty) { border-color: #2f3a2c #1a2118 #1a2118 #2f3a2c !important; background: #0a0d0a !important; }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) { border-color: #6c7466 #343a31 #343a31 #6c7466 !important; }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) .skill-icon { filter: grayscale(1) brightness(.55); }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot.active, html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) .tb-btn.pulsado { box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 0 10px #ccff00 !important; }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) .tb-btn.tb-split { color: #eaf5ef; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .count-badge { right: -3px; bottom: -2px; }
         html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot .ab-key { left: 50%; top: auto; bottom: -18px; transform: translateX(-50%); min-width: 18px; height: 14px; padding: 0 3px; box-sizing: border-box;
-            display: flex; align-items: center; justify-content: center; font-size: 6px; line-height: 1; color: #ccff00; background: #0d1003; border: 1px solid; border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128); border-radius: 0; box-shadow: 0 0 0 1px #000, 0 2px 0 #000; }
+            display: flex; align-items: center; justify-content: center; font-size: 6px; line-height: 1; color: #ccff00; background: #0d1003; border: 1px solid; border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL); border-radius: 0; box-shadow: 0 0 0 1px #000, 0 2px 0 #000; }
         html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot:is(:has(> .icon-empty), :has(> .gcd-badge:not(:empty))) .ab-key { color: #6c7466; border-color: #59614f #22281f #22281f #59614f; }
-        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) { border-color: #6c7466 #343a31 #343a31 #6c7466 !important; }
+        /* SELECT A SKILL (A): placa como los paneles del menu, titulo con aire, opciones redondas con su nombre,
+           la elegida brilla en lima y la barra de tiempo en lima por tramos. */
+        html.pw-app body #skillChoiceOverlay .skill-choice-card { border: 3px solid #4d5f17 !important; border-image: none !important; border-radius: 0 !important;
+            background: linear-gradient(180deg, #0b0e01, #050700) !important; box-shadow: 0 0 0 2px #000, 4px 6px 0 rgba(0,0,0,.6) !important; padding: 16px 30px 18px !important; animation: none; }
+        html.pw-app body #skillChoiceTitle { font-family: 'Press Start 2P', monospace !important; font-size: 13px !important; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; }
+        html.pw-app body #skillChoiceOverlay .skill-options { margin-top: 22px !important; margin-bottom: 36px !important; gap: 34px !important; }
+        html.pw-app body #skillChoiceOverlay .skill-opt-btn { position: relative; width: 84px !important; height: 84px !important; border-radius: 50% !important; box-sizing: border-box;
+            border: 4px solid !important; border-color: #6c7466 #343a31 #343a31 #6c7466 !important; background: var(--pwMed) !important;
+            box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, 3px 5px 0 1px rgba(0,0,0,.55) !important; transform: none !important; }
+        html.pw-app body #skillChoiceOverlay .skill-opt-btn.selected-choice { border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL) !important;
+            box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, 0 0 20px #ccff00 !important; transform: scale(1.08) !important; }
+        html.pw-app body #skillChoiceOverlay .skill-opt-icon { width: 54px !important; height: 54px !important; margin: 0 !important; border-radius: 50%; }
+        html.pw-app body #skillChoiceOverlay .skill-opt-btn:not(.selected-choice) .skill-opt-icon { filter: brightness(.7); }
+        html.pw-app body #skillChoiceOverlay .skill-opt-name { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap;
+            font-family: 'Press Start 2P', monospace; font-size: 8px; font-weight: 400; color: #b7c28a; text-shadow: 2px 2px 0 #000; }
+        html.pw-app body #skillChoiceOverlay .selected-choice .skill-opt-name { color: #ccff00; }
+        html.pw-app body #skillChoiceOverlay .skill-tips { color: #b7c28a !important; font-size: 7px !important; }
+        html.pw-app body #skillChoiceOverlay .skill-tips b { font-weight: 400; color: #ccff00; border: 2px solid; border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL); background: #0d1003; padding: 4px 5px 3px; margin: 0 4px; box-shadow: 0 0 0 1px #000; }
+        html.pw-app body #skillChoiceOverlay .timer-bar { height: 14px !important; margin-top: 14px; background: #0a0d0a !important; border: 2px solid #000 !important; box-shadow: 0 0 0 2px #4d5f17 !important; padding: 2px; box-sizing: border-box; }
+        html.pw-app body #skillChoiceOverlay .timer-fill { background: repeating-linear-gradient(90deg, #ccff00 0 14px, transparent 14px 16px) !important; }
         .ab-slot.active { transform: scale(0.95); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-dim); }
         /* Stick tactil (pedido por David): aro y bola donde apoyas el dedo en
            el cuarto de abajo a la izquierda. Solo es el dibujo; el rumbo lo
@@ -16248,7 +16282,7 @@
         // es donde David lo vio salir (con su tic-tac sonando).
         if (!gameRunning || isSpectating) return;
         if(practiceMode && !practiceFirstSkillDone) { practiceFirstSkillDone = true; return; } SoundManager.play('alert'); SoundManager.play('timer'); isPickingSkill = true; pickTimer = 10; skillChoiceIndex = 0; let pool = [1, 2, 3, 4, 5, 6, 7, 8], opts = []; while(opts.length < 2) { let r = pool[Math.floor(Math.random()*pool.length)]; if(!opts.includes(r)) opts.push(r); } const titleEl = document.getElementById('skillChoiceTitle'); if (titleEl) { if (pixelMode) ensurePixPanelCss(); titleEl.textContent = 'SELECT A SKILL'; }
-        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (!pixelMode) { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
+        els.skillOpts.innerHTML = ''; opts.forEach((id, index) => { let div = document.createElement('div'); div.className = 'skill-opt-btn'; if (index === 0) div.classList.add('selected-choice'); div.innerHTML = `<div class="skill-opt-icon ${SKILL_ICONS[id]}" style="background-color:transparent;"></div>`; if (!pixelMode || EN_APP) { const nm = document.createElement('div'); nm.className = 'skill-opt-name'; nm.textContent = SKILL_DEFS[id].name; div.appendChild(nm); } div.onmouseenter = () => { SoundManager.playSimpleHover(); skillChoiceIndex = index; updateChoiceVisuals(); }; div.onclick = () => { selectArcadeSkill(id); }; els.skillOpts.appendChild(div); });
         // Texto interior ("tips"): copy de fábrica; en pixel-pack el CSS lo pinta
         // amarillo con Press Start 2P (regla en buildPixPanelCss).
         const tipsEl = document.querySelector('#skillChoiceOverlay .skill-tips');
@@ -16256,6 +16290,8 @@
             tipsEl.innerHTML = ''; tipsEl.style.removeProperty('font-size');
             // En la app no hay teclado: TAB y Q no significan nada ahi.
             tipsEl.textContent = EN_APP ? 'TAP A SKILL TO PICK IT' : 'PRESS [TAB] TO SWITCH - [Q] TO SELECT';
+            // App en PC: TAB y Q como teclas, como en el menu.
+            if (EN_APP && !document.body.classList.contains('mobile-allowed')) tipsEl.innerHTML = '<b>TAB</b> SWITCH <b>Q</b> PICK · OR CLICK ONE';
         }
         els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
