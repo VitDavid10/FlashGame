@@ -5405,6 +5405,17 @@
     try { enemySkillFx = localStorage.getItem('pw_enemySkillFx') === '1'; } catch (e) {}
     // Una celula es tuya si lleva tu id o si estas offline y no es un bot.
     const _esMia = c => c.id === 'me' || (!c.isBot && sim && !sim.isRemote);
+    // Inmunidad de entrada (classic, 15 s): la pildora se ve semitransparente y late suave; la ven asi todos.
+    const _fantasmaAlpha = () => 0.4 + 0.12 * Math.sin(performance.now() / 170);
+    // Y a ti te sale encima cuanto te queda: PROTECTED 12s.
+    function _pintaProteccion(c) {
+        const vs = getViewScale(), fs = 11 / vs, t = 'PROTECTED ' + Math.ceil(c.immuneTime / 1000) + 's';
+        const pH = c.r * 2.0 * PILL_RATIO;
+        ctx.save(); ctx.globalAlpha = 1; ctx.font = fs + "px 'Press Start 2P', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        const y = c.y - Math.max(c.r, pH) - 10 / vs;
+        ctx.lineWidth = 4 / vs; ctx.strokeStyle = '#000'; ctx.lineJoin = 'round'; ctx.strokeText(t, c.x, y);
+        ctx.fillStyle = '#ccff00'; ctx.fillText(t, c.x, y); ctx.restore();
+    }
     // Que efectos de skill toca pintar en esta celula: los tuyos siempre, los
     // de los demas solo con la opcion de HOW TO PLAY encendida.
     const _pintaFxDe = c => enemySkillFx || _esMia(c);
@@ -6805,7 +6816,7 @@
                                                     // serie, que salian como cuatro barrotes) y latiendo con el aro de
                                                     // dentro. El relleno y el dentado son solo TUYOS; de los demas se ve
                                                     // unicamente el aura solida.
-                                                    if (c.immuneTime > 0 && showAura) {
+                                                    if (c.immuneTime > 0 && showAura && !c.spawnProt) {
                                                         ctx.save();
                                                         ctx.translate(c.x, c.y);
                                                         ctx.rotate(-Math.PI / 4);
@@ -7321,6 +7332,7 @@
         // van por drawCellBuffFx (aura siempre visible para rivales; partículas client-side).
         function drawCellPixel(c) {
             let alpha = 1; if (c.tpPhase === 1) alpha = Math.max(0, c.tpTimer / 500); else if (c.tpPhase === 2) alpha = Math.max(0, 1 - (c.tpTimer / 500));
+            if (c.spawnProt && c.immuneTime > 0) alpha *= _fantasmaAlpha();   // inmunidad de entrada: semitransparente, como un fantasma
             ctx.save(); ctx.globalAlpha = alpha;
             const drawEffects = true; // auras de buff las ven todos; el detalle lo filtra drawCellBuffFx
             const pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2;
@@ -7350,6 +7362,7 @@
             }
             // Buff FX (aros, rayos, escudo, imán por celda) — online y offline
             drawCellBuffFx(ctx, c, alpha);
+            if (c.spawnProt && c.immuneTime > 0 && _esMia(c)) _pintaProteccion(c);
             // Pops de masa / sprint: mismo sistema de partículas (+++ / --- / ⚡)
                         if (c.particles && c.particles.length > 0 && _pintaFxDe(c)) {
                             ctx.save(); ctx.translate(c.x, c.y);
@@ -7389,7 +7402,8 @@
         let alpha = 1; if (c.tpPhase === 1) alpha = Math.max(0, c.tpTimer / 500); else if (c.tpPhase === 2) alpha = Math.max(0, 1 - (c.tpTimer / 500));
         ctx.save(); ctx.globalAlpha = alpha; const drawEffects = !c.isBot || enableEnemyFX;
         if (isSprinting && drawEffects) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4); let pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 30; ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; ctx.beginPath(); ctx.roundRect(-pW/2 - 5, -pH/2 - 5, pW + 10, pH + 10, rBox); ctx.fill(); ctx.restore(); }
-        if (c.immuneTime > 0 && drawEffects) {
+        if (c.spawnProt && c.immuneTime > 0) { alpha *= _fantasmaAlpha(); ctx.globalAlpha = alpha; }
+        if (c.immuneTime > 0 && drawEffects && !c.spawnProt) {
             ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(-Math.PI / 4); let pW = c.r * 2.0, pH = pW * PILL_RATIO, rBox = pW / 2, gap = c.r * 0.1; ctx.strokeStyle = '#a020f0'; ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = '#a020f0'; ctx.beginPath(); ctx.roundRect(-pW/2 - gap, -pH/2 - gap, pW + gap*2, pH + gap*2, rBox + gap); ctx.stroke();
             let time = performance.now() / 1200, shieldScale = Math.max(0.6, c.r / 25), shieldW = pW + gap*2, shieldH = pH + gap*2; for(let i=0; i<4; i++) { let angle = time + (i * (Math.PI / 2)), sx = Math.cos(angle) * (shieldW/2 + (10 * shieldScale)), sy = Math.sin(angle) * (shieldH/2 + (10 * shieldScale)); ctx.save(); ctx.translate(sx, sy); ctx.scale(shieldScale, shieldScale); ctx.rotate(-angle); ctx.fillStyle = '#a020f0'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(6, -6); ctx.lineTo(6, 0); ctx.quadraticCurveTo(6, 8, 0, 10); ctx.quadraticCurveTo(-6, 8, -6, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2; ctx.moveTo(0, -4); ctx.lineTo(0, 6); ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.stroke(); ctx.restore(); } ctx.restore();
         }
@@ -7398,7 +7412,7 @@
         ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.clip();
         const skinImg = getSkinImage(c.skinUrl);
         if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) { try { ctx.drawImage(skinImg, -pW/2, -pH/2, pW, pH); } catch (e) { drawCellColors(c, pW, pH); } } else { drawCellColors(c, pW, pH); }
-        if (c.immuneTime > 0 && drawEffects) { ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fill(); }
+        if (c.immuneTime > 0 && drawEffects && !c.spawnProt) { ctx.fillStyle = 'rgba(160, 32, 240, 0.4)'; ctx.fill(); }
         ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.ellipse(-pW/4, -pH/4, pW/5, pH/6, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.roundRect(-pW/2, -pH/2, pW, pH, rBox); ctx.lineWidth = Math.max(2, c.r * 0.1); ctx.strokeStyle = '#222'; ctx.stroke(); ctx.restore();
         if (c.particles.length > 0 && drawEffects && _pintaFxDe(c)) {
@@ -12005,7 +12019,7 @@
                 o.id = gid; o.name = name; o.colorBot = cd.cb; o.colorTop = cd.ct; o.skinUrl = null;
                 o.isBot = isBot;
                 const fin = !!(netState && netState._matchOver);   // partida acabada: el ultimo snapshot ya no se actualiza y los efectos se quedaban colgados
-                o.immuneTime = fin ? 0 : (cd.im || 0); o.sprintTime = cd.sp && !fin ? 1 : 0; o.magnetTime = cd.mg && !fin ? 1 : 0;
+                o.immuneTime = fin ? 0 : (cd.im || 0); o.spawnProt = !!cd.gh && !fin; o.sprintTime = cd.sp && !fin ? 1 : 0; o.magnetTime = cd.mg && !fin ? 1 : 0;
                 o.tpPhase = cd.tp || 0; o.tpTimer = cd.tt || 0; o.flashTime = 0; o.flashColor = null;
                 o.mass = Math.PI * o.r * (o.r * PILL_RATIO);
             };

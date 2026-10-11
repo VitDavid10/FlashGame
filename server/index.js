@@ -1566,6 +1566,7 @@ function round1(n) { return Math.round(n * 10) / 10; }
 function cellData(c) {
     const o = { ci: c.ci, x: round1(c.x), y: round1(c.y), r: round1(c.r), cb: c.colorBot, ct: c.colorTop };
     if (c.immuneTime > 0) o.im = Math.round(c.immuneTime);
+    if (c.spawnProt) o.gh = 1;   // inmunidad de entrada (se pinta semitransparente)
     if (c.sprintTime > 0) o.sp = 1;
     if (c.magnetTime > 0) o.mg = 1;
     if (c.tpPhase) { o.tp = c.tpPhase; o.tt = Math.round(c.tpTimer); }

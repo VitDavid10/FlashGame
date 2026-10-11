@@ -281,7 +281,7 @@
                 else if (this.tpPhase === 2) { if (this.tpTimer <= 0) { this.tpPhase = 0; } }
                 this.vx = 0; this.vy = 0; this.boostX = 0; this.boostY = 0; return;
             }
-            if (this.immuneTime > 0) { this.immuneTime -= delta; if (this.immuneTime < 0) this.immuneTime = 0; }
+            if (this.immuneTime > 0) { this.immuneTime -= delta; if (this.immuneTime <= 0) { this.immuneTime = 0; this.spawnProt = false; } }
             if (this.flashTime > 0) { this.flashTime -= delta; if (this.flashTime < 0) this.flashTime = 0; }
             if (this.magnetTime > 0) { this.magnetTime -= delta; if (this.magnetTime < 0) this.magnetTime = 0; }
             if (this.sprintTime > 0) { this.sprintTime -= delta; if (this.sprintTime < 0) this.sprintTime = 0; }
@@ -441,7 +441,7 @@
             if (id === 3) { siblings.forEach(s => { s.sprintTime = SKILL_PARAMS.sprintDuration; s.boostX += s.vx * 2; s.boostY += s.vy * 2; s.spawnParticles(sim, 'BOLT'); }); }
             else if (id === 4) { let limit = sim.zonaLimite() - 300; const q = sim.puntoAzar(limit); let centerX = q.x; let centerY = q.y; siblings.forEach(s => { s.tpPhase = 1; s.tpTimer = 500; s.tpDest = { x: centerX + (Math.random() * 100 - 50), y: centerY + (Math.random() * 100 - 50) }; }); }
             else if (id === 5) { siblings.forEach(s => s.magnetTime = SKILL_PARAMS.magnetDuration); showText("MAGNET", "#A020F0"); }
-            else if (id === 6) { siblings.forEach(s => s.immuneTime = SKILL_PARAMS.shieldDuration); showText("SHIELD", "#FFD700"); }
+            else if (id === 6) { siblings.forEach(s => { s.immuneTime = SKILL_PARAMS.shieldDuration; s.spawnProt = false; }); showText("SHIELD", "#FFD700"); }
             else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin; let gainPerCell = totalGain / siblings.length; siblings.forEach(s => { s.r = Math.sqrt((s.mass + gainPerCell) / (Math.PI * PILL_RATIO)); s.flashColor = '#00ff00'; s.flashTime = 1000; s.spawnParticles(sim, 'PLUS'); }); showText("MASS UP", "#00FF00"); }
             else if (id === 8) { let totalVal = (Math.random() < 0.5) ? -5000 : 15000; let valPerCell = totalVal / siblings.length; siblings.forEach(s => { let newMass = s.mass + valPerCell; if (newMass < 314) newMass = 314; s.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); s.flashColor = (totalVal >= 0) ? '#00ff00' : '#ff0000'; s.flashTime = 1000; s.spawnParticles(sim, totalVal >= 0 ? 'PLUS' : 'MINUS'); }); showText(totalVal >= 0 ? "JACKPOT!" : "FAIL!", totalVal >= 0 ? "#00FF00" : "#FF0000"); }
         }
@@ -526,7 +526,8 @@
             const pos = this.getSafePos(this.mapSize);
             // config.startRadius: arenas empiezan mas grandes (casi del tamano de un virus, sin pasarlo).
             const cell = new Cell(pos.x, pos.y, this.config.startRadius || INITIAL_RADIUS, p.colorBot, p.colorTop, p.name, false, p.skinUrl, id, this.now);
-            if (initialImmuneMs > 0) cell.immuneTime = initialImmuneMs;
+            // Inmunidad de entrada: se marca aparte (spawnProt) para pintarla como fantasma, no como el SHIELD.
+            if (initialImmuneMs > 0) { cell.immuneTime = initialImmuneMs; cell.spawnProt = true; }
             p.cells = [cell];
             p.alive = true;
             p.splitMilestones = { level1: false, level2: false };
@@ -890,7 +891,7 @@
             else if (id === 3) { p.cells.forEach(c => c.sprintTime = SKILL_PARAMS.sprintDuration); activated = true; }
             else if (id === 4) { let limit = this.zonaLimite() - 300; const q = this.puntoAzar(limit); let targetX = q.x; let targetY = q.y; let avgX = 0, avgY = 0; p.cells.forEach(c => { avgX += c.x; avgY += c.y; }); avgX /= p.cells.length; avgY /= p.cells.length; let dx = targetX - avgX, dy = targetY - avgY; p.cells.forEach(c => { c.tpPhase = 1; c.tpTimer = 500; c.tpDest = { x: c.x + dx, y: c.y + dy }; }); activated = true; }
             else if (id === 5) { activated = true; }
-            else if (id === 6) { p.cells.forEach(c => c.immuneTime = SKILL_PARAMS.shieldDuration); activated = true; }
+            else if (id === 6) { p.cells.forEach(c => { c.immuneTime = SKILL_PARAMS.shieldDuration; c.spawnProt = false; }); activated = true; }
             else if (id === 7) { let totalGain = Math.floor(Math.random() * (SKILL_PARAMS.bigMax - SKILL_PARAMS.bigMin + 1)) + SKILL_PARAMS.bigMin, gainPerCell = (p.cells.length > 0) ? (totalGain / p.cells.length) : totalGain; p.cells.forEach(c => { c.r = Math.sqrt((c.mass + gainPerCell) / (Math.PI * PILL_RATIO)); c.flashColor = '#00ff00'; c.flashTime = 1000; c.spawnParticles(this, 'PLUS'); }); activated = true; }
             else if (id === 8) { let totalVal = (Math.random() < 0.5) ? -5000 : 15000, valPerCell = (p.cells.length > 0) ? (totalVal / p.cells.length) : totalVal; p.cells.forEach(c => { let newMass = c.mass + valPerCell; if (newMass < 314) newMass = 314; c.r = Math.sqrt(newMass / (Math.PI * PILL_RATIO)); c.flashColor = (valPerCell >= 0) ? '#00ff00' : '#ff0000'; c.flashTime = 1000; c.spawnParticles(this, valPerCell >= 0 ? 'PLUS' : 'MINUS'); }); activated = true; win = totalVal >= 0; }
             if (activated) {

@@ -43,7 +43,7 @@
  *   str = u8 len, bytes (utf8)
  *   cellBin (≥17B):
  *     u32 ci, i16 x, i16 y, u16 r10,
- *     3B cb, 3B ct, u8 flags (bit0=skin, bit1=im, bit2=sp, bit3=mg, bit4=tp)
+ *     3B cb, 3B ct, u8 flags (bit0=skin, bit1=im, bit2=sp, bit3=mg, bit4=tp, bit5=gh)
  *     [u8 skinLen, bytes]?  [u16 immune]?  [u8 phase, u16 tt]?
  *
  * Coordenadas como i16 (±32767) — el mapa nunca pasa de 8000.
@@ -53,7 +53,7 @@
 
 const VER = 3;
 const VER4 = 4;   // variante delta de la sección players (join bin:2)
-const FLAG_SKIN = 1, FLAG_IM = 2, FLAG_SP = 4, FLAG_MG = 8, FLAG_TP = 16;
+const FLAG_SKIN = 1, FLAG_IM = 2, FLAG_SP = 4, FLAG_MG = 8, FLAG_TP = 16, FLAG_GH = 32;   // GH: inmunidad de entrada (sin bytes extra)
 const FLAG_ALIVE = 1;
 const V4_ALIVE = 1, V4_HASID = 2, V4_ISME = 4;
 
@@ -152,6 +152,7 @@ function writeCell(w, c) {
     if (c.sp) flags |= FLAG_SP;
     if (c.mg) flags |= FLAG_MG;
     if (c.tp) flags |= FLAG_TP;
+    if (c.gh) flags |= FLAG_GH;
     w.u8(flags);
     if (flags & FLAG_SKIN) w.str(c.sk);
     if (flags & FLAG_IM)   w.u16(Math.min(65535, c.im | 0));
@@ -173,6 +174,7 @@ function readCell(r) {
     if (flags & FLAG_SP) o.sp = 1;
     if (flags & FLAG_MG) o.mg = 1;
     if (flags & FLAG_TP) { o.tp = r.u8(); o.tt = r.u16(); }
+    if (flags & FLAG_GH) o.gh = 1;
     return o;
 }
 
