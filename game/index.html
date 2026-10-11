@@ -11288,7 +11288,7 @@
             if (!gameRunning) return;
             if (cmdBarOpen) { if (e.code === 'Escape') toggleCmdBar(false); else if (e.code === 'Enter' || e.code === 'NumpadEnter') submitCmd(); return; }
             if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !isLoggingOut) { toggleCmdBar(true); e.preventDefault(); return; }
-            if (e.code === 'Escape') { toggleExitModal(); return; }
+            if (e.code === 'Escape') { if (aimSlot) { aimSlot = 0; return; } toggleExitModal(); return; }
             if (isPickingSkill) { if (e.code === 'Tab') { e.preventDefault(); SoundManager.playSimpleHover(); skillChoiceIndex = (skillChoiceIndex === 0) ? 1 : 0; updateChoiceVisuals(); return; } if (e.code === 'KeyQ') { let options = els.skillOpts.children; if(options[skillChoiceIndex]) options[skillChoiceIndex].click(); return; } }
             if (e.code.startsWith('Digit')) { let n = parseInt(e.code.slice(-1)); if(n === 0) n = 10; if (n >= 1 && n <= 10) { if(uiSlots[n]) uiSlots[n].classList.add('active'); useSkill(n); } }
             if (e.code === 'Space') splitPlayer(); if (['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) { inputMode = 'KEYBOARD'; if(!isLoggingOut) keys[e.code.slice(-1).toLowerCase()] = true; } 
@@ -11305,9 +11305,17 @@
 
     // La lógica de skills vive en la sim; aquí solo se encola la acción con el
     // objetivo del ratón en coordenadas de mundo. El feedback vuelve por eventos.
+    // PC: SHOOT y CLON van en dos pulsaciones. La primera apunta (sale el trazo de pixeles hacia el raton) y la
+    // segunda dispara; Esc o otra skill lo cancelan. En el movil se dispara al momento (ya apuntas con el stick).
+    let aimSlot = 0;
     function useSkill(slotIndex) {
         if (!gameRunning || !sim || isSpectating) return;
         const p = me(); if (!p) return;
+        const slAim = p.skillSlots && p.skillSlots[slotIndex - 1];
+        if (slAim && (slAim.id === 1 || slAim.id === 2) && !document.body.classList.contains('mobile-allowed')) {
+            if (aimSlot !== slotIndex) { aimSlot = slotIndex; try { SoundManager.playSimpleHover(); } catch (e) {} return; }
+        }
+        aimSlot = 0;
         if (p.globalCD > 0) { SoundManager.play('cd'); return; }
         const es = getViewScale(), tx = (mouse.x - width/2) / es + camera.x, ty = (mouse.y - height/2) / es + camera.y;
         sim.queueAction('me', { kind: 'skill', slot: slotIndex, tx: tx, ty: ty });
@@ -16594,17 +16602,22 @@
         }
     }
 
-    // Guia de punteria de SHOOT y CLON: con la habilidad lista, un punto en el borde de la pildora que dispara (por donde
-    // sale el proyectil, igual que en la sim: emitProjectile) y una flecha pequena con la direccion. El angulo se suaviza
-    // para que no tiemble con el movimiento del raton ni de la pildora.
+    // Guia de punteria de SHOOT y CLON: un trazo de pixeles cuadrados (con borde negro, como el pixel art del juego)
+    // que sale del borde de la pildora que dispara (por donde sale el proyectil, igual que en la sim: emitProjectile)
+    // y se va apagando. Rojo SHOOT, azul CLON. En PC solo mientras apuntas (ver aimSlot); en el movil, con la skill lista.
+    // El angulo se suaviza para que no tiemble con el movimiento del raton ni de la pildora.
     const _aimA = {};
     function drawAimGuide(es) {
-        if (!gameRunning || !sim || isSpectating) return;
+        if (!gameRunning || !sim || isSpectating) { aimSlot = 0; return; }
         const p = me(); if (!p || !p.alive || !p.cells || !p.cells.length || p.globalCD > 0 || !p.skillSlots) return;
-        const listas = p.skillSlots.filter(sl => sl && (sl.id === 1 || sl.id === 2) && (sl.uses > 0 || p.godMode) && !(p.skillState && p.skillState[sl.id] > 0));
+        const movil = document.body.classList.contains('mobile-allowed');
+        const lista = sl => sl && (sl.id === 1 || sl.id === 2) && (sl.uses > 0 || p.godMode) && !(p.skillState && p.skillState[sl.id] > 0);
+        let listas;
+        if (movil) listas = p.skillSlots.filter(lista);
+        else { const sl = aimSlot && p.skillSlots[aimSlot - 1]; if (!lista(sl)) { aimSlot = 0; return; } listas = [sl]; }
         if (!listas.length) return;
         const tx = (mouse.x - width / 2) / es + camera.x, ty = (mouse.y - height / 2) / es + camera.y;
-        const tipos = { 2: { cost: SKILL_PARAMS.shootCost, r: 12, col: '255,70,70' }, 1: { cost: SKILL_PARAMS.clonCost, r: 16, col: '0,229,255' } };
+        const tipos = { 2: { cost: SKILL_PARAMS.shootCost, col: '#ff4646' }, 1: { cost: SKILL_PARAMS.clonCost, col: '#00e5ff' } };
         listas.sort((a, b) => b.id - a.id).forEach(sl => {
             const T = tipos[sl.id];
             let best = null, minD = Infinity;
@@ -16616,20 +16629,14 @@
             _aimA[sl.id] = a;
             const rel = a - (-Math.PI / 4);
             const edge = (best.r * (best.r * PILL_RATIO)) / Math.sqrt(Math.pow((best.r * PILL_RATIO) * Math.cos(rel), 2) + Math.pow(best.r * Math.sin(rel), 2));
-            const sd = edge + 25, sx = best.x + Math.cos(a) * sd, sy = best.y + Math.sin(a) * sd;
-            const u = 1 / es, L = 70 * u, ex = sx + Math.cos(a) * (T.r + L), ey = sy + Math.sin(a) * (T.r + L);
+            const u = 1 / es, lado = 8 * u, paso = 18 * u, N = 10;
             ctx.save();
-            // tramo corto de puntos hasta la flecha
-            ctx.setLineDash([6 * u, 6 * u]); ctx.lineWidth = 3 * u; ctx.strokeStyle = 'rgba(' + T.col + ',0.7)';
-            ctx.beginPath(); ctx.moveTo(sx + Math.cos(a) * T.r, sy + Math.sin(a) * T.r); ctx.lineTo(ex, ey); ctx.stroke();
-            ctx.setLineDash([]);
-            // flecha pequena
-            ctx.fillStyle = 'rgba(' + T.col + ',0.9)';
-            ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * 12 * u, ey + Math.sin(a) * 12 * u);
-            ctx.lineTo(ex + Math.cos(a + 2.5) * 10 * u, ey + Math.sin(a + 2.5) * 10 * u); ctx.lineTo(ex + Math.cos(a - 2.5) * 10 * u, ey + Math.sin(a - 2.5) * 10 * u); ctx.closePath(); ctx.fill();
-            // punto de salida
-            ctx.strokeStyle = 'rgba(' + T.col + ',0.95)'; ctx.fillStyle = 'rgba(' + T.col + ',0.35)'; ctx.lineWidth = 3 * u;
-            ctx.beginPath(); ctx.arc(sx, sy, T.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            for (let i = 0; i < N; i++) {
+                const d = edge + 10 * u + i * paso, x = best.x + Math.cos(a) * d, y = best.y + Math.sin(a) * d;
+                ctx.globalAlpha = 1 - i / (N + 2);
+                ctx.fillStyle = '#000'; ctx.fillRect(x - lado / 2 - 2 * u, y - lado / 2 - 2 * u, lado + 4 * u, lado + 4 * u);
+                ctx.fillStyle = T.col; ctx.fillRect(x - lado / 2, y - lado / 2, lado, lado);
+            }
             ctx.restore();
         });
     }
