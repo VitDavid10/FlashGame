@@ -857,7 +857,17 @@
                el cartel no cambie de alto. */
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn { width: 104px !important; height: 104px !important; }
             /* App: un pelin mas abajo, que no tape el aviso de arriba (jugando contra bots / buscando salas). */
-            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay { left: 64% !important; }
+            /* App: un pelin mas abajo y SIN escalar (scale .62 x el 1.35 del panel dejaba la letra pixel y los iconos a
+               tamanos fraccionarios: borroso). Las medidas de abajo ya son las finales: mismo tamano en pantalla, nitido. */
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay { left: 64% !important; width: 318px !important; transform: translate(-50%, -50%) rotate(90deg) !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-choice-card { transform: none !important; padding: 13px 22px 15px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceTitle { font-size: 11px !important; letter-spacing: 1px; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-options { margin-top: 18px !important; margin-bottom: 30px !important; gap: 28px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-btn { width: 70px !important; height: 70px !important; border-width: 3px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-btn.selected-choice { transform: none !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-name { font-size: 7px; top: calc(100% + 8px); }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-tips { font-size: 6px !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .timer-bar { height: 12px !important; margin-top: 12px; }
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-icon { width: 65px !important; height: 65px !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-options { margin-top: 6px !important; }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
@@ -3397,9 +3407,9 @@
         .hud-val { color: var(--primary); }
         /* app en PC: la fila de ROOM/MASS/ALIVE/KILLS y el reloj van a la altura de los botones de sonido (centro a 40 px) */
         html.pw-app body:not(.mobile-allowed) #ui { top: 20px; height: 40px; align-items: center; box-sizing: border-box; }
-        /* PC: ROOM/MASS/ALIVE centrados en alto con los botones redondos de la derecha; TOP MASS (con KILLS) y las misiones, un KILLS mas abajo. */
+        /* PC: ROOM/MASS/ALIVE centrados en alto con los botones redondos de la derecha; TOP MASS (con KILLS) y las misiones, medio KILLS mas abajo. */
         html.pw-app body:not(.mobile-allowed) #ui { top: calc(var(--pwHf) * 1.405 - 20px) !important; }
-        html.pw-app body:not(.mobile-allowed) #leaderboard { top: 168px !important; }
+        html.pw-app body:not(.mobile-allowed) #leaderboard { top: 122px !important; }
         html.pw-app body:not(.mobile-allowed) #timerDisplay { top: 20px !important; line-height: 40px; }
         html.pw-app body:not(.mobile-allowed) #skillChoiceOverlay { top: 96px !important; margin-top: 0 !important; }   /* SELECT A SKILL justo debajo del reloj */
         html.pw-app body:not(.mobile-allowed) #hudKills { display: none !important; }   /* el KILLS de la fila de arriba sobra: ya esta en el cuadro bajo TOP MASS */
@@ -3469,8 +3479,8 @@
         html.pw-app body #skillChoiceOverlay .skill-opt-btn.selected-choice { border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL) !important;
             box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, 0 0 20px #ccff00 !important; transform: scale(1.08) !important; }
         html.pw-app body #skillChoiceOverlay .skill-opt-icon { width: 54px !important; height: 54px !important; margin: 0 !important; border-radius: 50%; }
-        /* El icono llena el circulo (recortado en redondo), como en los circulos de las habilidades (PC y movil). */
-        html.pw-app body #skillChoiceOverlay .skill-opt-btn .skill-opt-icon { width: 84% !important; height: 84% !important; background-size: 100% !important; }
+        /* Movil: el icono llena el circulo (recortado en redondo), como en los circulos de las habilidades. */
+        html.pw-app body.mobile-allowed #skillChoiceOverlay .skill-opt-btn .skill-opt-icon { width: 84% !important; height: 84% !important; background-size: 100% !important; }
         html.pw-app body #skillChoiceOverlay .skill-opt-btn:not(.selected-choice) .skill-opt-icon { filter: brightness(.7); }
         html.pw-app body #skillChoiceOverlay .skill-opt-name { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap;
             font-family: 'Press Start 2P', monospace; font-size: 8px; font-weight: 400; color: #b7c28a; text-shadow: 2px 2px 0 #000; }
@@ -14789,7 +14799,7 @@
         isGodMode = false; isSpectating = false; currentGameMode = mode;
         Quests.startMatch(mode === 'skills' ? 'arcade' : mode, false);
         const esArcade = (mode === 'arcade' || mode === 'skills');
-        els.actionBar.style.display = esArcade ? 'flex' : 'none';
+        els.actionBar.style.display = (esArcade || currentGameMode === 'classic') ? 'flex' : 'none';   // classic tambien elige skills (_modoConSkills)
         if (esArcade) { p.skillSlots = [null, null, null, null]; massMilestoneReached = false; nextSkillPickTime = 30; isPickingSkill = false; els.skillOverlay.style.display = 'none'; updateSkillsUI_Arcade(); }
         els.loginOverlay.style.display = 'none'; els.result.style.display = 'none';
         // ROOM del HUD: la sala que se esta buscando (antes se quedaba la de la ultima partida y parecia que te metia en otra).
@@ -16211,7 +16221,7 @@
         if (saveInterval) clearInterval(saveInterval);
         if (!isResume) { explosions = []; camera.scale = 0.8; }
         const esArcade = (msg.mode === 'arcade' || msg.mode === 'skills');
-        els.actionBar.style.display = esArcade ? 'flex' : 'none';
+        els.actionBar.style.display = (esArcade || currentGameMode === 'classic') ? 'flex' : 'none';   // classic tambien elige skills (_modoConSkills)
         if (esArcade && !isResume) {
             massMilestoneReached = false; closeSkillChoice();
             const tl = (msg.tl != null) ? msg.tl : msg.duration;
