@@ -3467,6 +3467,7 @@
                 html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .icon-empty) { border-color: #2f3a2c #1a2118 #1a2118 #2f3a2c !important; background: #0a0d0a !important; }
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) { border-color: #6c7466 #343a31 #343a31 #6c7466 !important; }
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) .skill-icon { filter: grayscale(1) brightness(.55); }
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot.aim { box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 0 14px #ccff00, 0 0 4px #ccff00 !important; }
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot.active, html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) .tb-btn.pulsado { box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 0 10px #ccff00 !important; }
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) .tb-btn.tb-split { color: #eaf5ef; }
         html.pw-app body:not(.mobile-allowed) #actionBar .count-badge { right: -3px; bottom: -2px; }
@@ -11132,7 +11133,7 @@
             function tcShootHacia(dx, dy) {
                 const slot = tcSlotShoot(); if (!slot) return false;
                 const antes = { x: mouse.x, y: mouse.y };
-                tcApuntaDir(dx, dy); useSkill(slot);
+                tcApuntaDir(dx, dy); useSkill(slot, true);
                 mouse.x = antes.x; mouse.y = antes.y;
                 return true;
             }
@@ -11309,14 +11310,15 @@
 
     // La lógica de skills vive en la sim; aquí solo se encola la acción con el
     // objetivo del ratón en coordenadas de mundo. El feedback vuelve por eventos.
-    // PC: SHOOT y CLON van en dos pulsaciones. La primera apunta (sale el trazo de pixeles hacia el raton) y la
-    // segunda dispara; Esc o otra skill lo cancelan. En el movil se dispara al momento (ya apuntas con el stick).
+    // SHOOT y CLON van en dos pulsaciones (PC y movil). La primera apunta (sale el trazo de pixeles hacia donde mira:
+    // el raton en PC, el stick en el movil) y la segunda dispara; Esc en PC o usar otra skill lo cancelan.
+    // `directo` salta el apuntado (el gesto de disparo rapido del movil, que ya lleva su direccion).
     let aimSlot = 0;
-    function useSkill(slotIndex) {
+    function useSkill(slotIndex, directo) {
         if (!gameRunning || !sim || isSpectating) return;
         const p = me(); if (!p) return;
         const slAim = p.skillSlots && p.skillSlots[slotIndex - 1];
-        if (slAim && (slAim.id === 1 || slAim.id === 2) && !document.body.classList.contains('mobile-allowed')) {
+        if (!directo && slAim && (slAim.id === 1 || slAim.id === 2) && (slAim.uses > 0 || p.godMode)) {
             if (aimSlot !== slotIndex) { aimSlot = slotIndex; try { SoundManager.playSimpleHover(); } catch (e) {} return; }
         }
         aimSlot = 0;
@@ -16608,18 +16610,17 @@
 
     // Guia de punteria de SHOOT y CLON: un trazo de pixeles cuadrados (con borde negro, como el pixel art del juego)
     // que sale del borde de la pildora que dispara (por donde sale el proyectil, igual que en la sim: emitProjectile)
-    // y se va apagando. Rojo SHOOT, azul CLON. En PC solo mientras apuntas (ver aimSlot); en el movil, con la skill lista.
+    // y se va apagando. Rojo SHOOT, azul CLON. Solo mientras apuntas (ver aimSlot), en PC y en el movil.
     // El angulo se suaviza para que no tiemble con el movimiento del raton ni de la pildora.
     const _aimA = {};
     function drawAimGuide(es) {
-        if (!gameRunning || !sim || isSpectating) { aimSlot = 0; return; }
-        const p = me(); if (!p || !p.alive || !p.cells || !p.cells.length || p.globalCD > 0 || !p.skillSlots) return;
-        const movil = document.body.classList.contains('mobile-allowed');
+        if (!gameRunning || !sim || isSpectating) aimSlot = 0;
+        for (let i = 1; i <= 10; i++) if (uiSlots[i]) uiSlots[i].classList.toggle('aim', aimSlot === i);   // la casilla que apunta se enciende
+        if (!aimSlot) return;
+        const p = me(); if (!p || !p.alive || !p.cells || !p.cells.length || !p.skillSlots) return;
         const lista = sl => sl && (sl.id === 1 || sl.id === 2) && (sl.uses > 0 || p.godMode) && !(p.skillState && p.skillState[sl.id] > 0);
-        let listas;
-        if (movil) listas = p.skillSlots.filter(lista);
-        else { const sl = aimSlot && p.skillSlots[aimSlot - 1]; if (!lista(sl)) { aimSlot = 0; return; } listas = [sl]; }
-        if (!listas.length) return;
+        const sl0 = p.skillSlots[aimSlot - 1]; if (!lista(sl0)) { aimSlot = 0; return; }
+        const listas = [sl0];
         const tx = (mouse.x - width / 2) / es + camera.x, ty = (mouse.y - height / 2) / es + camera.y;
         const tipos = { 2: { cost: SKILL_PARAMS.shootCost, col: '#ff4646' }, 1: { cost: SKILL_PARAMS.clonCost, col: '#00e5ff' } };
         listas.sort((a, b) => b.id - a.id).forEach(sl => {
