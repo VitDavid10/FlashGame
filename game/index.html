@@ -11033,6 +11033,11 @@
     // pentakill el carry ya es 0 porque el servidor pago la VICTORY).
     function cashoutAlSalir() {
         if (currentGameMode !== 'classic') return null;
+        // Classic OFFLINE (no la practica de la sala de espera): sin dinero, pero con su pantalla de CASHOUT y las kills.
+        if (!practiceMode && !isSpectating && sim && !sim.isRemote && !(netState && netState.squad) && myCells().length > 0) {
+            const kills = myKillStreak() | 0;
+            return { reason: 'cashout', offline: true, amount: 0, carry: 0, kills, feePct: exitFeePct(kills), fee: 0 };
+        }
         if (practiceMode || isSpectating || !sim || !sim.isRemote) return null;
         if (!netState || !netState.token) return null;
         if (myCells().length === 0) return null;
@@ -11685,7 +11690,8 @@
         const gratis = [['FREE MATCH: YOUR $PILLY IS SAFE', 'd']];
         const x = extra || {};
         let l1 = k(kills), l2;
-        if (tipo === 'victory') { l1 = k(Math.max(kills, 5)); l2 = [['+' + pill(x.amount), 'g']]; }
+        if (x.offline && (tipo === 'victory' || tipo === 'cashout')) { l1 = k(x.kills | 0); l2 = [['OFFLINE: NO $PILLY AT STAKE', 'd']]; }
+        else if (tipo === 'victory') { l1 = k(Math.max(kills, 5)); l2 = [['+' + pill(x.amount), 'g']]; }
         else if (tipo === 'cashout') { l1 = k(x.kills | 0); l2 = [['+' + pill(x.amount), 'g'], [' · ' + x.feePct + '% EXIT FEE', 'd']]; }
         else if (tipo === 'matchEnded') { l2 = x.myAmount > 0 ? [['+' + pill(x.myAmount), 'g']] : [['OUT OF TOP ' + (x.topN || 10), 'd']]; }
         else if (tipo === 'matchFinished' && esArcade && sim && !sim.isRemote && sim.arc) {
@@ -11757,6 +11763,11 @@
         const esArc = currentGameMode === 'arcade' && !enArenas && window.PWSquad && PWSquad.arcadeFin;
         if (esArc && sim && !sim.isRemote && sim.arc) { finArcadeOffline(); return; }
         const matchFinished = () => { setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); showResultsUI('matchFinished'); };
+        // Classic OFFLINE con pentakill: VICTORY como online (sin dinero). Si se acaba el tiempo con menos kills, MATCH FINISHED.
+        if (currentGameMode === 'classic' && !enArenas && !practiceMode && sim && !sim.isRemote && (myKillStreak() | 0) >= 5 && !prizeOpen) {
+            EconHUD.showPrize({ reason: 'victory', offline: true, amount: 0, carry: 0, kills: 5 });
+            return;
+        }
         // Arcade online: la pantalla final la abre el reparto ('prize' arcadeEnd). Si no llegara, MATCH FINISHED de siempre.
         if (esArc && sim && sim.isRemote) {
             setTimeout(() => { const e = document.getElementById('sqEnd'); if (!(e && e.classList.contains('show')) && els.result.style.display !== 'flex' && gameRunning) matchFinished(); }, 4000);
@@ -12627,7 +12638,13 @@
                 amt.innerHTML = '+' + fmtPill(amount) + (usd ? ' <span class="pw-amt-usd">' + usd + '</span>' : '');
                 if (usePix) amt.classList.add('pw-amt-pix');
             };
-            if (msg.reason === 'victory') {
+            if (msg.offline) {
+                // Classic offline: mismo cartel, sin dinero (solo kills).
+                const v = msg.reason === 'victory';
+                setOverlayTitle(title, v ? 'victory' : 'cashout', v ? 'VICTORY!' : 'CASHOUT', v ? '#ffce3d' : '#00ff88');
+                amt.innerText = '';
+                sub.innerHTML = msg.kills + (msg.kills === 1 ? ' kill' : ' kills') + ' · offline practice, no $PILLY';
+            } else if (msg.reason === 'victory') {
                 setOverlayTitle(title, 'victory', 'VICTORY!', '#ffce3d');
                 setAmt(msg.amount);
                 sub.innerHTML = '5 KILLS · Total carry won:<br><b style="color:#00ff88">' + fmtMoney(msg.carry) + '</b>';
@@ -12648,7 +12665,7 @@
                     `<div class="prizeRow ${t.mine ? 'mine' : ''}"><span class="pos">#${t.pos}</span><span class="name">${esc(t.name || '—')}</span><span class="pct">${t.pct}%</span><span class="amt">${fmtPillShort(t.amount)} <span class="pw-unit">$PILLY</span></span></div>`
                 ).join('');
             }
-            amt.style.display = '';
+            amt.style.display = msg.offline ? 'none' : '';
             if (EN_APP) {
                 // App: VICTORY y CASHOUT van con las dos lineas (kills y $PILLY) y
                 // nada mas; MATCH ENDED conserva su cifra, el bote y el top 10.
