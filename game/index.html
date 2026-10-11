@@ -859,12 +859,16 @@
             /* App: un pelin mas abajo, que no tape el aviso de arriba (jugando contra bots / buscando salas). */
             /* App: un pelin mas abajo y SIN escalar (scale .62 x el 1.35 del panel dejaba la letra pixel y los iconos a
                tamanos fraccionarios: borroso). Las medidas de abajo ya son las finales: mismo tamano en pantalla, nitido. */
-            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay { left: 64% !important; width: 318px !important; transform: translate(-50%, -50%) rotate(90deg) !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay { left: 55% !important; width: 318px !important; transform: translate(-50%, -50%) rotate(90deg) !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-choice-card { transform: none !important; padding: 13px 22px 15px !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceTitle { font-size: 11px !important; letter-spacing: 1px; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-options { margin-top: 18px !important; margin-bottom: 30px !important; gap: 28px !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-btn { width: 70px !important; height: 70px !important; border-width: 3px !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-btn.selected-choice { transform: none !important; }
+            /* Movil: sin raton ni TAB no hay "elegida": las dos opciones encendidas igual (aro lima, icono y nombre en lima). */
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-btn { border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128) !important; box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, 0 0 14px #ccff00 !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-btn .skill-opt-icon { filter: none !important; }
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-name { color: #ccff00 !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-opt-name { font-size: 7px; top: calc(100% + 8px); }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .skill-tips { font-size: 6px !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay .timer-bar { height: 12px !important; margin-top: 12px; }
