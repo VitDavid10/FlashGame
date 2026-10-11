@@ -3411,6 +3411,32 @@
         body.mobile-allowed .ab-slot .ab-key { display: none; }
         .ab-slot { width: 50px; height: 50px; background: #151515; border: 2px solid #333; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; transition: transform 0.1s; overflow: hidden; cursor: grab; }
         .ab-slot:active { cursor: grabbing; }
+        /* App (11-oct-2026): botones de arriba (sonido, musica, salir) como los redondos del menu, en PC y movil;
+           apagado = icono tenue y tachado en rojo; salir en rojo. */
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) { border-radius: 50% !important; box-sizing: border-box; border: 3px solid !important;
+            border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128) !important;
+            background: radial-gradient(circle at 38% 32%, #232a08 0, #0d1003 62%) !important; box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000 !important; color: #eaf5ef; filter: none !important; }
+        html.pw-app body #exitGameBtn.sound-btn { border-color: #ff9a8a #8c1d14 #8c1d14 #ff9a8a !important; background: radial-gradient(circle at 38% 32%, #3a1210 0, #160604 62%) !important; }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle) > svg.sound-on { display: block !important; }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle) > svg.sound-off { display: none !important; }
+        html.pw-app body #exitGameBtn > svg { display: block !important; fill: #ffb3a8; }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle, #exitGameBtn) > svg { width: 52%; height: 52%; fill: #eaf5ef; filter: drop-shadow(1px 2px 0 #000); }
+        html.pw-app body #exitGameBtn > svg { fill: #ffb3a8; }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle).muted > svg { opacity: .35; }
+        html.pw-app body .sound-btn:is(#soundToggle, #musicToggle).muted::after { content: ""; position: absolute; left: 18%; right: 18%; top: 50%; height: 3px; background: #ff4a4a; transform: rotate(-45deg); box-shadow: 0 0 0 1px #000; pointer-events: none; }
+        /* App en PC: barra de habilidades con el marco de los botones del menu y la tecla debajo de cada casilla
+           (encendida en lima cuando la puedes usar; apagada si esta vacia o en recarga). El contador de cargas sigue igual. */
+        html.pw-app body:not(.mobile-allowed) #actionBar { background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; gap: 9px; padding: 4px 4px 20px; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot { overflow: visible; border-radius: 0 !important; border: 3px solid !important;
+            border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128) !important;
+            background: radial-gradient(circle at 38% 32%, #232a08 0, #0d1003 70%) !important; box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 2px 3px 0 rgba(0,0,0,.6) !important; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot .skill-icon { background-color: transparent !important; opacity: 1; background-size: 70%; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot:has(> .icon-empty) { border-color: #2f3a2c #1a2118 #1a2118 #2f3a2c !important; background: #0a0d0a !important; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot.active { box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 0 10px #ccff00 !important; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot .ab-key { left: 50%; top: auto; bottom: -18px; transform: translateX(-50%); min-width: 18px; height: 14px; padding: 0 3px; box-sizing: border-box;
+            display: flex; align-items: center; justify-content: center; font-size: 6px; line-height: 1; color: #ccff00; background: #0d1003; border: 1px solid; border-color: rgb(230,255,128) rgb(112,140,0) rgb(112,140,0) rgb(230,255,128); border-radius: 0; box-shadow: 0 0 0 1px #000, 0 2px 0 #000; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot:is(:has(> .icon-empty), :has(> .gcd-badge:not(:empty))) .ab-key { color: #6c7466; border-color: #59614f #22281f #22281f #59614f; }
+        html.pw-app body:not(.mobile-allowed) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) { border-color: #6c7466 #343a31 #343a31 #6c7466 !important; }
         .ab-slot.active { transform: scale(0.95); border-color: var(--primary); box-shadow: 0 0 10px var(--primary-dim); }
         /* Stick tactil (pedido por David): aro y bola donde apoyas el dedo en
            el cuarto de abajo a la izquierda. Solo es el dibujo; el rumbo lo
