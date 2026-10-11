@@ -856,6 +856,8 @@
                y lo que crece la fila se quita de su margen de arriba, para que
                el cartel no cambie de alto. */
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-btn { width: 104px !important; height: 104px !important; }
+            /* App: un pelin mas abajo, que no tape el aviso de arriba (jugando contra bots / buscando salas). */
+            html.pw-app:not([data-hero]) body.mobile-allowed #skillChoiceOverlay { left: 64% !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-opt-icon { width: 65px !important; height: 65px !important; }
             html.pw-app:not([data-hero]) body.mobile-allowed .skill-options { margin-top: 6px !important; }
             /* En pequeño: al lado de dos botones de 34px, el CONNECT de
@@ -3395,6 +3397,9 @@
         .hud-val { color: var(--primary); }
         /* app en PC: la fila de ROOM/MASS/ALIVE/KILLS y el reloj van a la altura de los botones de sonido (centro a 40 px) */
         html.pw-app body:not(.mobile-allowed) #ui { top: 20px; height: 40px; align-items: center; box-sizing: border-box; }
+        /* PC: ROOM/MASS/ALIVE centrados en alto con los botones redondos de la derecha; TOP MASS (con KILLS) y las misiones, un KILLS mas abajo. */
+        html.pw-app body:not(.mobile-allowed) #ui { top: calc(var(--pwHf) * 1.405 - 20px) !important; }
+        html.pw-app body:not(.mobile-allowed) #leaderboard { top: 168px !important; }
         html.pw-app body:not(.mobile-allowed) #timerDisplay { top: 20px !important; line-height: 40px; }
         html.pw-app body:not(.mobile-allowed) #skillChoiceOverlay { top: 96px !important; margin-top: 0 !important; }   /* SELECT A SKILL justo debajo del reloj */
         html.pw-app body:not(.mobile-allowed) #hudKills { display: none !important; }   /* el KILLS de la fila de arriba sobra: ya esta en el cuadro bajo TOP MASS */
@@ -3442,7 +3447,7 @@
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot, html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) .tb-btn:is(.tb-shoot, .tb-split) { overflow: visible; border-radius: 50% !important; box-sizing: border-box;
             border: 3px solid !important; border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL) !important; background: var(--pwMed) !important;
             box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 2px 3px 0 1px rgba(0,0,0,.55) !important; }
-        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) :is(#actionBar .ab-slot, .tb-btn.tb-shoot) .skill-icon { width: 66% !important; height: 66% !important; flex: none; background-color: transparent !important; background-size: 100% !important; opacity: 1; border-radius: 50%; }   /* recortado en redondo: el PNG pixel trae fondo negro cuadrado */
+        html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) :is(#actionBar .ab-slot, .tb-btn.tb-shoot) .skill-icon { width: 84% !important; height: 84% !important; flex: none; background-color: transparent !important; background-size: 100% !important; opacity: 1; border-radius: 50%; }   /* recortado en redondo: el PNG pixel trae fondo negro cuadrado */
                 html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .icon-empty) { border-color: #2f3a2c #1a2118 #1a2118 #2f3a2c !important; background: #0a0d0a !important; }
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) { border-color: #6c7466 #343a31 #343a31 #6c7466 !important; }
         html.pw-app:not([data-hero]) body:is(.mobile-allowed, :not(.mobile-allowed)) #actionBar .ab-slot:has(> .gcd-badge:not(:empty)) .skill-icon { filter: grayscale(1) brightness(.55); }
@@ -16293,6 +16298,7 @@
             // App en PC: TAB y Q como teclas, como en el menu.
             if (EN_APP && !document.body.classList.contains('mobile-allowed')) tipsEl.innerHTML = '<b>TAB</b> SWITCH <b>Q</b> PICK · OR CLICK ONE';
         }
+        try { const fo = document.activeElement; if (fo && fo !== document.body && fo.blur) fo.blur(); } catch (e) {}   // TAB/Q para el cartel, no para un campo con foco
         els.skillOverlay.style.display = 'flex'; }
     function updateChoiceVisuals() { let buttons = els.skillOpts.children; for (let i = 0; i < buttons.length; i++) { if (i === skillChoiceIndex) buttons[i].classList.add('selected-choice'); else buttons[i].classList.remove('selected-choice'); } }
     function selectArcadeSkill(id) { try { if (window.pwAq) pwAq.pick(); } catch (e) {} SoundManager.play('simpleselect'); SoundManager.stop('timer'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if (sim) sim.grantSkillToPlayer('me', id); updateSkillsUI_Arcade(); }
