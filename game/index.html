@@ -11799,12 +11799,24 @@
         els.result.style.display = 'none';
         document.getElementById('prizeModal').style.display = 'none';
         hideGameHUD(); hideSpectatorBar(); lootMio = [];
+        // Datos de la card de SHARE (game/app-share.js): titulo, kills y dinero.
+        {
+            const K = Math.min(5, msg.kills | 0), TIT = ['NO KILLS', 'FIRST BLOOD', 'DOUBLE KILL', 'TRIPLE KILL', 'QUADRA KILL', 'PENTAKILL'];
+            const pil = n => fmtPillShort(n) + ' $PILLY', dePago = currentServer && currentServer !== 'Free' && !msg.offline;
+            const l2 = msg.offline ? [['OFFLINE: NO $PILLY AT STAKE', 'd']]
+                : msg.reason === 'victory' ? [['+' + pil(msg.amount), 'g'], [' · NO FEE', 'd']]
+                : msg.reason === 'cashout' ? [['+' + pil(msg.amount), 'g'], [' · ' + (msg.feePct | 0) + '% EXIT FEE', 'd']]
+                : (dePago && carry > 0 ? [['LOST ', ''], [pil(carry), 'r']] : [['FREE MATCH: YOUR $PILLY IS SAFE', 'd']]);
+            window._finData = { tipo: msg.reason, texto: msg.reason === 'defeat' ? 'DEFEAT' : TIT[K] + (K >= 2 ? '!' : ''),
+                color: msg.reason === 'defeat' ? '#ff4d6d' : msg.reason === 'victory' ? '#00ff88' : '#ffce3d',
+                l1: [[String(K), 'v'], [K === 1 ? ' KILL' : ' KILLS', '']], l2 };
+        }
         PWSquad.classicFin({
             tipo: msg.reason, kills: msg.kills | 0, offline: !!msg.offline, rows, entry: miEntrada, entryUsd: usd(miEntrada),
             carry, carryUsd: usd(carry), feePct: msg.feePct | 0, fee: msg.fee | 0, feeUsd: usd(msg.fee | 0),
             amount: msg.amount | 0, amountUsd: usd(msg.amount | 0),
             onAgain: () => tryAgainOnline(), onMenu: () => returnToMenu(),
-            onSpectate: msg.reason === 'defeat' ? () => onSpectateClick() : null
+            onShare: window._hubShare ? () => { try { window._hubShare(); } catch (e) {} } : null   // SHARE solo en la app (app-share.js)
         });
     }
     // Pantalla final de ARCADE (game/squad.js arcadeFin), igual en PC y en la app.

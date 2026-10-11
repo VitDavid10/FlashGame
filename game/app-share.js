@@ -160,7 +160,7 @@
     document.body.appendChild(m);
     const st = document.createElement('style');
     st.textContent = `
-html.pw-app #ahShare{z-index:400!important;background:rgba(0,0,0,.86)!important}
+html.pw-app #ahShare{z-index:10000!important;background:rgba(0,0,0,.86)!important}   /* por encima de las pantallas de fin (sqFrame, 9990) */
 html.pw-app #ahShare .gameModalBox.ah-sh{background:none!important;border:none!important;box-shadow:none!important;transform:none!important;width:auto!important;max-width:none!important;padding:0!important;
   display:flex;flex-direction:column;align-items:center;gap:10px}
 html.pw-app .ah-sh-t{font-family:'Press Start 2P',monospace;font-size:18px;color:#fff;text-shadow:3px 3px 0 #000}

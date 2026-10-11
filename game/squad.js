@@ -945,12 +945,12 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         el.querySelector('.prz').innerHTML = prz;
         el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { (d.onMenu || returnToMenu)(); } catch (e) {} };
         el.querySelector('[data-e="again"]').onclick = () => { el.classList.remove('show'); try { (d.onAgain || returnToMenu)(); } catch (e) {} };
-        // SPECTATE solo en la derrota (seguir la partida en curso); en el resto de pantallas no hay.
-        const sp0 = el.querySelector('[data-e="spec"]'); if (sp0) sp0.remove();
-        if (d.onSpectate) {
-            const b = document.createElement('button'); b.className = 'o'; b.setAttribute('data-e', 'spec'); b.textContent = 'SPECTATE';
+        // SHARE (solo en la app): entre PLAY AGAIN y MENU, sin cerrar la pantalla.
+        const sp0 = el.querySelector('[data-e="share"]'); if (sp0) sp0.remove();
+        if (d.onShare) {
+            const b = document.createElement('button'); b.className = 'o'; b.setAttribute('data-e', 'share'); b.textContent = 'SHARE';
             const bts = el.querySelector('.bts'); bts.insertBefore(b, bts.querySelector('[data-e="menu"]'));
-            b.onclick = () => { el.classList.remove('show'); try { d.onSpectate(); } catch (e) {} };
+            b.onclick = () => { try { d.onShare(); } catch (e) {} };
         }
         let sonado = false;
         const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(derrota ? 'finlose' : 'finwin'); }, 120); };
