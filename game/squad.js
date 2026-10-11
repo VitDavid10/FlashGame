@@ -905,6 +905,48 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         setTimeout(sonar, 1500);
         nitido(el); el.classList.add('show'); fondoFin(el, gana ? 'win' : 'lose');
     }
+    /*
+     * Fin de CLASSIC con el diseno de fin de arenas. d = { tipo: 'victory'|'cashout', kills, offline,
+     *   rows: [{n, a, d, u}] (los que aportan a tu carry; d>0 = los que habia matado quien mataste),
+     *   entry/entryUsd (tu entrada), carry/carryUsd, feePct, fee/feeUsd, amount/amountUsd, onAgain, onMenu }
+     * Titulo por kills: 2 DOUBLE KILL, 3 TRIPLE KILL, 4 QUADRA KILL, 5 PENTAKILL. Si no es pentakill, abajo va el cashout
+     * con su fee de salida; el total en $PILLY y en dolares.
+     */
+    function classicFin(d) {
+        let el = document.getElementById('sqEnd');
+        if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = finHtml; frame().appendChild(el); }
+        const K = d.kills | 0, penta = d.tipo === 'victory';
+        const TIT = ['NO KILLS', 'FIRST BLOOD', 'DOUBLE KILL', 'TRIPLE KILL', 'QUADRA KILL', 'PENTAKILL'];
+        const tit = TIT[Math.min(5, K)] + (K >= 2 ? '!' : '');
+        el.className = 'arc ' + (penta ? 'win' : 'draw');
+        const t = el.querySelector('.t'); t.textContent = tit; t.classList.toggle('lg', tit.length > 8);
+        const num = n => (n | 0).toLocaleString('en-US');
+        const dinero = !d.offline;
+        let nKill = 0;
+        const fila = (nom, a, u, cls, sangria, yo) => '<div class="ar ' + (cls || '') + '"' + (sangria ? ' style="margin-left:' + sangria * 1.6 + 'em"' : '') + '><span class="ps">' + (yo ? 'YOU' : sangria ? '&gt;' : ++nKill) + '</span><span class="an">' + esc(nom) + '</span>' +
+            (dinero ? '<span class="ak">' + num(a) + (u ? '<u>(' + u + ')</u>' : '') + '</span>' : '<span class="ak" style="color:#9fb0a6">-</span>') + '</div>';
+        let rows = d.rows.slice(0, 7), mas = d.rows.length - rows.length;
+        let html = '<span class="h large">' + K + ' KILL' + (K === 1 ? '' : 'S') + ' · WHO PAYS YOUR CARRY</span><div class="alst">' +
+            (dinero ? fila('YOUR ENTRY', d.entry, d.entryUsd, 'me', 0, true) : '') +
+            rows.map(r => fila(r.n, r.a, r.u, '', r.d)).join('') + '</div>' +
+            (mas > 0 ? '<div class="asep">+ <b>' + mas + '</b> more</div>' : '');
+        el.querySelector('.tms').innerHTML = html;
+        const usdT = u => u ? '<span class="au">(' + u + ')</span>' : '';
+        let prz;
+        if (!dinero) prz = '<div class="apb" data-t="' + (penta ? 'VICTORY' : 'CASHOUT') + '"><span class="af fr">Offline practice: <b>no $PILLY</b> at stake.</span></div>';
+        else if (penta) prz = '<div class="apb" data-t="VICTORY · NO FEE"><span class="al"><span class="aa">+' + num(d.amount) + '</span>' + usdT(d.amountUsd) + '</span><span class="af">TOTAL <b>$PILLY</b> · all your carry</span></div>';
+        else prz = '<div class="apb" data-t="CASHOUT"><span class="al"><span class="aa">+' + num(d.amount) + '</span>' + usdT(d.amountUsd) + '</span>' +
+            '<span class="af">CARRY <i>' + num(d.carry) + '</i>' + (d.carryUsd ? ' (' + d.carryUsd + ')' : '') + ' &minus; <b style="color:#ff4d6d">' + d.feePct + '% EXIT FEE</b> ' + num(d.fee) + (d.feeUsd ? ' (' + d.feeUsd + ')' : '') + '</span>' +
+            '<span class="af" style="color:#9fb0a6">Get <i>PENTAKILL</i> to leave with no fee</span></div>';
+        el.querySelector('.prz').innerHTML = prz;
+        el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { (d.onMenu || returnToMenu)(); } catch (e) {} };
+        el.querySelector('[data-e="again"]').onclick = () => { el.classList.remove('show'); try { (d.onAgain || returnToMenu)(); } catch (e) {} };
+        let sonado = false;
+        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(penta || K > 0 ? 'finwin' : 'finlose'); }, 120); };
+        el.addEventListener('animationstart', sonar, { once: true });
+        setTimeout(sonar, 1500);
+        nitido(el); el.classList.add('show'); fondoFin(el, penta ? 'win' : 'draw');
+    }
     function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
         let el = document.getElementById('sqEnd');
@@ -1590,7 +1632,7 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         try { nicks = JSON.parse(localStorage.getItem('pw_nicks')) || {}; } catch (e) { nicks = {}; }
         render();
     }
-    window.PWSquad = { reloadPrefs, arcadeFin, resetAlerts: () => { S.alerted = {}; setTimeout(avisosPendientes, 3500); }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
+    window.PWSquad = { reloadPrefs, arcadeFin, classicFin, resetAlerts: () => { S.alerted = {}; setTimeout(avisosPendientes, 3500); }, open, openFriends, mountIn, onRoster, onEnd, onAllies, onPrize, prizes, claimAll, leaveGame, boot, refreshAv, practiceAgain, dispatch: onMsg, state: S };
     // Para el render: 'ally' (companero, aro azul), 'foe' (rival real, aro rojo) o null.
     window.pwSquadRel = id => (S.rel ? S.rel.get(id) || null : null);
     window.pwSquadTarget = () => (S.allies && Date.now() - S.allies.t < 2500 ? S.allies.tg : null);

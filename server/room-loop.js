@@ -298,6 +298,7 @@ function tickRoomOnce(room, now, ctx) {
             if (room.mode !== 'classic') {
                 const dCli = room.clients.get(ev.playerId);
                 if (dCli && dCli.carry > 0) { ctx.addToPot(room, dCli.carry); dCli.carry = 0; }
+                if (dCli) dCli.loot = [];
             }
             // Q2 también cuenta al morir online (jugaste la partida hasta el final aunque te eliminaran)
             const cliD = room.clients.get(ev.playerId);
@@ -340,6 +341,16 @@ function tickRoomOnce(room, now, ctx) {
                     ctx.sendEcon(victimCli, room);
                 }
                 cliK.carry += gain;
+                // Cadena del botin para la pantalla final: la victima (con lo que ella misma puso) y, debajo, lo que ella
+                // habia ido quitando. Se manda siempre, tambien contra bots (0), para que salgan todos los que mataste.
+                {
+                    const subV = (victimCli && victimCli.loot) || [];
+                    const base = Math.max(0, gain - subV.reduce((a, e) => a + (e.a | 0), 0));
+                    const entradas = [{ n: String(ev.botName || 'PLAYER').slice(0, 14), a: base, d: 0 }].concat(subV.map(e => ({ n: e.n, a: e.a, d: (e.d | 0) + 1 })));
+                    cliK.loot = (cliK.loot || []).concat(entradas).slice(-60);
+                    if (victimCli) victimCli.loot = [];
+                    try { cliK.ws.send(JSON.stringify({ t: 'loot', e: entradas })); } catch (e) {}
+                }
                 // Notificar el +X PILL al cliente para que muestre el floating naranja
                 // (victimWasBot se quitó: con los bots sin aportar dinero, gain>0
                 // implica víctima real, así que el campo era siempre false. El
@@ -352,7 +363,7 @@ function tickRoomOnce(room, now, ctx) {
                     if (win > 0) ctx.econ.credit(cliK.payWallet, win);
                     ctx.log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry completo)`);
                     try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0 })); } catch (e) {}
-                    cliK.carry = 0;
+                    cliK.carry = 0; cliK.loot = [];
                     ctx.sendEcon(cliK, room);
                     if (cliK.cid) ctx.econ.dailyEvent(cliK.cid, 'classic_5kills', 1);
                 }

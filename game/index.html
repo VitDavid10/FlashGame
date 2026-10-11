@@ -11031,12 +11031,14 @@
     // usa el servidor (classicExitFeePct). Devuelve null si no toca cashout
     // (arcade, offline, practica, muerto, lobby, sala gratis o carry a 0; con
     // pentakill el carry ya es 0 porque el servidor pago la VICTORY).
+    // Botin acumulado de la partida de classic: [{n: nombre, a: $PILLY que puso, d: 0 = lo mataste tu, 1+ = lo habia matado quien mataste}].
+    let lootMio = [];
     function cashoutAlSalir() {
         if (currentGameMode !== 'classic') return null;
         // Classic OFFLINE (no la practica de la sala de espera): sin dinero, pero con su pantalla de CASHOUT y las kills.
         if (!practiceMode && !isSpectating && sim && !sim.isRemote && !(netState && netState.squad) && myCells().length > 0) {
             const kills = myKillStreak() | 0;
-            return { reason: 'cashout', offline: true, amount: 0, carry: 0, kills, feePct: exitFeePct(kills), fee: 0 };
+            return { reason: 'cashout', offline: true, amount: 0, carry: 0, kills, feePct: exitFeePct(kills), fee: 0, loot: lootMio.slice() };
         }
         if (practiceMode || isSpectating || !sim || !sim.isRemote) return null;
         if (!netState || !netState.token) return null;
@@ -11046,7 +11048,7 @@
         const kills = myKillStreak() | 0;
         const feePct = exitFeePct(kills);
         const fee = Math.floor(carry * feePct / 100);
-        return { reason: 'cashout', amount: carry - fee, carry, kills, feePct, fee };
+        return { reason: 'cashout', amount: carry - fee, carry, kills, feePct, fee, loot: lootMio.slice() };
     }
     function confirmExit() {
         document.getElementById('exitModal').style.display = 'none'; isLoggingOut = false;
@@ -11619,7 +11621,7 @@
     // la pantalla de seleccion. Ahora se guarda para poder cancelarlo desde
     // returnToMenu, y ademas el callback comprueba que sigues en partida.
     let deathResultTimer = null;
-    function stopGame() { const sqSpec = !!(netState && netState.squad && window._squadKind === 'match'); isSpectating = true; hideCountdownNumber(); if (!sqSpec) SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => { deathResultTimer = null; if (!gameRunning) return; setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
+    function stopGame() { lootMio = []; const sqSpec = !!(netState && netState.squad && window._squadKind === 'match'); isSpectating = true; hideCountdownNumber(); if (!sqSpec) SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.play('death'); els.skillOverlay.style.display = 'none'; isPickingSkill = false; if(saveInterval) clearInterval(saveInterval); localStorage.removeItem('pillwars_save'); if (deathResultTimer) clearTimeout(deathResultTimer); deathResultTimer = setTimeout(() => { deathResultTimer = null; if (!gameRunning) return; setOverlayTitle(els.resultTitle, 'gameOver', 'GAME OVER', '#ff2a2a'); showResultsUI('gameOver'); }, 1400); }
 
     // Botón SPECTATE del menú GAME OVER: online sigue la partida en curso, offline crea sim local.
     function onSpectateClick() {
@@ -11765,7 +11767,7 @@
         const matchFinished = () => { setOverlayTitle(els.resultTitle, 'matchFinished', 'MATCH FINISHED', '#00ff88'); showResultsUI('matchFinished'); };
         // Classic OFFLINE con pentakill: VICTORY como online (sin dinero). Si se acaba el tiempo con menos kills, MATCH FINISHED.
         if (currentGameMode === 'classic' && !enArenas && !practiceMode && sim && !sim.isRemote && (myKillStreak() | 0) >= 5 && !prizeOpen) {
-            EconHUD.showPrize({ reason: 'victory', offline: true, amount: 0, carry: 0, kills: 5 });
+            EconHUD.showPrize({ reason: 'victory', offline: true, amount: 0, carry: 0, kills: 5, loot: lootMio.slice() });
             return;
         }
         // Arcade online: la pantalla final la abre el reparto ('prize' arcadeEnd). Si no llegara, MATCH FINISHED de siempre.
@@ -11774,6 +11776,25 @@
             return;
         }
         if (!prizeOpen && !enArenas) matchFinished();
+    }
+    // Pantalla final de CLASSIC (VICTORY al hacer pentakill o CASHOUT al salir vivo), con el diseno de fin de arenas
+    // (game/squad.js classicFin): titulo por kills, todos los que aportan a tu carry y el total en $PILLY y en $.
+    function finClassic(msg) {
+        const loot = (msg.loot && msg.loot.length ? msg.loot : lootMio).slice();
+        const usd = a => (MONEY_IN_USD && pillRate > 0 && a > 0) ? '$' + (a / pillRate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        const suma = loot.reduce((a, e) => a + (e.a | 0), 0);
+        const carry = msg.carry | 0 || (msg.amount | 0) + (msg.fee | 0);
+        const miEntrada = Math.max(0, carry - suma);   // lo que pusiste tu al entrar
+        const rows = loot.map(e => ({ n: e.n, a: e.a | 0, d: e.d | 0, u: usd(e.a | 0) }));
+        els.result.style.display = 'none';
+        document.getElementById('prizeModal').style.display = 'none';
+        hideGameHUD(); hideSpectatorBar(); lootMio = [];
+        PWSquad.classicFin({
+            tipo: msg.reason, kills: msg.kills | 0, offline: !!msg.offline, rows, entry: miEntrada, entryUsd: usd(miEntrada),
+            carry, carryUsd: usd(carry), feePct: msg.feePct | 0, fee: msg.fee | 0, feeUsd: usd(msg.fee | 0),
+            amount: msg.amount | 0, amountUsd: usd(msg.amount | 0),
+            onAgain: () => tryAgainOnline(), onMenu: () => returnToMenu()
+        });
     }
     // Pantalla final de ARCADE (game/squad.js arcadeFin), igual en PC y en la app.
     function finArcade(d) {
@@ -11794,7 +11815,7 @@
     // no se pasa por el cartel de resultado, asi que los avisos de partida
     // (2 KILLS TO PENTAKILL, CARRY/POT, barra de skills...) se quedaban pintados
     // encima del menu.
-    function returnToMenu() { try { const bb = document.getElementById('botsBanner'); clearTimeout(bb._hideTimer); bb.classList.remove('show'); } catch (e) {} try { hideSquadEntry(); } catch (e) {} hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
+    function returnToMenu() { lootMio = []; try { const bb = document.getElementById('botsBanner'); clearTimeout(bb._hideTimer); bb.classList.remove('show'); } catch (e) {} try { hideSquadEntry(); } catch (e) {} hideGameHUD(); cerrarUIColores(); EconHUD.resetAnim(); _miPuesto = null; _puestoPrevio = null; _rangoSonidoAt = 0; if (deathResultTimer) { clearTimeout(deathResultTimer); deathResultTimer = null; } serverLeaderboard = null; Quests.endMatch('leave'); setTimeout(() => { if (typeof loadModeQuests === 'function') loadModeQuests(); if (typeof refreshOracle === 'function') refreshOracle(); }, 600); hideSpectatorBar(); SoundManager.play('select'); SoundManager.stopMusic(); SoundManager.stop('timer'); SoundManager.playMenuMusic(); els.skillOverlay.style.display = 'none'; isPickingSkill = false; els.result.style.display = 'none'; document.getElementById('ui').style.display = 'none'; document.getElementById('timerDisplay').style.display = 'none'; els.loginOverlay.style.display = 'flex';
         // Recalcular SIEMPRE al volver a enseñar el login, no solo confiar en
         // la medida de cuando se entro al modo (ver el comentario de arriba).
         centrarTitulo(); alineaCartelesInfo(); ajustaMenuResponsive();
@@ -12613,6 +12634,11 @@
         showPrize(msg) {
             if (msg.reason === 'arcadeEnd' && window.PWSquad && PWSquad.arcadeFin) {
                 finArcade(Object.assign({}, msg, { gratis: msg.pot > 0 ? '' : 'free' }));
+                setTimeout(() => GameWalletUI.refresh(), 800);
+                return;
+            }
+            if ((msg.reason === 'victory' || msg.reason === 'cashout') && window.PWSquad && PWSquad.classicFin) {
+                finClassic(msg);
                 setTimeout(() => GameWalletUI.refresh(), 800);
                 return;
             }
@@ -15606,6 +15632,8 @@
                 // Brujula de multitud (ver drawEnemyArrow): PUNTO del grupo, no
                 // angulo — la direccion la recalcula el cliente cada frame.
                 crowdHint = { x: +msg.x || 0, y: +msg.y || 0, n: msg.n | 0, at: Date.now() };
+            } else if (msg.t === 'loot') {
+                if (Array.isArray(msg.e)) lootMio = lootMio.concat(msg.e).slice(-60);   // quien aporta a tu carry (pantalla final de classic)
             } else if (msg.t === 'killGain') {
                 if (msg.rate > 0) pillRate = msg.rate;   // arenas: no llega 'econ', la tasa viene con el botin
                 showKillGain(msg.amount);
@@ -16554,6 +16582,7 @@
                     Quests.reportKill();
                     try { if (window.pwAq) pwAq.kill(myCells().length > 1); } catch (e) {}
                     if (ev.mode === 'classic') {
+                        if (sim && !sim.isRemote) lootMio.push({ n: String(ev.botName || 'BOT').slice(0, 14), a: 0, d: 0 });   // offline: sin dinero, pero salen en la pantalla final
                         let msg = "KILL"; if (ev.streak === 1) msg = "FIRST BLOOD"; else if (ev.streak === 2) msg = "DOUBLE KILL"; else if (ev.streak === 3) msg = "TRIPLE KILL"; else if (ev.streak === 4) msg = "QUADRA KILL"; else if (ev.streak >= 5) msg = "PENTAKILL";
                         showKillStreak(msg); SoundManager.playFloatKill();
                         updatePentakillHint(ev.streak);
