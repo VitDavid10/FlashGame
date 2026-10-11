@@ -3469,6 +3469,8 @@
         html.pw-app body #skillChoiceOverlay .skill-opt-btn.selected-choice { border-color: var(--pwL) var(--pwD) var(--pwD) var(--pwL) !important;
             box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, 0 0 20px #ccff00 !important; transform: scale(1.08) !important; }
         html.pw-app body #skillChoiceOverlay .skill-opt-icon { width: 54px !important; height: 54px !important; margin: 0 !important; border-radius: 50%; }
+        /* Movil: el icono llena el circulo (recortado en redondo), como en los circulos de las habilidades. */
+        html.pw-app body.mobile-allowed #skillChoiceOverlay .skill-opt-icon { width: 84% !important; height: 84% !important; background-size: 100% !important; }
         html.pw-app body #skillChoiceOverlay .skill-opt-btn:not(.selected-choice) .skill-opt-icon { filter: brightness(.7); }
         html.pw-app body #skillChoiceOverlay .skill-opt-name { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); white-space: nowrap;
             font-family: 'Press Start 2P', monospace; font-size: 8px; font-weight: 400; color: #b7c28a; text-shadow: 2px 2px 0 #000; }
