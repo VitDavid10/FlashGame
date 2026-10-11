@@ -915,25 +915,29 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
     function classicFin(d) {
         let el = document.getElementById('sqEnd');
         if (!el) { el = document.createElement('div'); el.id = 'sqEnd'; el.innerHTML = finHtml; frame().appendChild(el); }
-        const K = d.kills | 0, penta = d.tipo === 'victory';
+        const K = d.kills | 0, penta = d.tipo === 'victory', derrota = d.tipo === 'defeat';
         const TIT = ['NO KILLS', 'FIRST BLOOD', 'DOUBLE KILL', 'TRIPLE KILL', 'QUADRA KILL', 'PENTAKILL'];
-        const tit = TIT[Math.min(5, K)] + (K >= 2 ? '!' : '');
-        el.className = 'arc ' + (penta ? 'win' : 'draw');
+        const tit = derrota ? 'DEFEAT' : TIT[Math.min(5, K)] + (K >= 2 ? '!' : '');
+        el.className = 'arc ' + (derrota ? 'lose' : penta ? 'win' : 'draw');
         const t = el.querySelector('.t'); t.textContent = tit; t.classList.toggle('lg', tit.length > 8);
         const num = n => (n | 0).toLocaleString('en-US');
         const dinero = !d.offline;
         let nKill = 0;
         const fila = (nom, a, u, cls, sangria, yo) => '<div class="ar ' + (cls || '') + '"' + (sangria ? ' style="margin-left:' + sangria * 1.6 + 'em"' : '') + '><span class="ps">' + (yo ? 'YOU' : sangria ? '&gt;' : ++nKill) + '</span><span class="an">' + esc(nom) + '</span>' +
             (dinero ? '<span class="ak">' + num(a) + (u ? '<u>(' + u + ')</u>' : '') + '</span>' : '<span class="ak" style="color:#9fb0a6">-</span>') + '</div>';
-        let rows = d.rows.slice(0, 7), mas = d.rows.length - rows.length;
-        let html = '<span class="h large">' + K + ' KILL' + (K === 1 ? '' : 'S') + ' · WHO PAYS YOUR CARRY</span><div class="alst">' +
-            (dinero ? fila('YOUR ENTRY', d.entry, d.entryUsd, 'me', 0, true) : '') +
-            rows.map(r => fila(r.n, r.a, r.u, '', r.d)).join('') + '</div>' +
-            (mas > 0 ? '<div class="asep">+ <b>' + mas + '</b> more</div>' : '');
-        el.querySelector('.tms').innerHTML = html;
+        // Hasta 10 lineas (tu entrada + los que aportan); si hay mas, la ultima dice cuantos faltan y lo que suman.
+        const MAX = 10, todas = (dinero ? [{ yo: true }] : []).concat(d.rows);
+        const ver = todas.length > MAX ? todas.slice(0, MAX - 1) : todas, oculto = todas.length > MAX ? todas.slice(MAX - 1) : [];
+        const lin = ver.map(r => r.yo ? fila('YOUR ENTRY', d.entry, d.entryUsd, 'me', 0, true) : fila(r.n, r.a, r.u, '', r.d)).join('') +
+            (oculto.length ? '<div class="ar"><span class="ps">+</span><span class="an">' + oculto.length + ' MORE</span>' + (dinero ? '<span class="ak">' + num(oculto.reduce((a, r) => a + (r.a | 0), 0)) + '</span>' : '') + '</div>' : '');
+        const cab = derrota ? K + ' KILL' + (K === 1 ? '' : 'S') + ' · YOU WERE EATEN' : K + ' KILL' + (K === 1 ? '' : 'S') + ' · WHO PAYS YOUR CARRY';
+        el.querySelector('.tms').innerHTML = '<span class="h large">' + cab + '</span><div class="alst' + (todas.length > 5 ? ' dos' : '') + '"' + (todas.length > 5 ? ' style="grid-template-rows:repeat(' + Math.ceil(Math.min(todas.length, MAX) / 2) + ',auto)"' : '') + '>' + lin + '</div>';
         const usdT = u => u ? '<span class="au">(' + u + ')</span>' : '';
         let prz;
-        if (!dinero) prz = '<div class="apb" data-t="' + (penta ? 'VICTORY' : 'CASHOUT') + '"><span class="af fr">Offline practice: <b>no $PILLY</b> at stake.</span></div>';
+        if (derrota) prz = !dinero || d.carry <= 0
+            ? '<div class="apb" data-t="FREE MATCH"><span class="af fr">Your <b>$PILLY</b> is safe. Next time play a <b>paid match</b>.</span></div>'
+            : '<div class="apb" data-t="YOU LOST"><span class="al"><span class="aa no">-' + num(d.carry) + '</span>' + usdT(d.carryUsd) + '</span><span class="af">Your carry went to <i>whoever ate you</i></span></div>';
+        else if (!dinero) prz = '<div class="apb" data-t="' + (penta ? 'VICTORY' : 'CASHOUT') + '"><span class="af fr">Offline practice: <b>no $PILLY</b> at stake.</span></div>';
         else if (penta) prz = '<div class="apb" data-t="VICTORY · NO FEE"><span class="al"><span class="aa">+' + num(d.amount) + '</span>' + usdT(d.amountUsd) + '</span><span class="af">TOTAL <b>$PILLY</b> · all your carry</span></div>';
         else prz = '<div class="apb" data-t="CASHOUT"><span class="al"><span class="aa">+' + num(d.amount) + '</span>' + usdT(d.amountUsd) + '</span>' +
             '<span class="af">CARRY <i>' + num(d.carry) + '</i>' + (d.carryUsd ? ' (' + d.carryUsd + ')' : '') + ' &minus; <b style="color:#ff4d6d">' + d.feePct + '% EXIT FEE</b> ' + num(d.fee) + (d.feeUsd ? ' (' + d.feeUsd + ')' : '') + '</span>' +
@@ -942,10 +946,10 @@ body[data-modo="classic"] .ci{--bgc:#03100b;--grid:rgba(11,51,38,.95);--acc:#00f
         el.querySelector('[data-e="menu"]').onclick = () => { el.classList.remove('show'); try { (d.onMenu || returnToMenu)(); } catch (e) {} };
         el.querySelector('[data-e="again"]').onclick = () => { el.classList.remove('show'); try { (d.onAgain || returnToMenu)(); } catch (e) {} };
         let sonado = false;
-        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(penta || K > 0 ? 'finwin' : 'finlose'); }, 120); };
+        const sonar = () => { if (sonado) return; sonado = true; setTimeout(() => { if (el.classList.contains('show')) snd(derrota ? 'finlose' : 'finwin'); }, 120); };
         el.addEventListener('animationstart', sonar, { once: true });
         setTimeout(sonar, 1500);
-        nitido(el); el.classList.add('show'); fondoFin(el, penta ? 'win' : 'draw');
+        nitido(el); el.classList.add('show'); fondoFin(el, derrota ? 'lose' : penta ? 'win' : 'draw');
     }
     function mostrarFin(m) {
         // Pantalla de fin (diseno C): banda oscura en diagonal, VICTORY en verde o DEFEAT en rojo, filas con foto, kills y peak.
