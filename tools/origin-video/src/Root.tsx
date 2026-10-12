@@ -12,6 +12,7 @@ import { GUIDE_ALL_FRAMES, GuideAll, GuidePost, POSTS, postFrames } from "./Guid
 import { H, W } from "./ui";
 import { COUNTRY_SKINS_FRAMES, CountrySkins } from "./CountrySkins";
 import { CHAOS_FRAMES, Chaos } from "./Chaos";
+import { HACKATHON_FRAMES, Hackathon } from "./Hackathon";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -43,6 +44,8 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="CountrySkins" component={CountrySkins} durationInFrames={COUNTRY_SKINS_FRAMES} fps={30} width={W} height={H} />
       {/* ~29 s of frantic gameplay on a reworked song: skills, escapes, kills that take money. */}
       <Composition id="Chaos" component={Chaos} durationInFrames={CHAOS_FRAMES} fps={30} width={W} height={H} />
+      {/* Colosseum hackathon pitch: silent video with subtitles, to narrate over. */}
+      <Composition id="Hackathon" component={Hackathon} durationInFrames={HACKATHON_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-jumper" component={PerkJumper} durationInFrames={1} fps={30} width={W} height={H} />
