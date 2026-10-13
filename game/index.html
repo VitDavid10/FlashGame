@@ -9075,6 +9075,10 @@
         return true;
     }
 
+    // El hub de la app fija aqui el modo de su menu al pulsar PLAY: una partida de ARENAS (que corre con reglas arcade)
+    // dejaba currentGameMode en 'arcade' y el siguiente PLAY de CLASSIC arrancaba una partida arcade.
+    window.pwSetGameMode = m => { if (m === 'classic' || m === 'arcade') currentGameMode = m; };
+
     // --- Popup PLAY (offline/online) + popup de sala si aun no hay elegida ---
     let _pendingPlayKind = null;
     function openPlayChoice() {

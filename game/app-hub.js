@@ -2347,6 +2347,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         $('.ah-play').onclick = async () => {
             const kind = room === 'offline' || sinRed || !navigator.onLine ? 'offline' : 'online';
             try { SoundManager.play('select'); } catch (x) {}
+            try { pwSetGameMode(mode); } catch (x) {}
             if (kind === 'online' && mode === 'arcade' && !esperarIgual && !(await arcadeAbierta())) return;
             esperarIgual = false;
             try {
