@@ -19,3 +19,8 @@ public/demo/*.mp4
 public/demo/*.mp3
 public/demo/voice/*.mp3
 public/mobile-demo/
+
+# SeekerPlus: recordings of the Saga and the clips cut from them (regenerable: scripts/saga-cuts.py)
+public/saga/*.mp4
+public/saga/cuts/
+public/saga/hub.jpg

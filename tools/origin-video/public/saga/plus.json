@@ -1,0 +1,17 @@
+[
+ {"beats": 2, "src": "pw-takeB1.mp4", "t": 0.2,  "chip": "ARENAS"},
+ {"beats": 2, "src": "rec1.mp4",      "t": 53.0, "chip": "THE PILL"},
+ {"beats": 2, "src": "rec1.mp4",      "t": 65.3, "chip": "FRIENDS"},
+ {"beats": 2, "src": "rec1.mp4",      "t": 70.2, "chip": "GROUPS"},
+ {"beats": 4, "src": "rec1.mp4",      "t": 80.1, "chip": "ARENAS · 2V2"},
+ {"beats": 4, "src": "pw-takeB1.mp4", "t": 15.8, "chip": "ARENAS · 1V1"},
+ {"beats": 2, "src": "pw-takeB1.mp4", "t": 19.0},
+ {"beats": 10, "src": "pw-takeB1.mp4", "t": 71.3},
+ {"beats": 6, "src": "rec1.mp4",      "t": 47.3},
+ {"beats": 2, "src": "pw-takeB2.mp4", "t": 19.2, "chip": "CLASSIC · KILL 1"},
+ {"beats": 2, "src": "pw-takeB2.mp4", "t": 27.7, "chip": "KILL 2"},
+ {"beats": 2, "src": "pw-takeB2.mp4", "t": 42.2, "chip": "KILL 3"},
+ {"beats": 2, "src": "pw-takeB2.mp4", "t": 60.1, "chip": "KILL 4"},
+ {"beats": 5, "src": "pw-takeB2.mp4", "t": 62.5, "chip": "CLOSE CALL"},
+ {"beats": 5, "src": "pw-takeB2.mp4", "t": 72.2}
+]

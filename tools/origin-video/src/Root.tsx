@@ -15,6 +15,7 @@ import { CHAOS_FRAMES, Chaos } from "./Chaos";
 import { HACKATHON_FRAMES, Hackathon } from "./Hackathon";
 import { MOBILE_DEMO_FRAMES, MobileDemo } from "./MobileDemo";
 import { DEMO_FRAMES, Demo } from "./Demo";
+import { SEEKER_PLUS_FRAMES, SeekerPlus } from "./SeekerPlus";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -51,6 +52,8 @@ export const RemotionRoot: React.FC = () => {
       {/* ~1 min of the app inside a Seeker: menu, panels and a CLASSIC match. */}
       <Composition id="MobileDemo" component={MobileDemo} durationInFrames={MOBILE_DEMO_FRAMES} fps={30} width={W} height={H} />
       {/* ~2:30 gameplay demo: the PC game (arenas, friends, menus, a pentakill), then the app in a Seeker. */}
+      {/* The Seeker trailer with an extra scene at second 30: the menu and the Saga footage. */}
+      <Composition id="SeekerPlus" component={SeekerPlus} durationInFrames={SEEKER_PLUS_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Demo" component={Demo} durationInFrames={DEMO_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />

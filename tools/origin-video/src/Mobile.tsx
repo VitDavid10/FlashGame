@@ -25,6 +25,7 @@ const END_BEATS = INTRO_BEATS + CLIPS.reduce((a, n) => a + n * 4, 0);
 const INTRO = at(INTRO_BEATS), PLAY_END = at(END_BEATS);
 export const MOBILE_FRAMES = at(END_BEATS + 30);
 void BAR;
+export { at, BEAT, SONG_FROM, END_BEATS };
 
 // Solana Mobile's mark (the three stacked bars), white as on the Seeker.
 const Mark: React.FC<{ h: number }> = ({ h }) => (
@@ -172,7 +173,7 @@ const EndCard: React.FC<{ show: number }> = ({ show }) => (
   </AbsoluteFill>
 );
 
-export const Mobile: React.FC = () => {
+export const Mobile: React.FC<{ music?: boolean }> = ({ music = true }) => {
   const f = useCurrentFrame();
   // beats 0-2: built on Solana, 2-7: Seeker × PillWars, 7-12: the phone alone turns and zooms into the game (drop).
   const ry = f < T_FLIP ? interpolate(f, [T_PHONE, T_FLIP], [200, 180], clamp) : interpolate(f, [T_FLIP, T_FLIP + 22], [180, 0], { ...clamp, easing: ease });
@@ -248,7 +249,9 @@ export const Mobile: React.FC = () => {
       </Sequence>
 
       {/* music: one take of the song from 14.98 s to the very end, fading out on the last screen */}
-      <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(END_BEATS + 29), MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
+      {music && (
+        <Audio src={staticFile("mobile/deflector.mp3")} trimBefore={Math.round(SONG_FROM * 30)} volume={(v) => interpolate(v, [0, 4, at(END_BEATS + 29), MOBILE_FRAMES], [0, 0.9, 0.9, 0], clamp)} />
+      )}
       <Sequence from={T_FLIP} layout="none"><Audio src={staticFile("snd/sprint.mp3")} volume={0.3} /></Sequence>
     </AbsoluteFill>
   );
