@@ -1,0 +1,15 @@
+{
+ "frames": 711,
+ "secs": 10.295371055603027,
+ "marks": [
+  {
+   "label": "kill",
+   "t": 3.86,
+   "name": "vortex"
+  },
+  {
+   "label": "end",
+   "t": 5.79
+  }
+ ]
+}

@@ -1,0 +1,47 @@
+[
+ {
+  "id": "intro",
+  "text": "This is PillWars. Real-time pill battles, where every kill pays.",
+  "len": 3.52
+ },
+ {
+  "id": "duel",
+  "text": "Pick a duel, pay your entry in $PILLY, and fight.",
+  "len": 3.07
+ },
+ {
+  "id": "win",
+  "text": "Win, and the whole pot is yours.",
+  "len": 1.68
+ },
+ {
+  "id": "friends",
+  "text": "Add a friend, make a group, and go 2v2.",
+  "len": 2.73
+ },
+ {
+  "id": "menus",
+  "text": "Skins, guides, and daily quests. Pick three to track while you play.",
+  "len": 3.73
+ },
+ {
+  "id": "classic",
+  "text": "In Classic, every kill takes your rival's tokens.",
+  "len": 2.74
+ },
+ {
+  "id": "penta",
+  "text": "Five kills is a Pentakill. You leave with everything.",
+  "len": 2.75
+ },
+ {
+  "id": "mobile",
+  "text": "And the whole game fits in your pocket, on Solana Mobile.",
+  "len": 2.65
+ },
+ {
+  "id": "outro",
+  "text": "PillWars. See you in the arena.",
+  "len": 1.79
+ }
+]

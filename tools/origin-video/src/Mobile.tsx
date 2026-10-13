@@ -35,7 +35,7 @@ const Mark: React.FC<{ h: number }> = ({ h }) => (
   </svg>
 );
 // "Seeker" (their wordmark, public/perks/seeker-word.png) over "SOLANA ▤ MOBILE".
-const SeekerLockup: React.FC<{ h: number }> = ({ h }) => (
+export const SeekerLockup: React.FC<{ h: number }> = ({ h }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
     <Img src={staticFile("perks/seeker-word.png")} style={{ height: h }} />
     <div style={{ marginTop: h * 0.02, display: "flex", alignItems: "center", gap: h * 0.1, fontFamily: SANS, fontWeight: 600, fontSize: h * 0.15, color: "#fff", letterSpacing: h * 0.028 }}>
@@ -46,7 +46,7 @@ const SeekerLockup: React.FC<{ h: number }> = ({ h }) => (
 
 // Seeker, landscape. Two faces: the real back (photo) and the screen.
 const PW = 1560, PH = PW * 1080 / 2400;
-const Seeker: React.FC<{ ry: number; scale: number; y: number; screen: React.ReactNode }> = ({ ry, scale, y, screen }) => {
+export const Seeker: React.FC<{ ry: number; scale: number; y: number; screen: React.ReactNode }> = ({ ry, scale, y, screen }) => {
   const bz = PW * 0.013, fr = PW * 0.006, R = PH * 0.09;
   const face: React.CSSProperties = { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" };
   return (
@@ -141,7 +141,7 @@ const Store: React.FC = () => {
   );
 };
 // The Solana mark in its colours.
-const SolMark: React.FC<{ h: number }> = ({ h }) => (
+export const SolMark: React.FC<{ h: number }> = ({ h }) => (
   <svg viewBox="0 0 100 86" style={{ height: h, width: h * 1.16 }}>
     <defs><linearGradient id="solg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#9945ff" /><stop offset="1" stopColor="#14f195" /></linearGradient></defs>
     <polygon points="18,0 100,0 82,20 0,20" fill="url(#solg)" /><polygon points="0,33 82,33 100,53 18,53" fill="url(#solg)" /><polygon points="18,66 100,66 82,86 0,86" fill="url(#solg)" />

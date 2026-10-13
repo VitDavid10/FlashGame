@@ -362,7 +362,7 @@ function tickRoomOnce(room, now, ctx) {
                     const win = cliK.carry;
                     if (win > 0) ctx.econ.credit(cliK.payWallet, win);
                     ctx.log(`VICTORIA classic: ${cliK.payWallet.slice(0, 6)}… +${win} PILL (carry completo)`);
-                    try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0 })); } catch (e) {}
+                    try { cliK.ws.send(JSON.stringify({ t: 'prize', reason: 'victory', amount: win, carry: cliK.carry, pot: 0, kills: ev.streak | 0 })); } catch (e) {}
                     cliK.carry = 0; cliK.loot = [];
                     ctx.sendEcon(cliK, room);
                     if (cliK.cid) ctx.econ.dailyEvent(cliK.cid, 'classic_5kills', 1);

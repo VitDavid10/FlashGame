@@ -1,0 +1,20 @@
+{
+ "frames": 492,
+ "secs": 12.332180976867676,
+ "marks": [
+  {
+   "label": "kill",
+   "t": 4.31,
+   "name": "zed"
+  },
+  {
+   "label": "kill",
+   "t": 7.05,
+   "name": "bolt"
+  },
+  {
+   "label": "end",
+   "t": 7.32
+  }
+ ]
+}

@@ -13,6 +13,8 @@ import { H, W } from "./ui";
 import { COUNTRY_SKINS_FRAMES, CountrySkins } from "./CountrySkins";
 import { CHAOS_FRAMES, Chaos } from "./Chaos";
 import { HACKATHON_FRAMES, Hackathon } from "./Hackathon";
+import { MOBILE_DEMO_FRAMES, MobileDemo } from "./MobileDemo";
+import { DEMO_FRAMES, Demo } from "./Demo";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -46,6 +48,10 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Chaos" component={Chaos} durationInFrames={CHAOS_FRAMES} fps={30} width={W} height={H} />
       {/* Colosseum hackathon pitch: silent video with subtitles, to narrate over. */}
       <Composition id="Hackathon" component={Hackathon} durationInFrames={HACKATHON_FRAMES} fps={30} width={W} height={H} />
+      {/* ~1 min of the app inside a Seeker: menu, panels and a CLASSIC match. */}
+      <Composition id="MobileDemo" component={MobileDemo} durationInFrames={MOBILE_DEMO_FRAMES} fps={30} width={W} height={H} />
+      {/* ~2:30 gameplay demo: the PC game (arenas, friends, menus, a pentakill), then the app in a Seeker. */}
+      <Composition id="Demo" component={Demo} durationInFrames={DEMO_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-jumper" component={PerkJumper} durationInFrames={1} fps={30} width={W} height={H} />

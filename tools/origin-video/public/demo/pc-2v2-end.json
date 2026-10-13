@@ -1,0 +1,20 @@
+{
+ "frames": 316,
+ "secs": 17.25770115852356,
+ "marks": [
+  {
+   "label": "kill",
+   "t": 8.5,
+   "name": "grumpy"
+  },
+  {
+   "label": "kill",
+   "t": 11.39,
+   "name": "lunar"
+  },
+  {
+   "label": "end",
+   "t": 12.74
+  }
+ ]
+}

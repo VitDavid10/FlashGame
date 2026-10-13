@@ -13,3 +13,9 @@ public/growth
 public/tour
 public/action
 public/snd/chaos-music.wav
+
+# Demo video: recorded clips, voice and the game music copied in (regenerable: capture/demo-capture.js, scripts/demo-voice.py)
+public/demo/*.mp4
+public/demo/*.mp3
+public/demo/voice/*.mp3
+public/mobile-demo/
