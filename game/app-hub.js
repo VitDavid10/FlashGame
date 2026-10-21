@@ -120,7 +120,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .ah-it{position:absolute;left:3.6em;z-index:0;display:flex;align-items:center;gap:.9em;cursor:pointer}
 .ah-it:before{content:"";position:absolute;z-index:-1;left:1.6em;top:-.35em;width:18.5em;height:3.9em;box-sizing:border-box;background:linear-gradient(180deg,var(--p1),var(--p2));border:.14em solid var(--bar);box-shadow:.2em .3em 0 rgba(0,0,0,.6)}
 .ah-it .med{box-shadow:inset 0 0 0 .12em #000}
-.ah-it[data-a=pill]{--c:#c8ff00}.ah-it[data-a=arenas]{--c:#ff5a4a}.ah-it[data-a=store]{--c:#ffc83a}.ah-it[data-a=quests]{--c:#3fc4ff}
+.ah-it[data-a=pill]{--c:#c8ff00}.ah-it[data-a=arenas]{--c:#ff5a4a}.ah-it[data-a=airdrop]{--c:#ffc83a}.ah-it[data-a=quests]{--c:#3fc4ff}
 .ah-it:before{width:18.5em;background:linear-gradient(90deg,var(--p1) 0,var(--p1) 45%,color-mix(in srgb,var(--c) 24%,#000) 100%)}
 .ah-it:after{content:"";position:absolute;z-index:-1;left:20.1em;top:-.35em;width:.5em;height:3.9em;background:var(--c)}
 .ah-it:not([data-a=pill]) .med svg{color:var(--c)}
@@ -512,7 +512,7 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 #appHub.pc .ah-it[data-a=pill]{top:4.35em!important}
 #appHub.pc .ah-it[data-a=arenas]{top:7.45em!important}
 #appHub.pc .ah-it[data-a=friends]{top:10.55em!important}
-#appHub.pc .ah-it[data-a=store]{top:13.65em!important}
+#appHub.pc .ah-it[data-a=airdrop]{top:13.65em!important}
 #appHub.pc .ah-it[data-a=quests]{top:16.75em!important}
 #appHub.pc .ah-it[data-a=core]{top:19.85em!important;display:flex}
 #appHub.pc{--bw:17em}
@@ -939,7 +939,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
 <div class="ah-it" data-a="pill" style="top:4.7em"><div class="med"><canvas id="ahPillIco"></canvas></div><div><div class="t">THE PILL</div><div class="s" id="ahPillSub"></div></div></div>
 <div class="ah-it" data-a="arenas" style="top:8.3em"><div class="med">${svg('swords')}</div><div><div class="t">ARENAS<span class="ah-on"><span class="ah-dot"></span><b id="ahOnline">0</b></span></div><div class="s">1V1 · 2V2 · 3V3</div></div></div>
 <div class="ah-it" data-a="friends" style="top:12.6em"><div class="med">${svg('friends')}<i class="ah-fb" id="ahFrB2"></i></div><div><div class="t">FRIENDS</div><div class="s" id="ahFrSub">0 ONLINE</div></div></div>
-<div class="ah-it" data-a="store" style="top:11.9em"><div class="med">${svg('store')}</div><div><div class="t">STORE</div><div class="s">NEW SKINS</div></div></div>
+<div class="ah-it" data-a="airdrop" style="top:11.9em"><div class="med">${svg('star')}</div><div><div class="t">AIRDROP</div><div class="s">GENESIS DROP</div></div></div>
 <div class="ah-it" data-a="quests" style="top:15.5em"><div class="med">${svg('quests')}</div><div><div class="t">QUESTS</div><div class="bar"><i id="ahQBar" style="width:0"></i></div></div><span class="ah-bdg" id="ahQBdg"></span></div>
 <div class="ah-it" data-a="core" style="top:0"><div class="med">${svg('core')}</div><div><div class="t">PILLWARS CORE</div><div class="s">GUIDES · VIDEOS</div></div></div>
 <canvas id="ahArena"></canvas><div id="ahLive"><b class="tag">LIVE</b><span class="on"><i class="dot"></i><em id="ahLiveOn">0</em> ONLINE</span><div class="feed" id="ahLiveFeed"></div></div><canvas id="ahPill"></canvas><div id="ahPillNm"><span></span></div><input id="ahPillIn" maxlength="12" placeholder="TYPE YOUR NAME" autocomplete="off" spellcheck="false">
@@ -994,6 +994,10 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="ph"><button class="tb" data-s="shop">STORE</button><button class="tb" data-s="mine">MY SKINS</button><button class="tb" data-s="conv">CONVERT</button><span class="cnt" id="ahStSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="sn" id="ahStG" style="grid-template-columns:repeat(4,1fr)"></div><div class="cv-b" id="ahCv"></div></div>
   <div class="foot" id="ahStFoot"></div></div></div></div>
+<div class="ov" id="ahAd"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
+  <div class="ph"><button class="tb on">AIRDROP</button><span class="cnt" id="ahAdPts"></span><button class="px">CLOSE</button></div>
+  <div class="sk-b" style="flex-direction:column"><div class="pr-st" id="ahAdG"></div><div class="pr-st" id="ahAdG2" style="margin-top:.5em"></div></div>
+  <div class="foot" id="ahAdFoot"></div><button class="tb on" id="ahAdGo" style="display:block;margin:.6em auto 0;white-space:nowrap;width:auto;padding:0 1.2em">OPEN GENESIS DROP</button></div></div></div>
 <div class="ov" id="ahQ"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">QUESTS</button><span class="qb" id="ahQBoost"></span><span class="cnt" id="ahQSp"></span><button class="px">CLOSE</button></div>
   <div class="sk-b"><div class="qg" id="ahQG"></div></div>
@@ -1570,7 +1574,24 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     async function loadAirdrop() {
         try { const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json(); adUser = j.user; adScore = j.score; } catch (e) {}
         renderQuests();
+        if ($('#ahAd').classList.contains('open')) renderAirdrop();
     }
+    // ---------- AIRDROP: el progreso del Genesis Drop, el mismo de la pagina del airdrop ----------
+    function renderAirdrop() {
+        const u = adUser, s = adScore, esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const cell = (k, v) => '<div class="cell"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
+        const misiones = (s && s.missions) || [], hechas = misiones.filter(q => s.daily.done[q.id]).length;
+        $('#ahAdPts').textContent = fmtN(s ? s.total : 0) + ' PTS';
+        $('#ahAdG').innerHTML = cell('POINTS', fmtN(s ? s.total : 0)) +
+            cell('X', u && u.x ? '@' + esc(u.x.username) : 'NOT LINKED') +
+            cell('WALLET', u && u.wallet ? esc(u.wallet.slice(0, 4) + '...' + u.wallet.slice(-4)) : 'NOT LINKED');
+        $('#ahAdG2').innerHTML = cell('INVITES', fmtN(u ? u.invites || 0 : 0)) +
+            cell('TODAY', misiones.length ? hechas + '/' + misiones.length : '-') +
+            cell('BOOST', s && s.boosted ? '+50%' : 'OFF');
+        $('#ahAdFoot').textContent = u ? 'Points for the $PILLY Genesis Drop' : 'Connect X or your wallet on the Genesis Drop page to start earning points';
+        placa($('#ahAd .pnl'), 1);
+    }
+    function openAirdrop() { $('#ahAd').classList.add('open'); renderAirdrop(); loadAirdrop(); }
     const fmtN = n => n >= 1000 ? Math.round(n).toLocaleString('en-US') : String(n);
     // ---------- MISIONES de la app: cuentan TODAS en TODOS los modos; marcar (hasta 3) es para verlas en la partida ----------
     // Offline, practica, arenas u online: el juego avisa de lo que pasa (window.pwAq, ver index.html) y aqui se cuenta para
@@ -2276,7 +2297,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
     }
     function openCore() { $('#ahCore').classList.add('open'); renderCore(); }
     // La barra del menu abierto se marca (contorno lima, interior oscuro).
-    const BARRA_DE = { ahCore: 'core', ahSk: 'pill', ahAr: 'arenas', ahFr: 'friends', ahSt: 'store', ahQ: 'quests' };
+    const BARRA_DE = { ahCore: 'core', ahSk: 'pill', ahAr: 'arenas', ahFr: 'friends', ahSt: 'store', ahAd: 'airdrop', ahQ: 'quests' };
     function marcaBarra() {
         const abierto = Object.keys(BARRA_DE).find(id => $('#' + id) && $('#' + id).classList.contains('open'));
         hub.querySelectorAll('.ah-it').forEach(b => b.classList.toggle('sel', !!abierto && b.dataset.a === BARRA_DE[abierto]));
@@ -2286,12 +2307,13 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const a = it.dataset.a;
         try { SoundManager.play('simpleselect'); } catch (x) {}
         if (a === 'x') { if (hub.classList.contains('pc')) cierraPaneles(); conectaX(); return; }
-        if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'quests', 'pill', 'htp', 'core'].includes(a)) cierraPaneles();
+        if (hub.classList.contains('pc') && ['rooms', 'arenas', 'friends', 'store', 'airdrop', 'quests', 'pill', 'htp', 'core'].includes(a)) cierraPaneles();
         if (a === 'htp') { htpPag = 0; htpSk = null; $('#ahHtp').classList.add('open'); renderHtp(); return; }
         if (a === 'rooms') { $('#ahRooms').classList.add('open'); renderRooms(); pullRooms(); }
         if (a === 'arenas') { const ar = $('#ahAr'); ar.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('rooms', $('#ahArBody')); placa($('#ahAr .pnl'), 1); }
         else if (a === 'friends') { const fr = $('#ahFr'); fr.classList.add('open'); if (window.PWSquad) PWSquad.mountIn('friends', $('#ahFrBody')); placa($('#ahFr .pnl'), 1); }
         else if (a === 'store') openStore('shop');
+        else if (a === 'airdrop') openAirdrop();
         else if (a === 'quests') openQuests();
         else if (a === 'core') openCore();
         else if (a === 'pill') {
@@ -2310,6 +2332,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const cerrar = o => { o.classList.remove('open'); o.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (e) {} });
             if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests(); if (o.id === 'ahSk' || o.id === 'ahSt') { const pg = o.querySelector('.pg'); if (pg) pg.remove(); } };
         hub.querySelectorAll('.px').forEach(b => b.onclick = () => cerrar(b.closest('.ov')));
+        // #game: la pagina del airdrop sin la portada, directa a los puntos.
+        $('#ahAdGo').onclick = () => { try { SoundManager.play('simpleselect'); } catch (x) {} window.open('/#game', '_blank'); };
         hub.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) cerrar(o); }));
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.onclick = () => { storeTab = b.dataset.s; buying = null; skinPage = 0; try { SoundManager.play('simpleselect'); } catch (x) {} renderStore(); });
         // X dentro de la app: el WebView mantiene a X dentro durante el login

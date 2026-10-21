@@ -224,14 +224,14 @@ test('the owner can unlock the real site with a link minted on the server', asyn
     // With the pass, the real site answers as if there were no lockdown.
     const withPass = p => fetch(base + p, { headers: { Cookie: cookie, 'Sec-Fetch-Dest': 'document' } });
     assert.strictEqual((await withPass('/game/')).status, 200);
-    assert.strictEqual(await (await withPass('/index.html')).text(), 'PASSTHROUGH');
+    assert.strictEqual(await (await withPass('/landing.html')).text(), 'PASSTHROUGH');
     // A forged cookie value does nothing.
-    const forged = await fetch(base + '/index.html', { headers: { Cookie: 'pwopen=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'Sec-Fetch-Dest': 'document' } });
+    const forged = await fetch(base + '/landing.html', { headers: { Cookie: 'pwopen=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'Sec-Fetch-Dest': 'document' } });
     assert.strictEqual(forged.status, 404);
 
     // Minting again revokes the previous pass.
     await fetch(base + '/api/airdrop/unlock-link', { method: 'POST' });
-    assert.strictEqual((await withPass('/index.html')).status, 404);
+    assert.strictEqual((await withPass('/landing.html')).status, 404);
 });
 
 test('quests and Daily Arena progress are written to disk, so a restart keeps them', async (t) => {

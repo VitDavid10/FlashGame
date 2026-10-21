@@ -85,8 +85,8 @@ function createAirdrop(opts) {
     log('[airdrop] lockdown ' + (ONLY ? 'ON' : 'off') + ' | X client id ' + (X_CLIENT_ID ? 'set (' + X_CLIENT_ID.length + ' chars)' : 'MISSING') +
         ' | X client secret ' + (X_CLIENT_SECRET ? 'set (' + X_CLIENT_SECRET.length + ' chars)' : 'MISSING'));
 
-    // With the lockdown on, the airdrop IS the home page (pillwars.fun/).
-    const HOME = ONLY ? '/' : '/airdrop';
+    // The airdrop IS the home page (pillwars.fun/), lockdown or not.
+    const HOME = '/';
     const xPending = new Map();      // state -> { verifier, redirectUri, t }
     const cardHits = new Map();      // ip -> [timestamps]
 
@@ -520,8 +520,7 @@ function createAirdrop(opts) {
     };
     function gate(req, res, urlPath) {
         // The owner's browser carries a pass: serve the real site as if there
-        // were no lockdown (see mintUnlock). '/' keeps showing the airdrop page,
-        // so the real landing is at /index.html while this is on.
+        // were no lockdown (see mintUnlock). '/' keeps showing the airdrop page.
         if (unlocked(req)) return false;
         if (adminPath && (urlPath === adminPath || urlPath.startsWith(adminPath + '/'))) return false;
         if (appPath && (urlPath === appPath || urlPath.startsWith(appPath + '/'))) return false;
@@ -560,9 +559,11 @@ function createAirdrop(opts) {
     async function handle(req, res, urlPath, query) {
         // Blackout: only the private pass answers, everything else is a 404.
         if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath) && !fromApp(req, urlPath) && !legal(req, urlPath)) { notFound(req, res); return true; }
-        const isHome = ONLY ? urlPath === '/' : (urlPath === '/airdrop' || urlPath === '/airdrop/');
-        if (isHome) { sendHome(req, res, query); return true; }
-        if (ONLY && (urlPath === '/airdrop' || urlPath === '/airdrop/')) { redirect(res, '/', 301); return true; }
+        // The airdrop page is the home page with or without the lockdown; the old
+        // landing (index.html) is not served at all (David, 21-oct-2026).
+        if (urlPath === '/') { sendHome(req, res, query); return true; }
+        if (urlPath === '/index.html') { notFound(req, res); return true; }
+        if (urlPath === '/airdrop' || urlPath === '/airdrop/') { redirect(res, '/', 301); return true; }
         if (urlPath === '/airdrop-terms') { sendFile(res, 'airdrop-terms.html', 'text/html; charset=utf-8'); return true; }
         if (urlPath === '/airdrop.html') { redirect(res, HOME, 301); return true; }
         if (urlPath === '/airdrop-terms.html') { redirect(res, '/airdrop-terms', 301); return true; }

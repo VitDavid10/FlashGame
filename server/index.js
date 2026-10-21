@@ -3714,6 +3714,7 @@ const httpServer = http.createServer(async (req, res) => {
     const top = relLower.split('/')[0];
     if (['server', '.git', 'node_modules', 'tasks', '.claude', 'memory',
          'deploy', 'scripts', 'tools', 'chatbot-backend', 'stress_bot', '.codegraph',
+         'archive',   // la landing antigua (index-old.html), archivada el 21-oct-2026
          'docs',
          // programs/ tiene el keypair que FIJA la direccion on-chain del contrato
          // (programs/pill-treasury-keypair.json). Estaba en .gitignore pero no
