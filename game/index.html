@@ -15883,12 +15883,19 @@
     // App sin conexion: app-sw.js guarda lo que carga el juego para que abra y
     // se pueda jugar offline. Lo ya cargado antes de que existiera el worker se
     // lo pasamos aqui para que tambien lo guarde.
-    if (EN_APP && 'serviceWorker' in navigator) {
+    // Solo la app de verdad (Web Shell o ?app) registra el worker. Antes tambien
+    // lo registraba /game/ abierto en una pestaña: ese worker controlaba la Daily
+    // Arena del airdrop y devolvia el 404 del lockdown. Donde quedo instalado, se quita.
+    const APP_REAL = /Solana Mobile Web Shell/.test(navigator.userAgent) || new URLSearchParams(location.search).has('app');
+    if (EN_APP && APP_REAL && 'serviceWorker' in navigator) {
         const swGuarda = () => navigator.serviceWorker.register('app-sw.js')
             .then(() => navigator.serviceWorker.ready)
             .then(r => r.active && r.active.postMessage({ guarda: [location.href, ...performance.getEntriesByType('resource').map(e => e.name)] }))
             .catch(() => {});
         if (document.readyState === 'complete') swGuarda(); else window.addEventListener('load', swGuarda);
+    } else if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+        if ('caches' in window) caches.delete('pw-app-v1').catch(() => {});
     }
     // Con 'click' y no 'pointerdown': si el cartel se quitara al APOYAR el dedo,
     // el click de despues caeria en el selector de modos de debajo y elegiria
