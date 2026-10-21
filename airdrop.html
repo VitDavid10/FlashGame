@@ -59,7 +59,7 @@ a{color:var(--green)}
 .box{background:var(--inset);box-shadow:inset 0 0 0 2px var(--line)}
 
 /* ---------- hero ---------- */
-.topbar{visibility:hidden;position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:22px 28px;min-height:48px}
+.topbar{visibility:hidden;position:relative;z-index:2;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;padding:22px 28px;min-height:48px}
 /* Mirror of the logo: its tilted pill reaches 9px past the padding (7px on phones)
    and its top sits at 18px, so the buttons go as far right and as high. */
 .topbar .hero-social{align-self:flex-start;margin:-4px -9px 0 0}
@@ -281,6 +281,7 @@ body.arena-full .intro-top{display:none}   /* the Daily Arena full screen (touch
 @keyframes introBob{50%{translate:0 6px}}
 @media (max-width:640px){
   .intro-top,.topbar{padding:16px}
+  .topbar{margin-bottom:16px}
   .topbar .hero-social{margin:0 -7px 0 0}
   .intro-brand img{height:20px}
   .intro-acts{gap:8px}
