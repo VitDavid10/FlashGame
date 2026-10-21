@@ -383,6 +383,16 @@ body.mobile-allowed #appHub{position:absolute;inset:auto;width:var(--pw-largo,10
 .pr-bt{display:flex;gap:.5em;margin-top:.8em}.pr-bt .tb{width:auto;flex:1}
 .pr-st{display:grid;grid-template-columns:repeat(3,1fr);gap:.5em;height:3.6em}
 .pr-st .cell{justify-content:center;gap:.4em}.pr-st .v{font-size:.62em;text-shadow:.12em .12em 0 #000}
+.ad-card{position:relative;overflow:hidden;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.4em .8em;padding:.9em 1.1em;
+  border:.12em solid #c8ff00;background:linear-gradient(135deg,#123a1f 0%,#07140c 55%,#1f2e06 100%);box-shadow:inset 0 0 0 .12em #000,.25em .25em 0 #000}
+.ad-card::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 .12em,transparent .12em .36em);pointer-events:none}
+.ad-card .av{width:3em;height:3em;border:.12em solid #000;background:#0a1a12;display:flex;align-items:center;justify-content:center;color:#6f7a73;box-shadow:.15em .15em 0 #000}
+.ad-card .av img{width:100%;height:100%;object-fit:cover}.ad-card .av svg{width:70%;height:70%}
+.ad-card .who b{display:block;font-size:.6em;color:#fff;text-shadow:.12em .12em 0 #000}.ad-card .who span{display:block;margin-top:.5em;font-size:.38em;color:var(--mut)}
+.ad-card .rk{text-align:right}.ad-card .rk b{display:block;font-size:.8em;color:#ffc83a;text-shadow:.12em .12em 0 #000}.ad-card .rk span{font-size:.36em;color:var(--mut);letter-spacing:.1em}
+.ad-card .tag{grid-column:1/-1;margin-top:.5em;font-size:.36em;letter-spacing:.25em;color:#9fc2ad}
+.ad-card .tot{grid-column:1/-1;font-size:1.45em;color:#c8ff00;text-shadow:.08em .08em 0 #000,0 0 .6em rgba(200,255,0,.3);letter-spacing:.03em;white-space:nowrap}
+.ad-card .tot small{font-size:.32em;color:#fff;margin-left:.5em;letter-spacing:.1em}
 .sn{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:.45em}
 .sn .cell{justify-content:center;gap:.35em;padding:.3em}
 .sn .cell canvas{width:3.6em;height:3.6em}
@@ -996,7 +1006,7 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
   <div class="foot" id="ahStFoot"></div></div></div></div>
 <div class="ov" id="ahAd"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">AIRDROP</button><span class="cnt" id="ahAdPts"></span><button class="px">CLOSE</button></div>
-  <div class="sk-b" style="flex-direction:column"><div class="pr-st" id="ahAdG"></div><div class="pr-st" id="ahAdG2" style="margin-top:.5em"></div></div>
+  <div class="sk-b" style="flex-direction:column"><div class="ad-card" id="ahAdCard"></div><div class="pr-st" id="ahAdG2" style="margin-top:.6em"></div></div>
   <div class="foot" id="ahAdFoot"></div><button class="tb on" id="ahAdGo" style="display:block;margin:.6em auto 0;white-space:nowrap;width:auto;padding:0 1.2em">OPEN GENESIS DROP</button></div></div></div>
 <div class="ov" id="ahQ"><div class="pnl" style="width:40em"><canvas></canvas><div class="pin">
   <div class="ph"><button class="tb on">QUESTS</button><span class="qb" id="ahQBoost"></span><span class="cnt" id="ahQSp"></span><button class="px">CLOSE</button></div>
@@ -1570,21 +1580,29 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         });
         return ORDEN_TIER.map(t => { const q = bolsa[t].shift(); return q && { id: q[0], t: q[1], goal: q[2], kind: q[3], prog: q[4], pts: SP_TIER[t], tier: t }; }).filter(Boolean);
     }
-    let adUser = null, adScore = null;
+    let adUser = null, adScore = null, adRank = null;
     async function loadAirdrop() {
         try { const j = await (await fetch('/api/airdrop/me', { cache: 'no-store' })).json(); adUser = j.user; adScore = j.score; } catch (e) {}
         renderQuests();
-        if ($('#ahAd').classList.contains('open')) renderAirdrop();
+        if (!$('#ahAd').classList.contains('open')) return;
+        renderAirdrop();
+        if (adUser) try { const lb = await (await fetch('/api/airdrop/leaderboard', { cache: 'no-store' })).json(); adRank = lb.me ? lb.me.rank : null; renderAirdrop(); } catch (e) {}
     }
     // ---------- AIRDROP: el progreso del Genesis Drop, el mismo de la pagina del airdrop ----------
+    // Los puntos con 2 decimales como mucho (pedido por David).
+    const fmtPts = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
     function renderAirdrop() {
         const u = adUser, s = adScore, esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const cell = (k, v) => '<div class="cell"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
         const misiones = (s && s.missions) || [], hechas = misiones.filter(q => s.daily.done[q.id]).length;
-        $('#ahAdPts').textContent = fmtN(s ? s.total : 0) + ' PTS';
-        $('#ahAdG').innerHTML = cell('POINTS', fmtN(s ? s.total : 0)) +
-            cell('X', u && u.x ? '@' + esc(u.x.username) : 'NOT LINKED') +
-            cell('WALLET', u && u.wallet ? esc(u.wallet.slice(0, 4) + '...' + u.wallet.slice(-4)) : 'NOT LINKED');
+        const nombre = u && u.x ? '@' + esc(u.x.username) : u && u.wallet ? esc(u.wallet.slice(0, 4) + '...' + u.wallet.slice(-4)) : 'ANON PILL';
+        const sub = u ? (u.x && u.wallet ? esc(u.wallet.slice(0, 4) + '...' + u.wallet.slice(-4)) : u.x ? 'NO WALLET YET' : 'X NOT LINKED') : 'NOT CONNECTED';
+        const foto = u && u.x && /^https:\/\/pbs\.twimg\.com\//.test(u.x.pic || '') ? '<img alt="" src="' + esc(u.x.pic) + '">' : svg('npc');
+        $('#ahAdPts').textContent = fmtPts(s ? s.total : 0) + ' PTS';
+        $('#ahAdCard').innerHTML = '<div class="av">' + foto + '</div><div class="who"><b>' + nombre + '</b><span>' + sub + '</span></div>' +
+            '<div class="rk"><b>' + (adRank ? '#' + adRank.toLocaleString('en-US') : '-') + '</b><span>RANK</span></div>' +
+            '<div class="tag">$PILLY GENESIS DROP · SEASON 0</div>' +
+            '<div class="tot">' + fmtPts(s ? s.total : 0) + '<small>PTS</small></div>';
         $('#ahAdG2').innerHTML = cell('INVITES', fmtN(u ? u.invites || 0 : 0)) +
             cell('TODAY', misiones.length ? hechas + '/' + misiones.length : '-') +
             cell('BOOST', s && s.boosted ? '+50%' : 'OFF');
@@ -2332,8 +2350,8 @@ html.pw-app .prizeRow.mine{border:1px solid rgba(255,206,61,.6)!important;border
         const cerrar = o => { o.classList.remove('open'); o.querySelectorAll('video').forEach(v => { try { v.pause(); } catch (e) {} });
             if (o.id === 'ahPr') pintaWallet(); if (o.id === 'ahQ') closeQuests(); if (o.id === 'ahSk' || o.id === 'ahSt') { const pg = o.querySelector('.pg'); if (pg) pg.remove(); } };
         hub.querySelectorAll('.px').forEach(b => b.onclick = () => cerrar(b.closest('.ov')));
-        // #game: la pagina del airdrop sin la portada, directa a los puntos.
-        $('#ahAdGo').onclick = () => { try { SoundManager.play('simpleselect'); } catch (x) {} window.open('/#game', '_blank'); };
+        // /airdrop: la web abierta ya en el airdrop (MY POINTS), debajo de la portada.
+        $('#ahAdGo').onclick = () => { try { SoundManager.play('simpleselect'); } catch (x) {} window.open('/airdrop', '_blank'); };
         hub.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) cerrar(o); }));
         hub.querySelectorAll('#ahSt .tb').forEach(b => b.onclick = () => { storeTab = b.dataset.s; buying = null; skinPage = 0; try { SoundManager.play('simpleselect'); } catch (x) {} renderStore(); });
         // X dentro de la app: el WebView mantiene a X dentro durante el login

@@ -561,9 +561,11 @@ function createAirdrop(opts) {
         if (CLOSED && !unlocked(req) && !isUnlockPath(req, urlPath) && !fromApp(req, urlPath) && !legal(req, urlPath)) { notFound(req, res); return true; }
         // The airdrop page is the home page with or without the lockdown; the old
         // landing (index.html) is not served at all (David, 21-oct-2026).
-        if (urlPath === '/') { sendHome(req, res, query); return true; }
+        // /airdrop is the same page, opened on the airdrop section (below the first screen).
+        if (urlPath === '/' || urlPath === '/airdrop') { sendHome(req, res, query); return true; }
         if (urlPath === '/index.html') { notFound(req, res); return true; }
-        if (urlPath === '/airdrop' || urlPath === '/airdrop/') { redirect(res, '/', 301); return true; }
+        // Without the slash: the page's relative paths (img/..., game/...) resolve from /.
+        if (urlPath === '/airdrop/') { redirect(res, '/airdrop', 301); return true; }
         if (urlPath === '/airdrop-terms') { sendFile(res, 'airdrop-terms.html', 'text/html; charset=utf-8'); return true; }
         if (urlPath === '/airdrop.html') { redirect(res, HOME, 301); return true; }
         if (urlPath === '/airdrop-terms.html') { redirect(res, '/airdrop-terms', 301); return true; }
