@@ -59,7 +59,7 @@ a{color:var(--green)}
 .box{background:var(--inset);box-shadow:inset 0 0 0 2px var(--line)}
 
 /* ---------- hero ---------- */
-.topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:22px 28px;min-height:48px}
+.topbar{visibility:hidden;position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:22px 28px;min-height:48px}
 /* Mirror of the logo: its tilted pill reaches 9px past the padding (7px on phones)
    and its top sits at 18px, so the buttons go as far right and as high. */
 .topbar .hero-social{align-self:flex-start;margin:-4px -9px 0 0}
@@ -232,7 +232,7 @@ a{color:var(--green)}
 /* ---------- intro: the first screen of the page, live game behind ----------
    A click plays (the game's menu); scrolling down reaches the airdrop, and
    scrolling back up shows this screen again (its game stops once you leave it). */
-.intro{position:relative;height:100vh;height:100svh;z-index:3;background:#000;cursor:pointer;overflow:hidden;
+.intro{position:relative;height:100vh;height:100svh;z-index:30;background:#000;cursor:pointer;overflow:hidden;
   user-select:none;-webkit-user-select:none}
 /* After ENTER the page's pieces drop in one after another, in steps like the sprites. */
 @keyframes pwIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
@@ -253,7 +253,9 @@ html.enter #view-me .card-row>.panel:nth-child(2){animation-delay:.5s}
 .intro iframe{opacity:0;transition:opacity .8s ease}
 .intro.live iframe{opacity:1}
 .intro-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,.35) 0%,rgba(0,0,0,.8) 100%)}
-.intro-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:22px 28px}
+/* The top row (PILLWARS, X, PLAY NOW) stays fixed over the whole page; the airdrop's
+   own .topbar keeps its place under it, hidden. */
+.intro-top{position:fixed;transition:background .3s;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:22px 28px}
 .intro-brand{display:flex;align-items:center;gap:12px}
 .intro-brand svg{width:30px;height:45px;margin-right:4px;transform:rotate(-30deg);filter:drop-shadow(0 0 12px rgba(0,255,136,.6))}
 .intro-brand img{height:28px;width:auto}
@@ -261,6 +263,8 @@ html.enter #view-me .card-row>.panel:nth-child(2){animation-delay:.5s}
   font-family:var(--px);font-size:10px;letter-spacing:1px;color:#fff;cursor:pointer}
 .intro-enter svg{width:9px;height:9px;fill:currentColor}
 .intro-enter:hover{color:var(--green);border-color:var(--green)}
+html.past-intro .intro-top{background:rgba(5,5,5,.92);box-shadow:0 2px 0 rgba(0,255,136,.2)}
+body.arena-full .intro-top{display:none}   /* the Daily Arena full screen (touch) goes on top */
 .intro-acts{display:flex;align-items:center;gap:12px}
 .intro-enter{white-space:nowrap}
 .intro-x{width:44px;height:44px;background:url('game/img/cartel-hero/icon-twitter.png') center/100% 100% no-repeat;transition:transform .3s,filter .3s}
@@ -988,15 +992,43 @@ addEventListener('resize', fitFirstScreen);
   el.addEventListener('click', e => {
     if (e.button !== 0) return;
     if (e.target.closest('.intro-x')) return;   // the X link opens on its own
-    if (e.target.closest('.intro-scroll')) { window.scrollTo({ top: el.offsetHeight, behavior: 'smooth' }); return; }
+    // The logo, from the airdrop: back up to the first screen.
+    if (e.target.closest('.intro-brand') && scrollY > 0) { snap(false); return; }
+    if (e.target.closest('.intro-scroll')) { snap(true); return; }
     play();
   });
   el.addEventListener('keydown', e => { if (/^(Enter| )$/.test(e.key)) { e.preventDefault(); play(); } });
+  // Over the first screen one scroll gesture goes all the way: down to the
+  // airdrop, or (from the top of the airdrop) up to the first screen.
+  let snapping = false;
+  const inFirst = () => scrollY < el.offsetHeight - 2;
+  function snap(down) {
+    if (snapping) return;
+    snapping = true;
+    const top = down ? el.offsetHeight : 0;
+    window.scrollTo({ top, behavior: 'smooth' });
+    // Where smooth scrolling does not run (reduced motion, some WebViews), jump.
+    setTimeout(() => { if (Math.abs(scrollY - top) > 4) window.scrollTo(0, top); snapping = false; }, 800);
+  }
+  addEventListener('wheel', e => {
+    if (e.ctrlKey || !e.deltaY) return;
+    const atTop = scrollY <= el.offsetHeight + 2;
+    if ((e.deltaY > 0 && inFirst()) || (e.deltaY < 0 && atTop && scrollY > 0)) { e.preventDefault(); snap(e.deltaY > 0); }
+  }, { passive: false });
+  let touchY = null;
+  addEventListener('touchstart', e => { touchY = e.touches[0].clientY; }, { passive: true });
+  addEventListener('touchmove', e => { if (inFirst() && touchY !== null) e.preventDefault(); }, { passive: false });
+  addEventListener('touchend', e => {
+    if (touchY === null) return;
+    const dy = touchY - e.changedTouches[0].clientY; touchY = null;
+    if (inFirst() && Math.abs(dy) > 30) snap(dy > 0);
+  }, { passive: true });
   // Leaving the first screen: its game stops (two games at once lagged), the
   // arena's loads and the address becomes /airdrop; back on it, / again.
   let entered = window.__introSkip;
   new IntersectionObserver(([en]) => {
     const away = en.intersectionRatio < 0.2;
+    document.documentElement.classList.toggle('past-intro', away);
     if (away) {
       const f = el.querySelector('iframe'); if (f) { f.remove(); el.classList.remove('live'); }
       startArena();
