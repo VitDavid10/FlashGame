@@ -62,6 +62,11 @@
   .shot { width: 100%; max-height: 420px; object-fit: contain; border: 1px solid var(--line); display: block; background: #000; }
   .lbl { margin: 16px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--dim); text-transform: uppercase; }
   .detail p { margin: 0; }
+  .detail p + p { margin-top: 8px; }
+  .detail p + ul, .detail ul + p { margin-top: 6px; }
+  .detail > ul { margin: 6px 0 0; padding-left: 18px; }
+  .detail > ul li { margin: 3px 0; }
+  .detail > ul li::marker { color: var(--accent); }
   .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; }
   .facts span:nth-child(odd) { color: var(--dim); }
   .disc { display: grid; grid-template-columns: 150px 1fr 48px; gap: 6px 10px; align-items: center; font-size: 12px; }
@@ -260,7 +265,9 @@ function renderDetail() {
   if (tab !== 'main') {
     const p = e.pestanas[+tab];
     h += showcase(p, p.titulo);
-    if (p.texto) h += `<div class="lbl">${esc(p.titulo)}</div><p>${esc(p.texto)}</p>`;
+    // texto: una frase, o una lista de párrafos donde {h} es un subtítulo y una lista anidada sale con viñetas.
+    const bloque = (t) => Array.isArray(t) ? `<ul>${t.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : t.h ? `<div class="lbl">${esc(t.h)}</div>` : `<p>${esc(t)}</p>`;
+    if (p.texto) h += `<div class="lbl">${esc(p.titulo)}</div>` + (Array.isArray(p.texto) ? p.texto.map(bloque).join('') : `<p>${esc(p.texto)}</p>`);
     if (p.galeria) h += gallery(p.galeria);
     document.getElementById('detail').innerHTML = h;
     return;

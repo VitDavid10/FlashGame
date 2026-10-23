@@ -2014,6 +2014,67 @@
         "d8939a4",
         "fb99f5b",
         "cb96af6"
+      ],
+      "pestanas": [
+        {
+          "titulo": "Points & quests",
+          "imagen": "img/airdrop.jpg",
+          "texto": [
+            "The Genesis Drop gives away 10% of the $PILLY supply. You sign in with X, link a wallet (signing, or pasting it without signing: same on-chain points, but it does not count as an invite) and every point you earn is your share of the pool. A participant needs at least 500 points to be eligible.",
+            {
+              "h": "Where points come from"
+            },
+            [
+              "On-chain: wallet age and number of transactions, read from mainnet on the server and refreshed every day.",
+              "Airdrop Hunter: the wallet received real airdrops (Jito, Pyth, Wormhole, Tensor, Drift, Magic Eden, Meteora, BONK, Sanctum, Grass) before their deadline.",
+              "Holders: Saga / Seeker Genesis Token and Mad Lads, 10,000 points each; Jumper is a fixed 5,000-point perk for level 10+ with 500+ XP.",
+              "Invites by milestones, up to 15,000 points. Only wallets older than 60 days with 50+ transactions count, checked on the server.",
+              "Daily Arena: up to 600 points a day.",
+              "Social: the daily post, and SPREAD THE WORD (repost +150, like +50 on chosen posts).",
+              "One-time quests (connect X, wallet, JOIN DISCORD with the Genesis Hunter role…). Finishing all of them multiplies every point, past and future, by ×1.5."
+            ],
+            "Quests come in SOCIAL / DAILY QUEST / INVITES tabs, pending ones first. The LEADERBOARD shows the real participants (top 50, your place and the real total) with POINTS / KILLS / MASS tabs."
+          ]
+        },
+        {
+          "titulo": "Daily Arena",
+          "texto": [
+            "A real PillWars match played right on the airdrop page, scored by the server (missions, kills, splits, skills and survival time by the server clock). A mass cap per match (10,000,000) stops cheating.",
+            [
+              "Daily missions rotate every day: one easy, one medium, one hard, one skill and one consistency mission (split kills, pieces eaten, skills used, mass, viruses, final place).",
+              "Kill missions add up during the whole day; surviving 90 s is per match.",
+              "TRY AGAIN always starts a fresh match; a new world every 3 deaths.",
+              "At the end: GAME OVER / MATCH FINISHED, your peak mass, and a STATS button with your place and TOP % in kills and mass against the best match of every player.",
+              "POST ON X shares a card of the match, or copies its link."
+            ]
+          ]
+        },
+        {
+          "titulo": "Cards & sharing",
+          "imagen": "img/perk_seeker.jpg",
+          "texto": [
+            "Every player gets a points card (logo on top, big picture on the left, data on the right; V1 shows the rank by level, V2 the breakdown). The image uploaded to X is a 1200×630 card drawn with the game sprites and a different background each time.",
+            "Invite links (?ref=) show the player's last card as the X preview, or a generic one. The perk cards for Saga & Seeker, Mad Lads and Jumper were made for the holder campaigns."
+          ]
+        },
+        {
+          "titulo": "Admin & site modes",
+          "texto": [
+            [
+              "/airdrop-admin: a private panel behind the admin password (12 h session, 5 tries per minute) with ELIGIBLE / ALL / DISCARDED tabs, each wallet linked to Solscan, reversible DISCARD/RESTORE and DELETE to let someone start again.",
+              "AIRDROP_ONLY: only the airdrop is reachable, the rest of the site answers 404 even with forged headers.",
+              "SITE_CLOSED: the whole web is off, with a permanent owner pass and a private link to open the real site during the lockdown.",
+              "Points, missions and the Daily Arena are written to disk immediately and on any process exit; the split server hosts no longer overwrite airdrop-data.json with an old copy."
+            ]
+          ]
+        },
+        {
+          "titulo": "New homepage (21 Oct)",
+          "texto": [
+            "Since 21 October the airdrop page is the homepage: PILLWARS · THE CRYPTO ARENA with PRESS TO PLAY / PLAY NOW, and one scroll gesture moves the whole screen down to the airdrop (URL /airdrop, opens on MY POINTS) and another back up. The top bar (PILLWARS, X, PLAY NOW) stays fixed on the whole page. The old landing is archived and /index.html answers 404.",
+            "The service worker now only runs in the real app (it was serving the Daily Arena 404 on the web)."
+          ]
+        }
       ]
     },
     {
@@ -2083,6 +2144,35 @@
         "5dbb798",
         "9e08270",
         "5b1e2e4"
+      ],
+      "pestanas": [
+        {
+          "titulo": "Discord",
+          "texto": [
+            [
+              "Verify and ticket buttons through /discord/interactions, and a script that builds the whole server (channels with emojis, roles, texts edited in place so reactions are kept).",
+              "AutoMod against spam, scams, DM bait and collab offers (sent to #contact).",
+              "#x-feed with every new X post; #genesis-drop and #flex-and-refs behind a DROP_LIVE switch; Genesis Hunter role in gold.",
+              "Permanent invite discord.gg/rfZK7fQ32E on the web, in the bot texts and in the AutoMod."
+            ]
+          ]
+        },
+        {
+          "titulo": "Telegram bot & raids",
+          "texto": [
+            [
+              "Pins every announcement of the channel and forwards (and pins) new X posts with a \"New post on X\" header and a fixupx link so the video plays.",
+              "Answers in the group about the contract, links and the airdrop, at most once every 10 min per topic, and deletes the \"pinned\" notices.",
+              "Raids: /raid, /raidend and /raidtop with real progress from the tweet counters and an \"I did it\" button. The admin can launch them in private and the result is posted as a new message at the bottom."
+            ]
+          ]
+        },
+        {
+          "titulo": "Support inbox",
+          "texto": [
+            "Support by DM through the bot, without showing the team account. Each conversation hangs from its author, with auto-replies, an acknowledgement when nothing matches, 👀/👌 to see what is pending and /pending. The admin panel has an Inbox with photos, videos, GIFs, audio and files, replies as PillWars Team, and installs on the phone as its own app."
+          ]
+        }
       ]
     },
     {
@@ -2211,6 +2301,27 @@
         "c9ac856",
         "c4167db",
         "c63b918"
+      ],
+      "pestanas": [
+        {
+          "titulo": "Every video",
+          "texto": [
+            [
+              "PillWars Origin (19–20 Sep): pills born on pump.fun fall into the arena; cut to the pulse of the music (72.3 bpm) with real gameplay, HUD and 8 closing clips.",
+              "Concept-art posters and a growth animation of a pill reaching the gold crown (20 Sep).",
+              "Tour and action takes (21–23 Sep): a fly-over of the map and a 10 s action clip to the game music.",
+              "Airdrop announcement (25 Sep): 22 s, 10% of the supply, who gets paid and the pool value by FDV.",
+              "Discord & Telegram announcement (25 Sep) with pixel logos and typed text.",
+              "Airdrop HowTo (26 Sep): voice with edge-tts, the web recorded through CDP and edited in Remotion with zoom, boxes and subtitles.",
+              "HOW TO PLAY thread (27 Sep): move, hide in a virus, split, skills and survive, merged into one video with the game music.",
+              "Country skins (27 Sep): 12 countries with their flag and UP TO 32 COUNTRY SKINS.",
+              "Coming to Saga & Seeker / Solana Mobile (27–30 Sep): real matches recorded on a Saga inside a phone, cut to the music.",
+              "Chaos (29 Sep): 29 s of frantic gameplay at 180 BPM with kills that steal money.",
+              "Colosseum pitch (12 Oct) and demo (13 Oct, ~2:20): PC arenas 1v1 and 2v2, menus, a $5 classic room and a PENTAKILL, then the app on a Seeker.",
+              "Seeker trailer with the EXPLORE THE MENU scene (13 Oct)."
+            ]
+          ]
+        }
       ]
     },
     {
@@ -2292,6 +2403,67 @@
         "0200449",
         "7820e3e",
         "1108a13"
+      ],
+      "pestanas": [
+        {
+          "titulo": "Boot & start",
+          "imagen": "img/app_tap.jpg",
+          "galeria": [
+            {
+              "titulo": "Loading",
+              "imagen": "img/app_boot.jpg",
+              "texto": "a pixel pill filling up while the game loads"
+            },
+            {
+              "titulo": "Tap to start",
+              "imagen": "img/app_tap.jpg"
+            }
+          ],
+          "texto": [
+            "The APK opens on the BUILT ON SOLANA screen, then the loader (just the pill filling up) and TAP TO START: the PILLWARS title pops in, the pill drops into place and THE CRYPTO ARENA and TAP TO START appear. A dark veil covers everything until the first screen is ready so nothing underneath can be touched. Since 10 October TAP TO START goes straight to the CLASSIC menu (the mode screen is gone)."
+          ]
+        },
+        {
+          "titulo": "Controls",
+          "imagen": "img/mobile_game.jpg",
+          "texto": [
+            [
+              "Landscape for real (sensorLandscape). The stick always appears bottom-left when you touch the left half; tapping no longer sends the pill to that point.",
+              "Skills in circles next to SPLIT. SHOOT and CLONE take two taps: the first aims with a pixel trail where the stick points, the second fires; touching another skill cancels.",
+              "SELECT A SKILL appears during the match on a plate like the menu panels, with round options and a lime timer bar.",
+              "Sound, music and exit with the round menu buttons; nothing plays while the app is in the background."
+            ]
+          ]
+        },
+        {
+          "titulo": "Wallet & login",
+          "texto": [
+            [
+              "Sign in with X through the browser and back to the app with pillwars:// (or inside the app without jumping to the X app), or with the phone wallet: Seed Vault through Mobile Wallet Adapter.",
+              "Paid rooms are signed with the phone wallet; on PC the browser extension (Phantom, Solflare, Backpack) is used instead.",
+              "The account (photo, missions, colours, friends settings, nicknames) is the same on every device through /api/account/sync."
+            ]
+          ]
+        },
+        {
+          "titulo": "Offline",
+          "texto": [
+            "A service worker keeps the game on the phone: without network PLAY goes straight into a match against bots and warns that quests do not count. Since 21 October it only runs in the real app (Web Shell or ?app)."
+          ]
+        },
+        {
+          "titulo": "Mobile menu",
+          "imagen": "img/hub_mobile.jpg",
+          "galeria": [
+            {
+              "titulo": "Rooms on mobile",
+              "imagen": "img/hub_mobile_rooms.jpg"
+            }
+          ],
+          "texto": [
+            "The same hub as on PC, shorter: the bars on the left, your pill and PLAY on the right, the SYSTEM plate thin at the bottom-left and the panels opening over the menu."
+          ]
+        }
       ]
     },
     {
@@ -2398,6 +2570,179 @@
         "37154ce",
         "c3a2ee9",
         "ef9f788"
+      ],
+      "pestanas": [
+        {
+          "titulo": "How a match works",
+          "imagen": "img/ar_match.jpg",
+          "texto": [
+            "Your group (1 to 3 players) against another group of the same size, plus neutral bots until the room has 30 pills. The size of your group sets the mode: alone you play 1V1, with one friend 2V2, with two 3V3.",
+            [
+              "No friendly fire: teammates cannot eat each other. Teammates have a blue ring, rivals a red one.",
+              "No clock: you win by eliminating the whole rival team. There is only an invisible 20-minute cap; if it is reached, the team with more total mass wins, and equal mass is a DRAW.",
+              "Your 2 skills are the ones picked in THE PILL; the first one is ready 15 s after GO.",
+              "Bots cannot split in the first 30 s; then BOTS CAN SPLIT NOW · BE CAREFUL.",
+              "A red arrow points at one random rival (the same one until it dies) and a blue arrow at one teammate (in a ring, so everyone points at someone). Teammates' health bars sit on the left, WoW style.",
+              "Every death is announced with who ate whom. In paid arenas the killer's team sees +$ with the victim's entry.",
+              "If you die you can REJOIN: you go back to your match watching your team and still get the VICTORY or DEFEAT. If you leave with your pill alive, you get it back where it was."
+            ]
+          ]
+        },
+        {
+          "titulo": "Finding a match",
+          "imagen": "img/ar_cards.jpg",
+          "galeria": [
+            {
+              "titulo": "ARENAS",
+              "imagen": "img/ar_cards.jpg",
+              "texto": "cards 1V1 · 2V2 · 3V3 drawn with the game pills"
+            },
+            {
+              "titulo": "1V1",
+              "imagen": "img/ar_1v1.jpg",
+              "texto": "QUICK MATCH, FIND RIVALS or MATCH CUSTOM"
+            },
+            {
+              "titulo": "Quick match",
+              "imagen": "img/ar_quick.jpg",
+              "texto": "price FREE, $1, $2, $5, $10, $20 (or −/+ up to $20)"
+            },
+            {
+              "titulo": "Lobby",
+              "imagen": "img/ar_lobby.jpg",
+              "texto": "READY (PAY & READY in paid rooms) and who is waiting at your price"
+            },
+            {
+              "titulo": "Rival found",
+              "imagen": "img/ar_found.jpg",
+              "texto": "RIVAL FOUND! ENTERING IN 5…"
+            }
+          ],
+          "texto": [
+            [
+              "QUICK MATCH: you pick the price and enter the queue for your size; it matches you with the first group at the same price (or an open room).",
+              "FIND RIVALS: the list of groups waiting, with FIGHT to challenge them.",
+              "MATCH CUSTOM: create a public room with a code; another group of the same size joins it and the match starts.",
+              "The lobby has no countdown: each player presses READY (in paid rooms PAY & READY, a confirmation and then the wallet signature). The leader of a group can send READY ALL as a reminder.",
+              "While waiting you can play a PRACTICE against bots (shared by the group, with a FINDING RIVALS banner); nobody is pushed into a match without asking.",
+              "When a rival is found, RIVAL FOUND! shows both line-ups and enters by itself after 5 s. Both groups have 12 s to come in.",
+              "Playing a normal room while in the queue asks first (LEAVE & PLAY / STAY). Bots also search 1V1 at $1/$2/$5 and challenge open rooms, so there is always someone to play."
+            ]
+          ]
+        },
+        {
+          "titulo": "Loading screens 1v1 / 2v2 / 3v3",
+          "video": "media/ar_vs2.mp4",
+          "imagen": "img/ar_vs2_video.jpg",
+          "galeria": [
+            {
+              "titulo": "1V1",
+              "imagen": "img/ar_vs1.jpg",
+              "texto": "YOU vs RIVAL, one picture each, $5 entry"
+            },
+            {
+              "titulo": "2V2",
+              "imagen": "img/ar_vs2.jpg",
+              "texto": "YOUR TEAM vs RIVALS, two pictures each, the team total ($20)"
+            },
+            {
+              "titulo": "3V3",
+              "imagen": "img/ar_vs3.jpg",
+              "texto": "three pictures each, FREE match"
+            },
+            {
+              "titulo": "Real 1V1 against a bot",
+              "imagen": "img/ar_vs_bot.jpg",
+              "texto": "on the local server, a player without X shows their initial"
+            },
+            {
+              "titulo": "REJOIN",
+              "imagen": "img/ar_rejoin.jpg",
+              "texto": "BACK TO THE MATCH on lime, with the three loading steps"
+            }
+          ],
+          "texto": [
+            "The VS screen is the loading screen of a real arena match and lasts about 4 s. The rest of the game is silent while it is on screen and the match starts with GO! when it ends.",
+            [
+              "0.15 s: the blue band slides in (whoosh) and your team's pictures pop in one by one (one pop each).",
+              "1.2 s: the big VS slams in.",
+              "1.45 s: the red band slides in with the rivals' pictures.",
+              "On the right of each band: YOU / RIVAL in 1V1, YOUR TEAM / RIVALS in 2V2 and 3V3, with what that side put in ($PILLY and dollars, entry × players) or FREE.",
+              "Title ARENAS · 1V1 / 2V2 / 3V3 and a loading bar at the bottom that fills in three steps (room generated, players loaded, ready)."
+            ],
+            "The only difference between 1V1, 2V2 and 3V3 is the number of pictures per band (1, 2 or 3), the labels and the amount, which is multiplied by the team size; the pictures are always centred on the left and the amount on the right. Pictures are the X photo, or the icon chosen in the profile, or the pill name if HIDE X ACCOUNT is on.",
+            "Practice and TRY AGAIN skip the loading screen. REJOIN uses the lime screen BACK TO THE MATCH with GENERATING ROOM → LOADING PLAYERS → READY."
+          ]
+        },
+        {
+          "titulo": "Victory / Defeat / Draw",
+          "video": "media/ar_end_win.mp4",
+          "imagen": "img/ar_end_win.jpg",
+          "galeria": [
+            {
+              "titulo": "Defeat (video)",
+              "video": "media/ar_end_lose.mp4",
+              "imagen": "img/ar_end_lose.jpg"
+            },
+            {
+              "titulo": "VICTORY 1V1, paid",
+              "imagen": "img/ar_victory_1v1.jpg",
+              "texto": "YOUR PRIZE with CLAIM, or later in PROFILE"
+            },
+            {
+              "titulo": "DEFEAT 2V2, paid",
+              "imagen": "img/ar_defeat_2v2.jpg",
+              "texto": "TEAM LOST"
+            },
+            {
+              "titulo": "VICTORY 3V3, free",
+              "imagen": "img/ar_victory_3v3.jpg",
+              "texto": "PEAK mass instead of money; struck in red if a bot ate them"
+            },
+            {
+              "titulo": "DRAW",
+              "imagen": "img/ar_draw.jpg",
+              "texto": "yellow, your entry back in your balance"
+            }
+          ],
+          "texto": [
+            "One second after the last death (so the kill notice can be read) the end screen fades in. There is no MATCH FINISHED any more: only VICTORY!, DEFEAT or DRAW.",
+            [
+              "VICTORY! in green, DEFEAT in red, DRAW in yellow, over a dark diagonal band.",
+              "YOUR TEAM and RIVALS: picture, name, kills and the $PILLY each one put in (paid) or their PEAK mass (free). If a bot ate someone in a paid match their amount is struck in red, because the house keeps 10% of it.",
+              "On the right, a tab with the money: YOUR PRIZE / TEAM PRIZE and CLAIM (\"OR LATER IN PROFILE\"), YOU LOST / TEAM LOST, DRAW (entry back), or FREE MATCH (play a paid one next time).",
+              "Background pills from the game sprites: a confetti burst of coloured pills on victory, grey pills falling slowly on defeat, a few yellow ones on a draw.",
+              "Sounds: the same opening hit, a bright ending for victory and a low one for defeat, played when the screen starts to appear.",
+              "PLAY AGAIN takes the whole group back to the arena screen of the same size (everyone presses READY again); MENU goes back to the hub."
+            ]
+          ]
+        },
+        {
+          "titulo": "Paid arenas & prizes",
+          "texto": [
+            [
+              "Price from $0 to $20. The $PILLY price of each bracket (mode + size + dollars) is fixed when the first group enters and stays while someone is inside, so both teams pay exactly the same.",
+              "Each player signs their own entry when pressing READY. The money is held; if the server restarts with money held, everything is refunded on start.",
+              "The winning team splits the pot equally. For every player eaten by a bot (not by a player) the house keeps 10% of their entry. A draw refunds everyone.",
+              "Prizes never expire and are never paid automatically: they wait in ARENA PRIZES (PROFILE → CLAIM) until you claim them, one by one or with CLAIM ALL and a single signature.",
+              "Every prize and every claim is written at once to an append-only ledger with its signature; if arena-pay.json is missing, it is rebuilt from the ledger.",
+              "On devnet the house pays the entry of the bots that search for paid 1V1."
+            ]
+          ]
+        },
+        {
+          "titulo": "Friends & groups",
+          "imagen": "img/hub_friends.jpg",
+          "texto": [
+            [
+              "Identity is the airdrop account: wallet or X. Add friends by @X, wallet or friend code (shown in the profile).",
+              "Presence: ONLINE, IN A GROUP, WAITING MATCH, IN A MATCH or OFFLINE, refreshed at once.",
+              "Whispers with emojis, nicknames only you see, mute whispers from everyone or per friend, and ALERT to be told when that friend is READY in an arena (with FIGHT / JOIN).",
+              "Group tab: invite up to 2 friends (invites pile up for 10 min even when the notice is muted); the group leader picks the arena and teammates can propose.",
+              "Fake friends @icefox and @bandit, driven by the bot AI, for testing."
+            ]
+          ]
+        }
       ]
     },
     {
@@ -2499,6 +2844,128 @@
         "492d9ee",
         "7ee15b4",
         "d8abad8"
+      ],
+      "pestanas": [
+        {
+          "titulo": "Main menu",
+          "imagen": "img/hub_pc.jpg",
+          "galeria": [
+            {
+              "titulo": "Airdrop panel",
+              "imagen": "img/hub_airdrop.jpg"
+            },
+            {
+              "titulo": "How to play (gear)",
+              "imagen": "img/hub_howto.jpg",
+              "texto": "skill arsenal, 8 skills, page by page"
+            }
+          ],
+          "texto": [
+            [
+              "Top bar: your avatar (opens PROFILE), name, X status (TAP TO CONNECT) and the XP line; on the right $PILLY with its dollar value (green or red only when coming back from a match), SP, HOW TO PLAY (gear), music and back to TAP TO START.",
+              "Six bars, each with its colour: THE PILL (with your 2 skill slots), ARENAS (online count, 1V1 · 2V2 · 3V3), FRIENDS (online friends and a badge), AIRDROP (Genesis Drop), QUESTS (progress bar and a badge with the quests left) and PILLWARS CORE (guides, videos).",
+              "Right side: your pill big and centred with your name above (TYPE YOUR NAME), the room selector (CLASSIC · FREE, with a swap icon that opens ROOMS) and PLAY.",
+              "Panels open on the right, sliding in with the bars; FULL / SMALL makes a panel full size, CLOSE closes it."
+            ],
+            "In October I also tried a live mini-arena around the pill and a LIVE plate with real payouts; it was reverted on 11 October and only the bigger centred pill with your name stayed."
+          ]
+        },
+        {
+          "titulo": "The Pill",
+          "imagen": "img/hub_pill_skills.jpg",
+          "galeria": [
+            {
+              "titulo": "SKILLS",
+              "imagen": "img/hub_pill_skills.jpg",
+              "texto": "pick 2 of the 8 skills; INFO shows the description and a clip"
+            },
+            {
+              "titulo": "COLOR",
+              "imagen": "img/hub_pill_color.jpg",
+              "texto": "13 × 3 palette for the top and bottom half, saved with your account"
+            },
+            {
+              "titulo": "SKIN",
+              "imagen": "img/hub_pill_skin.jpg",
+              "texto": "your skins, or OPEN STORE"
+            }
+          ],
+          "texto": [
+            "THE PILL is your character: the two skills you take into arenas (CLON, SHOOT, SPRINT, BLINK, MAGNET, SHIELD, PLUS, GAMBLE), your colours and your skin. The STORE (STORE / MY SKINS / CONVERT) sells country skins for SP; buying one shows SKIN UNLOCKED with WEAR IT, and the skin can also become your profile icon (ICON UNLOCKED)."
+          ]
+        },
+        {
+          "titulo": "Rooms",
+          "imagen": "img/hub_rooms.jpg",
+          "texto": [
+            [
+              "OFFLINE (vs bots, practice), FREE, $2, $5, $10 and $20, each with its layers (L1, L2…, up to 4) and how many are inside (x/35), with a dot per layer and LIVE or WAITING.",
+              "ROOM INFO for the selected room: entry in dollars and $PILLY, players, status and prize; with several layers you choose which one to enter.",
+              "RULES of the mode, numbered (for classic: eat and split, pentakill for the max profit, leaving early has a fee, paid rooms take the entry from your in-game $PILLY)."
+            ]
+          ]
+        },
+        {
+          "titulo": "Quests",
+          "imagen": "img/hub_quests.jpg",
+          "texto": [
+            "9 daily quests by difficulty (EASY, MEDIUM, HARD, SKILL, GRIND), each with its SP reward. They count in every mode, also offline; you can mark up to 3 to follow them during the match (MISSIONS box under TOP MASS). Same quests and progress on every device; they reset at 00:00 UTC."
+          ]
+        },
+        {
+          "titulo": "PillWars Core",
+          "imagen": "img/hub_core_watch.jpg",
+          "galeria": [
+            {
+              "titulo": "WATCH",
+              "imagen": "img/hub_core_watch.jpg",
+              "texto": "ORIGIN, HOW TO PLAY, GAME MODES (soon), ON SEEKER, COMMUNITY"
+            },
+            {
+              "titulo": "CORE",
+              "imagen": "img/hub_core_core.jpg",
+              "texto": "inspired by agar.io · eat, hunt, survive"
+            },
+            {
+              "titulo": "BASICS",
+              "imagen": "img/hub_core_basics.jpg",
+              "texto": "the split, virus farming and combining skills, with clips and the controls"
+            },
+            {
+              "titulo": "MODES",
+              "imagen": "img/hub_core_modes.jpg",
+              "texto": "classic and arenas rules side by side"
+            },
+            {
+              "titulo": "SKILLS",
+              "imagen": "img/hub_core_skills.jpg",
+              "texto": "the 8 skills with their clip"
+            }
+          ],
+          "texto": [
+            "The in-game guide. The clips were recorded on purpose with an offline match in headless Edge, with the game clock advanced by hand (exact 30 fps), a fixed camera per scene and no HUD; videos play muted and stop when the panel closes."
+          ]
+        },
+        {
+          "titulo": "Profile & wallet",
+          "imagen": "img/hub_profile.jpg",
+          "texto": [
+            [
+              "Avatar: your X photo, or an icon (pill, ghost, bag or person) with background, pill colours and skin.",
+              "WALLET (connect / UNLINK WALLET), + CONNECT X / UNLINK @user (SP and skins of the wallet account move to the X account), HIDE X ACCOUNT (in arenas your pill name shows instead of your @).",
+              "IN-GAME $PILLY with its dollar value, ABOUT ME, and DEPOSIT / WITHDRAW / CLAIM (arena prizes and the airdrop claim, with a red number when something is waiting).",
+              "Stats: MATCHES, BEST KILLS, BEST MASS."
+            ]
+          ]
+        },
+        {
+          "titulo": "Notices",
+          "imagen": "img/hub_confirm.jpg",
+          "texto": [
+            "Every notice in the app uses the same frame. System notices are grey with a grey OK; confirmations have confirm on the left and cancel in red on the right (a negative action is red on the right with a grey CANCEL); money and wallet notices have a green frame.",
+            "With the hub open there are no loose popups: notices without buttons go to the SYSTEM plate (bottom-left), which also rotates tips (12 s each, 5 s between them) and shows whispers (blue), friend requests (lilac) and group invites (red) with their buttons. The admin can broadcast a message with a chosen duration."
+          ]
+        }
       ]
     },
     {
@@ -2557,6 +3024,93 @@
         "7a70c06",
         "4135b36",
         "3917837"
+      ],
+      "pestanas": [
+        {
+          "titulo": "Classic rules",
+          "imagen": "img/cl_protected.jpg",
+          "texto": [
+            [
+              "15-minute matches on a round map that grows and shrinks with the number of players (minimum 4); it warns before shrinking and pushes pills inward without killing them. You can be born anywhere on the map.",
+              "Online rooms start with 4 real players. Offline starts with 4 bots and another one joins every 2 s.",
+              "All 8 skills are in play: SELECT A SKILL offers two during the match (TAB to switch, Q to pick, or click; on mobile, tap).",
+              "15 s of entry protection: your pill is semi-transparent for everyone and you see PROTECTED with the seconds left. SHIELD and BLINK do not shorten it.",
+              "When you eat someone you take everything they were carrying (their carry). Crowns mark the top players.",
+              "5 kills (PENTAKILL) ends your match as a VICTORY with no fee. Leaving before costs an exit fee on your carry: 50% with no kills, 20% with 1 kill, 10% with 2 or more.",
+              "Currently testing: food gives 75% less mass, and PLUS / GAMBLE and the cost of CLON and SHOOT are 75% smaller."
+            ]
+          ]
+        },
+        {
+          "titulo": "In-match HUD",
+          "imagen": "img/cl_select_skill.jpg",
+          "texto": [
+            [
+              "Top: ROOM, MASS and ALIVE, the clock, and sound / music / exit as round buttons.",
+              "Right: TOP MASS with the leaders, KILLS, and the MISSIONS you follow.",
+              "Bottom: the skill bar with the menu frame; on PC the key under each slot, lime when you can use it and grey when you cannot.",
+              "SELECT A SKILL just under the clock, as a plate with round options, TAB/Q keys and a lime timer bar.",
+              "SHOOT and CLONE on PC: the first press aims with a trail of square pixels (red for SHOOT, blue for CLONE) and the second fires; Esc cancels."
+            ]
+          ]
+        },
+        {
+          "titulo": "Classic endings",
+          "imagen": "img/cl_pentakill.jpg",
+          "galeria": [
+            {
+              "titulo": "PENTAKILL!",
+              "imagen": "img/cl_pentakill.jpg",
+              "texto": "VICTORY · NO FEE, all your carry"
+            },
+            {
+              "titulo": "CASHOUT",
+              "imagen": "img/cl_cashout.jpg",
+              "texto": "title by kills (FIRST BLOOD, DOUBLE, TRIPLE, QUADRA KILL), carry minus the exit fee"
+            },
+            {
+              "titulo": "DEFEAT",
+              "imagen": "img/cl_defeat.jpg",
+              "texto": "YOU LOST: your carry went to whoever ate you"
+            }
+          ],
+          "texto": [
+            "Since 11 October classic uses the same end screen as the arenas. The list shows who pays your carry: your entry, every player you ate and, indented, the ones they had eaten before. Up to 10 lines in two columns (if there are more, the last one says how many and what they add up to), and the total in $PILLY and dollars.",
+            "Buttons: PLAY AGAIN, SHARE (only in the app, with its own card) and MENU. Offline the same screens appear without money. GAME OVER stays for the other modes."
+          ]
+        },
+        {
+          "titulo": "Arcade",
+          "imagen": "img/arc_winner.jpg",
+          "galeria": [
+            {
+              "titulo": "WINNER!",
+              "imagen": "img/arc_winner.jpg",
+              "texto": "small match, top 3"
+            },
+            {
+              "titulo": "TOP 4!",
+              "imagen": "img/arc_top4.jpg",
+              "texto": "big match, top 10, x multiplier of your entry"
+            },
+            {
+              "titulo": "OUT OF TOP 5",
+              "imagen": "img/arc_out.jpg",
+              "texto": "eaten: only survivors get paid"
+            }
+          ],
+          "texto": [
+            "Built on 8 October and hidden from the menu since 10 October (TAP TO START goes straight to classic), but ready to come back.",
+            [
+              "3 fixed minutes, starts with 6 players, rooms of up to 35 on a round map (radius up to 6630) that grows with the people inside. Entry closes after the first minute.",
+              "From minute 1 the safe zone closes in 4 phases; outside it you lose 5%, 9%, 20% and then 50% of your mass per second. The final zone is 25% of the map.",
+              "A new skill every 30 s, and an event at 30, 60, 90 and 120 s: two good ones (food rain, golden virus, no-split) and two bad ones (TAX ON THE TOP: the top 3 lose 20%; HEAVY: the biggest goes 40% slower).",
+              "Score = mass × (1 + 10% per kill, up to ×2). Eating a podium crown gives +30% / +20% / +10% mass.",
+              "Prizes by size: 6–9 players pay the top 3, 10–19 the top 5, 20+ the top 10; the house keeps 10 / 7.5 / 5%. Only survivors get paid and the last paid place always gets back more than its entry. With 3 left standing the match ends.",
+              "End screen WINNER! / TOP N! / OUT OF TOP N with the paid list, each prize in $PILLY, dollars and × your entry; the prize goes straight into your balance."
+            ]
+          ]
+        }
       ]
     },
     {
@@ -2600,6 +3154,20 @@
       "titulo": "WATCH videos and new gameplay clips",
       "incluye": "Upload the WATCH videos and record presentable clips of SPLIT, VIRUS, COMBAT and each skill (the automatic recording isn't good enough yet), plus the GAME MODES video.",
       "hechoCuando": "Every WATCH entry and skill INFO plays its own clip."
+    },
+    {
+      "id": "P07",
+      "fase": "próximo",
+      "titulo": "First-time tutorial",
+      "incluye": "A guided first match when you open the game for the first time: how classic works (eat, split, skills, carry and cashout) and how an arena works (teams, rings, arrows, how you win). Then, in the menu, short dismissible hints with arrows pointing at each bar (THE PILL, ARENAS, ROOMS, QUESTS…), shown once.",
+      "hechoCuando": "A new player finishes the tutorial, understands both modes and each menu hint can be closed and does not come back."
+    },
+    {
+      "id": "P08",
+      "fase": "próximo",
+      "titulo": "Early Access on devnet",
+      "incluye": "An open test before the token: everybody plays with devnet $PILLY (free test money) in paid rooms and arenas, with or without rewards for the best players and bug reporters.",
+      "hechoCuando": "People outside the team play paid matches on devnet and their feedback is collected."
     }
   ],
   "carpeta": "E:\\FlashGame-main_1\\FlashGame-main\\docs\\roadmap"
