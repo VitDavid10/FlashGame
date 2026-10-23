@@ -8,7 +8,7 @@
 // PC (1280x720 at 1.5x = 1920x1080):
 //   pc-arena1 / pc-arena1-end  ARENAS > 1V1 > FIND RIVALS > $4 > pay > VS > match ... VICTORY
 //   pc-2v2 / pc-2v2-end        FRIENDS > @icefox > INVITE > ARENAS 2V2 > $5 > match ... VICTORY
-//   pc-menus / pc-penta        PILLWARS CORE, STORE, QUESTS (3 marked) > CLASSIC rooms > $5 > match ... PENTAKILL
+//   pc-menus / pc-penta        PILLWARS CORE, THE PILL, QUESTS (3 marked) > CLASSIC rooms > $5 > match ... PENTAKILL
 // Mobile (the app, 800x360 at 2x = 1600x720):
 //   m-classic / m-classic-end  hub > CLASSIC $2 > match
 //   m-arena / m-arena-end      ARENAS > 1V1 > $3 > VS > match ... VICTORY
@@ -28,7 +28,7 @@ if (!ROOT || !fs.existsSync(path.join(ROOT, 'server', 'index.js'))) { console.er
 const WHICH = process.argv[2] || 'pc', ONLY = process.argv[3] || '';
 const MOBILE = WHICH === 'mobile';
 const PORT = 8099, CDP = 9361;
-const VW = MOBILE ? 800 : 1280, VH = MOBILE ? 360 : 720, DPR = MOBILE ? 2 : 1.5;
+const VW = MOBILE ? 800 : 1280, VH = MOBILE ? 360 : 720, DPR = MOBILE ? 2 : 1;
 const OUT = path.join(__dirname, '..', 'public', 'demo');
 const TMP = path.join(require('os').tmpdir(), 'pw-demo-' + WHICH);
 const wait = K.wait;
@@ -239,7 +239,7 @@ const PUPS = [
             await clip('pc-menus', async () => {
                 await wait(1000);
                 await hub('core'); await wait(3800);
-                await hub('store'); await wait(3000);
+                await hub('pill'); await wait(3000);
                 await hub('quests'); await wait(1200);
                 for (let i = 0; i < 3; i++) await tap('QUEST ' + i, { find: `return [...document.querySelectorAll('.qc')].filter(e => e.offsetWidth > 0 && !e.classList.contains('qpin') && !e.classList.contains('done'))[0];`, after: 750 });
                 await wait(1000);

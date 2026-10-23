@@ -3168,6 +3168,114 @@
       "titulo": "Early Access on devnet",
       "incluye": "An open test before the token: everybody plays with devnet $PILLY (free test money) in paid rooms and arenas, with or without rewards for the best players and bug reporters.",
       "hechoCuando": "People outside the team play paid matches on devnet and their feedback is collected."
+    },
+    {
+      "id": "P09",
+      "fase": "próximo",
+      "titulo": "X plan until the token",
+      "video": "media/modes.mp4",
+      "imagen": "img/modes.jpg",
+      "incluye": "Back on X after the silence since 15 October: 4-5 posts a week built from what is already done (arenas, skills, menus, classic), keeping the big pieces for the token launch. Starts with the Modes video: CLASSIC and ARENAS in 35 s.",
+      "hechoCuando": "Posting 4-5 times a week again until the token, without spending the launch material.",
+      "pestanas": [
+        {
+          "titulo": "Keep for the token",
+          "texto": [
+            "The strongest material is saved for the launch day, so the launch has something new to show:",
+            [
+              "The trailer",
+              "The Seeker trailer",
+              "The full gameplay Demo (2:30) and the hackathon pitch",
+              "ARCADE: not official yet, it does not appear anywhere until it is"
+            ],
+            "Nothing recorded on the phone is shown either until then."
+          ]
+        },
+        {
+          "titulo": "Weekly plan",
+          "texto": [
+            "4-5 posts a week, one idea each, always with a short video or picture. Suggested order:",
+            {
+              "h": "Week 1"
+            },
+            [
+              "Modes video: CLASSIC and ARENAS (below)",
+              "The VS screen: \"1v1, 2v2 or 3v3. Bring your squad.\"",
+              "VICTORY / DEFEAT, both clips together: \"How does your match end?\"",
+              "Poll: 1v1, 2v2 or 3v3?"
+            ],
+            {
+              "h": "Weeks 2-3"
+            },
+            [
+              "One skill per post: the 8 clips of PILLWARS CORE give 8 posts",
+              "Short mechanic threads: split, viruses, the classic carry (the PENTAKILL screen with who pays you)",
+              "Before / after of the menu: the old one against the new hub",
+              "Poll: which 2 skills do you take?"
+            ],
+            {
+              "h": "Always"
+            },
+            [
+              "Genesis Drop reminders (points, Daily Arena)",
+              "When it is decided: the Early Access waiting list"
+            ]
+          ],
+          "galeria": [
+            {
+              "titulo": "VS screen 2v2",
+              "video": "media/ar_vs2.mp4",
+              "imagen": "img/ar_vs2_video.jpg",
+              "texto": "5 s, with its sounds"
+            },
+            {
+              "titulo": "VICTORY",
+              "video": "media/ar_end_win.mp4",
+              "imagen": "img/ar_end_win.jpg"
+            },
+            {
+              "titulo": "DEFEAT",
+              "video": "media/ar_end_lose.mp4",
+              "imagen": "img/ar_end_lose.jpg"
+            },
+            {
+              "titulo": "2v2 won",
+              "video": "media/arenas_2v2.mp4",
+              "imagen": "img/arenas_2v2.jpg"
+            }
+          ]
+        },
+        {
+          "titulo": "Modes video",
+          "video": "media/modes.mp4",
+          "imagen": "img/modes.jpg",
+          "texto": [
+            "The first post back. 35 s, English voice and subtitles, horizontal for X:",
+            [
+              "CLASSIC: the ROOMS menu, a $5 room and a PENTAKILL",
+              "\"Not enough players around? Open Arenas, a separate menu for smaller matches.\"",
+              "ARENAS: 1V1 into the VS screen, then a 2v2 won",
+              "\"Two modes. Pick yours.\""
+            ],
+            {
+              "h": "Proposed post"
+            },
+            "Two ways to play PillWars. Classic: jump into a room with everyone online. Not enough players? Arenas: 1v1, 2v2 or 3v3 with your squad. 🟢 pillwars.fun",
+            "Source: tools/origin-video, composition Modes (npx remotion render Modes)."
+          ]
+        },
+        {
+          "titulo": "Early Access",
+          "texto": [
+            "An opinion, not a decision:",
+            [
+              "When: after the tutorial, 2-4 weeks before the token, so there is time to fix what comes up",
+              "How: sessions at fixed times (arena nights): CLASSIC needs 4 real players at once and ARENAS need a rival, so people scattered over the day would find empty rooms",
+              "Rewards: Genesis Drop points for playing and for reporting bugs, instead of promising new prizes (the points system already exists)"
+            ]
+          ]
+        }
+      ]
     }
   ],
   "carpeta": "E:\\FlashGame-main_1\\FlashGame-main\\docs\\roadmap"

@@ -141,7 +141,7 @@ function recorder(edge, { dir, w, h }) {
         async start(name) {
             const d = path.join(dir, name); fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true });
             rec = { name, dir: d, frames: [], start: Date.now() / 1000, marks: [] };
-            await edge.cmd('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: w, maxHeight: h, everyNthFrame: 1 });
+            await edge.cmd('Page.startScreencast', { format: 'jpeg', quality: 60, maxWidth: w, maxHeight: h, everyNthFrame: 1 });
         },
         get on() { return !!rec; },
         mark(label, data) { if (rec) { rec.marks.push(Object.assign({ label, t: Date.now() / 1000 - rec.start }, data || {})); console.log('  mark', label, (Date.now() / 1000 - rec.start).toFixed(2)); } },

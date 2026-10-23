@@ -15,6 +15,7 @@ import { CHAOS_FRAMES, Chaos } from "./Chaos";
 import { HACKATHON_FRAMES, Hackathon } from "./Hackathon";
 import { MOBILE_DEMO_FRAMES, MobileDemo } from "./MobileDemo";
 import { DEMO_FRAMES, Demo } from "./Demo";
+import { MODES_FRAMES, Modes } from "./Modes";
 import { SEEKER_PLUS_FRAMES, SeekerPlus } from "./SeekerPlus";
 
 export const RemotionRoot: React.FC = () => {
@@ -55,6 +56,8 @@ export const RemotionRoot: React.FC = () => {
       {/* The Seeker trailer with an extra scene at second 30: the menu and the Saga footage. */}
       <Composition id="SeekerPlus" component={SeekerPlus} durationInFrames={SEEKER_PLUS_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Demo" component={Demo} durationInFrames={DEMO_FRAMES} fps={30} width={W} height={H} />
+      {/* ~30 s: the two modes, CLASSIC and ARENAS (arcade left out until it is official). */}
+      <Composition id="Modes" component={Modes} durationInFrames={MODES_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-jumper" component={PerkJumper} durationInFrames={1} fps={30} width={W} height={H} />

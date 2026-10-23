@@ -1,0 +1,27 @@
+[
+ {
+  "id": "intro",
+  "text": "PillWars has two ways to play.",
+  "len": 1.73
+ },
+ {
+  "id": "classic",
+  "text": "Classic: pick a room and jump in with everyone online. Every kill takes your rival's tokens.",
+  "len": 4.84
+ },
+ {
+  "id": "arenas",
+  "text": "Not enough players around? Open Arenas, a separate menu for smaller matches.",
+  "len": 3.95
+ },
+ {
+  "id": "teams",
+  "text": "1v1, 2v2 or 3v3. Just your squad against theirs.",
+  "len": 4.4
+ },
+ {
+  "id": "outro",
+  "text": "Two modes. Pick yours.",
+  "len": 1.16
+ }
+]
