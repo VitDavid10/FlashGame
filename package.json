@@ -17,7 +17,8 @@
     "treasury": "node scripts/treasury.js",
     "treasury:sim": "node scripts/treasury-sim.js",
     "treasury:verify": "node scripts/treasury.js verify",
-    "treasury:audit": "node scripts/audit-treasury.js"
+    "treasury:audit": "node scripts/audit-treasury.js",
+    "roadmap": "node tools/roadmap.mjs"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.8",

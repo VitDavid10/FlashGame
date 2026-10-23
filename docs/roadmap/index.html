@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap PillWars</title>
+<style>
+  :root {
+    --bg: #060b08; --panel: #0a150e; --row: #0f2116; --line: #1a3323; --text: #d4f2dc;
+    --dim: #6f957a; --accent: #8dff5a; --dev: #8dff5a; --test: #ffb454; --pend: #35503d; --ok: #5be3a1;
+    --rowh: 34px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; }
+  .stats { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--dim); font-size: 12px; }
+  .stats b { color: var(--text); font-weight: 600; }
+  .spacer { flex: 1; }
+  /* Barras de desplazamiento con los colores de la página. */
+  @supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: #2b5a37 transparent; } }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #234a2e; border-radius: 4px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); cursor: pointer; }
+  .btn { padding: 6px 12px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+  .btn.on { background: var(--accent); color: #061a0a; border-color: var(--accent); }
+
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(260px, 340px) minmax(340px, 1fr) minmax(0, 1.1fr); }
+  main.nocal { grid-template-columns: minmax(260px, 340px) 1fr; }
+  main.nocal .cal { display: none; }
+  .col { min-height: 0; overflow: auto; border-right: 1px solid var(--line); }
+  .colhead { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line); height: 46px; padding: 0 12px;
+    display: flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+
+  /* Lista */
+  .item { height: var(--rowh); display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid #0f2116; cursor: pointer; white-space: nowrap; }
+  .item:hover { background: var(--row); }
+  .item.sel { background: #143a1e; box-shadow: inset 3px 0 var(--accent); }
+  .item .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .item .date { color: var(--dim); font-size: 11px; }
+  .item .sq { width: 7px; height: 7px; flex: none; }
+  .item .vid { color: var(--accent); font-size: 9px; vertical-align: 1px; }
+  .phase { font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; background: var(--panel); }
+  .phase .chev { width: 10px; color: var(--dim); transition: transform .15s; }
+  .phase.open .chev { transform: rotate(90deg); }
+  .count { color: var(--dim); font-size: 11px; }
+  .task { padding-left: 30px; }
+  .task.pending .txt { color: var(--dim); }
+
+  /* Ficha */
+  .detail { padding: 18px 20px 28px; }
+  .detail h2 { margin: 0 0 8px; font-size: 18px; }
+  .detail h2 .id { color: var(--dim); font-size: 12px; margin-right: 8px; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--line); color: var(--dim); }
+  .chip.ok { color: var(--ok); border-color: #1f5a43; }
+  .chip.test { color: var(--test); border-color: #6a4a1d; }
+  .shot { width: 100%; max-height: 420px; object-fit: contain; border: 1px solid var(--line); display: block; background: #000; }
+  .lbl { margin: 16px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--dim); text-transform: uppercase; }
+  .detail p { margin: 0; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; }
+  .facts span:nth-child(odd) { color: var(--dim); }
+  .disc { display: grid; grid-template-columns: 150px 1fr 48px; gap: 6px 10px; align-items: center; font-size: 12px; }
+  .disc .b { height: 6px; background: var(--accent); }
+  .disc .n { color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; }
+  .tests { margin: 0; padding-left: 18px; }
+  .tests li::marker { color: var(--test); }
+  details summary { cursor: pointer; color: var(--dim); font-size: 12px; }
+  details ul { margin: 6px 0 0; padding-left: 18px; color: var(--dim); font-size: 12px; }
+
+  /* Galería de vídeos dentro de una ficha */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 10px 0 4px; }
+  .gallery figure { margin: 0; }
+  .gallery video { width: 100%; border-radius: 6px; background: #000; display: block; }
+  .gallery figcaption { font-size: 13px; color: var(--dim); margin-top: 6px; line-height: 1.35; }
+  .gallery figcaption b { color: var(--text); }
+  /* Calendario */
+  .cal .colhead { padding: 0; position: sticky; }
+  .scale { position: relative; height: 100%; width: 100%; overflow: hidden; }
+  .day { position: absolute; top: 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding-left: 6px; border-left: 1px solid var(--line); height: 40px; white-space: nowrap; color: var(--text); }
+  .tick { position: absolute; top: 26px; font-size: 10px; color: var(--dim); transform: translateX(-50%); white-space: nowrap; letter-spacing: 0; }
+  .calnav { display: flex; gap: 4px; flex-wrap: wrap; }
+  .nocalnav .calnav { display: none; }
+  .track { position: relative; height: var(--rowh); border-bottom: 1px solid #0f2116; overflow: hidden; cursor: pointer; }
+  .track.sel { background: #143a1e; }
+  .track.phase { background: var(--panel); }
+  .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: #10261a; }
+  .grid.midnight { background: var(--line); }
+  .seg { position: absolute; top: 10px; height: 14px; min-width: 4px; border-radius: 2px; }
+  .track.phase .seg { top: 12px; height: 10px; opacity: .8; }
+  .empty { padding: 24px; color: var(--dim); }
+
+  /* Pestañas de una ficha (resumen, las suyas y Twitter) */
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 14px; border-bottom: 1px solid var(--line); }
+  .tabs button { padding: 7px 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line); border-bottom: 0; color: var(--dim); }
+  .tabs button.on { background: var(--row); color: var(--text); box-shadow: inset 0 2px var(--accent); }
+  .tabs button.tw.on { box-shadow: inset 0 2px #1d9bf0; }
+  /* Pestaña Twitter: el texto del post (editable) y los medios con su ruta */
+  .tweet textarea { width: 100%; min-height: 120px; resize: vertical; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 10px; }
+  .tweet .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 0; font-size: 12px; color: var(--dim); }
+  .tweet .over { color: #ff6b6b; font-weight: 700; }
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 8px; }
+  .media figure { margin: 0; border: 1px solid var(--line); background: var(--panel); position: relative; }
+  .media figure.rec { border-color: #1d9bf0; box-shadow: 0 0 0 1px #1d9bf0; }
+  .media .badge { position: absolute; top: 6px; left: 6px; z-index: 1; background: #1d9bf0; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 6px; }
+  .media img, .media video { width: 100%; display: block; background: #000; aspect-ratio: 400 / 312; object-fit: contain; }
+  .media figcaption { padding: 6px 8px; font-size: 11px; color: var(--dim); word-break: break-all; display: flex; gap: 6px; align-items: flex-start; }
+  .media figcaption span { flex: 1; }
+  .copy { padding: 2px 8px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; flex: none; }
+  .gallery img.shot { max-height: none; }
+
+  @media (max-width: 900px) {
+    body { height: auto; }
+    main, main.nocal { display: block; }
+    .col { overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+    .cal { overflow-x: hidden; }
+    .colhead { position: static; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>PillWars · Roadmap</h1>
+  <div class="stats" id="stats"></div>
+  <div class="spacer"></div>
+  <div class="calnav" id="spans">
+    <button class="btn" data-s="24">1 day</button><button class="btn" data-s="72">3 days</button><button class="btn" data-s="168">1 week</button><button class="btn" data-s="720">1 month</button>
+    <button class="btn" id="prev">‹</button><button class="btn" id="last">Latest</button><button class="btn" id="next">›</button>
+  </div>
+  <button class="btn" id="calbtn">Calendar</button>
+</header>
+<main id="main">
+  <section class="col list"><div class="colhead">Phase · deliverable · date</div><div id="list"></div></section>
+  <section class="col"><div class="colhead">Details</div><div id="detail" class="detail"></div></section>
+  <section class="col cal">
+    <div class="colhead"><div class="scale" id="scale"></div></div>
+    <div id="tracks"></div>
+  </section>
+</main>
+
+<script src="data.js"></script>
+<script>
+const { fases, entregables, carpeta } = window.ROADMAP;
+const H = 3600e3;
+const t = (s) => new Date(s).getTime();
+const done = entregables.filter((e) => e.estado === 'hecho');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const dur = (m) => (m < 60 ? `${Math.round(m)} min` : `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')} min`);
+const day = (s) => new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+// Una sola fecha por entregable: el día, o «del día al día» si ocupó varios.
+const fecha = (e) => (day(e.inicio) === day(e.fin) ? day(e.inicio) : `${day(e.inicio)} – ${day(e.fin)}`);
+const color = (e) => (e.estado !== 'hecho' ? 'var(--pend)' : e.tipo === 'testeo' ? 'var(--test)' : 'var(--dev)');
+
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem('roadmap.' + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('roadmap.' + k, JSON.stringify(v)); } catch {} },
+};
+const lastEnd = Math.max(...done.map((e) => t(e.fin)));
+let open = new Set(store.get('abiertas', fases.map((f) => f.id)));
+let sel = store.get('sel', done[done.length - 1].id);
+if (!entregables.some((e) => e.id === sel)) sel = done[done.length - 1].id;
+let span = store.get('span', 168) * H;
+let viewEnd = lastEnd + span * 0.1;
+let showCal = store.get('cal', matchMedia('(min-width: 901px)').matches);
+
+const total = done.reduce((a, e) => a + e.minutos, 0);
+document.getElementById('stats').innerHTML =
+  `<span><b>${done.length}</b> done</span><span><b>${entregables.length - done.length}</b> pending</span>` +
+  `<span><b>${fases.filter((f) => f.id !== 'próximo').length}</b> phases</span><span><b>${dur(total)}</b> of measured work</span>`;
+
+// Filas visibles (fase y entregables de las fases abiertas): las comparten la lista y el calendario.
+function rows() {
+  const out = [];
+  for (const f of fases) {
+    const items = entregables.filter((e) => e.fase === f.id);
+    out.push({ fase: f, items });
+    if (open.has(f.id)) for (const e of items) out.push({ e });
+  }
+  return out;
+}
+
+function renderList() {
+  document.getElementById('list').innerHTML = rows().map((r) => {
+    if (r.fase) {
+      const f = r.fase, n = r.items.filter((e) => e.estado === 'hecho').length;
+      const name = f.id === 'próximo' ? f.nombre : `Phase ${f.id} · ${f.nombre}`;
+      return `<div class="item phase${open.has(f.id) ? ' open' : ''}" data-f="${esc(f.id)}"><span class="chev">›</span><span class="txt">${esc(name)}</span><span class="count">${n}/${r.items.length}</span></div>`;
+    }
+    const e = r.e;
+    return `<div class="item task${e.estado === 'hecho' ? '' : ' pending'}${e.id === sel ? ' sel' : ''}" data-id="${e.id}"><span class="sq" style="background:${color(e)}"></span><span class="txt">${esc(e.titulo)}${e.video ? ' <span class="vid" title="Has video">▶</span>' : ''}</span><span class="date">${e.estado === 'hecho' ? fecha(e) : 'pending'}</span></div>`;
+  }).join('');
+}
+
+/** Vídeo corto (con sonido) si lo hay; si no, la captura. */
+function showcase(x, alt) {
+  if (x.video) return `<video class="shot" src="${x.video}"${x.imagen ? ` poster="${x.imagen}"` : ''} controls loop playsinline preload="metadata"></video>`;
+  if (x.imagen) return `<img class="shot" src="${x.imagen}" alt="${esc(alt)}" onerror="this.remove()">`;
+  return '';
+}
+/** Galería: varios vídeos o imágenes con su título y explicación (por ejemplo, uno por monstruo). */
+function gallery(list) {
+  return `<div class="gallery">${list.map((g) => `<figure>${g.video
+    ? `<video src="${g.video}"${g.imagen ? ` poster="${g.imagen}"` : ''} controls loop muted playsinline preload="metadata"></video>`
+    : `<img class="shot" src="${g.imagen}" alt="${esc(g.titulo)}">`}<figcaption><b>${esc(g.titulo)}</b>${g.texto ? ` — ${esc(g.texto)}` : ''}</figcaption></figure>`).join('')}</div>`;
+}
+
+/** Todos los vídeos e imágenes de una ficha (los suyos, los de la galería y los de sus pestañas), sin repetir. */
+function mediaOf(e) {
+  const out = [];
+  const add = (p) => { if (p && !out.includes(p)) out.push(p); };
+  for (const x of [e, ...(e.pestanas ?? [])]) {
+    add(x.video); add(x.imagen);
+    for (const g of x.galeria ?? []) { add(g.video); add(g.imagen); }
+  }
+  return out;
+}
+const fullPath = (p) => `${carpeta}\\${p.replaceAll('/', '\\')}`;
+
+/**
+ * Pestaña Twitter: el post propuesto (lo puedes cambiar: se guarda en este navegador) y los medios (los de la ficha y los
+ * que son solo para el post), con los que pondría yo marcados en orden (X deja 4 imágenes o 1 vídeo por post).
+ */
+function twitterTab(e) {
+  const tw = e.tweet ?? {}, saved = store.get('tweet.' + e.id, null), text = saved ?? tw.texto ?? '';
+  const media = [...new Set([...(tw.medios ?? []), ...mediaOf(e)])];
+  const picks = [tw.recomendado ?? []].flat().filter((p) => media.includes(p));
+  if (!picks.length && media.length) picks.push(media.find((p) => p.endsWith('.mp4')) ?? media[0]);
+  let h = '<div class="tweet">';
+  h += `<div class="lbl">Post</div><textarea id="twtext" spellcheck="true">${esc(text)}</textarea>` +
+    `<div class="bar"><span id="twcount"></span><button class="btn" data-copy="text">Copy text</button>` +
+    (saved !== null ? '<button class="btn" id="twreset">Back to the proposed text</button>' : '') + '</div>';
+  h += `<div class="lbl">Media · ${esc(carpeta)} · X allows 4 images or 1 video per post</div>`;
+  if (!media.length) h += '<p>No images or videos in this deliverable.</p>';
+  const badge = (p) => { const i = picks.indexOf(p); return i < 0 ? '' : `<span class="badge">My pick${picks.length > 1 ? ` ${i + 1}` : ''}</span>`; };
+  media.sort((a, b) => (picks.includes(a) ? picks.indexOf(a) : 99) - (picks.includes(b) ? picks.indexOf(b) : 99));
+  h += '<div class="media">' + media.map((p) => `<figure${picks.includes(p) ? ' class="rec"' : ''}>${badge(p)}` +
+    (p.endsWith('.mp4') ? `<video src="${p}" controls loop muted playsinline preload="metadata"></video>` : `<img src="${p}" alt="">`) +
+    `<figcaption><span>${esc(fullPath(p))}</span><button class="copy" data-copy="${esc(fullPath(p))}">Copy</button></figcaption></figure>`).join('') + '</div>';
+  return h + '</div>';
+}
+
+let tab = 'main';
+function renderDetail() {
+  const e = entregables.find((x) => x.id === sel);
+  const f = fases.find((x) => x.id === e.fase);
+  const hecho = e.estado === 'hecho';
+  let h = `<h2><span class="id">${e.id}</span>${esc(e.titulo)}</h2><div class="chips">` +
+    `<span class="chip${hecho ? ' ok' : ''}">${hecho ? '✓ Done' : 'Pending'}</span>` +
+    `<span class="chip">${f.id === 'próximo' ? 'Next' : `Phase ${f.id} · ${esc(f.nombre)}`}</span>` +
+    (e.tipo === 'testeo' ? '<span class="chip test">Testing</span>' : '') + '</div>';
+  // Pestañas: el resumen, las de la ficha (si tiene) y Twitter (en las hechas).
+  const tabs = [['main', 'Overview'], ...(e.pestanas ?? []).map((p, i) => [String(i), p.titulo]), ...(hecho ? [['tw', 'Twitter']] : [])];
+  if (!tabs.some(([k]) => k === tab)) tab = 'main';
+  if (tabs.length > 1) h += `<div class="tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}${k === 'tw' ? ' tw' : ''}">${esc(n)}</button>`).join('')}</div>`;
+  if (tab === 'tw') { document.getElementById('detail').innerHTML = h + twitterTab(e); wireTweet(e); return; }
+  if (tab !== 'main') {
+    const p = e.pestanas[+tab];
+    h += showcase(p, p.titulo);
+    if (p.texto) h += `<div class="lbl">${esc(p.titulo)}</div><p>${esc(p.texto)}</p>`;
+    if (p.galeria) h += gallery(p.galeria);
+    document.getElementById('detail').innerHTML = h;
+    return;
+  }
+  h += showcase(e, e.titulo);
+  h += `<div class="lbl">What's in it</div><p>${esc(e.incluye)}</p>`;
+  if (e.galeria) h += gallery(e.galeria);
+  if (e.hechoCuando) h += `<div class="lbl">Done when</div><p>${esc(e.hechoCuando)}</p>`;
+  if (e.verificacion) h += `<div class="lbl">Verification</div><p>${esc(e.verificacion)}</p>`;
+  if (hecho) {
+    h += `<div class="lbl">Date</div><div class="facts"><span>When</span><span>${fecha(e)}</span>` +
+      `<span>Duration</span><span>${dur(e.minutos)} (${e.tramos.length} ${e.tramos.length === 1 ? 'work session' : 'work sessions'})</span></div>`;
+    const tests = e.commits.filter((c) => c.testeo);
+    // Con muchos arreglos la lista va plegada, como los commits.
+    const testList = `<ul class="tests">${tests.map((c) => `<li>${esc(c.title)}</li>`).join('')}</ul>`;
+    if (tests.length && e.tipo !== 'testeo')
+      h += `<div class="lbl">Tweaks after playtesting</div>` + (tests.length > 8 ? `<details><summary>${tests.length} fixes after testing</summary>${testList}</details>` : testList);
+    const disc = Object.entries(e.lineas).sort((a, b) => b[1] - a[1]);
+    const max = Math.max(...disc.map((d) => d[1]));
+    h += `<div class="lbl">Disciplines · lines changed</div><div class="disc">` +
+      disc.map(([k, n]) => `<span>${k}</span><div class="b" style="width:${Math.max(2, (n / max) * 100)}%"></div><span class="n">${n}</span>`).join('') + '</div>';
+    h += `<div class="lbl">Commits</div><details><summary>${e.commits.length} ${e.commits.length === 1 ? 'commit' : 'commits'}</summary><ul>` +
+      e.commits.map((c) => `<li>${c.hash} · ${esc(c.title)}</li>`).join('') + '</ul></details>';
+  }
+  document.getElementById('detail').innerHTML = h;
+}
+
+/** El contador de caracteres del post y su texto guardado en el navegador al cambiarlo. */
+function wireTweet(e) {
+  const ta = document.getElementById('twtext'), count = document.getElementById('twcount');
+  const upd = () => { const n = [...ta.value].length; count.innerHTML = `<span class="${n > 280 ? 'over' : ''}">${n}/280</span>`; };
+  upd();
+  ta.addEventListener('input', () => { store.set('tweet.' + e.id, ta.value); upd(); });
+  document.getElementById('twreset')?.addEventListener('click', () => { try { localStorage.removeItem('roadmap.tweet.' + e.id); } catch {} renderDetail(); });
+}
+document.getElementById('detail').addEventListener('click', async (ev) => {
+  const t = ev.target.closest('[data-tab]');
+  if (t) { tab = t.dataset.tab; renderDetail(); return; }
+  const c = ev.target.closest('[data-copy]');
+  if (!c) return;
+  const text = c.dataset.copy === 'text' ? document.getElementById('twtext').value : c.dataset.copy;
+  try { await navigator.clipboard.writeText(text); } catch {
+    const ta = Object.assign(document.createElement('textarea'), { value: text });
+    document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  const was = c.textContent; c.textContent = 'Copied'; setTimeout(() => { c.textContent = was; }, 1200);
+});
+
+const pct = (x) => ((x - (viewEnd - span)) / span) * 100;
+function gridLines() {
+  const step = span <= 24 * H ? 2 * H : span <= 72 * H ? 6 * H : span <= 168 * H ? 12 * H : 24 * H;
+  const from = viewEnd - span, out = [];
+  const d0 = new Date(from); d0.setHours(0, 0, 0, 0);
+  for (let x = d0.getTime(); x <= viewEnd; x += step) if (x >= from) out.push(x);
+  return out;
+}
+function renderCal() {
+  if (!showCal) return;
+  const lines = gridLines(), from = viewEnd - span;
+  let s = '';
+  const d = new Date(from); d.setHours(0, 0, 0, 0);
+  // Con el zoom de 1 mes, un rótulo por semana y una marca por día (sin horas).
+  const month = span > 168 * H, dayStep = (month ? 7 : 1) * 24 * H;
+  for (let x = d.getTime(); x <= viewEnd; x += dayStep)
+    // El día ya empezado se pega al borde izquierdo, salvo que el siguiente vaya a montarse encima.
+    if (x >= from || pct(x + dayStep) > 22) s += `<div class="day" style="left:${Math.max(0, pct(x))}%">${new Date(Math.max(x, from)).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}</div>`;
+  const w = document.getElementById('scale').clientWidth || 600;
+  const every = lines.length > 1 ? Math.ceil(40 / ((w * (lines[1] - lines[0])) / span)) : 1;
+  if (!month) lines.forEach((x, i) => { if (i % every === 0 && pct(x) > 3 && pct(x) < 97) s += `<div class="tick" style="left:${pct(x)}%">${new Date(x).getHours()}:00</div>`; });
+  document.getElementById('scale').innerHTML = s;
+  const grid = lines.map((x) => `<div class="grid${new Date(x).getHours() === 0 ? ' midnight' : ''}" style="left:${pct(x)}%"></div>`).join('');
+  const bars = (list, c) => list.flatMap((e) => (e.tramos ?? []).map(([a, b]) => `<div class="seg" style="left:${pct(t(a))}%;width:${pct(t(b)) - pct(t(a))}%;background:${c(e)}"></div>`)).join('');
+  document.getElementById('tracks').innerHTML = rows().map((r) => r.fase
+    ? `<div class="track phase" data-f="${esc(r.fase.id)}">${grid}${bars(r.items, color)}</div>`
+    : `<div class="track${r.e.id === sel ? ' sel' : ''}" data-id="${r.e.id}">${grid}${bars([r.e], color)}</div>`).join('');
+}
+
+function render() {
+  document.getElementById('main').classList.toggle('nocal', !showCal);
+  document.body.classList.toggle('nocalnav', !showCal);
+  document.getElementById('calbtn').classList.toggle('on', showCal);
+  for (const b of document.querySelectorAll('#spans [data-s]')) b.classList.toggle('on', +b.dataset.s * H === span);
+  renderList(); renderDetail(); renderCal();
+}
+
+function onRow(ev) {
+  const r = ev.target.closest('[data-f],[data-id]');
+  if (!r) return;
+  if (r.dataset.f) {
+    open.has(r.dataset.f) ? open.delete(r.dataset.f) : open.add(r.dataset.f);
+    store.set('abiertas', [...open]);
+  } else {
+    sel = r.dataset.id; store.set('sel', sel); tab = 'main';
+    // Al elegir uno, el calendario se centra en él.
+    const e = entregables.find((x) => x.id === sel);
+    if (e.estado === 'hecho') viewEnd = (t(e.inicio) + t(e.fin)) / 2 + span / 2;
+  }
+  render();
+  // En el móvil la ficha va debajo de la lista: se baja hasta ella.
+  if (r.dataset.id && matchMedia('(max-width: 900px)').matches) document.getElementById('detail').scrollIntoView({ behavior: 'smooth' });
+}
+document.getElementById('list').addEventListener('click', onRow);
+document.getElementById('tracks').addEventListener('click', onRow);
+document.getElementById('calbtn').onclick = () => { showCal = !showCal; store.set('cal', showCal); render(); };
+document.getElementById('spans').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-s]'); if (!b) return;
+  const mid = viewEnd - span / 2; span = +b.dataset.s * H; viewEnd = mid + span / 2;
+  store.set('span', +b.dataset.s); render();
+});
+document.getElementById('prev').onclick = () => { viewEnd -= span * 0.75; render(); };
+document.getElementById('next').onclick = () => { viewEnd += span * 0.75; render(); };
+document.getElementById('last').onclick = () => { viewEnd = lastEnd + span * 0.1; render(); };
+addEventListener('resize', renderCal);
+// La lista y el calendario se desplazan juntos (sus filas van a la misma altura).
+const listCol = document.querySelector('.list'), calCol = document.querySelector('.cal');
+listCol.addEventListener('scroll', () => { calCol.scrollTop = listCol.scrollTop; });
+calCol.addEventListener('scroll', () => { listCol.scrollTop = calCol.scrollTop; });
+render();
+</script>
+</body>
+</html>
