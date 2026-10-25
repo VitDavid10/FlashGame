@@ -17,6 +17,7 @@ import { MOBILE_DEMO_FRAMES, MobileDemo } from "./MobileDemo";
 import { DEMO_FRAMES, Demo } from "./Demo";
 import { MODES_FRAMES, Modes } from "./Modes";
 import { SEEKER_PLUS_FRAMES, SeekerPlus } from "./SeekerPlus";
+import { ARENA_HOWTO_FRAMES, ArenaHowTo } from "./ArenaHowTo";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -58,6 +59,8 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Demo" component={Demo} durationInFrames={DEMO_FRAMES} fps={30} width={W} height={H} />
       {/* ~30 s: the two modes, CLASSIC and ARENAS (arcade left out until it is official). */}
       <Composition id="Modes" component={Modes} durationInFrames={MODES_FRAMES} fps={30} width={W} height={H} />
+      {/* ~27 s: ARENAS step by step, from the menu to VICTORY (spawn protection, a time skip). */}
+      <Composition id="ArenaHowTo" component={ArenaHowTo} durationInFrames={ARENA_HOWTO_FRAMES} fps={30} width={W} height={H} />
       <Composition id="Perk-seeker" component={PerkSeeker} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-madlads" component={PerkMadLads} durationInFrames={1} fps={30} width={W} height={H} />
       <Composition id="Perk-jumper" component={PerkJumper} durationInFrames={1} fps={30} width={W} height={H} />
